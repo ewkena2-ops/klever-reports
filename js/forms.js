@@ -6,11 +6,11 @@
    target:      {op:'gte'|'lte', v:<number>, en:'', am:''}            */
 
 const PEOPLE = [
-  { id:'ephrata',  en:'Ephrata',  am:'ኤፍራታ',  roleEn:'Commercial Lead',  roleAm:'የንግድ ኃላፊ' },
-  { id:'liu',      en:'Mahelet',      am:'ማህሌት',     roleEn:'Operations Lead',  roleAm:'የኦፕሬሽን ኃላፊ' },
-  { id:'betty',    en:'Betty',    am:'ቤቲ',     roleEn:'Finance Officer',  roleAm:'የፋይናንስ ኃላፊ' },
-  { id:'getachew', en:'Getachew', am:'ጌታቸው',  roleEn:'Purchasing Officer',roleAm:'የግዥ ኃላፊ' },
-  { id:'yordanos', en:'Yordanos', am:'ዮርዳኖስ', roleEn:'Storekeeper',      roleAm:'የመጋዘን ኃላፊ' }
+  { id:'ephrata',  en:'Ephrata Assfa',   am:'ኤፍራታ አስፋ',   roleEn:'Commercial Lead',   roleAm:'የንግድ ኃላፊ' },
+  { id:'liu',      en:'Mahelet Teshome', am:'ማህሌት ተሾመ',   roleEn:'Operations Lead',   roleAm:'የኦፕሬሽን ኃላፊ' },
+  { id:'betty',    en:'Betelhem Aklog',  am:'ቤተልሔም አክሎግ', roleEn:'Finance Officer',   roleAm:'የፋይናንስ ኃላፊ' },
+  { id:'getachew', en:'Getachew Negash', am:'ጌታቸው ነጋሽ',   roleEn:'Purchasing Officer', roleAm:'የግዥ ኃላፊ' },
+  { id:'yordanos', en:'Yordanos Fikadu', am:'ዮርዳኖስ ፍቃዱ',  roleEn:'Storekeeper',       roleAm:'የመጋዘን ኃላፊ' }
 ];
 
 const REPORTS = [

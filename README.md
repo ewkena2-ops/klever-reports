@@ -28,11 +28,11 @@ browser storage.
 
 | Person | Report | Deadline |
 |---|---|---|
-| Ephrata | Daily Commercial Report | 5:30 PM |
-| Mahelet | Daily Operations Report | 5:30 PM |
-| Betty | Daily Finance Report | 5:30 PM |
-| Getachew | Daily Purchasing Report | 5:30 PM |
-| Yordanos | Daily Store Report | 5:30 PM |
+| Ephrata Assfa | Daily Commercial Report | 5:30 PM |
+| Mahelet Teshome | Daily Operations Report | 5:30 PM |
+| Betelhem Aklog | Daily Finance Report | 5:30 PM |
+| Getachew Negash | Daily Purchasing Report | 5:30 PM |
+| Yordanos Fikadu | Daily Store Report | 5:30 PM |
 
 Betty's, Getachew's and Yordanos's forms were drafted from the duties in their letters — they had
 no report template — so they are marked as such on screen and should be corrected after real use.

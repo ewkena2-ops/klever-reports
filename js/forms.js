@@ -889,6 +889,114 @@ const REPORTS = [
       {id:'jl_note', en:'Anything Mahelet should know', am:'ማህሌት ሊያውቀው የሚገባ', t:'area', opt:1}
     ]}
   ]
+},
+
+/* ========== BETELHEM — DAILY 7-DAY CASH FLOW FORECAST (9:00 AM) ========== */
+{
+  id:'betty-forecast', person:'betty', cadence:'daily', dueTime:'09:00',
+  en:'Daily 7-Day Cash Flow Forecast', am:'ዕለታዊ የ7 ቀን የገንዘብ ፍሰት ትንበያ',
+  toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
+  dueEn:'9:00 AM every working day', dueAm:'በየሥራ ቀኑ ከጠዋቱ 3፡00 (9:00 AM)',
+  penEn:'Late –200 Birr · Missing –500 Birr · Shortfall not flagged in advance –2,000 Birr',
+  penAm:'ዘግይቶ –200 ብር · ካልቀረበ –500 ብር · እጥረት አስቀድሞ ካልተነገረ –2,000 ብር',
+  derived:1,
+  sections:[
+    { en:'1 · Position this morning', am:'1 · የዛሬ ጠዋት ሁኔታ', fields:[
+      {id:'cf7_date', en:'Forecast starts', am:'ትንበያው የሚጀምርበት ቀን', t:'date'},
+      {id:'cf7_bank', en:'Bank balance this morning', am:'የዛሬ ጠዋት የባንክ ቀሪ', t:'money',
+        tgt:{op:'gte', v:6000000, en:'6 Million Birr Cash Reserve Rule — below this must be reported',
+             am:'የ6 ሚሊዮን ብር ክምችት ደንብ — ከዚህ በታች ከሆነ ማሳወቅ ግዴታ ነው'}},
+      {id:'cf7_cash', en:'Cash on hand', am:'በእጅ ያለ ጥሬ ገንዘብ', t:'money'},
+      {id:'cf7_zamzam', en:'ZamZam Bank balance', am:'የዘምዘም ባንክ ቀሪ', t:'money'},
+      {id:'cf7_reported', en:'If below 6M, already reported to Chairman',
+       am:'ከ6ሚ በታች ከሆነ ለሊቀመንበሩ ተነግሯል', t:'yesno', opt:1}
+    ]},
+    { en:'2 · The next 7 days', am:'2 · የሚቀጥሉት 7 ቀናት', fields:[
+      {id:'cf7_days', en:'Expected in, out and closing balance', am:'የሚጠበቅ ገቢ፣ ወጪና ቀሪ',
+       t:'grid', dateFrom:'cf7_date',
+       rows:[{en:'Day 1', am:'ቀን 1'},{en:'Day 2', am:'ቀን 2'},{en:'Day 3', am:'ቀን 3'},
+             {en:'Day 4', am:'ቀን 4'},{en:'Day 5', am:'ቀን 5'},{en:'Day 6', am:'ቀን 6'},
+             {en:'Day 7', am:'ቀን 7'}],
+       cols:[
+        {id:'in',    en:'Expected in', am:'የሚጠበቅ ገቢ', t:'money'},
+        {id:'out',   en:'Expected out', am:'የሚጠበቅ ወጪ', t:'money'},
+        {id:'close', en:'Closing balance', am:'የቀኑ መጨረሻ ቀሪ', t:'money'}
+      ]}
+    ]},
+    { en:'3 · The lowest point', am:'3 · ዝቅተኛው ደረጃ', fields:[
+      {id:'cf7_low', en:'Lowest balance in the 7 days', am:'በ7 ቀናት ውስጥ ዝቅተኛው ቀሪ', t:'money',
+        tgt:{op:'gte', v:6000000, en:'Below the 6 Million Birr reserve',
+             am:'ከ6 ሚሊዮን ብር ክምችት በታች'}},
+      {id:'cf7_lowday', en:'Which day', am:'የትኛው ቀን', t:'text'},
+      {id:'cf7_cover', en:'Money expected covers everything due', am:'የሚጠበቀው ገንዘብ ወጪውን ይሸፍናል', t:'yesno'}
+    ]},
+    { en:'4 · Shortfall warning', am:'4 · የእጥረት ማስጠንቀቂያ', fields:[
+      {id:'cf7_short', en:'A shortfall is expected in these 7 days',
+       am:'በእነዚህ 7 ቀናት እጥረት ይጠበቃል', t:'yesno'},
+      {id:'cf7_amount', en:'How much short', am:'ምን ያህል ይጎድላል', t:'money', opt:1},
+      {id:'cf7_action', en:'What should be done', am:'ምን መደረግ አለበት', t:'area', opt:1},
+      {id:'cf7_freeze', en:'Non-essential payments should be frozen',
+       am:'አስፈላጊ ያልሆኑ ክፍያዎች መቆም አለባቸው', t:'yesno'}
+    ]},
+    { en:'5 · Due today', am:'5 · ዛሬ የሚከፈሉ', fields:[
+      {id:'cf7_due', en:'Payments due today', am:'ዛሬ የሚከፈሉ ክፍያዎች', t:'num'},
+      {id:'cf7_due_val', en:'Value due today', am:'የዛሬ ክፍያ ዋጋ', t:'money'},
+      {id:'cf7_kidan', en:'Of those, needing Kidan’s approval', am:'ከነዚህ የኪዳን ፈቃድ የሚያስፈልጋቸው', t:'num'}
+    ]}
+  ]
+},
+
+/* ============ BETELHEM — DAILY CUSTOMER PULSE REPORT (6:00 PM) ============ */
+{
+  id:'betty-pulse', person:'betty', cadence:'daily', dueTime:'18:00',
+  en:'Daily Customer Pulse Report', am:'ዕለታዊ የደንበኛ ስሜት ሪፖርት',
+  toEn:'Chairman + Ephrata + Kidan', toAm:'ሊቀመንበር + ኤፍራታ + ኪዳን',
+  dueEn:'6:00 PM every working day', dueAm:'በየሥራ ቀኑ ከምሽቱ 12፡00 (6:00 PM)',
+  penEn:'Late –200 Birr · Missing –500 Birr · Complaint not reported same day –500 Birr',
+  penAm:'ዘግይቶ –200 ብር · ካልቀረበ –500 ብር · ቅሬታ በዕለቱ ካልተነገረ –500 ብር',
+  derived:1,
+  sections:[
+    { en:'1 · Groups watched today', am:'1 · ዛሬ የተከታተልኳቸው ግሩፖች', fields:[
+      {id:'pl_groups', en:'Active customer groups', am:'ንቁ የደንበኛ ግሩፖች', t:'num'},
+      {id:'pl_checked', en:'Groups read today', am:'ዛሬ ያነበብኳቸው ግሩፖች', t:'ratio'},
+      {id:'pl_called', en:'Customers contacted directly', am:'በቀጥታ ያነጋገርኳቸው ደንበኞች', t:'num'}
+    ]},
+    { en:'2 · How customers sound', am:'2 · የደንበኞች ስሜት', fields:[
+      {id:'pl_happy', en:'Customers who sound satisfied', am:'የረኩ የሚመስሉ ደንበኞች', t:'num'},
+      {id:'pl_unhappy', en:'Customers who sound unhappy', am:'ያልረኩ የሚመስሉ ደንበኞች', t:'num'},
+      {id:'pl_silent', en:'Customers gone quiet for 3 days or more',
+       am:'ከ3 ቀናት በላይ ዝም ያሉ ደንበኞች', t:'num'},
+      {id:'pl_risk', en:'Any customer at risk of cancelling', am:'ውል ሊያቋርጥ የሚችል ደንበኛ አለ', t:'yesno'},
+      {id:'pl_risk_who', en:'Which customer and why', am:'የትኛው ደንበኛ እና ለምን', t:'area', opt:1}
+    ]},
+    { en:'3 · Complaints today', am:'3 · የዛሬ ቅሬታዎች', fields:[
+      {id:'pl_list', en:'Complaints raised today', am:'ዛሬ የቀረቡ ቅሬታዎች',
+       t:'table', addEn:'Add complaint', addAm:'ቅሬታ ጨምር', cols:[
+        {id:'cust',  en:'Customer', am:'ደንበኛ', t:'text'},
+        {id:'job',   en:'Job code', am:'የሥራ ኮድ', t:'text'},
+        {id:'issue', en:'What about', am:'ስለ ምን', t:'text'},
+        {id:'to',    en:'Passed to', am:'የተላለፈለት', t:'text'},
+        {id:'state', en:'Status', am:'ሁኔታ', t:'choice', opts:[
+          {v:'open',   en:'Open', am:'ክፍት'},
+          {v:'working',en:'Being worked on', am:'በሥራ ላይ'},
+          {v:'closed', en:'Resolved', am:'ተፈቷል'}]}
+      ]},
+      {id:'pl_sameday', en:'Every complaint reported the same day',
+       am:'እያንዳንዱ ቅሬታ በዕለቱ ተነግሯል', t:'yesno'},
+      {id:'pl_open', en:'Complaints still open from earlier days',
+       am:'ከቀደሙት ቀናት ያልተፈቱ ቅሬታዎች', t:'num'}
+    ]},
+    { en:'4 · What customers said', am:'4 · ደንበኞች ያሉት', fields:[
+      {id:'pl_good', en:'What customers praised today', am:'ዛሬ ደንበኞች ያደነቁት', t:'area', opt:1},
+      {id:'pl_bad', en:'What customers complained about', am:'ደንበኞች ያማረሩበት', t:'area', opt:1}
+    ]},
+    { en:'5 · Escalation', am:'5 · ወደ ላይ የተላለፉ', fields:[
+      {id:'pl_to_eph', en:'Passed to Ephrata today', am:'ዛሬ ለኤፍራታ የተላለፉ', t:'num'},
+      {id:'pl_to_mah', en:'Passed to Mahelet today', am:'ዛሬ ለማህሌት የተላለፉ', t:'num'},
+      {id:'pl_chair', en:'Need Chairman decision', am:'የሊቀመንበር ውሳኔ ያስፈልጋል', t:'yesno'},
+      {id:'pl_what', en:'What the Chairman should decide', am:'ሊቀመንበሩ ሊወስንበት የሚገባ', t:'area', opt:1}
+    ]}
+  ]
 }
 
 ];

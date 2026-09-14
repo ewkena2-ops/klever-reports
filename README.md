@@ -26,15 +26,17 @@ browser storage.
 
 ## Reports covered
 
-**Daily — every working day, 5:30 PM**
+**Daily — every working day**
 
-| Person | Report |
-|---|---|
-| Ephrata Assfa | Daily Commercial Report |
-| Mahelet Teshome | Daily Operations Report |
-| Betelhem Aklog | Daily Finance Report |
-| Getachew Negash | Daily Purchasing Report |
-| Yordanos Fikadu | Daily Store Report |
+| Person | Report | Due |
+|---|---|---|
+| Betelhem Aklog | Daily 7-Day Cash Flow Forecast | 9:00 AM |
+| Ephrata Assfa | Daily Commercial Report | 5:30 PM |
+| Mahelet Teshome | Daily Operations Report | 5:30 PM |
+| Betelhem Aklog | Daily Finance Report | 5:30 PM |
+| Getachew Negash | Daily Purchasing Report | 5:30 PM |
+| Yordanos Fikadu | Daily Store Report | 5:30 PM |
+| Betelhem Aklog | Daily Customer Pulse Report | 6:00 PM |
 
 **Weekly**
 
@@ -65,7 +67,8 @@ no report template — so they are marked as such on screen and should be correc
 These use repeating rows. Set the plan start date once and all fifteen days of the production
 plan carry their own date.
 
-Still to add: Betelhem's 9:00 AM daily cash flow forecast and her 6:00 PM daily customer pulse.
+Every report named in the five signed letters now has a form. Each person's list is ordered by
+when their reports are actually due.
 
 ## Changing a form
 

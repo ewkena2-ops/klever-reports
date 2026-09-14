@@ -61,8 +61,15 @@
     for (var i = 0; i < REPORTS.length; i++) if (REPORTS[i].id === id) return REPORTS[i];
     return null;
   }
+  /* Betelhem carries seven forms — list them in the order her day and week run:
+     daily before weekly, then by the day and time each is due */
   function reportsFor(pid) {
-    return REPORTS.filter(function (r) { return r.person === pid; });
+    return REPORTS.filter(function (r) { return r.person === pid; }).sort(function (a, b) {
+      if (a.cadence !== b.cadence) return a.cadence === 'daily' ? -1 : 1;
+      var ad = a.dueDay == null ? 0 : a.dueDay, bd = b.dueDay == null ? 0 : b.dueDay;
+      if (ad !== bd) return ad - bd;
+      return (a.dueTime || '').localeCompare(b.dueTime || '');
+    });
   }
 
   /* ---------------- shared chrome ---------------- */

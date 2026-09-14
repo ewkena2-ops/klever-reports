@@ -330,6 +330,372 @@ const REPORTS = [
       {id:'need_chair', en:'Need Chairman decision', am:'የሊቀመንበር ውሳኔ ያስፈልጋል', t:'yesno'}
     ]}
   ]
+},
+
+/* ========================= EPHRATA — WEEKLY ========================= */
+{
+  id:'ephrata-weekly', person:'ephrata', cadence:'weekly', dueTime:'16:00', dueDay:5,
+  en:'Weekly Commercial Report', am:'ሳምንታዊ የንግድ ሪፖርት',
+  toEn:'Chairman', toAm:'ሊቀመንበር',
+  dueEn:'Friday 4:00 PM', dueAm:'ዓርብ ከቀኑ 10፡00 (4:00 PM)',
+  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  sections:[
+    { en:'1 · Sales performance', am:'1 · የሽያጭ አፈጻጸም', fields:[
+      {id:'w_contracts', en:'Contracts signed this week', am:'በዚህ ሳምንት የተፈረሙ ውሎች', t:'num'},
+      {id:'w_value', en:'Total contract value', am:'ጠቅላላ የውል ዋጋ', t:'money'},
+      {id:'w_external', en:'Total external collections', am:'ከደንበኞች የተሰበሰበ ጠቅላላ ገንዘብ', t:'money',
+        tgt:{op:'gte', v:3000000, en:'Below 3,000,000 Birr is a failed week — no commission',
+             am:'ከ3,000,000 ብር በታች ከሆነ ሳምንቱ ወድቋል — ኮሚሽን የለም'}},
+      {id:'w_internal', en:'Total internal collections', am:'የውስጥ ጠቅላላ ገቢ', t:'money'},
+      {id:'w_target_met', en:'Weekly target of 6,000,000 Birr met', am:'የሳምንቱ ዒላማ 6,000,000 ብር ተሳክቷል', t:'yesno'}
+    ]},
+    { en:'2 · Lead performance', am:'2 · የደንበኛ አፈጻጸም', fields:[
+      {id:'w_leads', en:'Total new leads', am:'ጠቅላላ አዲስ ደንበኞች', t:'num'},
+      {id:'w_leads_1hr', en:'Leads contacted within 1 hour', am:'በ1 ሰዓት ውስጥ የተደወለላቸው', t:'ratio'},
+      {id:'w_visits', en:'Site visits completed', am:'የተከናወኑ የቦታ ጉብኝቶች', t:'num'},
+      {id:'w_quotes', en:'Quotations issued', am:'የተሰጡ ፕሮፎርማዎች', t:'num'},
+      {id:'w_conv', en:'Conversion rate, leads to contracts', am:'ከደንበኛ ወደ ውል የተቀየረበት መጠን', t:'pct'}
+    ]},
+    { en:'3 · Margin performance', am:'3 · የትርፍ ህዳግ አፈጻጸም', fields:[
+      {id:'w_margin', en:'Average margin per m², external', am:'በካሬ ሜትር አማካይ ህዳግ', t:'num',
+        tgt:{op:'gte', v:6000, en:'Margin floor 6,000 Birr/m²', am:'ዝቅተኛው ህዳግ 6,000 ብር በካሬ'}},
+      {id:'w_below_margin', en:'Contracts below the margin floor', am:'ከህዳጉ በታች የተፈረሙ ውሎች', t:'num',
+        tgt:{op:'lte', v:0, en:'–5,000 Birr each without Chairman approval',
+             am:'ያለ ሊቀመንበር ፈቃድ እያንዳንዱ –5,000 ብር'}}
+    ]},
+    { en:'4 · WhatsApp compliance', am:'4 · የዋትስአፕ ተገዢነት', fields:[
+      {id:'w_wa_groups', en:'Customer groups active', am:'ንቁ የደንበኛ ግሩፖች', t:'num'},
+      {id:'w_wa_msgs', en:'Stage messages posted', am:'የተላኩ የደረጃ መልዕክቶች', t:'ratio'},
+      {id:'w_wa_rate', en:'Compliance rate', am:'የተገዢነት መጠን', t:'pct',
+        tgt:{op:'gte', v:100, en:'100% required for the team bonus', am:'ለቡድን ቦነስ 100% መሆን አለበት'}},
+      {id:'w_wa_unans', en:'Messages unanswered over 2 hours', am:'ከ2 ሰዓት በላይ ምላሽ ያላገኙ', t:'num'},
+      {id:'w_wa_complaints', en:'Customer complaints about WhatsApp', am:'በዋትስአፕ ላይ የደንበኛ ቅሬታ', t:'num'},
+      {id:'w_wa_viol', en:'Team violations', am:'የቡድን ጥሰቶች', t:'num'}
+    ]},
+    { en:'5 · Marketing performance', am:'5 · የማርኬቲንግ አፈጻጸም', fields:[
+      {id:'w_posts', en:'Posts made this week', am:'በዚህ ሳምንት የተለጠፉ ፖስቶች', t:'num',
+        tgt:{op:'gte', v:3, en:'At least 3 per week — –300 Birr per missed post',
+             am:'በሳምንት ቢያንስ 3 — ላልተለጠፈ እያንዳንዱ –300 ብር'}},
+      {id:'w_fb', en:'Facebook', am:'ፌስቡክ', t:'num', i:1},
+      {id:'w_ig', en:'Instagram', am:'ኢንስታግራም', t:'num', i:1},
+      {id:'w_tt', en:'TikTok', am:'ቲክቶክ', t:'num', i:1},
+      {id:'w_inq', en:'Inquiries received', am:'የደረሱ ጥያቄዎች', t:'num'},
+      {id:'w_inq_1hr', en:'Inquiries answered within 1 hour', am:'በ1 ሰዓት ውስጥ ምላሽ ያገኙ', t:'num'},
+      {id:'w_mkt_leads', en:'Leads generated from marketing', am:'ከማርኬቲንግ የመጡ አዲስ ደንበኞች', t:'num',
+        tgt:{op:'gte', v:15, en:'15 or more earns 1,000 Birr', am:'15 እና ከዚያ በላይ 1,000 ብር ያስገኛል'}},
+      {id:'w_mkt_contracts', en:'Contracts from marketing leads', am:'ከማርኬቲንግ ደንበኞች የተገኙ ውሎች', t:'num'}
+    ]},
+    { en:'6 · Customer satisfaction', am:'6 · የደንበኛ እርካታ', fields:[
+      {id:'w_comp_in', en:'Complaints received this week', am:'በዚህ ሳምንት የደረሱ ቅሬታዎች', t:'num'},
+      {id:'w_comp_done', en:'Complaints resolved', am:'የተፈቱ ቅሬታዎች', t:'num'},
+      {id:'w_comp_open', en:'Complaints outstanding', am:'ያልተፈቱ ቅሬታዎች', t:'num',
+        tgt:{op:'lte', v:0, en:'Zero valid complaints required for the team bonus',
+             am:'ለቡድን ቦነስ ዜሮ ቅሬታ ያስፈልጋል'}},
+      {id:'w_sat', en:'Average satisfaction score out of 5', am:'አማካይ የእርካታ ነጥብ ከ5', t:'num'}
+    ]},
+    { en:'7 · Problems and solutions', am:'7 · ችግሮችና መፍትሔዎች', fields:[
+      {id:'w_problem', en:'Problem', am:'ችግር', t:'area', opt:1},
+      {id:'w_action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1},
+      {id:'w_open', en:'Outstanding issues', am:'ያልተጠናቀቁ ጉዳዮች', t:'area', opt:1}
+    ]},
+    { en:"8 · Next week's plan", am:'8 · የሚቀጥለው ሳምንት ዕቅድ', fields:[
+      {id:'w_next_contracts', en:'Contracts expected', am:'የሚጠበቁ ውሎች', t:'num'},
+      {id:'w_next_value', en:'Value expected', am:'የሚጠበቅ ዋጋ', t:'money'},
+      {id:'w_next_customers', en:'Key customers in negotiation', am:'በድርድር ላይ ያሉ ዋና ደንበኞች', t:'area'},
+      {id:'w_next_support', en:'Support needed from Chairman', am:'ከሊቀመንበሩ የሚፈለግ ድጋፍ', t:'area', opt:1}
+    ]},
+    { en:'9 · 4-week rolling total', am:'9 · የ4 ሳምንት ድምር', fields:[
+      {id:'r_w1', en:'Week 1', am:'ሳምንት 1', t:'money'},
+      {id:'r_w2', en:'Week 2', am:'ሳምንት 2', t:'money'},
+      {id:'r_w3', en:'Week 3', am:'ሳምንት 3', t:'money'},
+      {id:'r_w4', en:'Week 4', am:'ሳምንት 4', t:'money'},
+      {id:'r_total', en:'Rolling 4-week total', am:'የ4 ሳምንት ጠቅላላ ድምር', t:'money',
+        tgt:{op:'gte', v:12000000, en:'Below 12,000,000 Birr is –5,000 Birr',
+             am:'ከ12,000,000 ብር በታች ከሆነ –5,000 ብር'}},
+      {id:'r_conseq', en:'Consequence applied, if any', am:'የተወሰደ እርምጃ ካለ', t:'text', opt:1}
+    ]}
+  ]
+},
+
+/* ========================= MAHELET — WEEKLY ========================= */
+{
+  id:'liu-weekly', person:'liu', cadence:'weekly', dueTime:'15:00', dueDay:5,
+  en:'Weekly Production & Delivery Summary', am:'ሳምንታዊ የምርትና የማድረስ ሪፖርት',
+  toEn:'Chairman', toAm:'ሊቀመንበር',
+  dueEn:'Friday 3:00 PM', dueAm:'ዓርብ ከቀኑ 9፡00 (3:00 PM)',
+  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  sections:[
+    { en:'1 · Production performance', am:'1 · የምርት አፈጻጸም', fields:[
+      {id:'p_total', en:'Total m² produced this week', am:'በዚህ ሳምንት የተመረተ ጠቅላላ ካሬ ሜትር', t:'num',
+        tgt:{op:'gte', v:240, en:'Weekly target 240 m²', am:'የሳምንቱ ዒላማ 240 ካሬ ሜትር'}},
+      {id:'p_avg', en:'Average daily production', am:'አማካይ የቀን ምርት', t:'num',
+        tgt:{op:'gte', v:40, en:'Daily target 40 m²', am:'የቀን ዒላማ 40 ካሬ ሜትር'}},
+      {id:'p_waste', en:'Waste %', am:'የብክነት መጠን %', t:'pct',
+        tgt:{op:'lte', v:20, en:'Must not exceed 20%', am:'ከ20% መብለጥ የለበትም'}},
+      {id:'p_uptime', en:'Machine uptime %', am:'ማሽን የሠራበት መጠን %', t:'pct',
+        tgt:{op:'gte', v:95, en:'95%+ earns 400 Birr, below 90% is –300 Birr',
+             am:'ከ95% በላይ 400 ብር፣ ከ90% በታች –300 ብር'}}
+    ]},
+    { en:'2 · Quality control', am:'2 · የጥራት ቁጥጥር', fields:[
+      {id:'q_checked', en:'Total jobs QC checked', am:'በQC የተመረመሩ ጠቅላላ ሥራዎች', t:'num'},
+      {id:'q_pass', en:'Jobs passed', am:'ያለፉ ሥራዎች', t:'num'},
+      {id:'q_fail', en:'Jobs failed', am:'ያላለፉ ሥራዎች', t:'num'},
+      {id:'q_rate', en:'QC pass rate', am:'የQC ማለፊያ መጠን', t:'pct',
+        tgt:{op:'gte', v:98, en:'Target ≥98% — below is –500 Birr/month',
+             am:'ዒላማ ≥98% — በታች ከሆነ በወር –500 ብር'}}
+    ]},
+    { en:'3 · Store & inventory', am:'3 · መጋዘንና ክምችት', fields:[
+      {id:'s_accuracy', en:'Stock accuracy', am:'የክምችት ትክክለኛነት', t:'pct',
+        tgt:{op:'gte', v:99, en:'Target ≥99%', am:'ዒላማ ≥99%'}},
+      {id:'s_disc', en:'Stock discrepancies', am:'የክምችት ልዩነቶች', t:'num'},
+      {id:'s_short', en:'Shortages reported', am:'የተነገሩ እጥረቶች', t:'num'}
+    ]},
+    { en:'4 · Purchasing', am:'4 · ግዥ', fields:[
+      {id:'pu_total', en:'Total purchase requests', am:'ጠቅላላ የግዥ ጥያቄዎች', t:'num'},
+      {id:'pu_acc', en:'Purchase accuracy', am:'የግዥ ትክክለኛነት', t:'pct',
+        tgt:{op:'gte', v:95, en:'Target ≥95%', am:'ዒላማ ≥95%'}},
+      {id:'pu_ontime', en:'Deliveries on time', am:'በሰዓቱ የደረሱ ዕቃዎች', t:'ratio'}
+    ]},
+    { en:'5 · Delivery & installation', am:'5 · ማድረስና ተከላ', fields:[
+      {id:'d_delivered', en:'Total jobs delivered', am:'ጠቅላላ የተላኩ ሥራዎች', t:'num'},
+      {id:'d_installed', en:'Total jobs installed', am:'ጠቅላላ የተተከሉ ሥራዎች', t:'num'},
+      {id:'d_ontime', en:'On-time delivery rate', am:'በሰዓቱ የመድረስ መጠን', t:'pct',
+        tgt:{op:'gte', v:95, en:'Target ≥95%', am:'ዒላማ ≥95%'}},
+      {id:'d_inst_ontime', en:'On-time installation rate', am:'በሰዓቱ የመተከል መጠን', t:'pct',
+        tgt:{op:'gte', v:95, en:'Target ≥95%', am:'ዒላማ ≥95%'}},
+      {id:'d_complaints', en:'Customer complaints', am:'የደንበኛ ቅሬታዎች', t:'num'},
+      {id:'d_resolved', en:'Complaints resolved', am:'የተፈቱ ቅሬታዎች', t:'num'}
+    ]},
+    { en:'6 · Job File handoff', am:'6 · የጆብ ፋይል ርክክብ', fields:[
+      {id:'j_recv', en:'Job Files received from Ephrata', am:'ከኤፍራታ የደረሱ ጆብ ፋይሎች', t:'num'},
+      {id:'j_acc', en:'Accepted', am:'የተቀበልኳቸው', t:'num'},
+      {id:'j_rej', en:'Rejected', am:'የመለስኳቸው', t:'num'},
+      {id:'j_reason', en:'Reason for rejections', am:'የመመለሻ ምክንያት', t:'area', opt:1}
+    ]},
+    { en:'7 · WhatsApp compliance', am:'7 · የዋትስአፕ ተገዢነት', fields:[
+      {id:'wa_rate', en:'Operations compliance rate', am:'የኦፕሬሽን ተገዢነት መጠን', t:'pct',
+        tgt:{op:'gte', v:100, en:'100% required for the KPI bonus', am:'ለKPI ቦነስ 100% ያስፈልጋል'}},
+      {id:'wa_asm', en:'Days assembler progress was posted', am:'የተከላ ሪፖርት የተላከባቸው ቀናት', t:'ratio'},
+      {id:'wa_comp', en:'Customer complaints about operations communication',
+        am:'በኦፕሬሽን ግንኙነት ላይ የደንበኛ ቅሬታ', t:'num'}
+    ]},
+    { en:'8 · 15-day production plan status', am:'8 · የ15 ቀን የምርት ዕቅድ ሁኔታ', fields:[
+      {id:'pl_sent', en:'Plan submitted on time', am:'ዕቅዱ በሰዓቱ ቀርቧል', t:'yesno'},
+      {id:'pl_onsched', en:'Jobs completed on schedule', am:'በዕቅዱ መሠረት የተጠናቀቁ ሥራዎች', t:'ratio'},
+      {id:'pl_delayed', en:'Jobs delayed', am:'የዘገዩ ሥራዎች', t:'num'},
+      {id:'pl_reason', en:'Reason for delays', am:'የመዘግየት ምክንያት', t:'area', opt:1},
+      {id:'pl_unpaid', en:"Jobs included without Betty's payment confirmation",
+        am:'ያለ ቤቲ የክፍያ ማረጋገጫ የገቡ ሥራዎች', t:'num',
+        tgt:{op:'lte', v:0, en:'–5,000 Birr per job', am:'በሥራ –5,000 ብር'}}
+    ]},
+    { en:'9 · Problems and solutions', am:'9 · ችግሮችና መፍትሔዎች', fields:[
+      {id:'w_problem', en:'Problem', am:'ችግር', t:'area', opt:1},
+      {id:'w_action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1},
+      {id:'w_open', en:'Outstanding issues', am:'ያልተጠናቀቁ ጉዳዮች', t:'area', opt:1}
+    ]},
+    { en:"10 · Next week's plan", am:'10 · የሚቀጥለው ሳምንት ዕቅድ', fields:[
+      {id:'n_target', en:'Production target in m²', am:'የምርት ዒላማ በካሬ ሜትር', t:'num'},
+      {id:'n_jobs', en:'Key jobs to complete', am:'መጠናቀቅ ያለባቸው ዋና ሥራዎች', t:'area'},
+      {id:'n_support', en:'Support needed from Chairman', am:'ከሊቀመንበሩ የሚፈለግ ድጋፍ', t:'area', opt:1}
+    ]}
+  ]
+},
+
+/* ==================== BETELHEM — WEEKLY FINANCE ==================== */
+{
+  id:'betty-weekly', person:'betty', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  en:'Weekly Finance Report', am:'ሳምንታዊ የፋይናንስ ሪፖርት',
+  toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
+  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  penEn:'Late –500 Birr · Wrong information –500 to –1,000 Birr',
+  penAm:'ዘግይቶ –500 ብር · የተሳሳተ መረጃ –500 እስከ –1,000 ብር',
+  derived:1,
+  sections:[
+    { en:'1 · Collections this week', am:'1 · የዚህ ሳምንት ገቢ', fields:[
+      {id:'f_adv', en:'Advance payments received', am:'የገቡ ቅድመ ክፍያዎች', t:'money'},
+      {id:'f_final', en:'Final payments received', am:'የገቡ የመጨረሻ ክፍያዎች', t:'money'},
+      {id:'f_total', en:'Total collected', am:'ጠቅላላ የተሰበሰበ', t:'money'},
+      {id:'f_banked', en:'All cash banked same day, every day', am:'ገንዘቡ ሁሉ በየዕለቱ ባንክ ገብቷል', t:'yesno'}
+    ]},
+    { en:'2 · Cash position', am:'2 · የገንዘብ ሁኔታ', fields:[
+      {id:'f_bank', en:'Bank balance at week end', am:'በሳምንቱ መጨረሻ የባንክ ቀሪ', t:'money',
+        tgt:{op:'gte', v:6000000, en:'6 Million Birr Cash Reserve Rule', am:'የ6 ሚሊዮን ብር ክምችት ደንብ'}},
+      {id:'f_recon', en:'Monday bank reconciliation completed', am:'የሰኞ የባንክ ማስታረቅ ተጠናቋል', t:'yesno'},
+      {id:'f_disc', en:'Cash discrepancies this week', am:'በዚህ ሳምንት የተገኙ የገንዘብ ልዩነቶች', t:'num',
+        tgt:{op:'lte', v:0, en:'–500 Birr each', am:'እያንዳንዱ –500 ብር'}},
+      {id:'f_shortfall', en:'Cash shortfall flagged in advance', am:'የገንዘብ እጥረት አስቀድሞ ተነግሯል', t:'yesno', opt:1}
+    ]},
+    { en:'3 · ZamZam Bank reconciliation', am:'3 · የዘምዘም ባንክ ማስታረቅ', fields:[
+      {id:'z_recon', en:'ZamZam reconciled this Monday', am:'ዘምዘም በዚህ ሰኞ ታርቋል', t:'yesno'},
+      {id:'z_transfers', en:'Transfers made this week', am:'በዚህ ሳምንት የተደረጉ ዝውውሮች', t:'num'},
+      {id:'z_value', en:'Total transferred', am:'ጠቅላላ የተላለፈ', t:'money'},
+      {id:'z_matched', en:'Transfers matched to approved requests', am:'ከጸደቁ ጥያቄዎች ጋር የተመሳከሩ', t:'ratio'},
+      {id:'z_cheques', en:'Cheques matched to supplier invoices', am:'ከአቅራቢ ደረሰኝ ጋር የተመሳከሩ ቼኮች', t:'ratio'},
+      {id:'z_errors', en:'Reconciliation errors', am:'የማስታረቅ ስህተቶች', t:'num',
+        tgt:{op:'lte', v:0, en:'Zero errors earns the 1,000 Birr bonus',
+             am:'ዜሮ ስህተት 1,000 ብር ቦነስ ያስገኛል'}}
+    ]},
+    { en:'4 · Payments approved', am:'4 · የጸደቁ ክፍያዎች', fields:[
+      {id:'a_count', en:'Payments approved this week', am:'በዚህ ሳምንት የጸደቁ ክፍያዎች', t:'num'},
+      {id:'a_value', en:'Total value approved', am:'ጠቅላላ የጸደቀ ዋጋ', t:'money'},
+      {id:'a_kidan', en:'Payments above 50,000 Birr sent to Kidan', am:'ከ50,000 ብር በላይ ለኪዳን የተላኩ', t:'num'},
+      {id:'a_unauth', en:'Payments made without proper approval', am:'ያለ ፈቃድ የተፈጸሙ ክፍያዎች', t:'num',
+        tgt:{op:'lte', v:0, en:'–5,000 Birr each', am:'እያንዳንዱ –5,000 ብር'}}
+    ]},
+    { en:'5 · Assembler payments', am:'5 · የተከላ ሠራተኞች ክፍያ', fields:[
+      {id:'as_reserved', en:'Amount reserved this week', am:'በዚህ ሳምንት የተያዘ መጠን', t:'money'},
+      {id:'as_released', en:'Payments released', am:'የተለቀቁ ክፍያዎች', t:'num'},
+      {id:'as_late', en:'Payments later than 3 working days', am:'ከ3 የሥራ ቀናት በኋላ የተለቀቁ', t:'num',
+        tgt:{op:'lte', v:0, en:'–300 Birr per day late', am:'በዘገየ ቀን –300 ብር'}},
+      {id:'as_disputes', en:'Disputes still open', am:'ያልተፈቱ ክርክሮች', t:'num'}
+    ]},
+    { en:'6 · Registers, board and documents', am:'6 · መዝገቦች፣ ቦርድና ሰነዶች', fields:[
+      {id:'r_registers', en:'All registers up to date', am:'ሁሉም መዝገቦች ተሞልተዋል', t:'yesno'},
+      {id:'r_board', en:'Board matched physical files all week', am:'ቦርዱ ሳምንቱን ሙሉ ከፋይሎቹ ጋር ተመሳስሏል', t:'yesno'},
+      {id:'r_docs_missing', en:'Documents still missing', am:'እስካሁን የጎደሉ ሰነዶች', t:'num'},
+      {id:'r_joblist', en:'Payment-confirmed job list sent to Mahelet by Friday 1:00 PM',
+        am:'የክፍያ ማረጋገጫ ዝርዝር ዓርብ ከቀኑ 7፡00 ለማህሌት ተልኳል', t:'yesno'}
+    ]},
+    { en:'7 · Problems and solutions', am:'7 · ችግሮችና መፍትሔዎች', fields:[
+      {id:'w_problem', en:'Problem', am:'ችግር', t:'area', opt:1},
+      {id:'w_action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1},
+      {id:'w_support', en:'Support needed from Chairman', am:'ከሊቀመንበሩ የሚፈለግ ድጋፍ', t:'area', opt:1}
+    ]}
+  ]
+},
+
+/* ============== BETELHEM — WEEKLY CUSTOMER EXPERIENCE ============== */
+{
+  id:'betty-weekly-cx', person:'betty', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  en:'Weekly Customer Experience Summary', am:'ሳምንታዊ የደንበኛ አገልግሎት ሪፖርት',
+  toEn:'Chairman + Ephrata + Kidan', toAm:'ሊቀመንበር + ኤፍራታ + ኪዳን',
+  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  derived:1,
+  sections:[
+    { en:'1 · Customer pulse this week', am:'1 · የዚህ ሳምንት የደንበኛ ስሜት', fields:[
+      {id:'cx_groups', en:'Customer groups monitored', am:'የተከታተልኳቸው የደንበኛ ግሩፖች', t:'num'},
+      {id:'cx_contacted', en:'Customers contacted directly', am:'በቀጥታ ያነጋገርኳቸው ደንበኞች', t:'num'},
+      {id:'cx_reports', en:'Daily pulse reports sent on time', am:'በሰዓቱ የተላኩ ዕለታዊ ሪፖርቶች', t:'ratio',
+        tgt:{op:'gte', v:5, en:'All 5 on time earns the 3,000 Birr bonus',
+             am:'አምስቱም በሰዓቱ ከተላኩ 3,000 ብር ቦነስ'}}
+    ]},
+    { en:'2 · Complaints', am:'2 · ቅሬታዎች', fields:[
+      {id:'cx_new', en:'New complaints this week', am:'በዚህ ሳምንት አዲስ ቅሬታዎች', t:'num'},
+      {id:'cx_resolved', en:'Complaints resolved', am:'የተፈቱ ቅሬታዎች', t:'num'},
+      {id:'cx_open', en:'Complaints still open', am:'ያልተፈቱ ቅሬታዎች', t:'num'},
+      {id:'cx_sameday', en:'All complaints reported the same day', am:'ሁሉም ቅሬታዎች በዕለቱ ተነግረዋል', t:'yesno',
+        },
+      {id:'cx_repeat', en:'Customers who complained more than once', am:'ከአንድ ጊዜ በላይ ያማረሩ ደንበኞች', t:'num'}
+    ]},
+    { en:'3 · What customers said', am:'3 · ደንበኞች ያሉት', fields:[
+      {id:'cx_good', en:'What customers praised', am:'ደንበኞች ያደነቁት', t:'area', opt:1},
+      {id:'cx_bad', en:'What customers complained about', am:'ደንበኞች ያማረሩበት', t:'area', opt:1},
+      {id:'cx_pattern', en:'Any pattern the Chairman should see', am:'ሊቀመንበሩ ሊያውቀው የሚገባ ተደጋጋሚ ጉዳይ', t:'area', opt:1}
+    ]},
+    { en:'4 · Satisfaction', am:'4 · እርካታ', fields:[
+      {id:'cx_score', en:'Average satisfaction score out of 5', am:'አማካይ የእርካታ ነጥብ ከ5', t:'num'},
+      {id:'cx_rated', en:'Customers who gave a score', am:'ነጥብ የሰጡ ደንበኞች', t:'num'}
+    ]}
+  ]
+},
+
+/* ==================== GETACHEW — WEEKLY PURCHASING ==================== */
+{
+  id:'getachew-weekly', person:'getachew', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  en:'Weekly Purchasing Summary', am:'ሳምንታዊ የግዥ ሪፖርት',
+  toEn:'Chairman, copied to Mahelet and Betty', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለቤቲ',
+  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  derived:1,
+  sections:[
+    { en:'1 · Purchase requests', am:'1 · የግዥ ጥያቄዎች', fields:[
+      {id:'g_prep', en:'Requests prepared this week', am:'በዚህ ሳምንት የተዘጋጁ ጥያቄዎች', t:'num'},
+      {id:'g_app', en:'Approved by Betty', am:'በቤቲ የጸደቁ', t:'num'},
+      {id:'g_ret', en:'Returned or rejected', am:'የተመለሱ', t:'num'},
+      {id:'g_quotes', en:'Requests with 3 or more quotes', am:'3 እና ከዚያ በላይ ፕሮፎርማ ያላቸው', t:'ratio'},
+      {id:'g_acc', en:'Purchase accuracy', am:'የግዥ ትክክለኛነት', t:'pct',
+        tgt:{op:'gte', v:95, en:'Target ≥95% — below is –500 Birr/month',
+             am:'ዒላማ ≥95% — በታች ከሆነ በወር –500 ብር'}}
+    ]},
+    { en:'2 · ZamZam Bank cheques', am:'2 · የዘምዘም ባንክ ቼኮች', fields:[
+      {id:'g_chq', en:'Cheques issued this week', am:'በዚህ ሳምንት የተሰጡ ቼኮች', t:'num'},
+      {id:'g_chq_val', en:'Total cheque value', am:'ጠቅላላ የቼክ ዋጋ', t:'money'},
+      {id:'g_chq_err', en:'Cheque errors', am:'የቼክ ስህተቶች', t:'num',
+        tgt:{op:'lte', v:0, en:'Zero errors earns the 1,000 Birr bonus',
+             am:'ዜሮ ስህተት 1,000 ብር ቦነስ ያስገኛል'}},
+      {id:'g_chq_secure', en:'Cheque book secured every night', am:'የቼክ ደብተር በየዕለቱ ተቆልፏል', t:'yesno'}
+    ]},
+    { en:'3 · Suppliers and savings', am:'3 · አቅራቢዎችና ቁጠባ', fields:[
+      {id:'g_sup', en:'Suppliers used', am:'የተጠቀምኳቸው አቅራቢዎች', t:'num'},
+      {id:'g_delays', en:'Supplier delays', am:'የአቅራቢ መዘግየቶች', t:'num'},
+      {id:'g_quality', en:'Quality issues', am:'የጥራት ችግሮች', t:'num'},
+      {id:'g_saving', en:'Purchased below budget by', am:'ከበጀት በታች የተገዛበት መጠን', t:'money', opt:1}
+    ]},
+    { en:'4 · Documents to Betty', am:'4 · ለቤቲ የተላኩ ሰነዶች', fields:[
+      {id:'g_doc24', en:'Documents submitted within 24 hours', am:'በ24 ሰዓት ውስጥ የቀረቡ', t:'ratio'},
+      {id:'g_doc_missing', en:'Documents still outstanding', am:'እስካሁን ያልቀረቡ ሰነዶች', t:'num',
+        tgt:{op:'lte', v:0, en:'–200 Birr per document', am:'በሰነድ –200 ብር'}}
+    ]},
+    { en:'5 · Problems and solutions', am:'5 · ችግሮችና መፍትሔዎች', fields:[
+      {id:'w_problem', en:'Problem', am:'ችግር', t:'area', opt:1},
+      {id:'w_action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1},
+      {id:'w_next', en:'Next week', am:'የሚቀጥለው ሳምንት', t:'area', opt:1}
+    ]}
+  ]
+},
+
+/* ===================== YORDANOS — WEEKLY STORE ===================== */
+{
+  id:'yordanos-weekly', person:'yordanos', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  en:'Weekly Store Summary', am:'ሳምንታዊ የመጋዘን ሪፖርት',
+  toEn:'Chairman, copied to Mahelet and Betty', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለቤቲ',
+  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  penEn:'Reports are mandatory weekly', penAm:'ሳምንታዊ ሪፖርት ግዴታ ነው',
+  derived:1,
+  sections:[
+    { en:'1 · Friday stock count', am:'1 · የዓርብ ቆጠራ', fields:[
+      {id:'y_count', en:'Physical stock count completed', am:'የዕቃ ቆጠራ ተከናውኗል', t:'yesno',
+        },
+      {id:'y_accuracy', en:'Stock accuracy', am:'የክምችት ትክክለኛነት', t:'pct',
+        tgt:{op:'gte', v:99, en:'Target ≥99% — 2,000 Birr KPI bonus',
+             am:'ዒላማ ≥99% — 2,000 ብር ቦነስ'}},
+      {id:'y_disc', en:'Discrepancies found', am:'የተገኙ ልዩነቶች', t:'num',
+        tgt:{op:'lte', v:0, en:'Zero earns the 1,000 Birr accuracy bonus',
+             am:'ዜሮ ከሆነ 1,000 ብር ቦነስ'}},
+      {id:'y_missing', en:'Missing materials', am:'የጠፉ ዕቃዎች', t:'num',
+        tgt:{op:'lte', v:0, en:'–1,000 Birr each', am:'እያንዳንዱ –1,000 ብር'}}
+    ]},
+    { en:'2 · Receiving this week', am:'2 · የዚህ ሳምንት ርክክብ', fields:[
+      {id:'y_deliv', en:'Deliveries received', am:'የደረሱ ርክክቦች', t:'num'},
+      {id:'y_accepted', en:'Accepted into store', am:'ወደ መጋዘን የገቡ', t:'num'},
+      {id:'y_rejected', en:'Rejected', am:'ያልተቀበልኳቸው', t:'num'},
+      {id:'y_grn', en:'All received against a Job File or BOM', am:'ሁሉም ከጆብ ፋይል ወይም BOM ጋር ተመሳክረዋል', t:'yesno'}
+    ]},
+    { en:'3 · Issuing', am:'3 · ዕቃ ማውጣት', fields:[
+      {id:'y_issues', en:'Issues made this week', am:'በዚህ ሳምንት ከመጋዘን የወጡ', t:'num'},
+      {id:'y_approved', en:"All issued with Mahelet's signed approval", am:'ሁሉም በማህሌት ፊርማ ፈቃድ ወጥተዋል', t:'yesno'},
+      {id:'y_correct', en:'All issued to the correct job', am:'ሁሉም ለትክክለኛው ሥራ ወጥተዋል', t:'yesno'}
+    ]},
+    { en:'4 · Shortages', am:'4 · እጥረቶች', fields:[
+      {id:'y_short', en:'Shortages flagged this week', am:'በዚህ ሳምንት የተጠቆሙ እጥረቶች', t:'num'},
+      {id:'y_stopped', en:'Times production stopped from an unreported shortage',
+        am:'ባልተነገረ እጥረት ምርት የቆመበት ጊዜ', t:'num',
+        tgt:{op:'lte', v:0, en:'Zero earns the 500 Birr bonus', am:'ዜሮ ከሆነ 500 ብር ቦነስ'}}
+    ]},
+    { en:'5 · Factory consumables', am:'5 · የፋብሪካ ፍጆታ ዕቃዎች', fields:[
+      {id:'y_con_week', en:'Consumables issued this week', am:'በዚህ ሳምንት የወጡ ፍጆታ ዕቃዎች', t:'num'},
+      {id:'y_con_mtd', en:'Month-to-date consumable spend', am:'ከወሩ መጀመሪያ ጀምሮ የወጣ', t:'money',
+        tgt:{op:'lte', v:30000, en:'Budget 30,000 Birr/month — above needs Chairman approval',
+             am:'የወር በጀት 30,000 ብር — በላይ ከሆነ የሊቀመንበር ፈቃድ'}}
+    ]},
+    { en:'6 · Store condition', am:'6 · የመጋዘን ሁኔታ', fields:[
+      {id:'y_secure', en:'Store secure every night', am:'መጋዘኑ በየዕለቱ ተቆልፏል', t:'yesno'},
+      {id:'y_theft', en:'Theft or unauthorized removal', am:'ስርቆት ወይም ያልተፈቀደ ማውጣት', t:'yesno'},
+      {id:'y_problem', en:'Problem', am:'ችግር', t:'area', opt:1},
+      {id:'y_action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1}
+    ]}
+  ]
 }
 
 ];

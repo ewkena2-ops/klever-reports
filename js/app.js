@@ -40,10 +40,18 @@
     var d = new Date();
     return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
   }
-  function isLate(dueTime) {
+  /* daily reports are late after their time of day; weekly ones are late once
+     their due day has passed (dueDay: 0=Sun .. 5=Fri) */
+  function isLate(dueTime, dueDay) {
     if (!dueTime) return false;
     var p = dueTime.split(':'), d = new Date();
-    return (d.getHours() * 60 + d.getMinutes()) > (Number(p[0]) * 60 + Number(p[1]));
+    var now = d.getHours() * 60 + d.getMinutes();
+    var due = Number(p[0]) * 60 + Number(p[1]);
+    if (dueDay == null) return now > due;
+    var today = d.getDay();
+    if (today < dueDay) return false;
+    if (today === dueDay) return now > due;
+    return true;
   }
   function personById(id) {
     for (var i = 0; i < PEOPLE.length; i++) if (PEOPLE[i].id === id) return PEOPLE[i];
@@ -180,7 +188,7 @@
     head.appendChild(el('div', 'sub', L(person) + ' · ' + (lang === 'am' ? person.roleAm : person.roleEn)));
     var line = el('div', 'line');
     line.appendChild(el('span', null, today() + ' · ' + clock()));
-    var lateNow = isLate(report.dueTime);
+    var lateNow = isLate(report.dueTime, report.dueDay);
     var pill = el('span', 'pill ' + (lateNow ? 'late' : 'ontime'), lateNow ? t('late') : t('onTime'));
     line.appendChild(pill);
     head.appendChild(line);
@@ -376,7 +384,7 @@
     var out = [];
     out.push('*' + L(report).toUpperCase() + '*');
     out.push(L(person) + ' · ' + (lang === 'am' ? person.roleAm : person.roleEn));
-    out.push(today() + ' · ' + clock() + ' · ' + (isLate(report.dueTime) ? t('late') : t('onTime')));
+    out.push(today() + ' · ' + clock() + ' · ' + (isLate(report.dueTime, report.dueDay) ? t('late') : t('onTime')));
 
     report.sections.forEach(function (sec) {
       var lines = [];

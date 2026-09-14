@@ -26,20 +26,36 @@ browser storage.
 
 ## Reports covered
 
-| Person | Report | Deadline |
+**Daily — every working day, 5:30 PM**
+
+| Person | Report |
+|---|---|
+| Ephrata Assfa | Daily Commercial Report |
+| Mahelet Teshome | Daily Operations Report |
+| Betelhem Aklog | Daily Finance Report |
+| Getachew Negash | Daily Purchasing Report |
+| Yordanos Fikadu | Daily Store Report |
+
+**Weekly**
+
+| Person | Report | Due |
 |---|---|---|
-| Ephrata Assfa | Daily Commercial Report | 5:30 PM |
-| Mahelet Teshome | Daily Operations Report | 5:30 PM |
-| Betelhem Aklog | Daily Finance Report | 5:30 PM |
-| Getachew Negash | Daily Purchasing Report | 5:30 PM |
-| Yordanos Fikadu | Daily Store Report | 5:30 PM |
+| Mahelet Teshome | Weekly Production & Delivery Summary | Friday 3:00 PM |
+| Ephrata Assfa | Weekly Commercial Report | Friday 4:00 PM |
+| Betelhem Aklog | Weekly Finance Report (incl. ZamZam reconciliation) | Friday 5:00 PM |
+| Betelhem Aklog | Weekly Customer Experience Summary | Friday 5:00 PM |
+| Getachew Negash | Weekly Purchasing Summary | Friday 5:00 PM |
+| Yordanos Fikadu | Weekly Store Summary | Friday 5:00 PM |
+
+A weekly form counts as late only once its due day has passed, not merely
+after its time of day.
 
 Betty's, Getachew's and Yordanos's forms were drafted from the duties in their letters — they had
 no report template — so they are marked as such on screen and should be corrected after real use.
 
-Still to add: the weekly reports, Betty's 9:00 AM cash flow forecast and 6:00 PM customer pulse,
-and the four planning documents (Ephrata's 4-week projection, Liu's 15-day plan, Betty's 4-week
-cash flow and payment-confirmed job list).
+Still to add: Betty's 9:00 AM daily cash flow forecast and 6:00 PM daily customer pulse, and the
+four planning documents with repeating rows (Ephrata's 4-week projection, Mahelet's 15-day plan,
+Betty's 4-week cash flow and payment-confirmed job list).
 
 ## Changing a form
 

@@ -33,7 +33,7 @@ browser storage.
 | Betelhem Aklog | Daily 7-Day Cash Flow Forecast | 9:00 AM |
 | Ephrata Assfa | Daily Commercial Report | 5:30 PM, not Friday |
 | Mahelet Teshome | Daily Operations Report | 5:30 PM |
-| Betelhem Aklog | Daily Finance Report | 5:30 PM |
+| Betelhem Aklog | Daily Finance Report | 5:30 PM, not Friday |
 | Getachew Negash | Daily Purchasing Report | 5:30 PM |
 | Yordanos Fikadu | Daily Store Report | 5:30 PM |
 | Betelhem Aklog | Daily Customer Pulse Report | 6:00 PM |
@@ -45,7 +45,7 @@ browser storage.
 | Mahelet Teshome | Weekly Production & Delivery Summary | Friday 3:00 PM |
 | Ephrata Assfa | Weekly Commercial Report | Friday 4:00 PM |
 | Betelhem Aklog | Weekly Finance Report (incl. ZamZam reconciliation) | Friday 5:00 PM |
-| Betelhem Aklog | Weekly Customer Experience Summary | Friday 5:00 PM |
+| Betelhem Aklog | Weekly Customer Experience Summary | Monday 11:00 AM |
 | Getachew Negash | Weekly Purchasing Summary | Friday 5:00 PM |
 | Yordanos Fikadu | Weekly Store Summary | Friday 5:00 PM |
 

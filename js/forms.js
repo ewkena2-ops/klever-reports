@@ -158,10 +158,10 @@ const REPORTS = [
 
 /* ============================= BETTY — DAILY ============================= */
 {
-  id:'betty-daily', person:'betty', cadence:'daily', dueTime:'17:30',
+  id:'betty-daily', person:'betty', cadence:'daily', dueTime:'17:30', skipDays:[5],
   en:'Daily Finance Report', am:'ዕለታዊ የፋይናንስ ሪፖርት',
   toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
-  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
+  dueEn:'5:30 PM, Monday to Thursday and Saturday', dueAm:'ከሰኞ እስከ ሐሙስ እና ቅዳሜ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   derived:1,
   sections:[
@@ -566,10 +566,10 @@ const REPORTS = [
 
 /* ============== BETELHEM — WEEKLY CUSTOMER EXPERIENCE ============== */
 {
-  id:'betty-weekly-cx', person:'betty', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  id:'betty-weekly-cx', person:'betty', cadence:'weekly', dueTime:'11:00', dueDay:1,
   en:'Weekly Customer Experience Summary', am:'ሳምንታዊ የደንበኛ አገልግሎት ሪፖርት',
   toEn:'Chairman + Ephrata + Kidan', toAm:'ሊቀመንበር + ኤፍራታ + ኪዳን',
-  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  dueEn:'Monday 11:00 AM', dueAm:'ሰኞ ከጠዋቱ 5፡00 (11:00 AM)',
   penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
   derived:1,
   sections:[

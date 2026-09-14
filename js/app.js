@@ -110,13 +110,104 @@
 
   /* ---------------- index page ---------------- */
 
+  /* The letters are dated in both calendars, so the board is too.
+     1 Meskerem 2019 = 11 September 2026 — checked against Enkutatash. */
+  var ETH_MONTHS = ['መስከረም','ጥቅምት','ኅዳር','ታኅሣሥ','ጥር','የካቲት','መጋቢት',
+                    'ሚያዝያ','ግንቦት','ሰኔ','ሐምሌ','ነሐሴ','ጳጉሜን'];
+  var DAYS_EN = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var DAYS_AM = ['እሁድ','ሰኞ','ማክሰኞ','ረቡዕ','ሐሙስ','ዓርብ','ቅዳሜ'];
+  var MONTHS_EN = ['January','February','March','April','May','June','July',
+                   'August','September','October','November','December'];
+
+  function toEthiopian(d) {
+    var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+    var a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
+    var jdn = day + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4)
+            - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+    var k = jdn - 1723856, r = k % 1461;
+    var n = (r % 365) + 365 * Math.floor(r / 1460);
+    return {
+      y: 4 * Math.floor(k / 1461) + Math.floor(r / 365) - Math.floor(r / 1460),
+      m: Math.floor(n / 30) + 1,
+      d: (n % 30) + 1
+    };
+  }
+
+  /* Klever runs a six-day week — 240 m² a week at 40 m² a day. */
+  function dueToday() {
+    var dow = new Date().getDay();
+    return REPORTS.filter(function (r) {
+      return r.cadence === 'weekly' ? r.dueDay === dow : dow !== 0;
+    }).sort(function (a, b) { return (a.dueTime || '').localeCompare(b.dueTime || ''); });
+  }
+
+  function minsUntil(tm) {
+    if (!tm) return null;
+    var p = tm.split(':'), d = new Date();
+    return Number(p[0]) * 60 + Number(p[1]) - (d.getHours() * 60 + d.getMinutes());
+  }
+
+  function countdown(mins) {
+    if (mins < 0) return t('passed');
+    if (mins < 1) return t('dueNow');
+    var hh = Math.floor(mins / 60), mm = mins % 60;
+    var unit = lang === 'am' ? ['ሰ', 'ደ'] : ['h', 'm'];
+    return t('inTime') + ' ' + (hh ? hh + unit[0] + ' ' : '') + mm + unit[1];
+  }
+
+  function hhmm(tm) {
+    var p = tm.split(':'), h24 = Number(p[0]);
+    var ap = h24 >= 12 ? 'PM' : 'AM', h12 = h24 % 12 || 12;
+    return h12 + ':' + p[1] + ' ' + ap;
+  }
+
+  function todayPanel() {
+    var d = new Date(), e = toEthiopian(d);
+    var panel = el('div', 'today');
+    panel.appendChild(el('div', 'today-day',
+      (lang === 'am' ? DAYS_AM : DAYS_EN)[d.getDay()]));
+    panel.appendChild(el('div', 'today-date',
+      d.getDate() + ' ' + MONTHS_EN[d.getMonth()] + ' ' + d.getFullYear()));
+    panel.appendChild(el('div', 'today-eth',
+      ETH_MONTHS[e.m - 1] + ' ' + e.d + ' ቀን ' + e.y + ' ዓ.ም.'));
+    return panel;
+  }
+
+  function dueRail() {
+    var wrap = el('section', 'due');
+    var list = dueToday();
+    wrap.appendChild(el('p', 'eyebrow', t('dueToday')));
+    if (!list.length) {
+      wrap.appendChild(el('p', 'sub', t('nothingToday')));
+      return wrap;
+    }
+    var rail = el('div', 'railrows');
+    list.forEach(function (r) {
+      var person = personById(r.person);
+      var mins = minsUntil(r.dueTime);
+      var state = mins < 0 ? 'gone' : (mins <= 120 ? 'soon' : 'ahead');
+      var a = el('a', 'railrow ' + state);
+      a.href = 'form.html?r=' + encodeURIComponent(r.id);
+      a.appendChild(el('span', 'railtime', hhmm(r.dueTime)));
+      var mid = el('span', 'railmid');
+      mid.appendChild(el('span', 'railwho', L(person)));
+      mid.appendChild(el('span', 'railwhat', L(r)));
+      a.appendChild(mid);
+      a.appendChild(el('span', 'railstate', countdown(mins)));
+      rail.appendChild(a);
+    });
+    wrap.appendChild(rail);
+    return wrap;
+  }
+
   function renderIndex(root) {
     document.title = t('siteTitle');
     root.innerHTML = '';
-    var h = el('h1', null, t('whoReports'));
-    var s = el('p', 'sub', t('pickSub'));
-    root.appendChild(h); root.appendChild(s);
+    root.appendChild(todayPanel());
+    root.appendChild(dueRail());
 
+    root.appendChild(el('p', 'eyebrow', t('whoReports')));
+    var due = dueToday();
     var list = el('div', 'people');
     PEOPLE.forEach(function (p) {
       var b = el('button', 'person');
@@ -126,12 +217,20 @@
       who.appendChild(el('span', 'nm', L(p)));
       who.appendChild(el('span', 'rl', lang === 'am' ? p.roleAm : p.roleEn));
       b.appendChild(who);
-      b.appendChild(el('span', 'arrow', '→'));
+      var n = due.filter(function (r) { return r.person === p.id; }).length;
+      if (n) b.appendChild(el('span', 'count', n + ' ' + t('reportsDue')));
+      b.appendChild(el('span', 'arrow', '\u2192'));
       b.onclick = function () { renderPersonReports(root, p); };
       list.appendChild(b);
     });
     root.appendChild(list);
     root.appendChild(foot());
+
+    /* keep the countdowns honest without reloading the page */
+    clearInterval(renderIndex.tick);
+    renderIndex.tick = setInterval(function () {
+      if (document.querySelector('.due')) renderIndex(root);
+    }, 60000);
   }
 
   function renderPersonReports(root, p) {

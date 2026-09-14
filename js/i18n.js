@@ -26,7 +26,14 @@ const T = {
     above:'above limit',
     derived:'Fields drafted from your letter — tell the Chairman if any are wrong.',
     foot:'Klever Küche · reports go to the Chairman as your letter requires. Nothing is stored on this site.',
-    noReports:'No forms for this person yet.'
+    noReports:'No forms for this person yet.',
+    dueToday:'Due today',
+    nothingToday:'Nothing due today — rest day',
+    passed:'passed',
+    inTime:'in',
+    dueNow:'due now',
+    reportsDue:'due today',
+    allDay:'through the day'
   },
   am:{
     siteTitle:'የክሌቨር ሪፖርቶች',
@@ -53,6 +60,13 @@ const T = {
     above:'ከወሰን በላይ',
     derived:'እነዚህ መስኮች ከደብዳቤዎ ተዘጋጅተዋል — ስህተት ካለ ለሊቀመንበሩ ያሳውቁ።',
     foot:'ክሌቨር ኩሼ · ሪፖርቶች እንደ ደብዳቤዎ ለሊቀመንበሩ ይላካሉ። በዚህ ገጽ ላይ ምንም መረጃ አይቀመጥም።',
-    noReports:'ለዚህ ሰው ገና ቅጽ አልተዘጋጀም።'
+    noReports:'ለዚህ ሰው ገና ቅጽ አልተዘጋጀም።',
+    dueToday:'ዛሬ የሚቀርቡ',
+    nothingToday:'ዛሬ የሚቀርብ ሪፖርት የለም — የዕረፍት ቀን',
+    passed:'አልፏል',
+    inTime:'በ',
+    dueNow:'አሁን ነው',
+    reportsDue:'ዛሬ',
+    allDay:'ቀኑን ሙሉ'
   }
 };

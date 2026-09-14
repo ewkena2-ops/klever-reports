@@ -218,7 +218,90 @@
     refresh();
   }
 
+  function shortDate(d) {
+    var m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return d.getDate() + ' ' + m[d.getMonth()];
+  }
+
+  /* repeating rows: t:'table' (person adds rows) and t:'grid' (fixed rows) */
+  function repeater(f) {
+    var wrap = el('div', 'repwrap');
+    wrap.appendChild(el('div', 'replabel', L(f)));
+    var body = el('div', 'rep');
+    wrap.appendChild(body);
+
+    if (!Array.isArray(values[f.id])) values[f.id] = [];
+    var data = values[f.id];
+
+    function rowLabel(i) {
+      return f.t === 'grid' ? gridRowLabel(f, i) : String(i + 1);
+    }
+
+    function draw() {
+      body.innerHTML = '';
+      if (f.t === 'grid') {
+        while (data.length < f.rows.length) data.push({});
+        data.length = f.rows.length;
+      }
+      data.forEach(function (rowData, i) {
+        var card = el('div', 'reprow');
+        var head = el('div', 'reprowhead');
+        head.appendChild(el('span', 'idx', rowLabel(i)));
+        if (f.t === 'table') {
+          var rm = el('button', 'rm', '\u00d7');
+          rm.type = 'button';
+          rm.title = 'remove';
+          rm.onclick = function () { data.splice(i, 1); draw(); refresh(); };
+          head.appendChild(rm);
+        }
+        card.appendChild(head);
+
+        f.cols.forEach(function (c) {
+          var cell = el('div', 'cell');
+          cell.appendChild(el('label', null, L(c)));
+          var inp;
+          if (c.t === 'yesno' || c.t === 'choice') {
+            inp = document.createElement('select');
+            var blank = document.createElement('option');
+            blank.value = ''; blank.textContent = '\u2014';
+            inp.appendChild(blank);
+            var opts = c.t === 'yesno'
+              ? [{v:'yes', en:T.en.yes, am:T.am.yes}, {v:'no', en:T.en.no, am:T.am.no}]
+              : c.opts;
+            opts.forEach(function (o) {
+              var op = document.createElement('option');
+              op.value = o.v; op.textContent = lang === 'am' ? o.am : o.en;
+              inp.appendChild(op);
+            });
+          } else {
+            inp = document.createElement('input');
+            inp.type = (c.t === 'num' || c.t === 'money') ? 'number' : 'text';
+            if (inp.type === 'number') inp.inputMode = 'decimal';
+          }
+          inp.value = rowData[c.id] != null ? rowData[c.id] : '';
+          inp.onchange = inp.oninput = function () { rowData[c.id] = inp.value; refresh(); };
+          cell.appendChild(inp);
+          card.appendChild(cell);
+        });
+        body.appendChild(card);
+      });
+
+      if (f.t === 'table') {
+        var add = el('button', 'addrow', '+ ' + (lang === 'am' ? f.addAm : f.addEn));
+        add.type = 'button';
+        add.onclick = function () { data.push({}); draw(); refresh(); };
+        body.appendChild(add);
+      }
+    }
+
+    if (f.t === 'table' && !data.length) data.push({});
+    draw();
+    wrap.redraw = draw;
+    return wrap;
+  }
+
   function fieldRow(f) {
+    if (f.t === 'table' || f.t === 'grid') return repeater(f);
     var row = el('div', 'fld' + (f.i ? ' indent' : '') + (f.t === 'area' ? ' wide' : ''));
     var lab = el('label', null, L(f));
     lab.htmlFor = 'f_' + f.id;
@@ -254,6 +337,12 @@
       ta.value = values[f.id] || '';
       ta.oninput = function () { values[f.id] = ta.value; refresh(); };
       row.appendChild(ta);
+    } else if (f.t === 'date') {
+      var di = document.createElement('input');
+      di.type = 'date'; di.id = 'f_' + f.id;
+      di.value = values[f.id] || '';
+      di.onchange = di.oninput = function () { values[f.id] = di.value; redrawGrids(); refresh(); };
+      row.appendChild(di);
     } else if (f.t === 'text') {
       var ti = document.createElement('input');
       ti.type = 'text'; ti.id = 'f_' + f.id;
@@ -281,6 +370,12 @@
     i.value = values[key] != null ? values[key] : '';
     i.oninput = function () { values[key] = i.value; refresh(); };
     return i;
+  }
+
+  /* a grid with dateFrom shows a date per row — redraw those when the date changes */
+  function redrawGrids() {
+    var nodes = document.querySelectorAll('.repwrap');
+    for (var i = 0; i < nodes.length; i++) if (nodes[i].redraw) nodes[i].redraw();
   }
 
   function buildBar() {
@@ -312,13 +407,28 @@
     return out;
   }
 
+  function rowHasData(row, cols) {
+    for (var i = 0; i < cols.length; i++) if (has(row[cols[i].id])) return true;
+    return false;
+  }
+
   function filled(f) {
     if (f.t === 'ratio') return has(values[f.id + '__a']) && has(values[f.id + '__b']);
+    if (f.t === 'table') {
+      var d = values[f.id];
+      return Array.isArray(d) && d.some(function (r) { return rowHasData(r, f.cols); });
+    }
+    if (f.t === 'grid') {
+      var g = values[f.id];
+      if (!Array.isArray(g) || g.length < f.rows.length) return false;
+      return f.rows.every(function (_, i) { return has(g[i] && g[i][f.cols[0].id]); });
+    }
     return has(values[f.id]);
   }
   function has(v) { return v != null && String(v).trim() !== ''; }
 
   function targetMiss(f) {
+    if (f.t === 'table' || f.t === 'grid') return false;
     if (!f.tgt || !has(values[f.id])) return false;
     var v = Number(values[f.id]);
     if (isNaN(v)) return false;
@@ -366,7 +476,48 @@
 
   /* ---------------- message ---------------- */
 
+  function gridRowLabel(f, i) {
+    var base = L(f.rows[i]);
+    if (f.dateFrom && has(values[f.dateFrom])) {
+      var d = new Date(values[f.dateFrom]);
+      if (!isNaN(d.getTime())) { d.setDate(d.getDate() + i); base += ' ' + shortDate(d); }
+    }
+    return base;
+  }
+
+  function colText(c, v) {
+    if (!has(v)) return '\u2014';
+    if (c.t === 'yesno') return v === 'yes' ? t('yes') : t('no');
+    if (c.t === 'choice') {
+      for (var i = 0; i < c.opts.length; i++)
+        if (c.opts[i].v === v) return lang === 'am' ? c.opts[i].am : c.opts[i].en;
+      return v;
+    }
+    if (c.t === 'money') return money(v) + ' Birr';
+    return String(v).trim();
+  }
+
+  /* a table becomes a header line plus one compact line per row */
+  function tableLines(f) {
+    var data = values[f.id];
+    if (!Array.isArray(data)) return [];
+    var out = [], any = false;
+    out.push(f.cols.map(function (c) { return L(c); }).join(' \u00b7 '));
+    data.forEach(function (row, i) {
+      if (!rowHasData(row, f.cols)) return;
+      any = true;
+      var cells = f.cols.map(function (c) { return colText(c, row[c.id]); });
+      if (f.t === 'grid') {
+        out.push(gridRowLabel(f, i) + ' \u00b7 ' + cells.join(' \u00b7 '));
+      } else {
+        out.push(String(i + 1) + '. ' + cells.join(' \u00b7 '));
+      }
+    });
+    return any ? out : [];
+  }
+
   function fmt(f) {
+    if (f.t === 'table' || f.t === 'grid') return '';
     if (f.t === 'ratio') {
       var a = values[f.id + '__a'], b = values[f.id + '__b'];
       return (has(a) ? a : '—') + ' / ' + (has(b) ? b : '—');
@@ -374,6 +525,10 @@
     var v = values[f.id];
     if (!has(v)) return '';
     if (f.t === 'yesno') return v === 'yes' ? t('yes') : t('no');
+    if (f.t === 'date') {
+      var dd = new Date(v);
+      return isNaN(dd.getTime()) ? String(v) : shortDate(dd) + ' ' + dd.getFullYear();
+    }
     if (f.t === 'money') return money(v) + ' Birr';
     if (f.t === 'pct') return v + '%';
     return String(v).trim();
@@ -389,6 +544,14 @@
     report.sections.forEach(function (sec) {
       var lines = [];
       sec.fields.forEach(function (f) {
+        if (f.t === 'table' || f.t === 'grid') {
+          var tl = tableLines(f);
+          if (tl.length) {
+            lines.push(L(f) + ':');
+            lines.push.apply(lines, tl);
+          }
+          return;
+        }
         var v = fmt(f);
         if (!has(v) || v === '— / —') return;
         lines.push((f.i ? '  ' : '') + L(f) + ': ' + v);

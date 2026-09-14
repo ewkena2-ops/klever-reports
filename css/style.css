@@ -223,3 +223,45 @@ input.miss,textarea.miss,select.miss{border-color:var(--debit)}
   .fld.indent > label{padding-left:12px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- repeating rows (planning documents) ---------- */
+.repwrap{padding:12px 0 4px;border-bottom:1px solid var(--rule)}
+.replabel{
+  font-family:var(--sans);font-size:14.5px;font-weight:600;color:var(--ink-2);
+  margin-bottom:10px;
+}
+.rep{display:flex;flex-direction:column;gap:10px}
+.reprow{
+  background:var(--surface);border:1px solid var(--rule);
+  border-left:3px solid var(--accent);padding:10px 12px;
+}
+.reprowhead{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-bottom:8px;
+}
+.reprowhead .idx{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--accent);
+  font-weight:600;text-transform:uppercase;
+}
+.reprowhead .rm{
+  border:0;background:transparent;color:var(--muted);cursor:pointer;
+  font-size:19px;line-height:1;padding:0 4px;
+}
+.reprowhead .rm:hover{color:var(--debit)}
+.reprow .cell{display:grid;grid-template-columns:minmax(0,1fr) 128px;gap:6px 12px;
+  align-items:center;padding:5px 0}
+.reprow .cell label{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.3}
+.reprow select{
+  font-family:var(--mono);font-size:14px;color:var(--ink);background:var(--paper);
+  border:1px solid var(--rule-strong);border-radius:var(--radius);padding:8px 9px;
+  width:100%;min-width:0;
+}
+.addrow{
+  font-family:var(--sans);font-size:13.5px;font-weight:600;color:var(--accent);
+  background:transparent;border:1px dashed var(--rule-strong);border-radius:var(--radius);
+  padding:10px;cursor:pointer;width:100%;
+}
+.addrow:hover{border-color:var(--accent);background:var(--accent-soft)}
+@media (max-width:420px){
+  .reprow .cell{grid-template-columns:minmax(0,1fr) 104px}
+}

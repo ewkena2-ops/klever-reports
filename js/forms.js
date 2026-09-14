@@ -696,6 +696,199 @@ const REPORTS = [
       {id:'y_action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1}
     ]}
   ]
+},
+
+/* ---- shared row sets for the planning documents ---- */
+
+/* ============= EPHRATA — 4-WEEK ROLLING SALES PROJECTION ============= */
+{
+  id:'ephrata-projection', person:'ephrata', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  en:'4-Week Rolling Sales Projection', am:'የ4 ሳምንት የሽያጭ ትንበያ',
+  toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
+  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  penEn:'First miss –500 Birr · Second in a row –1,000 Birr',
+  penAm:'መጀመሪያ ሲቀር –500 ብር · በተከታታይ ሁለተኛ –1,000 ብር',
+  sections:[
+    { en:'1 · Expected contracts', am:'1 · የሚጠበቁ ውሎች', fields:[
+      {id:'proj_contracts', en:'Customers in negotiation', am:'በድርድር ላይ ያሉ ደንበኞች',
+       t:'table', addEn:'Add customer', addAm:'ደንበኛ ጨምር', cols:[
+        {id:'cust', en:'Customer name', am:'የደንበኛ ስም', t:'text'},
+        {id:'val', en:'Contract value', am:'የውል ዋጋ', t:'money'},
+        {id:'sign', en:'Expected signing date', am:'የሚፈረምበት ቀን', t:'text'},
+        {id:'adv', en:'Advance date', am:'የቅድመ ክፍያ ቀን', t:'text'},
+        {id:'fin', en:'Final payment date', am:'የመጨረሻ ክፍያ ቀን', t:'text'},
+        {id:'conf', en:'Confidence', am:'እርግጠኝነት', t:'choice', opts:[
+          {v:'high', en:'High', am:'ከፍተኛ'},
+          {v:'med',  en:'Medium', am:'መካከለኛ'},
+          {v:'low',  en:'Low', am:'ዝቅተኛ'}]}
+      ]}
+    ]},
+    { en:'2 · Expected collections by week', am:'2 · በሳምንት የሚጠበቅ ገቢ', fields:[
+      {id:'proj_weeks', en:'Expected collections', am:'የሚጠበቅ ገቢ', t:'grid',
+       rows:[{en:'Week 1', am:'ሳምንት 1'},{en:'Week 2', am:'ሳምንት 2'},
+             {en:'Week 3', am:'ሳምንት 3'},{en:'Week 4', am:'ሳምንት 4'}],
+       cols:[
+        {id:'adv', en:'Expected advance', am:'የሚጠበቅ ቅድመ ክፍያ', t:'money'},
+        {id:'fin', en:'Expected final', am:'የሚጠበቅ የመጨረሻ ክፍያ', t:'money'},
+        {id:'tot', en:'Total expected', am:'ጠቅላላ የሚጠበቅ', t:'money'}
+      ]},
+      {id:'proj_total', en:'Total expected over the 4 weeks', am:'የአራቱ ሳምንታት ጠቅላላ', t:'money',
+        tgt:{op:'gte', v:12000000, en:'Below 12,000,000 Birr triggers the rolling penalty',
+             am:'ከ12,000,000 ብር በታች ከሆነ ቅጣት ያስከትላል'}}
+    ]},
+    { en:'3 · Obstacles or support needed', am:'3 · እንቅፋቶች ወይም የሚያስፈልግ ድጋፍ', fields:[
+      {id:'proj_obstacles', en:'Obstacles', am:'እንቅፋቶች', t:'area'},
+      {id:'proj_support', en:'Support needed from Chairman', am:'ከሊቀመንበሩ የሚፈለግ ድጋፍ', t:'area', opt:1}
+    ]},
+    { en:'4 · Confidence statement', am:'4 · የእርግጠኝነት መግለጫ', fields:[
+      {id:'proj_achievable', en:'I believe these projections are achievable',
+       am:'እነዚህ ትንበያዎች ሊሳኩ እንደሚችሉ አምናለሁ', t:'yesno'},
+      {id:'proj_why', en:'Reason, if no', am:'አይ ከሆነ ምክንያቱ', t:'area', opt:1}
+    ]}
+  ]
+},
+
+/* ============== MAHELET — 15-DAY PRODUCTION PLAN ============== */
+{
+  id:'liu-plan', person:'liu', cadence:'weekly', dueTime:'15:00', dueDay:5,
+  en:'15-Day Production Plan', am:'የ15 ቀን የምርት ዕቅድ',
+  toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
+  dueEn:'Friday 3:00 PM', dueAm:'ዓርብ ከቀኑ 9፡00 (3:00 PM)',
+  penEn:'Late –5,000 Birr · Incomplete –2,000 Birr · Two weeks without a plan –10,000 Birr',
+  penAm:'ዘግይቶ –5,000 ብር · ያልተሟላ –2,000 ብር · ሁለት ሳምንት ካልቀረበ –10,000 ብር',
+  sections:[
+    { en:'1 · Plan period', am:'1 · የዕቅዱ ጊዜ', fields:[
+      {id:'plan_start', en:'Plan starts on', am:'ዕቅዱ የሚጀምርበት ቀን', t:'date'},
+      {id:'plan_prep', en:'Prepared by', am:'ያዘጋጀው', t:'text'}
+    ]},
+    { en:'2 · Payment-confirmed jobs from Betty', am:'2 · ከቤቲ የክፍያ ማረጋገጫ ያላቸው ሥራዎች', fields:[
+      {id:'plan_paid', en:'Jobs Betty confirmed as fully paid', am:'ቤቲ ሙሉ ክፍያ ያረጋገጠችላቸው ሥራዎች',
+       t:'table', addEn:'Add job', addAm:'ሥራ ጨምር', cols:[
+        {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+        {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+        {id:'m2',   en:'m²', am:'ካሬ ሜትር', t:'num'},
+        {id:'ok',   en:'Final payment confirmed', am:'የመጨረሻ ክፍያ ተረጋግጧል', t:'yesno'},
+        {id:'date', en:"Betty's confirmation date", am:'ቤቲ ያረጋገጠችበት ቀን', t:'text'}
+      ]}
+    ]},
+    { en:'3 · Production queue', am:'3 · የምርት ተራ', fields:[
+      {id:'plan_queue', en:'Jobs in order of priority', am:'በቅድሚያ ተራ የተደረደሩ ሥራዎች',
+       t:'table', addEn:'Add job to the queue', addAm:'ወደ ተራው ሥራ ጨምር', cols:[
+        {id:'pri',  en:'Priority', am:'ቅድሚያ', t:'num'},
+        {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+        {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+        {id:'m2',   en:'m²', am:'ካሬ ሜትር', t:'num'},
+        {id:'start',en:'Planned start', am:'የሚጀመርበት', t:'text'},
+        {id:'done', en:'Planned completion', am:'የሚጠናቀቅበት', t:'text'},
+        {id:'qc',   en:'QC date', am:'የQC ቀን', t:'text'},
+        {id:'del',  en:'Delivery date', am:'የማድረሻ ቀን', t:'text'}
+      ]}
+    ]},
+    { en:'4 · Daily production target', am:'4 · የዕለት ተዕለት የምርት ዒላማ', fields:[
+      {id:'plan_days', en:'Planned output, day by day', am:'በየቀኑ የታቀደ ምርት',
+       t:'grid', dateFrom:'plan_start',
+       rows: Array.from({length:15}, function (_, i) {
+         return {en:'Day ' + (i+1), am:'ቀን ' + (i+1)};
+       }),
+       cols:[
+        {id:'m2',    en:'Planned m²', am:'የታቀደ ካሬ ሜትር', t:'num'},
+        {id:'jobs',  en:'Jobs', am:'ሥራዎች', t:'text'},
+        {id:'notes', en:'Notes', am:'ማስታወሻ', t:'text'}
+      ]}
+    ]},
+    { en:'5 · Materials and bottlenecks', am:'5 · ዕቃዎችና እንቅፋቶች', fields:[
+      {id:'plan_materials', en:'Materials required', am:'የሚያስፈልጉ ዕቃዎች', t:'area'},
+      {id:'plan_block', en:'Bottlenecks or support needed', am:'እንቅፋቶች ወይም የሚያስፈልግ ድጋፍ', t:'area', opt:1}
+    ]},
+    { en:'6 · Confirmation', am:'6 · ማረጋገጫ', fields:[
+      {id:'plan_rule', en:'No job in this plan lacks Betty’s written payment confirmation',
+       am:'በዚህ ዕቅድ ውስጥ ያለ ቤቲ የጽሑፍ ማረጋገጫ የገባ ሥራ የለም', t:'yesno'},
+      {id:'plan_capacity', en:'Plan fits machine capacity and material availability',
+       am:'ዕቅዱ ከማሽን አቅምና ከዕቃ አቅርቦት ጋር ይጣጣማል', t:'yesno'}
+    ]}
+  ]
+},
+
+/* ========== BETELHEM — WEEKLY 4-WEEK CASH FLOW PROJECTION ========== */
+{
+  id:'betty-cashflow', person:'betty', cadence:'weekly', dueTime:'17:00', dueDay:4,
+  en:'4-Week Cash Flow Projection', am:'የ4 ሳምንት የገንዘብ ፍሰት ትንበያ',
+  toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
+  dueEn:'Thursday 5:00 PM', dueAm:'ሐሙስ ከቀኑ 11፡00 (5:00 PM)',
+  penEn:'Late –500 Birr · Missing –1,000 Birr · Shortfall not flagged in advance –2,000 Birr',
+  penAm:'ዘግይቶ –500 ብር · ካልቀረበ –1,000 ብር · እጥረት አስቀድሞ ካልተነገረ –2,000 ብር',
+  derived:1,
+  sections:[
+    { en:'1 · Expected money in', am:'1 · የሚጠበቅ ገቢ', fields:[
+      {id:'cf_in', en:'Expected inflows by week', am:'በሳምንት የሚጠበቅ ገቢ', t:'grid',
+       rows:[{en:'Week 1', am:'ሳምንት 1'},{en:'Week 2', am:'ሳምንት 2'},
+             {en:'Week 3', am:'ሳምንት 3'},{en:'Week 4', am:'ሳምንት 4'}],
+       cols:[
+        {id:'adv',   en:'Advances', am:'ቅድመ ክፍያዎች', t:'money'},
+        {id:'final', en:'Final payments', am:'የመጨረሻ ክፍያዎች', t:'money'},
+        {id:'other', en:'Other', am:'ሌላ', t:'money'}
+      ]}
+    ]},
+    { en:'2 · Expected money out', am:'2 · የሚጠበቅ ወጪ', fields:[
+      {id:'cf_out', en:'Expected outflows by week', am:'በሳምንት የሚጠበቅ ወጪ', t:'grid',
+       rows:[{en:'Week 1', am:'ሳምንት 1'},{en:'Week 2', am:'ሳምንት 2'},
+             {en:'Week 3', am:'ሳምንት 3'},{en:'Week 4', am:'ሳምንት 4'}],
+       cols:[
+        {id:'sup',  en:'Suppliers', am:'አቅራቢዎች', t:'money'},
+        {id:'sal',  en:'Salaries', am:'ደመወዝ', t:'money'},
+        {id:'asm',  en:'Assemblers', am:'የተከላ ሠራተኞች', t:'money'},
+        {id:'other',en:'Utilities and other', am:'የመብራት/ውሃና ሌላ', t:'money'}
+      ]}
+    ]},
+    { en:'3 · Balance and the reserve rule', am:'3 · ቀሪ ሂሳብና የክምችት ደንብ', fields:[
+      {id:'cf_open', en:'Bank balance today', am:'የዛሬ የባንክ ቀሪ', t:'money'},
+      {id:'cf_low', en:'Lowest balance expected in the 4 weeks', am:'በአራቱ ሳምንታት ዝቅተኛው ቀሪ', t:'money',
+        tgt:{op:'gte', v:6000000, en:'6 Million Birr Cash Reserve Rule',
+             am:'የ6 ሚሊዮን ብር ክምችት ደንብ'}},
+      {id:'cf_lowweek', en:'Week that happens', am:'የሚከሰትበት ሳምንት', t:'text'},
+      {id:'cf_close', en:'Balance expected at the end of week 4', am:'በ4ኛው ሳምንት መጨረሻ የሚጠበቅ ቀሪ', t:'money'}
+    ]},
+    { en:'4 · Shortfall warning', am:'4 · የእጥረት ማስጠንቀቂያ', fields:[
+      {id:'cf_short', en:'A shortfall is expected in these 4 weeks',
+       am:'በእነዚህ 4 ሳምንታት እጥረት ይጠበቃል', t:'yesno'},
+      {id:'cf_when', en:'When and how much', am:'መቼና ምን ያህል', t:'area', opt:1},
+      {id:'cf_action', en:'What should be done about it', am:'ምን መደረግ አለበት', t:'area', opt:1},
+      {id:'cf_freeze', en:'Payments should be frozen', am:'ክፍያዎች መቆም አለባቸው', t:'yesno'}
+    ]}
+  ]
+},
+
+/* ============ BETELHEM — PAYMENT-CONFIRMED JOB LIST ============ */
+{
+  id:'betty-joblist', person:'betty', cadence:'weekly', dueTime:'13:00', dueDay:5,
+  en:'Payment-Confirmed Job List', am:'ክፍያቸው የተረጋገጠ ሥራዎች ዝርዝር',
+  toEn:'Mahelet', toAm:'ማህሌት',
+  dueEn:'Friday 1:00 PM', dueAm:'ዓርብ ከቀኑ 7፡00 (1:00 PM)',
+  penEn:'Not sent by Friday 1:00 PM –500 Birr',
+  penAm:'ዓርብ ከቀኑ 7፡00 ካልተላከ –500 ብር',
+  derived:1,
+  sections:[
+    { en:'1 · Jobs cleared for production', am:'1 · ወደ ምርት የሚገቡ ሥራዎች', fields:[
+      {id:'jl_jobs', en:'Fully paid jobs', am:'ሙሉ ክፍያ የተፈጸመባቸው ሥራዎች',
+       t:'table', addEn:'Add job', addAm:'ሥራ ጨምር', cols:[
+        {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+        {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+        {id:'m2',   en:'m²', am:'ካሬ ሜትር', t:'num'},
+        {id:'amt',  en:'Amount received', am:'የገባው ገንዘብ', t:'money'},
+        {id:'full', en:'Paid in full', am:'ሙሉ ክፍያ', t:'yesno'},
+        {id:'date', en:'Date confirmed', am:'የተረጋገጠበት ቀን', t:'text'}
+      ]}
+    ]},
+    { en:'2 · Confirmation', am:'2 · ማረጋገጫ', fields:[
+      {id:'jl_count', en:'Number of jobs on this list', am:'በዝርዝሩ ያሉ ሥራዎች ብዛት', t:'num'},
+      {id:'jl_value', en:'Total value confirmed', am:'ጠቅላላ የተረጋገጠ ዋጋ', t:'money'},
+      {id:'jl_rule', en:'Every job on this list is paid in full — none is partial',
+       am:'በዝርዝሩ ያለ እያንዳንዱ ሥራ ሙሉ ክፍያ ተፈጽሞበታል — ከፊል የለም', t:'yesno'},
+      {id:'jl_held', en:'Jobs held back because payment is incomplete',
+       am:'ክፍያቸው ስላልተጠናቀቀ የቀሩ ሥራዎች', t:'num'},
+      {id:'jl_note', en:'Anything Mahelet should know', am:'ማህሌት ሊያውቀው የሚገባ', t:'area', opt:1}
+    ]}
+  ]
 }
 
 ];

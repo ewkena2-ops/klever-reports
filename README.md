@@ -53,9 +53,19 @@ after its time of day.
 Betty's, Getachew's and Yordanos's forms were drafted from the duties in their letters — they had
 no report template — so they are marked as such on screen and should be corrected after real use.
 
-Still to add: Betty's 9:00 AM daily cash flow forecast and 6:00 PM daily customer pulse, and the
-four planning documents with repeating rows (Ephrata's 4-week projection, Mahelet's 15-day plan,
-Betty's 4-week cash flow and payment-confirmed job list).
+**Planning documents**
+
+| Person | Document | Due |
+|---|---|---|
+| Betelhem Aklog | Payment-Confirmed Job List (to Mahelet) | Friday 1:00 PM |
+| Mahelet Teshome | 15-Day Production Plan | Friday 3:00 PM |
+| Ephrata Assfa | 4-Week Rolling Sales Projection | Friday 5:00 PM |
+| Betelhem Aklog | 4-Week Cash Flow Projection | Thursday 5:00 PM |
+
+These use repeating rows. Set the plan start date once and all fifteen days of the production
+plan carry their own date.
+
+Still to add: Betelhem's 9:00 AM daily cash flow forecast and her 6:00 PM daily customer pulse.
 
 ## Changing a form
 
@@ -66,10 +76,24 @@ Everything is in [`js/forms.js`](js/forms.js). A field is one line:
   tgt:{op:'gte', v:40, en:'Daily target 40 m²', am:'የቀን ዒላማ 40 ካሬ ሜትር'}}
 ```
 
-- `t` — `num` `money` `pct` `text` `area` `ratio` `yesno`
+- `t` — `num` `money` `pct` `text` `area` `date` `ratio` `yesno`, plus `table` and `grid`
 - `i:1` — indent it under the field above
 - `opt:1` — not required, so it never blocks sending
 - `tgt` — live check; `op` is `gte` (at least) or `lte` (at most)
+
+A repeating table is a field with columns:
+
+```js
+{id:'proj_contracts', en:'Customers in negotiation', am:'…', t:'table',
+  addEn:'Add customer', addAm:'ደንበኛ ጨምር', cols:[
+    {id:'cust', en:'Customer name', am:'…', t:'text'},
+    {id:'conf', en:'Confidence', am:'…', t:'choice', opts:[{v:'high', en:'High', am:'ከፍተኛ'}]}
+  ]}
+```
+
+Use `t:'grid'` instead when the rows are fixed — pass `rows:[{en,am},…]`. Add
+`dateFrom:'<fieldId>'` and each row label picks up the date counted from that field, which is how
+the 15-day plan dates itself.
 
 Add a person in `PEOPLE`, a report in `REPORTS`. UI wording is in `js/i18n.js`.
 

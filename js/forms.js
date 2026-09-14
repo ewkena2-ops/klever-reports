@@ -20,11 +20,11 @@ const REPORTS = [
   id:'ephrata-daily', person:'ephrata', cadence:'daily', dueTime:'17:30',
   en:'Daily Commercial Report', am:'ዕለታዊ የንግድ ሪፖርት',
   toEn:'Chairman', toAm:'ሊቀመንበር',
-  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ 11:30 ከሰዓት',
+  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Late –500 Birr · Missing –1,000 Birr', penAm:'ዘግይቶ –500 ብር · ካልተላከ –1,000 ብር',
   sections:[
-    { en:'1 · Leads today', am:'1 · የዛሬ አዲስ ጥያቄዎች', fields:[
-      {id:'leads_total', en:'New leads received', am:'የደረሱ አዲስ ጥያቄዎች', t:'num'},
+    { en:'1 · Leads today', am:'1 · ዛሬ የመጡ አዲስ ደንበኞች', fields:[
+      {id:'leads_total', en:'New leads received', am:'ጠቅላላ ብዛት', t:'num'},
       {id:'leads_social', en:'Social media', am:'ሶሻል ሚዲያ', t:'num', i:1},
       {id:'leads_showroom', en:'Showroom', am:'ሾውሩም', t:'num', i:1},
       {id:'leads_referral', en:'Referral', am:'ሪፈራል', t:'num', i:1},
@@ -41,9 +41,9 @@ const REPORTS = [
       {id:'visits_late', en:'Visits pending beyond 48 hours', am:'ከ48 ሰዓት በላይ የዘገዩ ጉብኝቶች', t:'num',
         tgt:{op:'lte', v:0, en:'Should be 0', am:'0 መሆን አለበት'}}
     ]},
-    { en:'4 · Quotations', am:'4 · የዋጋ ማቅረቢያ', fields:[
-      {id:'quotes_issued', en:'Quotations issued today', am:'ዛሬ የተሰጡ ዋጋዎች', t:'num'},
-      {id:'quotes_late', en:'Quotations pending over 48 hours', am:'ከ48 ሰዓት በላይ የዘገዩ ዋጋዎች', t:'num',
+    { en:'4 · Quotations', am:'4 · ፕሮፎርማ', fields:[
+      {id:'quotes_issued', en:'Quotations issued today', am:'ዛሬ የተሰጡ ፕሮፎርማዎች', t:'num'},
+      {id:'quotes_late', en:'Quotations pending over 48 hours', am:'ከ48 ሰዓት በላይ የዘገዩ ፕሮፎርማዎች', t:'num',
         tgt:{op:'lte', v:0, en:'Should be 0', am:'0 መሆን አለበት'}}
     ]},
     { en:'5 · Contracts', am:'5 · ውሎች', fields:[
@@ -53,13 +53,13 @@ const REPORTS = [
       {id:'advance_banked', en:'Advance banked same day', am:'ቅድመ ክፍያ በዕለቱ ባንክ ገብቷል', t:'yesno'}
     ]},
     { en:'6 · Cash collection', am:'6 · የገንዘብ ስብሰባ', fields:[
-      {id:'collected_today', en:'External collections today', am:'ዛሬ የተሰበሰበ የውጭ ገቢ', t:'money'},
-      {id:'week_total', en:'Running weekly total', am:'የሳምንቱ ጠቅላላ እስካሁን', t:'money',
+      {id:'collected_today', en:'External collections today', am:'ዛሬ ከደንበኞች የተሰበሰበ ገንዘብ', t:'money'},
+      {id:'week_total', en:'Running weekly total', am:'የዚህ ሳምንት ጠቅላላ እስካሁን', t:'money',
         tgt:{op:'gte', v:3000000, en:'Commission starts at 3,000,000 Birr/week', am:'ኮሚሽን የሚጀምረው በሳምንት ከ3,000,000 ብር ነው'}}
     ]},
     { en:'7 · WhatsApp compliance', am:'7 · የዋትስአፕ ተገዢነት', fields:[
       {id:'wa_groups', en:'Active customer groups', am:'ንቁ የደንበኛ ግሩፖች', t:'num'},
-      {id:'wa_stage', en:'Required stage messages posted', am:'የተለጠፉ የደረጃ መልዕክቶች', t:'ratio'},
+      {id:'wa_stage', en:'Required stage messages posted', am:'የተላኩ የደረጃ መልዕክቶች', t:'ratio'},
       {id:'wa_unanswered', en:'Messages unanswered over 2 hours', am:'ከ2 ሰዓት በላይ ምላሽ ያላገኙ', t:'num',
         tgt:{op:'lte', v:0, en:'–200 Birr each', am:'እያንዳንዱ –200 ብር'}},
       {id:'wa_complaints', en:'Customer complaints about WhatsApp', am:'በዋትስአፕ ላይ የደንበኛ ቅሬታ', t:'num',
@@ -68,10 +68,10 @@ const REPORTS = [
     ]},
     { en:'8 · Marketing & social media', am:'8 · ማርኬቲንግ እና ሶሻል ሚዲያ', fields:[
       {id:'posts', en:'Posts made today', am:'ዛሬ የተለጠፉ ፖስቶች', t:'num'},
-      {id:'platform', en:'Platform', am:'መድረክ', t:'text', opt:1},
+      {id:'platform', en:'Platform', am:'የትኛው ገጽ (FB / IG / TikTok)', t:'text', opt:1},
       {id:'inq', en:'Inquiries received', am:'የደረሱ ጥያቄዎች', t:'num'},
       {id:'inq_1hr', en:'Inquiries answered within 1 hour', am:'በ1 ሰዓት ውስጥ ምላሽ ያገኙ', t:'ratio'},
-      {id:'mkt_leads', en:'Leads generated from marketing today', am:'ከማርኬቲንግ የተገኙ አዲስ ጥያቄዎች', t:'num'}
+      {id:'mkt_leads', en:'Leads generated from marketing today', am:'ከማርኬቲንግ የመጡ አዲስ ደንበኞች', t:'num'}
     ]},
     { en:'9 · Problems and solutions', am:'9 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'Problem', am:'ችግር', t:'area', opt:1},
@@ -79,10 +79,10 @@ const REPORTS = [
       {id:'action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1},
       {id:'need_chair', en:'Need Chairman decision', am:'የሊቀመንበር ውሳኔ ያስፈልጋል', t:'yesno'}
     ]},
-    { en:"10 · Tomorrow's top 3 priorities", am:'10 · የነገ ሦስት ቅድሚያዎች', fields:[
-      {id:'p1', en:'Priority 1', am:'ቅድሚያ 1', t:'text'},
-      {id:'p2', en:'Priority 2', am:'ቅድሚያ 2', t:'text'},
-      {id:'p3', en:'Priority 3', am:'ቅድሚያ 3', t:'text'}
+    { en:"10 · Tomorrow's top 3 priorities", am:'10 · ነገ የሚሠሩ ዋና ሦስት ሥራዎች', fields:[
+      {id:'p1', en:'Priority 1', am:'1ኛ ሥራ', t:'text'},
+      {id:'p2', en:'Priority 2', am:'2ኛ ሥራ', t:'text'},
+      {id:'p3', en:'Priority 3', am:'3ኛ ሥራ', t:'text'}
     ]}
   ]
 },
@@ -92,7 +92,7 @@ const REPORTS = [
   id:'liu-daily', person:'liu', cadence:'daily', dueTime:'17:30',
   en:'Daily Operations Report', am:'ዕለታዊ የኦፕሬሽን ሪፖርት',
   toEn:'Chairman', toAm:'ሊቀመንበር',
-  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ 11:30 ከሰዓት',
+  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   sections:[
     { en:'1 · Production', am:'1 · ምርት', fields:[
@@ -101,12 +101,12 @@ const REPORTS = [
       {id:'waste', en:'Waste %', am:'የብክነት መጠን %', t:'pct',
         tgt:{op:'lte', v:20, en:'Must not exceed 20%', am:'ከ20% መብለጥ የለበትም'}},
       {id:'machines', en:'Machines running', am:'በሥራ ላይ ያሉ ማሽኖች', t:'ratio'},
-      {id:'downtime', en:'Machine downtime (hours)', am:'ማሽን የቆመበት ሰዓት', t:'num'},
+      {id:'downtime', en:'Machine downtime (hours)', am:'ማሽን የቆመበት ሰዓት ብዛት', t:'num'},
       {id:'workers', en:'Workers present', am:'የተገኙ ሠራተኞች', t:'ratio'}
     ]},
     { en:'2 · Quality control', am:'2 · የጥራት ቁጥጥር', fields:[
       {id:'qc_pass', en:'Jobs passed QC today', am:'ዛሬ QC ያለፉ ሥራዎች', t:'num'},
-      {id:'qc_fail', en:'Jobs failed QC', am:'QC ያልደረሱ ሥራዎች', t:'num'},
+      {id:'qc_fail', en:'Jobs failed QC', am:'QC ያላለፉ ሥራዎች', t:'num'},
       {id:'defects', en:'Defects found', am:'የተገኙ ጉድለቶች', t:'num'},
       {id:'qc_action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1}
     ]},
@@ -114,7 +114,7 @@ const REPORTS = [
       {id:'mat_in', en:'Materials received today', am:'ዛሬ የገቡ ዕቃዎች', t:'num'},
       {id:'mat_out', en:'Materials issued today', am:'ዛሬ የወጡ ዕቃዎች', t:'num'},
       {id:'shortage', en:'Stock shortages', am:'የክምችት እጥረት', t:'yesno'},
-      {id:'shortage_what', en:'If yes, what', am:'አዎ ከሆነ ምን', t:'text', opt:1}
+      {id:'shortage_what', en:'If yes, what', am:'አዎ ከሆነ የትኛው ዕቃ', t:'text', opt:1}
     ]},
     { en:'4 · Purchasing', am:'4 · ግዥ', fields:[
       {id:'pr_sub', en:'Purchase requests submitted', am:'የቀረቡ የግዥ ጥያቄዎች', t:'num'},
@@ -123,7 +123,7 @@ const REPORTS = [
       {id:'deliv_pending', en:'Deliveries pending', am:'በመጠባበቅ ላይ ያሉ ርክክቦች', t:'num'}
     ]},
     { en:'5 · Delivery & installation', am:'5 · ማድረስና ተከላ', fields:[
-      {id:'delivered', en:'Jobs delivered today', am:'ዛሬ የደረሱ ሥራዎች', t:'num'},
+      {id:'delivered', en:'Jobs delivered today', am:'ዛሬ ለደንበኛ የተላኩ ሥራዎች', t:'num'},
       {id:'installed', en:'Jobs installed today', am:'ዛሬ የተተከሉ ሥራዎች', t:'num'},
       {id:'ontime', en:'On time', am:'በሰዓቱ', t:'ratio'},
       {id:'accept_signed', en:'Customer acceptance signed', am:'የደንበኛ ተቀባይነት ተፈርሟል', t:'num'},
@@ -148,10 +148,10 @@ const REPORTS = [
       {id:'action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1},
       {id:'need_chair', en:'Need Chairman decision', am:'የሊቀመንበር ውሳኔ ያስፈልጋል', t:'yesno'}
     ]},
-    { en:"9 · Tomorrow's top 3 priorities", am:'9 · የነገ ሦስት ቅድሚያዎች', fields:[
-      {id:'p1', en:'Priority 1', am:'ቅድሚያ 1', t:'text'},
-      {id:'p2', en:'Priority 2', am:'ቅድሚያ 2', t:'text'},
-      {id:'p3', en:'Priority 3', am:'ቅድሚያ 3', t:'text'}
+    { en:"9 · Tomorrow's top 3 priorities", am:'9 · ነገ የሚሠሩ ዋና ሦስት ሥራዎች', fields:[
+      {id:'p1', en:'Priority 1', am:'1ኛ ሥራ', t:'text'},
+      {id:'p2', en:'Priority 2', am:'2ኛ ሥራ', t:'text'},
+      {id:'p3', en:'Priority 3', am:'3ኛ ሥራ', t:'text'}
     ]}
   ]
 },
@@ -161,7 +161,7 @@ const REPORTS = [
   id:'betty-daily', person:'betty', cadence:'daily', dueTime:'17:30',
   en:'Daily Finance Report', am:'ዕለታዊ የፋይናንስ ሪፖርት',
   toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
-  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ 11:30 ከሰዓት',
+  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   derived:1,
   sections:[
@@ -229,7 +229,7 @@ const REPORTS = [
   id:'getachew-daily', person:'getachew', cadence:'daily', dueTime:'17:30',
   en:'Daily Purchasing Report', am:'ዕለታዊ የግዥ ሪፖርት',
   toEn:'Chairman, copied to Mahelet and Betty', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለቤቲ',
-  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ 11:30 ከሰዓት',
+  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   derived:1,
   sections:[
@@ -238,7 +238,7 @@ const REPORTS = [
       {id:'pr_sub', en:'Submitted to Betty', am:'ለቤቲ የቀረቡ', t:'num'},
       {id:'pr_app', en:'Approved by Betty', am:'በቤቲ የጸደቁ', t:'num'},
       {id:'pr_ret', en:'Returned or rejected', am:'የተመለሱ ወይም ያልጸደቁ', t:'num'},
-      {id:'pr_quotes', en:'Requests with 3 or more quotes', am:'3 እና ከዚያ በላይ ዋጋ ያላቸው ጥያቄዎች', t:'ratio'}
+      {id:'pr_quotes', en:'Requests with 3 or more quotes', am:'3 እና ከዚያ በላይ ፕሮፎርማ ያላቸው ጥያቄዎች', t:'ratio'}
     ]},
     { en:'2 · ZamZam Bank cheques', am:'2 · የዘምዘም ባንክ ቼኮች', fields:[
       {id:'chq_issued', en:'Cheques issued today', am:'ዛሬ የተሰጡ ቼኮች', t:'num'},
@@ -280,7 +280,7 @@ const REPORTS = [
   id:'yordanos-daily', person:'yordanos', cadence:'daily', dueTime:'17:30',
   en:'Daily Store Report', am:'ዕለታዊ የመጋዘን ሪፖርት',
   toEn:'Chairman, copied to Mahelet and Betty', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለቤቲ',
-  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ 11:30 ከሰዓት',
+  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Reports are mandatory daily', penAm:'ሪፖርት በየቀኑ ግዴታ ነው',
   derived:1,
   sections:[
@@ -288,24 +288,24 @@ const REPORTS = [
       {id:'rec_deliv', en:'Deliveries received today', am:'ዛሬ የደረሱ ርክክቦች', t:'num'},
       {id:'rec_checked', en:'Checked against Job File / BOM', am:'ከጆብ ፋይል / BOM ጋር የተመሳከሩ', t:'ratio'},
       {id:'rec_accepted', en:'Accepted into store', am:'ወደ መጋዘን የገቡ', t:'num'},
-      {id:'rec_rejected', en:'Rejected', am:'ያልተቀበልኳቸው', t:'num'},
+      {id:'rec_rejected', en:'Rejected', am:'ያልተቀበልኳቸው ዕቃዎች', t:'num'},
       {id:'rec_grn', en:'Goods received notes signed', am:'የተፈረሙ የዕቃ መረከቢያ ወረቀቶች', t:'num'}
     ]},
-    { en:'2 · Rejections', am:'2 · ያልተቀበልኳቸው', fields:[
+    { en:'2 · Rejections', am:'2 · ያልተቀበልኳቸው ዕቃዎች', fields:[
       {id:'rej_reason', en:'Reason for rejection', am:'ያልተቀበልኩበት ምክንያት', t:'area', opt:1},
       {id:'rej_photo', en:'Documented with photos', am:'በፎቶ ተመዝግቧል', t:'yesno', opt:1},
       {id:'rej_reported', en:'Reported to Getachew and Betty', am:'ለጌታቸውና ለቤቲ ተነግሯል', t:'yesno', opt:1}
     ]},
     { en:'3 · Stock record', am:'3 · የክምችት መዝገብ', fields:[
-      {id:'st_open', en:'Opening stock items', am:'የመክፈቻ ክምችት', t:'num'},
+      {id:'st_open', en:'Opening stock items', am:'የጠዋት (የመክፈቻ) ክምችት', t:'num'},
       {id:'st_in', en:'Materials received', am:'የገቡ ዕቃዎች', t:'num'},
       {id:'st_out', en:'Materials issued', am:'የወጡ ዕቃዎች', t:'num'},
-      {id:'st_close', en:'Closing stock items', am:'የመዝጊያ ክምችት', t:'num'},
+      {id:'st_close', en:'Closing stock items', am:'የማታ (የመዝጊያ) ክምችት', t:'num'},
       {id:'st_disc', en:'Discrepancies found', am:'የተገኙ ልዩነቶች', t:'num',
         tgt:{op:'lte', v:0, en:'–500 Birr each · report same day', am:'እያንዳንዱ –500 ብር · በዕለቱ ማሳወቅ'}}
     ]},
     { en:'4 · Issuing materials', am:'4 · ዕቃ ማውጣት', fields:[
-      {id:'iss_count', en:'Issues made today', am:'ዛሬ የተደረጉ ማውጣቶች', t:'num'},
+      {id:'iss_count', en:'Issues made today', am:'ዛሬ ከመጋዘን የወጡ ዕቃዎች', t:'num'},
       {id:'iss_approved', en:"All issued with Mahelet's signed approval", am:'ሁሉም በማህሌት ፊርማ ፈቃድ ወጥተዋል', t:'yesno'},
       {id:'iss_correct', en:'All issued to the correct job', am:'ሁሉም ለትክክለኛው ሥራ ወጥተዋል', t:'yesno'}
     ]},
@@ -314,15 +314,15 @@ const REPORTS = [
       {id:'sh_stopped', en:'Production stopped due to shortage', am:'በእጥረት ምክንያት ምርት ቆሟል', t:'yesno'},
       {id:'sh_what', en:'Which materials', am:'የትኞቹ ዕቃዎች', t:'text', opt:1}
     ]},
-    { en:'6 · Factory consumables', am:'6 · የፋብሪካ ወጪ ዕቃዎች', fields:[
-      {id:'con_today', en:'Consumables issued today', am:'ዛሬ የወጡ ወጪ ዕቃዎች', t:'num'},
-      {id:'con_mtd', en:'Month-to-date consumable spend', am:'የወሩ ወጪ እስካሁን', t:'money',
+    { en:'6 · Factory consumables', am:'6 · የፋብሪካ ፍጆታ ዕቃዎች', fields:[
+      {id:'con_today', en:'Consumables issued today', am:'ዛሬ የወጡ ፍጆታ ዕቃዎች', t:'num'},
+      {id:'con_mtd', en:'Month-to-date consumable spend', am:'ከወሩ መጀመሪያ ጀምሮ የወጣ', t:'money',
         tgt:{op:'lte', v:30000, en:'Budget 30,000 Birr/month', am:'የወር በጀት 30,000 ብር'}}
     ]},
     { en:'7 · Store condition', am:'7 · የመጋዘን ሁኔታ', fields:[
       {id:'sec_locked', en:'Store secure at close', am:'መጋዘኑ በመዝጊያ ሰዓት ተቆልፏል', t:'yesno'},
       {id:'sec_theft', en:'Theft or unauthorized removal', am:'ስርቆት ወይም ያልተፈቀደ ማውጣት', t:'yesno'},
-      {id:'sec_sep', en:'Job materials separated from consumables', am:'የሥራ ዕቃና ወጪ ዕቃ ተለያይተዋል', t:'yesno'}
+      {id:'sec_sep', en:'Job materials separated from consumables', am:'የሥራ ዕቃና የፍጆታ ዕቃ ተለያይተዋል', t:'yesno'}
     ]},
     { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'Problem', am:'ችግር', t:'area', opt:1},

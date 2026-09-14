@@ -7,7 +7,7 @@
 
 const PEOPLE = [
   { id:'ephrata',  en:'Ephrata',  am:'ኤፍራታ',  roleEn:'Commercial Lead',  roleAm:'የንግድ ኃላፊ' },
-  { id:'liu',      en:'Liu',      am:'ሊው',     roleEn:'Operations Lead',  roleAm:'የኦፕሬሽን ኃላፊ' },
+  { id:'liu',      en:'Mahelet',      am:'ማህሌት',     roleEn:'Operations Lead',  roleAm:'የኦፕሬሽን ኃላፊ' },
   { id:'betty',    en:'Betty',    am:'ቤቲ',     roleEn:'Finance Officer',  roleAm:'የፋይናንስ ኃላፊ' },
   { id:'getachew', en:'Getachew', am:'ጌታቸው',  roleEn:'Purchasing Officer',roleAm:'የግዥ ኃላፊ' },
   { id:'yordanos', en:'Yordanos', am:'ዮርዳኖስ', roleEn:'Storekeeper',      roleAm:'የመጋዘን ኃላፊ' }
@@ -87,7 +87,7 @@ const REPORTS = [
   ]
 },
 
-/* ============================== LIU — DAILY ============================== */
+/* ============================ MAHELET — DAILY ============================ */
 {
   id:'liu-daily', person:'liu', cadence:'daily', dueTime:'17:30',
   en:'Daily Operations Report', am:'ዕለታዊ የኦፕሬሽን ሪፖርት',
@@ -197,7 +197,7 @@ const REPORTS = [
       {id:'jf_created', en:'Job Files created today', am:'ዛሬ የተከፈቱ ጆብ ፋይሎች', t:'num'},
       {id:'wa_created', en:'WhatsApp groups created today', am:'ዛሬ የተከፈቱ ዋትስአፕ ግሩፖች', t:'num'},
       {id:'final_req', en:'Final payment requests sent', am:'የተላኩ የመጨረሻ ክፍያ ጥያቄዎች', t:'num'},
-      {id:'prod_confirmed', en:'Production confirmations given to Liu', am:'ለሊው የተሰጡ የምርት ማረጋገጫዎች', t:'num'}
+      {id:'prod_confirmed', en:'Production confirmations given to Mahelet', am:'ለማህሌት የተሰጡ የምርት ማረጋገጫዎች', t:'num'}
     ]},
     { en:'6 · Assembler payments', am:'6 · የተከላ ሠራተኞች ክፍያ', fields:[
       {id:'asm_reserved', en:'Amount reserved today', am:'ዛሬ የተያዘ መጠን', t:'money'},
@@ -228,7 +228,7 @@ const REPORTS = [
 {
   id:'getachew-daily', person:'getachew', cadence:'daily', dueTime:'17:30',
   en:'Daily Purchasing Report', am:'ዕለታዊ የግዥ ሪፖርት',
-  toEn:'Chairman, copied to Liu and Betty', toAm:'ሊቀመንበር፣ ግልባጭ ለሊውና ለቤቲ',
+  toEn:'Chairman, copied to Mahelet and Betty', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለቤቲ',
   dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ 11:30 ከሰዓት',
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   derived:1,
@@ -265,7 +265,7 @@ const REPORTS = [
       {id:'sup_delay', en:'Supplier delays', am:'የአቅራቢ መዘግየቶች', t:'num'},
       {id:'sup_price', en:'Price changes', am:'የዋጋ ለውጦች', t:'num'},
       {id:'sup_quality', en:'Quality issues', am:'የጥራት ችግሮች', t:'num'},
-      {id:'sup_reported', en:'Reported to Liu and Betty', am:'ለሊውና ለቤቲ ተነግሯል', t:'yesno'}
+      {id:'sup_reported', en:'Reported to Mahelet and Betty', am:'ለማህሌትና ለቤቲ ተነግሯል', t:'yesno'}
     ]},
     { en:'7 · Problems and solutions', am:'7 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'Problem', am:'ችግር', t:'area', opt:1},
@@ -279,7 +279,7 @@ const REPORTS = [
 {
   id:'yordanos-daily', person:'yordanos', cadence:'daily', dueTime:'17:30',
   en:'Daily Store Report', am:'ዕለታዊ የመጋዘን ሪፖርት',
-  toEn:'Chairman, copied to Liu and Betty', toAm:'ሊቀመንበር፣ ግልባጭ ለሊውና ለቤቲ',
+  toEn:'Chairman, copied to Mahelet and Betty', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለቤቲ',
   dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ 11:30 ከሰዓት',
   penEn:'Reports are mandatory daily', penAm:'ሪፖርት በየቀኑ ግዴታ ነው',
   derived:1,
@@ -306,7 +306,7 @@ const REPORTS = [
     ]},
     { en:'4 · Issuing materials', am:'4 · ዕቃ ማውጣት', fields:[
       {id:'iss_count', en:'Issues made today', am:'ዛሬ የተደረጉ ማውጣቶች', t:'num'},
-      {id:'iss_approved', en:"All issued with Liu's signed approval", am:'ሁሉም በሊው ፊርማ ፈቃድ ወጥተዋል', t:'yesno'},
+      {id:'iss_approved', en:"All issued with Mahelet's signed approval", am:'ሁሉም በማህሌት ፊርማ ፈቃድ ወጥተዋል', t:'yesno'},
       {id:'iss_correct', en:'All issued to the correct job', am:'ሁሉም ለትክክለኛው ሥራ ወጥተዋል', t:'yesno'}
     ]},
     { en:'5 · Shortages', am:'5 · እጥረቶች', fields:[

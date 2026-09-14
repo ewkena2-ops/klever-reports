@@ -29,7 +29,7 @@ browser storage.
 | Person | Report | Deadline |
 |---|---|---|
 | Ephrata | Daily Commercial Report | 5:30 PM |
-| Liu | Daily Operations Report | 5:30 PM |
+| Mahelet | Daily Operations Report | 5:30 PM |
 | Betty | Daily Finance Report | 5:30 PM |
 | Getachew | Daily Purchasing Report | 5:30 PM |
 | Yordanos | Daily Store Report | 5:30 PM |

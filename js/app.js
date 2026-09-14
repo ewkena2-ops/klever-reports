@@ -137,7 +137,9 @@
   function dueToday() {
     var dow = new Date().getDay();
     return REPORTS.filter(function (r) {
-      return r.cadence === 'weekly' ? r.dueDay === dow : dow !== 0;
+      if (r.cadence === 'weekly') return r.dueDay === dow;
+      if (dow === 0) return false;
+      return !(r.skipDays && r.skipDays.indexOf(dow) >= 0);
     }).sort(function (a, b) { return (a.dueTime || '').localeCompare(b.dueTime || ''); });
   }
 

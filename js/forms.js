@@ -17,10 +17,10 @@ const REPORTS = [
 
 /* ============================ EPHRATA — DAILY ============================ */
 {
-  id:'ephrata-daily', person:'ephrata', cadence:'daily', dueTime:'17:30',
+  id:'ephrata-daily', person:'ephrata', cadence:'daily', dueTime:'17:30', skipDays:[5],
   en:'Daily Commercial Report', am:'ዕለታዊ የንግድ ሪፖርት',
   toEn:'Chairman', toAm:'ሊቀመንበር',
-  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
+  dueEn:'5:30 PM, Monday to Thursday and Saturday', dueAm:'ከሰኞ እስከ ሐሙስ እና ቅዳሜ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Late –500 Birr · Missing –1,000 Birr', penAm:'ዘግይቶ –500 ብር · ካልተላከ –1,000 ብር',
   sections:[
     { en:'1 · Leads today', am:'1 · ዛሬ የመጡ አዲስ ደንበኞች', fields:[
@@ -702,10 +702,10 @@ const REPORTS = [
 
 /* ============= EPHRATA — 4-WEEK ROLLING SALES PROJECTION ============= */
 {
-  id:'ephrata-projection', person:'ephrata', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  id:'ephrata-projection', person:'ephrata', cadence:'weekly', dueTime:'10:00', dueDay:1,
   en:'4-Week Rolling Sales Projection', am:'የ4 ሳምንት የሽያጭ ትንበያ',
   toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
-  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  dueEn:'Monday 10:00 AM', dueAm:'ሰኞ ከጠዋቱ 4፡00 (10:00 AM)',
   penEn:'First miss –500 Birr · Second in a row –1,000 Birr',
   penAm:'መጀመሪያ ሲቀር –500 ብር · በተከታታይ ሁለተኛ –1,000 ብር',
   sections:[

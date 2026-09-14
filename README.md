@@ -31,7 +31,7 @@ browser storage.
 | Person | Report | Due |
 |---|---|---|
 | Betelhem Aklog | Daily 7-Day Cash Flow Forecast | 9:00 AM |
-| Ephrata Assfa | Daily Commercial Report | 5:30 PM |
+| Ephrata Assfa | Daily Commercial Report | 5:30 PM, not Friday |
 | Mahelet Teshome | Daily Operations Report | 5:30 PM |
 | Betelhem Aklog | Daily Finance Report | 5:30 PM |
 | Getachew Negash | Daily Purchasing Report | 5:30 PM |
@@ -61,7 +61,7 @@ no report template — so they are marked as such on screen and should be correc
 |---|---|---|
 | Betelhem Aklog | Payment-Confirmed Job List (to Mahelet) | Friday 1:00 PM |
 | Mahelet Teshome | 15-Day Production Plan | Friday 3:00 PM |
-| Ephrata Assfa | 4-Week Rolling Sales Projection | Friday 5:00 PM |
+| Ephrata Assfa | 4-Week Rolling Sales Projection | Monday 10:00 AM |
 | Betelhem Aklog | 4-Week Cash Flow Projection | Thursday 5:00 PM |
 
 These use repeating rows. Set the plan start date once and all fifteen days of the production

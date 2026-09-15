@@ -65,7 +65,8 @@
      daily before weekly, then by the day and time each is due */
   function reportsFor(pid) {
     return REPORTS.filter(function (r) { return r.person === pid; }).sort(function (a, b) {
-      if (a.cadence !== b.cadence) return a.cadence === 'daily' ? -1 : 1;
+      var rank = { daily: 0, weekly: 1, monthly: 2 };
+      if (a.cadence !== b.cadence) return rank[a.cadence] - rank[b.cadence];
       var ad = a.dueDay == null ? 0 : a.dueDay, bd = b.dueDay == null ? 0 : b.dueDay;
       if (ad !== bd) return ad - bd;
       return (a.dueTime || '').localeCompare(b.dueTime || '');
@@ -137,6 +138,8 @@
   function dueToday() {
     var dow = new Date().getDay();
     return REPORTS.filter(function (r) {
+      /* the two monthly reports fall due on the 1st of the following month */
+      if (r.cadence === 'monthly') return new Date().getDate() === 1;
       if (r.cadence === 'weekly') return r.dueDay === dow;
       if (dow === 0) return false;
       return !(r.skipDays && r.skipDays.indexOf(dow) >= 0);

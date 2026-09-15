@@ -178,12 +178,13 @@
     return panel;
   }
 
-  function dueRail() {
+  function dueRail(pid) {
     var wrap = el('section', 'due');
     var list = dueToday();
-    wrap.appendChild(el('p', 'eyebrow', t('dueToday')));
+    if (pid) list = list.filter(function (r) { return r.person === pid; });
+    wrap.appendChild(el('p', 'eyebrow', pid ? t('dueForYou') : t('dueToday')));
     if (!list.length) {
-      wrap.appendChild(el('p', 'sub', t('nothingToday')));
+      wrap.appendChild(el('p', 'sub', pid ? t('nothingForYou') : t('nothingToday')));
       return wrap;
     }
     var rail = el('div', 'railrows');
@@ -195,7 +196,8 @@
       a.href = 'form.html?r=' + encodeURIComponent(r.id);
       a.appendChild(el('span', 'railtime', hhmm(r.dueTime)));
       var mid = el('span', 'railmid');
-      mid.appendChild(el('span', 'railwho', L(person)));
+      /* on your own page the name above it is already yours */
+      if (!pid) mid.appendChild(el('span', 'railwho', L(person)));
       mid.appendChild(el('span', 'railwhat', L(r)));
       a.appendChild(mid);
       a.appendChild(el('span', 'railstate', countdown(mins)));
@@ -205,7 +207,73 @@
     return wrap;
   }
 
+  /* ---------------- sign in ---------------- */
+
+  function signOutLink(root) {
+    var a = el('a', 'signout', t('signOut'));
+    a.href = '#';
+    a.onclick = function (e) { e.preventDefault(); AUTH.signOut(); renderSignIn(root); };
+    return a;
+  }
+
+  function renderSignIn(root) {
+    document.title = t('siteTitle');
+    root.innerHTML = '';
+    clearInterval(renderIndex.tick);
+    root.appendChild(todayPanel());
+
+    var card = el('section', 'signin');
+    card.appendChild(el('h1', null, t('signIn')));
+    card.appendChild(el('p', 'sub', t('signInSub')));
+
+    var lab = el('label', 'codelab', t('codeLabel'));
+    lab.htmlFor = 'code';
+    card.appendChild(lab);
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'code';
+    input.className = 'codebox';
+    input.inputMode = 'numeric';
+    input.autocomplete = 'off';
+    input.maxLength = 6;
+    card.appendChild(input);
+
+    var err = el('p', 'codeerr');
+    err.hidden = true;
+    card.appendChild(err);
+
+    var go = el('button', 'codego', t('codeGo'));
+    go.type = 'button';
+    card.appendChild(go);
+    card.appendChild(el('p', 'codenote', t('staySignedIn')));
+
+    function attempt() {
+      if (AUTH.signIn(input.value)) { renderIndex(root); return; }
+      err.textContent = t('badCode');
+      err.hidden = false;
+      input.value = '';
+      input.focus();
+    }
+    go.onclick = attempt;
+    input.onkeydown = function (e) { if (e.key === 'Enter') attempt(); };
+    input.oninput = function () { err.hidden = true; };
+
+    root.appendChild(card);
+    root.appendChild(foot());
+    input.focus();
+  }
+
   function renderIndex(root) {
+    if (!AUTH.who()) return renderSignIn(root);
+    /* everyone but the Chairman lands straight on their own reports —
+       no roster, no other people's forms */
+    if (!AUTH.isChairman()) {
+      var me = personById(AUTH.who());
+      if (me) return renderPersonReports(root, me);
+      AUTH.signOut();
+      return renderSignIn(root);
+    }
     document.title = t('siteTitle');
     root.innerHTML = '';
     root.appendChild(todayPanel());
@@ -229,6 +297,7 @@
       list.appendChild(b);
     });
     root.appendChild(list);
+    root.appendChild(signOutLink(root));
     root.appendChild(foot());
 
     /* keep the countdowns honest without reloading the page */
@@ -239,14 +308,18 @@
   }
 
   function renderPersonReports(root, p) {
+    document.title = t('siteTitle');
     root.innerHTML = '';
-    var back = el('a', 'backlink', t('back'));
-    back.href = '#';
-    back.onclick = function (e) { e.preventDefault(); renderIndex(root); };
-    root.appendChild(back);
+    if (AUTH.isChairman()) {
+      var back = el('a', 'backlink', t('back'));
+      back.href = '#';
+      back.onclick = function (e) { e.preventDefault(); renderIndex(root); };
+      root.appendChild(back);
+    }
 
     root.appendChild(el('h1', null, L(p)));
     root.appendChild(el('p', 'sub', lang === 'am' ? p.roleAm : p.roleEn));
+    root.appendChild(dueRail(p.id));
 
     var rs = reportsFor(p.id);
     if (!rs.length) { root.appendChild(el('p', 'sub', t('noReports'))); root.appendChild(foot()); return; }
@@ -264,6 +337,7 @@
       list.appendChild(a);
     });
     root.appendChild(list);
+    if (!AUTH.isChairman()) root.appendChild(signOutLink(root));
     root.appendChild(foot());
   }
 
@@ -282,6 +356,16 @@
     var id = new URLSearchParams(location.search).get('r');
     report = reportById(id);
     if (!report) { location.href = 'index.html'; return; }
+    /* a link to someone else's form is a dead end, however it was shared */
+    if (!AUTH.mayOpen(report)) {
+      root.innerHTML = '';
+      var b = el('a', 'backlink', t('back'));
+      b.href = 'index.html';
+      root.appendChild(b);
+      root.appendChild(el('p', 'sub', t('notYours')));
+      root.appendChild(foot());
+      return;
+    }
     var person = personById(report.person);
     document.title = L(report) + ' · ' + L(person);
 
@@ -701,6 +785,7 @@
     buildTop();
     var root = document.getElementById('app');
     if (!root) return;
+    if (!AUTH.who()) { renderSignIn(root); return; }
     if (document.body.dataset.page === 'form') renderForm(root);
     else renderIndex(root);
   });

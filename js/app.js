@@ -75,6 +75,12 @@
 
   /* ---------------- shared chrome ---------------- */
 
+  function rebuildTop() {
+    var old = document.querySelector('.top');
+    if (old) old.parentNode.removeChild(old);
+    buildTop();
+  }
+
   function buildTop() {
     var top = el('div', 'top'), inner = el('div', 'top-in');
     var a = el('a'); a.href = 'index.html';
@@ -96,6 +102,23 @@
       tg.appendChild(b);
     });
     inner.appendChild(tg);
+
+    /* signed in? then the way out is in the bar, on every page */
+    if (AUTH.who()) {
+      var me = personById(AUTH.who());
+      var out = el('button', 'signoutbtn');
+      out.type = 'button';
+      out.appendChild(el('span', 'soinit', AUTH.isChairman() ? '★' : L(me).charAt(0)));
+      out.appendChild(el('span', 'sotext', t('signOut')));
+      out.title = AUTH.isChairman() ? 'Chairman' : L(me);
+      out.onclick = function () {
+        AUTH.signOut();
+        if (document.body.dataset.page === 'form') location.href = 'index.html';
+        else renderSignIn(document.getElementById('app'));
+      };
+      inner.appendChild(out);
+    }
+
     top.appendChild(inner);
     document.body.insertBefore(top, document.body.firstChild);
     document.documentElement.lang = lang === 'am' ? 'am' : 'en';
@@ -219,6 +242,7 @@
   function renderSignIn(root) {
     document.title = t('siteTitle');
     root.innerHTML = '';
+    rebuildTop();
     clearInterval(renderIndex.tick);
     root.appendChild(todayPanel());
 
@@ -249,7 +273,7 @@
     card.appendChild(el('p', 'codenote', t('staySignedIn')));
 
     function attempt() {
-      if (AUTH.signIn(input.value)) { renderIndex(root); return; }
+      if (AUTH.signIn(input.value)) { rebuildTop(); renderIndex(root); return; }
       err.textContent = t('badCode');
       err.hidden = false;
       input.value = '';
@@ -297,7 +321,6 @@
       list.appendChild(b);
     });
     root.appendChild(list);
-    root.appendChild(signOutLink(root));
     root.appendChild(foot());
 
     /* keep the countdowns honest without reloading the page */
@@ -337,7 +360,6 @@
       list.appendChild(a);
     });
     root.appendChild(list);
-    if (!AUTH.isChairman()) root.appendChild(signOutLink(root));
     root.appendChild(foot());
   }
 

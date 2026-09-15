@@ -29,10 +29,14 @@ function doPost(e) {
       sh.getRange(1, head.length).setValue(k);
     }
   });
-  if (head.indexOf('Message') === -1) {
-    head.push('Message');
-    sh.getRange(1, head.length).setValue('Message');
-  }
+  /* who pressed Send. Normally the same person, but the Chairman can open
+     anyone's form, and a row should say so rather than quietly read as theirs. */
+  ['Filed by', 'Message'].forEach(function (col) {
+    if (head.indexOf(col) === -1) {
+      head.push(col);
+      sh.getRange(1, head.length).setValue(col);
+    }
+  });
 
   var out = new Array(head.length).fill('');
   out[0] = new Date(row.at || Date.now());
@@ -43,6 +47,7 @@ function doPost(e) {
     var v = values[k];
     out[head.indexOf(k)] = (v && typeof v === 'object') ? JSON.stringify(v) : v;
   });
+  out[head.indexOf('Filed by')] = row.byName || row.by || '';
   out[head.indexOf('Message')] = row.text || '';
 
   sh.appendRow(out);

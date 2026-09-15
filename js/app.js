@@ -614,6 +614,8 @@
         personName: L(personById(report.person)),
         report: report.id,
         reportName: L(report),
+        by: AUTH.who(),
+        byName: AUTH.isChairman() ? 'Chairman' : L(personById(AUTH.who())),
         due: lang === 'am' ? report.dueAm : report.dueEn,
         late: isLate(report.dueTime, report.dueDay),
         values: values,

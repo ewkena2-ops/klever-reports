@@ -597,6 +597,36 @@
   /* The WhatsApp message is a message. This is the document: the same report
      on Klever letterhead, for a customer file, a printer, or a PDF a phone can
      attach to an email. Built fresh each time so it always matches the form. */
+  /* The shape of the report as a document: sections, label/value rows, flags.
+     The phone is the only place that knows the labels and the language, so it
+     builds this once — the printed page and the emailed PDF both render it. */
+  function reportDoc() {
+    var doc = [];
+    report.sections.forEach(function (sec) {
+      var rows = [];
+      sec.fields.forEach(function (fl) {
+        if (fl.t === 'table' || fl.t === 'grid') {
+          var tl = tableLines(fl);
+          if (tl.length) rows.push([L(fl), tl.join(String.fromCharCode(10))]);
+          return;
+        }
+        var v = fmt(fl);
+        if (!has(v) || v === '— / —') return;
+        rows.push([(fl.i ? '· ' : '') + L(fl), v]);
+      });
+      if (rows.length) doc.push({ sec: L(sec), rows: rows });
+    });
+    return doc;
+  }
+
+  function reportFlags() {
+    var out = [];
+    allFields().forEach(function (fl) {
+      if (targetMiss(fl)) out.push(L(fl) + ': ' + fmt(fl) + ' — ' + (lang === 'am' ? fl.tgt.am : fl.tgt.en));
+    });
+    return out;
+  }
+
   function buildPrintDoc() {
     var old = document.getElementById('printdoc');
     if (old) old.parentNode.removeChild(old);
@@ -632,22 +662,10 @@
     meta.appendChild(st);
     doc.appendChild(meta);
 
-    report.sections.forEach(function (sec) {
-      var rows = [];
-      sec.fields.forEach(function (fl) {
-        if (fl.t === 'table' || fl.t === 'grid') {
-          var tl = tableLines(fl);
-          if (tl.length) rows.push([L(fl), tl.join(String.fromCharCode(10))]);
-          return;
-        }
-        var v = fmt(fl);
-        if (!has(v) || v === '— / —') return;
-        rows.push([(fl.i ? '· ' : '') + L(fl), v]);
-      });
-      if (!rows.length) return;
-      doc.appendChild(el('h2', 'pd-sec', L(sec)));
+    reportDoc().forEach(function (s) {
+      doc.appendChild(el('h2', 'pd-sec', s.sec));
       var tbl = el('table', 'pd-tbl');
-      rows.forEach(function (r) {
+      s.rows.forEach(function (r) {
         var tr = el('tr');
         tr.appendChild(el('th', null, r[0]));
         tr.appendChild(el('td', null, r[1]));
@@ -656,10 +674,7 @@
       doc.appendChild(tbl);
     });
 
-    var flags = [];
-    allFields().forEach(function (fl) {
-      if (targetMiss(fl)) flags.push(L(fl) + ': ' + fmt(fl) + ' — ' + (lang === 'am' ? fl.tgt.am : fl.tgt.en));
-    });
+    var flags = reportFlags();
     if (flags.length) {
       doc.appendChild(el('h2', 'pd-sec pd-flagsec', t('flags')));
       var fl2 = el('ul', 'pd-flags');
@@ -706,7 +721,10 @@
         reportName: L(report),
         by: AUTH.who(),
         byName: AUTH.isChairman() ? 'Chairman' : L(personById(AUTH.who())),
+        to: lang === 'am' ? report.toAm : report.toEn,
         due: lang === 'am' ? report.dueAm : report.dueEn,
+        doc: reportDoc(),
+        flags: reportFlags(),
         late: isLate(report.dueTime, report.dueDay),
         values: values,
         text: txt

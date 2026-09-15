@@ -116,6 +116,86 @@ function doPost(e) {
 /* The Chairman should not have to open a spreadsheet to find out a report
    arrived. The subject line carries the whole story, so it reads on a lock
    screen without opening anything. */
+/* The report as a document, attached to the mail. The Chairman should be able
+   to forward one file to a customer or a bank without opening a spreadsheet or
+   re-typing anything. Apps Script renders basic HTML to PDF; the layout is
+   deliberately table-based and inline-styled, because that is all it honours. */
+function reportPdf_(row) {
+  var A = '#0f5c54', INK = '#141b1a', MUTE = '#5f6a66', RULE = '#cfd4cf', BAD = '#8f3020';
+  var values = row.values || {};
+  var esc = function (v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  };
+
+  var h = [];
+  h.push('<div style="font-family:Helvetica,Arial,sans-serif;color:' + INK + '">');
+  h.push('<table width="100%" style="border-bottom:2px solid ' + INK + ';padding-bottom:8px"><tr>' +
+         '<td style="font-size:20px;font-weight:bold;letter-spacing:1px">KLEVER <span style="font-weight:normal">K&uuml;che</span></td>' +
+         '<td align="right" style="font-size:9px;letter-spacing:2px;color:' + A + '">KLEVER REPORTS</td>' +
+         '</tr></table>');
+  h.push('<h1 style="font-size:19px;margin:18px 0 10px">' + esc(row.reportName) + '</h1>');
+
+  var meta = [['To', row.due ? (row.to || '') : ''], ['From', row.personName],
+              ['Sent', row.at ? Utilities.formatDate(new Date(row.at), 'Africa/Addis_Ababa', 'HH:mm, d MMM yyyy') : ''],
+              ['Due', row.due], ['Status', row.late ? 'LATE' : 'On time']];
+  h.push('<table style="font-size:10px;color:' + MUTE + '">');
+  meta.forEach(function (m) {
+    if (!m[1]) return;
+    var val = (m[0] === 'Status' && row.late)
+      ? '<b style="color:' + BAD + '">' + esc(m[1]) + '</b>'
+      : '<span style="color:' + INK + '">' + esc(m[1]) + '</span>';
+    h.push('<tr><td style="padding:1px 14px 1px 0;letter-spacing:1px;text-transform:uppercase">' +
+           m[0] + '</td><td>' + val + '</td></tr>');
+  });
+  h.push('</table>');
+
+  /* The phone sends the document already sectioned and labelled. Fall back to
+     the raw field ids only if an old client posts without it. */
+  var doc = row.doc && row.doc.length ? row.doc
+          : [{ sec: '', rows: Object.keys(values).map(function (k) {
+                return [k, typeof values[k] === 'object' ? JSON.stringify(values[k]) : values[k]];
+              }) }];
+
+  doc.forEach(function (s) {
+    if (s.sec) {
+      h.push('<div style="font-size:9px;font-weight:bold;letter-spacing:1.5px;color:' + A +
+             ';border-bottom:1px solid ' + RULE + ';margin:18px 0 0;padding-bottom:4px">' +
+             esc(s.sec).toUpperCase() + '</div>');
+    }
+    h.push('<table width="100%" style="border-collapse:collapse;font-size:11px">');
+    s.rows.forEach(function (r) {
+      if (r[1] === '' || r[1] == null) return;
+      h.push('<tr>' +
+        '<td style="border-bottom:1px solid ' + RULE + ';padding:5px 8px 5px 0;width:58%">' + esc(r[0]) + '</td>' +
+        '<td style="border-bottom:1px solid ' + RULE + ';padding:5px 0;text-align:right">' +
+        esc(r[1]).replace(new RegExp(String.fromCharCode(10), 'g'), '<br>') + '</td></tr>');
+    });
+    h.push('</table>');
+  });
+
+  if (row.flags && row.flags.length) {
+    h.push('<div style="font-size:9px;font-weight:bold;letter-spacing:1.5px;color:' + BAD +
+           ';border-bottom:1px solid ' + BAD + ';margin:18px 0 0;padding-bottom:4px">FLAGS</div>');
+    h.push('<table width="100%" style="font-size:11px;color:' + BAD + '">');
+    row.flags.forEach(function (fl) {
+      h.push('<tr><td style="padding:4px 0">' + esc(fl) + '</td></tr>');
+    });
+    h.push('</table>');
+  }
+
+  h.push('<table width="100%" style="margin-top:34px;font-size:9px;color:' + MUTE + '"><tr>' +
+         '<td style="border-top:1px solid ' + INK + ';padding-top:4px;width:45%">SIGNATURE &mdash; ' + esc(row.personName) + '</td>' +
+         '<td width="10%"></td>' +
+         '<td style="border-top:1px solid ' + INK + ';padding-top:4px;width:45%">DATE</td>' +
+         '</tr></table>');
+  h.push('</div>');
+
+  var name = String(row.reportName || 'Report').replace(/[^A-Za-z0-9 -]/g, '') + ' - ' +
+             String(row.personName || '').replace(/[^A-Za-z0-9 -]/g, '') + '.pdf';
+  return Utilities.newBlob(h.join(''), 'text/html', name).getAs('application/pdf').setName(name);
+}
+
 function notify_(row, sheetUrl) {
   var to = Session.getEffectiveUser().getEmail();
   if (!to) return;
@@ -138,7 +218,12 @@ function notify_(row, sheetUrl) {
   ];
 
   try {
-    MailApp.sendEmail(to, subject, lines.join(String.fromCharCode(10)));
+    MailApp.sendEmail({
+      to: to,
+      subject: subject,
+      body: lines.join(String.fromCharCode(10)),
+      attachments: [reportPdf_(row)]
+    });
   } catch (err) {
     /* a full mail quota must never cost the company the row that was filed */
   }

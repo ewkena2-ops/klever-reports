@@ -4,6 +4,7 @@ const T = {
   en:{
     siteTitle:'Klever Reports',
     signIn:'Sign in',
+    footSaved:'Klever Küche · every report you send is filed to the Chairman’s sheet and posted to the group.',
     signInSub:'Enter your personal code to open your reports.',
     codeLabel:'Your code',
     codeGo:'Sign in',
@@ -48,6 +49,7 @@ const T = {
   am:{
     siteTitle:'የክሌቨር ሪፖርቶች',
     signIn:'ግባ',
+    footSaved:'ክሌቨር ኩሽ · የላኩት እያንዳንዱ ሪፖርት ወደ ሊቀመንበሩ ሉህ ተመዝግቦ ወደ ግሩፑ ይላካል።',
     signInSub:'ሪፖርቶችዎን ለመክፈት የግል ኮድዎን ያስገቡ።',
     codeLabel:'የእርስዎ ኮድ',
     codeGo:'ግባ',

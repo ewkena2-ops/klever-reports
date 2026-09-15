@@ -364,8 +364,7 @@
   }
 
   function foot() {
-    var f = el('p', 'foot', t('foot'));
-    return f;
+    return el('p', 'foot', ARCHIVE.on() ? t('footSaved') : t('foot'));
   }
 
   /* ---------------- form page ---------------- */
@@ -609,6 +608,17 @@
     send.type = 'button'; send.id = 'send';
     send.onclick = function () {
       var txt = buildMessage();
+      ARCHIVE.file({
+        at: new Date().toISOString(),
+        person: report.person,
+        personName: L(personById(report.person)),
+        report: report.id,
+        reportName: L(report),
+        due: lang === 'am' ? report.dueAm : report.dueEn,
+        late: isLate(report.dueTime, report.dueDay),
+        values: values,
+        text: txt
+      });
       window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
     };
     inner.appendChild(count); inner.appendChild(copy); inner.appendChild(send);
@@ -804,6 +814,7 @@
   };
 
   document.addEventListener('DOMContentLoaded', function () {
+    ARCHIVE.flush();
     buildTop();
     var root = document.getElementById('app');
     if (!root) return;

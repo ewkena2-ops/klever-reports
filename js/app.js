@@ -594,6 +594,91 @@
     for (var i = 0; i < nodes.length; i++) if (nodes[i].redraw) nodes[i].redraw();
   }
 
+  /* The WhatsApp message is a message. This is the document: the same report
+     on Klever letterhead, for a customer file, a printer, or a PDF a phone can
+     attach to an email. Built fresh each time so it always matches the form. */
+  function buildPrintDoc() {
+    var old = document.getElementById('printdoc');
+    if (old) old.parentNode.removeChild(old);
+
+    var person = personById(report.person);
+    var doc = el('div', 'printdoc');
+    doc.id = 'printdoc';
+
+    var head = el('header', 'pd-head');
+    var logo = new Image();
+    logo.src = 'assets/logo.png';
+    logo.alt = 'Klever Küche';
+    logo.className = 'pd-logo';
+    head.appendChild(logo);
+    var kind = el('div', 'pd-kind', t('siteTitle'));
+    head.appendChild(kind);
+    doc.appendChild(head);
+
+    doc.appendChild(el('h1', 'pd-title', L(report)));
+
+    var meta = el('dl', 'pd-meta');
+    [[t('to'), lang === 'am' ? report.toAm : report.toEn],
+     ['', L(person) + ' · ' + (lang === 'am' ? person.roleAm : person.roleEn)],
+     [t('date'), today() + ' · ' + clock()],
+     [t('due'), lang === 'am' ? report.dueAm : report.dueEn]].forEach(function (r, i) {
+      if (!r[1]) return;
+      meta.appendChild(el('dt', null, i === 1 ? t('from') : r[0]));
+      meta.appendChild(el('dd', null, r[1]));
+    });
+    var st = el('dd', 'pd-status' + (isLate(report.dueTime, report.dueDay) ? ' late' : ''));
+    st.textContent = isLate(report.dueTime, report.dueDay) ? t('late') : t('onTime');
+    meta.appendChild(el('dt', null, ''));
+    meta.appendChild(st);
+    doc.appendChild(meta);
+
+    report.sections.forEach(function (sec) {
+      var rows = [];
+      sec.fields.forEach(function (fl) {
+        if (fl.t === 'table' || fl.t === 'grid') {
+          var tl = tableLines(fl);
+          if (tl.length) rows.push([L(fl), tl.join(String.fromCharCode(10))]);
+          return;
+        }
+        var v = fmt(fl);
+        if (!has(v) || v === '— / —') return;
+        rows.push([(fl.i ? '· ' : '') + L(fl), v]);
+      });
+      if (!rows.length) return;
+      doc.appendChild(el('h2', 'pd-sec', L(sec)));
+      var tbl = el('table', 'pd-tbl');
+      rows.forEach(function (r) {
+        var tr = el('tr');
+        tr.appendChild(el('th', null, r[0]));
+        tr.appendChild(el('td', null, r[1]));
+        tbl.appendChild(tr);
+      });
+      doc.appendChild(tbl);
+    });
+
+    var flags = [];
+    allFields().forEach(function (fl) {
+      if (targetMiss(fl)) flags.push(L(fl) + ': ' + fmt(fl) + ' — ' + (lang === 'am' ? fl.tgt.am : fl.tgt.en));
+    });
+    if (flags.length) {
+      doc.appendChild(el('h2', 'pd-sec pd-flagsec', t('flags')));
+      var fl2 = el('ul', 'pd-flags');
+      flags.forEach(function (x) { fl2.appendChild(el('li', null, x)); });
+      doc.appendChild(fl2);
+    }
+
+    var sig = el('div', 'pd-sig');
+    [L(person), t('date')].forEach(function (lbl) {
+      var c = el('div', 'pd-sigcell');
+      c.appendChild(el('div', 'pd-sigline'));
+      c.appendChild(el('div', 'pd-siglbl', lbl));
+      sig.appendChild(c);
+    });
+    doc.appendChild(sig);
+
+    document.body.appendChild(doc);
+  }
+
   function buildBar() {
     var bar = el('div', 'bar'), inner = el('div', 'bar-in');
     var count = el('div', 'count'); count.id = 'count';
@@ -604,6 +689,11 @@
       if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () { toast(t('copied')); });
       else { window.prompt(t('copy'), txt); }
     };
+    var pdf = el('button', 'btn ghost', t('printBtn'));
+    pdf.type = 'button';
+    pdf.onclick = function () { window.print(); };
+    /* Ctrl+P, or a phone's own Print menu, must give the same document */
+    window.addEventListener('beforeprint', buildPrintDoc);
     var send = el('button', 'btn', t('send'));
     send.type = 'button'; send.id = 'send';
     send.onclick = function () {
@@ -623,7 +713,7 @@
       });
       window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
     };
-    inner.appendChild(count); inner.appendChild(copy); inner.appendChild(send);
+    inner.appendChild(count); inner.appendChild(pdf); inner.appendChild(copy); inner.appendChild(send);
     bar.appendChild(inner);
     document.body.appendChild(bar);
   }

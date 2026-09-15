@@ -37,6 +37,29 @@ that changes the URL — and update `SAVE_URL`.
    Receives one report and appends it as a row, on a tab named after the
    report. Unknown fields become new columns on the right. */
 
+/* Opening the URL in a browser should say something useful rather than throw.
+   It is also how the owner grants a newly added permission: Google shows the
+   consent screen before it will run this. */
+/* Run this once from the editor after adding anything that needs a new
+   permission. Opening the web app URL re-runs the old permission set and will
+   not prompt; running a function here does. */
+function authorize() {
+  MailApp.sendEmail(Session.getEffectiveUser().getEmail(),
+                    'Klever archive - permission granted',
+                    'Mail is authorized. Reports will now notify you as they arrive.');
+  SpreadsheetApp.getActiveSpreadsheet().getName();
+}
+
+function doGet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tabs = ss.getSheets().length;
+  return ContentService.createTextOutput(
+    'Klever report archive is running. ' +
+    tabs + ' report tab(s) in the sheet. ' +
+    'Notifications go to ' + Session.getEffectiveUser().getEmail() + '.'
+  );
+}
+
 function doPost(e) {
   var row;
   try {
@@ -86,9 +109,50 @@ function doPost(e) {
   out[head.indexOf('Message')] = row.text || '';
 
   sh.appendRow(out);
+  notify_(row, ss.getUrl());
   return ContentService.createTextOutput('ok');
 }
+
+/* The Chairman should not have to open a spreadsheet to find out a report
+   arrived. The subject line carries the whole story, so it reads on a lock
+   screen without opening anything. */
+function notify_(row, sheetUrl) {
+  var to = Session.getEffectiveUser().getEmail();
+  if (!to) return;
+
+  var who = row.personName || row.person || 'Someone';
+  var what = row.reportName || 'Report';
+  var subject = (row.late ? 'LATE - ' : '') + who + ' - ' + what;
+
+  var when = Utilities.formatDate(new Date(row.at || Date.now()),
+                                  'Africa/Addis_Ababa', 'HH:mm, d MMM yyyy');
+  var lines = [
+    what,
+    who + (row.byName && row.byName !== who ? '   (filed by ' + row.byName + ')' : ''),
+    'Sent ' + when + '   ' + (row.late ? 'LATE' : 'on time'),
+    'Due  ' + (row.due || ''),
+    '',
+    row.text || '',
+    '',
+    'Sheet: ' + sheetUrl
+  ];
+
+  try {
+    MailApp.sendEmail(to, subject, lines.join(String.fromCharCode(10)));
+  } catch (err) {
+    /* a full mail quota must never cost the company the row that was filed */
+  }
+}
 ```
+
+## When a permission is added later
+
+The permission set is frozen at whatever the script needed when it was first
+approved. Adding anything new — sending mail, a calendar entry, a trigger —
+will fail silently at runtime, and opening the web app URL does **not**
+re-prompt: it re-runs the old set. Grant it from the editor instead: open the
+script, pick **authorize** in the function dropdown, Run, approve. That is the
+only place Google re-asks.
 
 ## What the phones do
 

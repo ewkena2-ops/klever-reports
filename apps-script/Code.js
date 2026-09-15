@@ -81,84 +81,117 @@ function doPost(e) {
 /* The Chairman should not have to open a spreadsheet to find out a report
    arrived. The subject line carries the whole story, so it reads on a lock
    screen without opening anything. */
-/* The report as a document, attached to the mail. The Chairman should be able
-   to forward one file to a customer or a bank without opening a spreadsheet or
-   re-typing anything. Apps Script renders basic HTML to PDF; the layout is
-   deliberately table-based and inline-styled, because that is all it honours. */
-function reportPdf_(row) {
-  var A = '#0f5c54', INK = '#141b1a', MUTE = '#5f6a66', RULE = '#cfd4cf', BAD = '#8f3020';
-  var values = row.values || {};
+/* The report as a document. Apps Script's HTML-to-PDF renderer honours tables
+   and inline styles and little else — no flexbox, no grid, no stylesheet — so
+   the layout is built the way a 1998 email was, on purpose. */
+function reportHtml_(row) {
+  var A = '#0f5c54', SOFT = '#e6f0ed', INK = '#141b1a', INK2 = '#3a4442',
+      MUTE = '#6b7672', RULE = '#d7dcd7', BAD = '#8f3020', BADSOFT = '#f7eae6';
+
   var esc = function (v) {
     return String(v == null ? '' : v)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   };
-
+  var br = function (v) {
+    return esc(v).replace(new RegExp(String.fromCharCode(10), 'g'), '<br>');
+  };
   var h = [];
-  h.push('<div style="font-family:Helvetica,Arial,sans-serif;color:' + INK + '">');
-  h.push('<table width="100%" style="border-bottom:2px solid ' + INK + ';padding-bottom:8px"><tr>' +
-         '<td style="font-size:20px;font-weight:bold;letter-spacing:1px">KLEVER <span style="font-weight:normal">K&uuml;che</span></td>' +
-         '<td align="right" style="font-size:9px;letter-spacing:2px;color:' + A + '">KLEVER REPORTS</td>' +
-         '</tr></table>');
-  h.push('<h1 style="font-size:19px;margin:18px 0 10px">' + esc(row.reportName) + '</h1>');
+  var F = 'font-family:Helvetica,Arial,sans-serif';
 
-  var meta = [['To', row.due ? (row.to || '') : ''], ['From', row.personName],
-              ['Sent', row.at ? Utilities.formatDate(new Date(row.at), 'Africa/Addis_Ababa', 'HH:mm, d MMM yyyy') : ''],
-              ['Due', row.due], ['Status', row.late ? 'LATE' : 'On time']];
-  h.push('<table style="font-size:10px;color:' + MUTE + '">');
-  meta.forEach(function (m) {
-    if (!m[1]) return;
-    var val = (m[0] === 'Status' && row.late)
-      ? '<b style="color:' + BAD + '">' + esc(m[1]) + '</b>'
-      : '<span style="color:' + INK + '">' + esc(m[1]) + '</span>';
-    h.push('<tr><td style="padding:1px 14px 1px 0;letter-spacing:1px;text-transform:uppercase">' +
-           m[0] + '</td><td>' + val + '</td></tr>');
+  h.push('<div style="' + F + ';color:' + INK + ';font-size:10.5pt;line-height:1.45">');
+
+  /* masthead */
+  h.push('<table width="100%" cellpadding="0" cellspacing="0"><tr>' +
+    '<td style="font-size:19pt;font-weight:bold;letter-spacing:0.5px;color:' + INK + '">' +
+      'KLEVER <span style="font-weight:normal;font-size:13pt">K&uuml;che</span></td>' +
+    '<td align="right" valign="bottom" style="font-size:7.5pt;letter-spacing:2.2px;color:' + A + '">' +
+      'REPORT &middot; KLEVER K&Uuml;CHE</td>' +
+    '</tr></table>');
+  h.push('<div style="border-bottom:2px solid ' + INK + ';height:6px"></div>');
+
+  /* title */
+  h.push('<div style="font-size:17pt;font-weight:bold;margin:18px 0 2px;color:' + INK + '">' +
+    esc(row.reportName) + '</div>');
+  h.push('<div style="font-size:10pt;color:' + MUTE + ';margin-bottom:16px">' +
+    esc(row.personName) + (row.roleName ? ' &middot; ' + esc(row.roleName) : '') + '</div>');
+
+  /* the facts that decide whether a penalty applies, given their own box */
+  var sent = row.at ? Utilities.formatDate(new Date(row.at), 'Africa/Addis_Ababa',
+                                           'HH:mm, d MMM yyyy') : '';
+  h.push('<table width="100%" cellpadding="0" cellspacing="0" style="background:' +
+    (row.late ? BADSOFT : SOFT) + ';margin-bottom:20px"><tr>');
+  [['SENT', sent], ['DUE', row.due], ['STATUS', row.late ? 'LATE' : 'ON TIME'],
+   ['TO', row.to]].forEach(function (c) {
+    if (!c[1]) return;
+    h.push('<td width="25%" style="padding:9px 12px;vertical-align:top">' +
+      '<div style="font-size:7pt;letter-spacing:1.6px;color:' + MUTE + '">' + c[0] + '</div>' +
+      '<div style="font-size:9.5pt;font-weight:bold;color:' +
+        (c[0] === 'STATUS' && row.late ? BAD : INK) + '">' + esc(c[1]) + '</div></td>');
   });
-  h.push('</table>');
+  h.push('</tr></table>');
 
-  /* The phone sends the document already sectioned and labelled. Fall back to
-     the raw field ids only if an old client posts without it. */
-  var doc = row.doc && row.doc.length ? row.doc
-          : [{ sec: '', rows: Object.keys(values).map(function (k) {
-                return [k, typeof values[k] === 'object' ? JSON.stringify(values[k]) : values[k]];
-              }) }];
+  if (row.byName && row.byName !== row.personName) {
+    h.push('<div style="font-size:9pt;color:' + BAD + ';margin:-12px 0 16px">Filed by ' +
+      esc(row.byName) + '</div>');
+  }
 
+  /* the report itself */
+  var doc = row.doc && row.doc.length ? row.doc : [];
   doc.forEach(function (s) {
     if (s.sec) {
-      h.push('<div style="font-size:9px;font-weight:bold;letter-spacing:1.5px;color:' + A +
-             ';border-bottom:1px solid ' + RULE + ';margin:18px 0 0;padding-bottom:4px">' +
-             esc(s.sec).toUpperCase() + '</div>');
+      h.push('<table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0">' +
+        '<tr><td style="background:' + SOFT + ';padding:5px 10px;font-size:7.5pt;' +
+        'font-weight:bold;letter-spacing:1.6px;color:' + A + '">' +
+        esc(s.sec).toUpperCase() + '</td></tr></table>');
     }
-    h.push('<table width="100%" style="border-collapse:collapse;font-size:11px">');
+    h.push('<table width="100%" cellpadding="0" cellspacing="0" style="font-size:10pt">');
     s.rows.forEach(function (r) {
       if (r[1] === '' || r[1] == null) return;
       h.push('<tr>' +
-        '<td style="border-bottom:1px solid ' + RULE + ';padding:5px 8px 5px 0;width:58%">' + esc(r[0]) + '</td>' +
-        '<td style="border-bottom:1px solid ' + RULE + ';padding:5px 0;text-align:right">' +
-        esc(r[1]).replace(new RegExp(String.fromCharCode(10), 'g'), '<br>') + '</td></tr>');
+        '<td style="border-bottom:1px solid ' + RULE + ';padding:6px 14px 6px 10px;' +
+          'width:56%;color:' + INK2 + '">' + esc(r[0]) + '</td>' +
+        '<td align="right" style="border-bottom:1px solid ' + RULE + ';padding:6px 10px 6px 0;' +
+          'font-weight:bold;color:' + INK + '">' + br(r[1]) + '</td></tr>');
     });
     h.push('</table>');
   });
 
+  /* anything that broke a target, where it cannot be missed */
   if (row.flags && row.flags.length) {
-    h.push('<div style="font-size:9px;font-weight:bold;letter-spacing:1.5px;color:' + BAD +
-           ';border-bottom:1px solid ' + BAD + ';margin:18px 0 0;padding-bottom:4px">FLAGS</div>');
-    h.push('<table width="100%" style="font-size:11px;color:' + BAD + '">');
+    h.push('<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0">' +
+      '<tr><td style="background:' + BADSOFT + ';padding:5px 10px;font-size:7.5pt;' +
+      'font-weight:bold;letter-spacing:1.6px;color:' + BAD + '">' +
+      'MISSED TARGETS</td></tr></table>');
+    h.push('<table width="100%" cellpadding="0" cellspacing="0" style="font-size:9.5pt">');
     row.flags.forEach(function (fl) {
-      h.push('<tr><td style="padding:4px 0">' + esc(fl) + '</td></tr>');
+      h.push('<tr><td style="border-bottom:1px solid ' + RULE + ';padding:6px 10px;color:' +
+        BAD + '">' + esc(fl) + '</td></tr>');
     });
     h.push('</table>');
   }
 
-  h.push('<table width="100%" style="margin-top:34px;font-size:9px;color:' + MUTE + '"><tr>' +
-         '<td style="border-top:1px solid ' + INK + ';padding-top:4px;width:45%">SIGNATURE &mdash; ' + esc(row.personName) + '</td>' +
-         '<td width="10%"></td>' +
-         '<td style="border-top:1px solid ' + INK + ';padding-top:4px;width:45%">DATE</td>' +
-         '</tr></table>');
-  h.push('</div>');
+  /* signatures */
+  h.push('<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:40px"><tr>' +
+    '<td width="44%" style="border-top:1px solid ' + INK2 + ';padding-top:5px;font-size:7.5pt;' +
+      'letter-spacing:1.4px;color:' + MUTE + '">' + esc(row.personName).toUpperCase() + '</td>' +
+    '<td width="12%"></td>' +
+    '<td width="44%" style="border-top:1px solid ' + INK2 + ';padding-top:5px;font-size:7.5pt;' +
+      'letter-spacing:1.4px;color:' + MUTE + '">DATE</td>' +
+    '</tr></table>');
 
-  var name = String(row.reportName || 'Report').replace(/[^A-Za-z0-9 -]/g, '') + ' - ' +
-             String(row.personName || '').replace(/[^A-Za-z0-9 -]/g, '') + '.pdf';
-  return Utilities.newBlob(h.join(''), 'text/html', name).getAs('application/pdf').setName(name);
+  h.push('<div style="margin-top:26px;border-top:1px solid ' + RULE + ';padding-top:6px;' +
+    'font-size:7.5pt;color:' + MUTE + '">Klever K&uuml;che &middot; filed through the Klever ' +
+    'report site &middot; this copy is generated from the figures as they were sent</div>');
+
+  h.push('</div>');
+  return h.join('');
+}
+
+function reportPdf_(row) {
+  var name = String(row.reportName || 'Report').replace(/[^A-Za-z0-9 -]/g, '').trim() + ' - ' +
+             String(row.personName || '').replace(/[^A-Za-z0-9 -]/g, '').trim() + '.pdf';
+  return Utilities.newBlob(reportHtml_(row), 'text/html', name)
+                  .getAs('application/pdf').setName(name);
 }
 
 function notify_(row, sheetUrl) {

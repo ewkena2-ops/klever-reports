@@ -722,6 +722,7 @@
         by: AUTH.who(),
         byName: AUTH.isChairman() ? 'Chairman' : L(personById(AUTH.who())),
         to: lang === 'am' ? report.toAm : report.toEn,
+        roleName: lang === 'am' ? personById(report.person).roleAm : personById(report.person).roleEn,
         due: lang === 'am' ? report.dueAm : report.dueEn,
         doc: reportDoc(),
         flags: reportFlags(),

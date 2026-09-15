@@ -9,7 +9,7 @@
    an outbox on that phone and goes out the next time the app is opened with a
    working connection. */
 
-const SAVE_URL = '';
+const SAVE_URL = 'https://script.google.com/macros/s/AKfycbyxT8VZ4F3mI1c9bJ-88vtiZTgKQiADksJPi4WqdiW1yniv1k0SOTFNR9PxsHITrWuO/exec';
 
 var ARCHIVE = {
   BOX: 'klever.outbox',

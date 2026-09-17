@@ -20,12 +20,12 @@
    breaking.                                                                 */
 
 const FIREBASE_CONFIG = {
-  apiKey:            '',
-  authDomain:        '',
-  projectId:         '',
-  storageBucket:     '',
-  messagingSenderId: '',
-  appId:             ''
+  apiKey:            'AIzaSyBOHcGVSDyoFGgn5KcMGpnOFYYP5iQ8WDU',
+  authDomain:        'klever-26ad1.firebaseapp.com',
+  projectId:         'klever-26ad1',
+  storageBucket:     'klever-26ad1.firebasestorage.app',
+  messagingSenderId: '654624959618',
+  appId:             '1:654624959618:web:73c98c95ba8edb0678d89b'
 };
 
 /* Accounts are <slug>@KLEVER_DOMAIN. The domain is never emailed to or from —

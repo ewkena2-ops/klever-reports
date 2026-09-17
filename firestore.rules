@@ -1,0 +1,81 @@
+rules_version = '2';
+
+/* Klever chat — who may read and write what.
+
+   This file is the real lock. js/channels.js decides what the phone offers to
+   show; these rules decide what the server will actually hand over. Someone
+   editing the JavaScript in their browser changes the first and not the
+   second. Keep that distinction in mind before moving a check out of here.
+
+   Identity is the account's email local-part: betty@klever.local is betty.
+   The Chairman is chairman@klever.local.
+
+   Messages cannot be edited or deleted by anyone, including the Chairman and
+   including the person who wrote them. That is deliberate — this log feeds
+   the penalty ledger, and a record that can be revised afterwards is not
+   evidence of anything. To correct something, write another message.
+
+   PASTE THIS INTO: Firebase console -> Firestore Database -> Rules -> Publish.  */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null
+          && request.auth.token.email != null
+          && request.auth.token.email is string;
+    }
+
+    /* the Klever id behind the account doing the asking */
+    function me() {
+      return request.auth.token.email.split('@')[0].lower();
+    }
+
+    function isChairman() {
+      return signedIn() && me() == 'chairman';
+    }
+
+    /* one read of the channel document, cached for the rest of this request */
+    function memberOf(cid) {
+      return signedIn()
+          && me() in get(/databases/$(database)/documents/channels/$(cid)).data.members;
+    }
+
+    match /channels/{cid} {
+
+      /* you can see a channel you are in. Note this covers `get` only — the
+         app never lists channels from the server, it builds the list from
+         channels.js, so there is no listing to protect here. */
+      allow get: if signedIn() && me() in resource.data.members;
+
+      /* only the Chairman defines channels and who is in them. This is the
+         Set up channels button on his phone. */
+      allow list, create, update: if isChairman();
+      allow delete: if false;
+
+      match /messages/{mid} {
+
+        allow read: if memberOf(cid);
+
+        allow create: if memberOf(cid)
+                      /* you can only write as yourself */
+                      && request.resource.data.who == me()
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 4000
+                      /* the time comes from the server, so nobody can file a
+                         message as though it were sent before a deadline */
+                      && request.resource.data.at == request.time
+                      && request.resource.data.keys().hasOnly(['who','text','lang','at']);
+
+        /* append-only, for everyone, forever */
+        allow update, delete: if false;
+      }
+    }
+
+    /* anything not named above is closed */
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

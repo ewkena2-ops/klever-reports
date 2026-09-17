@@ -100,6 +100,72 @@ the 15-day plan dates itself.
 
 Add a person in `PEOPLE`, a report in `REPORTS`. UI wording is in `js/i18n.js`.
 
+
+---
+
+# Chat
+
+`chat.html` — team chat, live, on the same site. Sign in, pick a channel, write.
+
+Channels mirror the company rather than putting thirty-nine people in one room:
+**All staff**, **Leads**, **Production**, **Site**, **Commercial**, **Finance**,
+plus a private line between each person and the Chairman. Membership is
+computed in `js/channels.js` from the `grp` field on each person in
+`js/forms.js`, so adding someone to the company adds them to their channel.
+
+**Nothing can be edited or deleted.** Not by the writer, not by the Chairman —
+`firestore.rules` refuses both outright. This log is read by the penalty
+ledger, and a record that can be quietly revised afterwards proves nothing. To
+correct a message, write another one.
+
+**Chat has its own password**, separate from the six-digit report code. Six
+digits were always "a lock, not a safe"; a running conversation deserves
+better, so chat accounts use real Firebase Authentication with longer
+passwords.
+
+It runs on **Firestore**, not on the Apps Script endpoint the reports use. That
+was measured, not assumed: chat means every phone asking "anything new?" over
+and over, and twenty-five phones polling every thirty seconds is about 24,000
+calls a day against a script runtime quota of ninety minutes. Firestore pushes
+instead of being asked, so a quiet channel costs nothing.
+
+Setup — forty minutes in a browser, once, no developer needed:
+**`docs/firebase-setup.md`**.
+
+Free at Klever's size. The allowance is 50,000 reads and 20,000 writes a day;
+thirty-nine people sending a couple of hundred messages uses about 2,000 reads.
+
+## The penalty ledger
+
+`apps-script/Agent.js` — runs once a day and answers a question nobody was
+answering: **what does each person actually owe this month?**
+
+Twenty signed letters each carry a penalty table. Until now nothing added them
+up, which meant a –200 Birr charge for a late report cost exactly nothing.
+
+Each evening it works out who owed a report, reads the archive to see who
+filed and when, and charges what that person's own letter says. Every figure in
+`REPORT_PENALTY` is quoted from a signed letter with the source named beside
+it, so any charge can be traced back to the paper it came from.
+
+**The arithmetic is done in code, never by the model.** A model asked to count
+rows will eventually miscount one, and this number comes off someone's pay.
+Gemini is asked only for the part code cannot do — reading the day's reports
+and saying what deserves the Chairman's attention. If that call fails, the
+ledger is unaffected.
+
+Set `GEMINI_KEY` in Script Properties, run `authorizeAgent()` once from the
+editor, then add a daily time trigger on `dailyLedger`. `previewLedger()`
+writes nothing and sends nothing — use it first.
+
+**Yordanos is deliberately absent from the penalty table.** He files a daily
+store report but his letter sets no penalty for filing it late or not at all —
+every other daily reporter has one. He is listed as missing and charged
+nothing, because that is what the signed paper says. It needs one sentence from
+the Chairman.
+
+---
+
 ## Redeploying
 
 ```

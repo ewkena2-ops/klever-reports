@@ -6,32 +6,68 @@
    target:      {op:'gte'|'lte', v:<number>, en:'', am:''}            */
 
 const PEOPLE = [
-  { id:'ephrata',  en:'Ephrata Assfa',   am:'ኤፍራታ አስፋ',   roleEn:'Commercial Lead',   roleAm:'የንግድ ኃላፊ' },
-  { id:'liu',      en:'Mahelet Teshome', am:'ማህሌት ተሾመ',   roleEn:'Operations Lead',   roleAm:'የኦፕሬሽን ኃላፊ' },
-  { id:'betty',    en:'Betelhem Aklog',  am:'ቤተልሔም አክሎግ', roleEn:'Finance Officer',   roleAm:'የፋይናንስ ኃላፊ' },
-  { id:'getachew', en:'Getachew Negash', am:'ጌታቸው ነጋሽ',   roleEn:'Purchasing Officer', roleAm:'የግዥ ኃላፊ' },
-  { id:'yordanos', en:'Yordanos Fikadu', am:'ዮርዳኖስ ፍቃዱ',  roleEn:'Storekeeper',       roleAm:'የመጋዘን ኃላፊ' },
-  { id:'amaha',      en:'Amaha Temechew',       am:'አማሃ ተመቸው',      roleEn:'Production Supervisor', roleAm:'የምርት ተቆጣጣሪ' },
-  { id:'wude',       en:'Wude Birhanu',         am:'ውዱ ብርሃኑ',       roleEn:'Quality Control Officer', roleAm:'የጥራት ቁጥጥር ኃላፊ' },
-  { id:'elyas',      en:'Elyas Mullatu',        am:'ኤልያስ ሙላቱ',      roleEn:'Site Supervisor',   roleAm:'የተከላ ቦታ ተቆጣጣሪ' },
-  { id:'ashenafi',   en:'Ashenafi Germa',       am:'አሸናፊ ገርማ',      roleEn:'Site Helper',       roleAm:'የተከላ ቦታ ረዳት' },
-  { id:'tsega',      en:'Tsega Girma',          am:'ፀጋ ግርማ',        roleEn:'Salesperson',       roleAm:'የሽያጭ ባለሙያ' },
-  { id:'biruktayet', en:'Biruktayet Kassahun',  am:'ብሩክታይት ካሳሁን',   roleEn:'Salesperson',       roleAm:'የሽያጭ ባለሙያ' },
-  { id:'yohannis',   en:'Yohannis Amare Badreg',am:'ዮሐንስ አማረ ባድረግ', roleEn:'Designer',          roleAm:'ዲዛይነር' },
-  { id:'yonas',      en:'Yonas Abate Nemera',   am:'ዮናስ አባተ ነመራ',   roleEn:'Designer',          roleAm:'ዲዛይነር' },
-  { id:'abrham-g',   en:'Abrham Gosaye',        am:'አብርሃም ጎሳዬ',     roleEn:'Designer',          roleAm:'ዲዛይነር' },
-  { id:'teklweld',   en:'Teklweld Birhanu',     am:'ተክለወልድ ብርሃኑ',   roleEn:'Designer',          roleAm:'ዲዛይነር' },
-  { id:'abrham-w',   en:'Abrham Webeshat',      am:'አብርሃም ወበሻት',    roleEn:'Designer',          roleAm:'ዲዛይነር' }
+  { id:'ephrata',  en:'Ephrata Assfa',   am:'ኤፍራታ አስፋ',   roleEn:'Commercial Lead',   roleAm:'የንግድ ኃላፊ', grp:'commercial' },
+  { id:'liu',      en:'Mahelet Teshome', am:'ማህሌት ተሾመ',   roleEn:'Operations Lead',   roleAm:'የኦፕሬሽን ኃላፊ', grp:'lead' },
+  { id:'betty',    en:'Betelhem Aklog',  am:'ቤተልሔም አክሎግ', roleEn:'Finance Officer',   roleAm:'የፋይናንስ ኃላፊ', grp:'finance' },
+  { id:'getachew', en:'Getachew Negash', am:'ጌታቸው ነጋሽ',   roleEn:'Purchasing Officer', roleAm:'የግዥ ኃላፊ', grp:'finance' },
+  { id:'yordanos', en:'Yordanos Fikadu', am:'ዮርዳኖስ ፍቃዱ',  roleEn:'Storekeeper',       roleAm:'የመጋዘን ኃላፊ', grp:'finance' },
+  { id:'amaha',      en:'Amaha Temechew',       am:'አማሃ ተመቸው',      roleEn:'Production Supervisor', roleAm:'የምርት ተቆጣጣሪ', grp:'production' },
+  { id:'wude',       en:'Wude Birhanu',         am:'ውዱ ብርሃኑ',       roleEn:'Quality Control Officer', roleAm:'የጥራት ቁጥጥር ኃላፊ', grp:'production' },
+  { id:'elyas',      en:'Elyas Mullatu',        am:'ኤልያስ ሙላቱ',      roleEn:'Site Supervisor',   roleAm:'የተከላ ቦታ ተቆጣጣሪ', grp:'site' },
+  { id:'ashenafi',   en:'Ashenafi Germa',       am:'አሸናፊ ገርማ',      roleEn:'Site Helper',       roleAm:'የተከላ ቦታ ረዳት', grp:'site' },
+  { id:'tsega',      en:'Tsega Girma',          am:'ፀጋ ግርማ',        roleEn:'Salesperson',       roleAm:'የሽያጭ ባለሙያ', grp:'commercial' },
+  { id:'biruktayet', en:'Biruktayet Kassahun',  am:'ብሩክታይት ካሳሁን',   roleEn:'Salesperson',       roleAm:'የሽያጭ ባለሙያ', grp:'commercial' },
+  { id:'yohannis',   en:'Yohannis Amare Badreg',am:'ዮሐንስ አማረ ባድረግ', roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial' },
+  { id:'yonas',      en:'Yonas Abate Nemera',   am:'ዮናስ አባተ ነመራ',   roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial' },
+  { id:'abrham-g',   en:'Abrham Gosaye',        am:'አብርሃም ጎሳዬ',     roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial' },
+  { id:'teklweld',   en:'Teklweld Birhanu',     am:'ተክለወልድ ብርሃኑ',   roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial' },
+  { id:'abrham-w',   en:'Abrham Webeshat',      am:'አብርሃም ወበሻት',    roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial' },
+
+  /* Betelhem's assistant. She has no terms letter of her own — everything
+     about her is written inside Betelhem's. She is here because she does the
+     work and needs to be reachable, not because the paperwork caught up. */
+  { id:'seble', en:'Seble Mulugeta', am:'ሰብለ ሙሉጌታ', roleEn:'Finance Assistant', roleAm:'የፋይናንስ ረዳት', grp:'finance' },
+
+  /* The 22 production workers, from the September payroll sheet. Ashenafi
+     Girma on that sheet is Ashenafi Germa the Site Helper, listed above — he
+     is not a production worker and must not appear twice.
+     THE AMHARIC BELOW IS TRANSLITERATED AND UNCHECKED. Several of these
+     names take more than one valid spelling, and Hiwot and Bereke reached us
+     with no surname at all. Verify against each ID before use. */
+  { id:'bisrat', en:'Bisrat Gashaw', am:'ብስራት ጋሻው', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'natenael', en:'Natenael Samson', am:'ናትናኤል ሳምሶን', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'webalem', en:'Webalem Tesfay', am:'ወባለም ተስፋይ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'yosef', en:'Yosef Fikadu', am:'ዮሴፍ ፍቃዱ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'birutukan', en:'Birutukan Adugna', am:'ብሩክታን አዱኛ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'semayat', en:'Semayat Woticho', am:'ሰማያት ወቲቾ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'yeshareg', en:'Yeshareg Mengestu', am:'የሻረግ መንግስቱ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'bezawit', en:'Bezawit Arba', am:'ቤዛዊት አርባ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'addisu', en:'Addisu Fafa', am:'አዲሱ ፋፋ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'cheru-moshe', en:'Cheru Moshe', am:'ጨሩ ሞሼ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'tsegaye', en:'Tsegaye Ataklti', am:'ፀጋዬ አታክልቲ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'etaferaw', en:'Etaferaw Marye', am:'እጣፈራው ማርዬ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'fasika', en:'Fasika Abebe', am:'ፋሲካ አበበ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'yared', en:'Yared Belayhneh', am:'ያሬድ በላይነህ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'kiflom', en:'Kiflom Hadish', am:'ክፍሎም ሃዲሽ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'meseret', en:'Meseret Dejene', am:'መሰረት ደጀኔ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'haben', en:'Haben Mekonen', am:'ሃበን መኮነን', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'gebeyaw', en:'Gebeyaw Wale', am:'ገበያው ዋሌ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'cheru-melaku', en:'Cheru Melaku', am:'ጨሩ መላኩ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'tsegenet', en:'Tsegenet Getachew', am:'ፅገነት ጌታቸው', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'hiwot', en:'Hiwot', am:'ህይወት', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' },
+  { id:'bereke', en:'Bereke', am:'በረከ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' }
 ];
 
 const REPORTS = [
 
 /* ============================ EPHRATA — DAILY ============================ */
 {
-  id:'ephrata-daily', person:'ephrata', cadence:'daily', dueTime:'17:30', skipDays:[5],
+  /* Amendment 1, 17 September 2026 removed the Friday exception: this report
+     is now due every working day, Friday included. */
+  id:'ephrata-daily', person:'ephrata', cadence:'daily', dueTime:'17:30',
   en:'Daily Commercial Report', am:'ዕለታዊ የንግድ ሪፖርት',
   toEn:'Chairman', toAm:'ሊቀመንበር',
-  dueEn:'5:30 PM, Monday to Thursday and Saturday', dueAm:'ከሰኞ እስከ ሐሙስ እና ቅዳሜ ከቀኑ 11፡30 (5:30 PM)',
+  dueEn:'5:30 PM, Monday to Saturday', dueAm:'ከሰኞ እስከ ቅዳሜ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Late –500 Birr · Missing –1,000 Birr', penAm:'ዘግይቶ –500 ብር · ካልተላከ –1,000 ብር',
   sections:[
     { en:'1 · Leads today', am:'1 · ዛሬ የመጡ አዲስ ደንበኞች', fields:[
@@ -713,10 +749,11 @@ const REPORTS = [
 
 /* ============= EPHRATA — 4-WEEK ROLLING SALES PROJECTION ============= */
 {
-  id:'ephrata-projection', person:'ephrata', cadence:'weekly', dueTime:'10:00', dueDay:1,
+  /* Amendment 1, 17 September 2026 moved this back from Monday 10:00 AM. */
+  id:'ephrata-projection', person:'ephrata', cadence:'weekly', dueTime:'17:00', dueDay:5,
   en:'4-Week Rolling Sales Projection', am:'የ4 ሳምንት የሽያጭ ትንበያ',
   toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
-  dueEn:'Monday 10:00 AM', dueAm:'ሰኞ ከጠዋቱ 4፡00 (10:00 AM)',
+  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'First miss –500 Birr · Second in a row –1,000 Birr',
   penAm:'መጀመሪያ ሲቀር –500 ብር · በተከታታይ ሁለተኛ –1,000 ብር',
   sections:[

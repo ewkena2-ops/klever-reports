@@ -89,6 +89,14 @@
     inner.appendChild(a);
     inner.appendChild(el('div', 'spacer'));
 
+    /* the way across to chat. Only for someone signed in — it is the same
+       team either side, but the chat asks for its own password. */
+    if (AUTH.who()) {
+      var toChat = el('a', 'crosslink', t('chatOpen'));
+      toChat.href = 'chat.html';
+      inner.appendChild(toChat);
+    }
+
     var tg = el('div', 'langtoggle');
     [['en', 'EN'], ['am', 'አማ']].forEach(function (p) {
       var b = el('button', null, p[1]);

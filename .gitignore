@@ -1,1 +1,6 @@
 apps-script/.clasp.json
+
+# screenshots and dumps from headless checks
+_shot.png
+_dom.txt
+_diag.html

@@ -187,6 +187,30 @@ Two traps that cost a rewrite and are worth not walking back into:
   to a board shortage, so it confidently blamed the people who were away. If an
   agent can reach a conclusion about cause, give it the competing causes too.
 
+### The sixteenth: what to decide
+
+The other fifteen say what happened. This one says what to do about the ten
+things that are still undecided — the assembler pay rate, the protection
+clause, which document wins, Yordanos's missing penalty, and the rest.
+
+`DECISIONS` holds them, and each carries a `bites(d)` function that runs on
+today's figures and returns what it cost **today**, or null. That part is code:
+whether a thing happened is a fact, and only what to do about it is a
+judgment. So the register stops being a list somebody wrote once and becomes a
+daily question — Rovestone m² produced under an unsigned policy, a refusal
+made by someone the protection clause does not cover, Yordanos late and
+charged nothing while everyone else paid.
+
+**Three of the ten are marked `yours:true`** — the assembler rate, Yordanos's
+figure, and Ephrata's three questions. Those are commercial choices with no
+deducible answer, and the agent is told to lay out what each answer means and
+stop. It learned that the hard way: the first draft recommended "the
+two-million floor from Amendment 1", when Amendment 1 says three million and
+two million is the unsigned master file. It picked a side on a question that
+was not analytical and got the attribution backwards doing it. Where the paper
+simply contradicts itself there *is* a right answer, and there it recommends
+plainly.
+
 `previewAgents()` shows what each agent would be given without spending
 anything on the model. Run that first.
 

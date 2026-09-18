@@ -75,8 +75,187 @@ function pctOf_(part, whole) {
   return whole ? Math.round((part / whole) * 1000) / 10 : 0;
 }
 
+
 /* ------------------------------------------------------------------ *
- *  The fifteen                                                        *
+ *  What the Chairman has not decided                                  *
+ * ------------------------------------------------------------------ */
+
+/* From the control sheet of 17 September 2026, plus the two the letters
+   themselves leave open. These are not abstract: each one has days on which
+   it costs money or leaves somebody unprotected, and until now nothing
+   connected the decision to the day.
+
+   `bites` runs on today's figures and returns what it cost today, or null if
+   today was not one of those days. It is code, not a model — whether a thing
+   happened is a fact, and only what to do about it is a judgment. */
+
+var DECISIONS = [
+
+{ id:'assembler-rate', what:'The assembler pay rate',
+  yours:true,
+  detail:'Clause 3 says 600 Birr per m², which over a 26-day month at 8 a day is 124,800 Birr. '+
+         'Clause 4 says a standard month is 9,000 to 11,000. The two are about twelve times apart.',
+  blocks:'Assembler Complete File, Handbook, Contract, Elyas Complete File parts 3 and 5 — '+
+         'nothing can be printed for assemblers until one figure wins',
+  bites: function () {
+    return 'Still blocking. This is the only open decision that stops paper leaving the building, '+
+           'and it has blocked it every day since it was raised.';
+  } },
+
+{ id:'yordanos-penalty', what:'What Yordanos owes for a missing store report',
+  yours:true,
+  detail:'Every other daily reporter has a late and a missing figure in their letter. His has '+
+         'neither, so the ledger lists him and charges nothing.',
+  blocks:'The penalty ledger, every day he is late or absent',
+  bites: function (d) {
+    var hit = null;
+    d.ledger.forEach(function (l) {
+      if (String(l.person).indexOf('Yordanos') === 0 && l.status !== 'On time') hit = l.status;
+    });
+    return hit ? 'Yordanos was ' + hit + ' today and was charged nothing, because his letter '+
+                 'sets no figure. Everyone else in the same position paid.' : null;
+  } },
+
+{ id:'rework-band', what:'The 2–5% rework dead band',
+  detail:'Wude earns a bonus below 2% and is fined above 5%. Between the two, nothing in her '+
+         'letter reacts at all.',
+  blocks:'Wude’s letter, clause 5',
+  bites: function (d) {
+    var w = vals_(d.filed, 'wude-daily');
+    if (!got_(d.filed, 'wude-daily')) return null;
+    var r = n_(w.r_rate);
+    return (r > 2 && r < 5)
+      ? 'Rework was ' + r + '% today — inside the band where nothing happens. A third of the '+
+        'range her letter covers has no consequence either way.'
+      : null;
+  } },
+
+{ id:'protection-clause', what:'The protection clause',
+  detail:'Four documents grant the right to refuse unsafe or defective work and then penalise '+
+         'the refusal. The assembler contract is sharpest: clause 2 grants three refusal '+
+         'rights, clause 5 makes refusing an instruction grounds for immediate removal. '+
+         'Wude’s letter holds the only protection clause in the company.',
+  blocks:'Assembler contract, handbook, production worker letter, cleaner letter, Ashenafi',
+  bites: function (d) {
+    var w = vals_(d.filed, 'wude-daily');
+    var e = vals_(d.filed, 'elyas-daily');
+    var why = [];
+    if (yes_(w.pr_any)) why.push('someone pressured Wude to pass a defect today');
+    if (n_(e.q_rework) > 0) why.push('work was refused and reworked at site');
+    return why.length
+      ? why.join('; ') + '. Wude is covered. Nobody else who did the same thing would be.'
+      : null;
+  } },
+
+{ id:'assembler-timing', what:'Assembler daily update — 5:00 or 6:00 PM',
+  detail:'Assemblers post at 6:00 PM. Elyas files his site report at 5:30, so he reports on a '+
+         'day before his own team reports it to him. Moving it to 5:00 matches Ashenafi’s, '+
+         'which is the one chain in the structure that runs the right way round.',
+  blocks:'Assembler order, handbook, training, contract',
+  bites: function (d) {
+    var e = vals_(d.filed, 'elyas-daily');
+    if (!got_(d.filed, 'elyas-daily')) return null;
+    return (n_(e.a_late) > 0 || n_(e.a_early) > 0 || n_(e.a_behave) > 0)
+      ? 'Elyas reported assembler problems today in a report filed half an hour before the '+
+        'assemblers themselves report. He is describing a day he has not yet been told about.'
+      : null;
+  } },
+
+{ id:'which-document-wins', what:'Which document wins when two disagree',
+  detail:'One sentence — that signing a policy or an order amends the signer’s terms letter to '+
+         'the extent of any conflict — closes eleven findings across the Rovestone policy, the '+
+         'master file and the assembler order.',
+  blocks:'Rovestone clause 13, master file, assembler order',
+  bites: function (d) {
+    var c = contradictions_(d);
+    if (!c.length) return null;
+    return c.length + ' pair' + (c.length > 1 ? 's' : '') + ' of reports disagreed today (' +
+           c[0].about + ': ' + c[0].first + ' against ' + c[0].second + '). When two people '+
+           'disagree there is at least a conversation. When two documents disagree there is '+
+           'still no rule for which one governs.';
+  } },
+
+{ id:'ephrata-three', what:'Ephrata — three questions still open',
+  yours:true,
+  detail:'Three questions. (a) The commission floor: HER SIGNED LETTER, as amended on '+
+         '17 September, pays 0.50/1.0/1.5% from a floor of THREE million. The master file, which '+
+         'nobody has signed, pays 1.0/1.5/2.0% from TWO million. The letter is the document she '+
+         'signed; the master file is the one that disagrees with it. (b) Is her collection '+
+         'penalty 2,000 Birr or 25,000? (c) Does she run Operations and Finance, which the '+
+         'organizational chart shows and her own letter forbids in as many words?',
+  blocks:'Master file sections 2, 8 and 16 against her letter clauses 2, 3 and 5',
+  bites: function (d) {
+    var e = vals_(d.filed, 'ephrata-daily');
+    if (!got_(d.filed, 'ephrata-daily')) return null;
+    var wk = n_(e.week_total);
+    return wk ? 'Her week stands at ' + fmt_(wk) + ' Birr. Which floor applies to it — two '+
+                'million or three — is still unsettled, and the two answers pay her differently.'
+              : null;
+  } },
+
+{ id:'no-letter', what:'Three people still have no letter',
+  detail:'Alex, Seble Mulugeta and Kidan. Alex has no full name either, and neither do Kidan, '+
+         'Kalkidan or Frewoyni, so four signature lines across the set carry short names. Alex '+
+         'is named in two letters, co-signs delivery orders and has a signature line in the '+
+         'Rovestone policy.',
+  blocks:'Master file section 17 still records Alex as issued',
+  bites: function () { return null; } },
+
+{ id:'rovestone', what:'Rovestone, before anyone signs it',
+  detail:'The 50% advance contradicts Mahelet’s and Betelhem’s letters, which both forbid '+
+         'starting production before final payment. Only Amaha’s letter mentions Rovestone at '+
+         'all, so the policy binds him and nobody else. And the authorization log has no column '+
+         'for the Chairman’s approval, which is the policy’s central rule.',
+  blocks:'Rovestone policy clauses 5, 6 and 13',
+  bites: function (d) {
+    var a = vals_(d.filed, 'amaha-daily');
+    var r = n_(a.p_rove);
+    return r > 0 ? fmt_(r) + ' m² of Rovestone work was produced today under a policy nobody '+
+                   'has signed and which binds only Amaha.' : null;
+  } },
+
+{ id:'payroll-headcount', what:'Payroll headcount in the master file',
+  detail:'It pays three salespeople and six designers. There are two and five. It also prints '+
+         'Amaha’s base as 35,008 Birr where his letter says 35,000.',
+  blocks:'Master file section 16 — 25,008 Birr a month',
+  bites: function () { return null; } }
+];
+
+/* Two people describing the same day and giving different numbers. Only pairs
+   where both reports were actually filed count — an absent figure is a gap and
+   not a disagreement, which is the distinction the first version of the
+   contradictions agent got wrong. A difference under a tenth is rounding. */
+function contradictions_(d) {
+  var out = [];
+  function cmp(label, aRid, aF, bRid, bF) {
+    var a = nOrNull_(d.filed, aRid, aF), b = nOrNull_(d.filed, bRid, bF);
+    if (a === null || b === null) return;
+    if (a === 0 && b === 0) return;
+    var gap = Math.abs(a - b), scale = Math.max(Math.abs(a), Math.abs(b));
+    if (scale && gap / scale > 0.1) out.push({ about: label, first: a, second: b });
+  }
+  cmp('m² produced — Amaha against Mahelet', 'amaha-daily','p_total', 'liu-daily','m2');
+  cmp('defects — Amaha against Wude', 'amaha-daily','qc_defects', 'wude-daily','d_total');
+  cmp('defects — Wude against Mahelet', 'wude-daily','d_total', 'liu-daily','defects');
+  cmp('waste % — Amaha against Mahelet', 'amaha-daily','w_pct', 'liu-daily','waste');
+  cmp('m² installed — Elyas against Mahelet', 'elyas-daily','j_m2', 'liu-daily','installed');
+  return out;
+}
+
+/* which of them cost something today */
+function decisionsBiting_(d) {
+  var out = [];
+  DECISIONS.forEach(function (dec) {
+    var why = null;
+    try { why = dec.bites(d); } catch (e) { why = null; }
+    out.push({ id:dec.id, what:dec.what, detail:dec.detail, blocks:dec.blocks,
+               yours: !!dec.yours, cost_today: why });
+  });
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ *  The agents                                                         *
  * ------------------------------------------------------------------ */
 
 var AGENTS = [
@@ -404,7 +583,10 @@ var AGENTS = [
       mahelet_qc_pass: N('liu-daily','qc_pass'), mahelet_qc_fail: N('liu-daily','qc_fail'),
       elyas_installed_m2: N('elyas-daily','j_m2'), mahelet_installed: N('liu-daily','installed'),
       offcut_m2_received_by_store: N('yordanos-daily','k_offin'),
-      offcut_m2_sent_by_factory: sentOut
+      offcut_m2_sent_by_factory: sentOut,
+      /* already checked in code: pairs that differ by more than a tenth, where
+         both reports were actually filed */
+      mismatches_found_in_code: contradictions_(d)
     };
   },
   ask:'These figures come from different people describing the same day. Where two of them '+
@@ -413,6 +595,26 @@ var AGENTS = [
       'having recorded zero. Do not reach: a small difference is rounding or timing. A '+
       'production figure that disagrees with the operations figure, or a factory stopped for '+
       'a board the store says it had, is worth the Chairman’s time.' },
+
+{ id:'decide', en:'What to decide', am:'ምን መወሰን እንዳለበት', last:true,
+  facts: function (d) {
+    return {
+      open_decisions: decisionsBiting_(d),
+      note: 'cost_today is null where today was not one of the days this one costs anything'
+    };
+  },
+  ask:'These are decisions the Chairman has not made. Do not list them all back — he wrote '+
+      'them. Take the ones with a cost_today and give each one sentence: what it cost today, '+
+      'then what to do. '+
+      'Where "yours" is true, the answer is a commercial choice and not something you can '+
+      'deduce — do NOT pick a side. Say what each answer would mean and leave it with him. '+
+      'Everywhere else the paper contradicts itself and there is a right answer, so say it '+
+      'plainly. '+
+      'Never attribute a figure to a document unless the detail says so — getting which '+
+      'document holds which number backwards is worse than saying nothing. '+
+      'Where a decision blocks documents from being printed, say that first: time spent not '+
+      'deciding it is the only cost here that compounds. At most 150 words. If nothing bit '+
+      'today, name the decision nearest to biting and stop.' },
 
 { id:'brief', en:'The Chairman’s brief', am:'የሊቀመንበሩ ማጠቃለያ', last:true,
   facts: function (d) { return { date: d.dayLabel }; },
@@ -502,8 +704,21 @@ function askAll_(d) {
     out.push({ id:a.id, en:a.en, am:a.am, facts:a.facts(d), text:readReply_(res[i]) });
   });
 
-  /* the brief reads the other fourteen */
-  var brief = AGENTS.filter(function (a) { return a.last; })[0];
+  /* the decision agent reads the day; the brief reads everything, so they run
+     in that order and not at the same time */
+  var decide = AGENTS.filter(function (a) { return a.id === 'decide'; })[0];
+  if (decide) {
+    var dr = UrlFetchApp.fetch(url, {
+      method:'post', contentType:'application/json', muteHttpExceptions:true,
+      payload: JSON.stringify({ contents: [{ parts: [{
+        text: promptFor_(decide, decide.facts(d), d) }] }] })
+    });
+    out.push({ id:decide.id, en:decide.en, am:decide.am, facts:{},
+               text:readReply_(dr), decision:true });
+  }
+
+  /* the brief reads everything above it */
+  var brief = AGENTS.filter(function (a) { return a.id === 'brief'; })[0];
   if (brief) {
     var digest = out.map(function (r) { return '## ' + r.en + '\n' + r.text; }).join('\n\n');
     var r = UrlFetchApp.fetch(url, {
@@ -578,8 +793,9 @@ function writeAnalysis_(results, when) {
 }
 
 function mailAnalysis_(results, d, when) {
-  var brief = results.filter(function (r) { return r.last; })[0];
-  var rest = results.filter(function (r) { return !r.last; });
+  var brief = results.filter(function (r) { return r.id === 'brief'; })[0];
+  var decide = results.filter(function (r) { return r.decision; })[0];
+  var rest = results.filter(function (r) { return !r.last && !r.decision; });
   var owed = d.ledger.reduce(function (a, l) { return a + l.amount; }, 0);
   var missing = d.ledger.filter(function (l) { return l.status === 'MISSING'; }).length;
 
@@ -598,6 +814,14 @@ function mailAnalysis_(results, d, when) {
     html += '<div style="background:#f3f4f1;border-left:3px solid #0f5c54;padding:14px 16px;' +
             'margin-bottom:24px;font-size:14px;line-height:1.65;white-space:pre-wrap">' +
             esc_(brief.text) + '</div>';
+  }
+
+  if (decide) {
+    html += '<h3 style="font-size:14px;margin:0 0 6px;color:#8f3020;letter-spacing:.02em">' +
+            'What to decide</h3>' +
+            '<div style="background:#f8eae6;border-left:3px solid #8f3020;padding:14px 16px;' +
+            'margin-bottom:26px;font-size:13.5px;line-height:1.65;white-space:pre-wrap">' +
+            esc_(decide.text) + '</div>';
   }
 
   rest.forEach(function (r) {

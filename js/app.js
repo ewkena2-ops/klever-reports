@@ -32,6 +32,14 @@
     if (v === '' || isNaN(Number(v))) return String(n);
     return Number(v).toLocaleString('en-US');
   }
+  /* yyyy-mm-dd in local time. toISOString() is UTC, and Addis is three hours
+     ahead, so a draft typed at 1am was being filed under yesterday and looked
+     lost the next morning. */
+  function stamp() {
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) +
+           '-' + ('0' + d.getDate()).slice(-2);
+  }
   function today() {
     var d = new Date(), m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return d.getDate() + ' ' + m[d.getMonth()] + ' ' + d.getFullYear();
@@ -296,6 +304,9 @@
       go.textContent = t('chatSigningIn');
       AUTH.signIn(sel.value, input.value).then(function () {
         rebuildTop();
+        /* on the Chairman's page the next screen belongs to chairman.js, and
+           only a reload hands it over cleanly */
+        if (document.body.dataset.page === 'chairman') { location.reload(); return; }
         renderIndex(root);
       })['catch'](function (e) {
         /* never say which half was wrong */
@@ -458,7 +469,8 @@
   }
 
   function foot() {
-    return el('p', 'foot', ARCHIVE.on() ? t('footSaved') : t('foot'));
+    var archiving = typeof ARCHIVE !== 'undefined' && ARCHIVE.on();
+    return el('p', 'foot', archiving ? t('footSaved') : t('foot'));
   }
 
   /* ---------------- form page ---------------- */
@@ -484,7 +496,7 @@
     var person = personById(report.person);
     document.title = L(report) + ' · ' + L(person);
 
-    draftKey = 'klever.draft.' + report.id + '.' + new Date().toISOString().slice(0, 10);
+    draftKey = 'klever.draft.' + report.id + '.' + stamp();
     try { values = JSON.parse(store.get(draftKey) || '{}'); } catch (e) { values = {}; }
 
     root.innerHTML = '';
@@ -536,6 +548,7 @@
   /* repeating rows: t:'table' (person adds rows) and t:'grid' (fixed rows) */
   function repeater(f) {
     var wrap = el('div', 'repwrap');
+    wrap.id = 'w_' + f.id;
     wrap.appendChild(el('div', 'replabel', L(f)));
     var body = el('div', 'rep');
     wrap.appendChild(body);
@@ -612,7 +625,12 @@
 
   function fieldRow(f) {
     if (f.t === 'table' || f.t === 'grid') return repeater(f);
-    var row = el('div', 'fld' + (f.i ? ' indent' : '') + (f.t === 'area' ? ' wide' : ''));
+    var row = el('div', 'fld' + (f.i ? ' indent' : '')
+                 + (f.t === 'area' ? ' wide' : '')
+                 /* a choice and a yes/no both hold words, and words do not fit
+                    the narrow control column once they are in Amharic */
+                 + (f.t === 'choice' ? ' wide' : '')
+                 + (f.t === 'yesno' ? ' yn' : ''));
     var lab = el('label', null, L(f));
     lab.htmlFor = 'f_' + f.id;
     row.appendChild(lab);
@@ -653,6 +671,21 @@
       di.value = values[f.id] || '';
       di.onchange = di.oninput = function () { values[f.id] = di.value; redrawGrids(); refresh(); };
       row.appendChild(di);
+    } else if (f.t === 'choice') {
+      var sel = document.createElement('select');
+      sel.id = 'f_' + f.id;
+      var blank = document.createElement('option');
+      blank.value = ''; blank.textContent = '—';
+      sel.appendChild(blank);
+      (f.opts || []).forEach(function (o) {
+        var op = document.createElement('option');
+        op.value = o.v;
+        op.textContent = lang === 'am' ? o.am : o.en;
+        sel.appendChild(op);
+      });
+      sel.value = values[f.id] || '';
+      sel.onchange = function () { values[f.id] = sel.value; refresh(); };
+      row.appendChild(sel);
     } else if (f.t === 'text') {
       var ti = document.createElement('input');
       ti.type = 'text'; ti.id = 'f_' + f.id;
@@ -888,8 +921,29 @@
     store.set(draftKey, JSON.stringify(values));
 
     var fields = allFields(), need = 0, done = 0;
+    var firstEmpty = null;
     fields.forEach(function (f) {
-      if (!f.opt) { need++; if (filled(f)) done++; }
+      if (!f.opt) {
+        /* a grid is not one answer. w_stage is seven rows of three boxes, and
+           counting it as a single unit made "1 still empty" mean anything from
+           one number to twenty-one. */
+        var units = (f.t === 'grid' && f.rows) ? f.rows.length : 1;
+        need += units;
+        var ok = filled(f);
+        if (ok) done += units;
+
+        /* show which one. .miss has been in the stylesheet since it was
+           written and nothing ever applied it. */
+        var node = document.getElementById('f_' + f.id) ||
+                   document.getElementById('w_' + f.id);
+        if (node) {
+          if (ok) node.classList.remove('miss');
+          else { node.classList.add('miss'); if (!firstEmpty) firstEmpty = node; }
+        } else if (!ok && !firstEmpty) {
+          var wrap = document.getElementById('w_' + f.id);
+          if (wrap) firstEmpty = wrap;
+        }
+      }
       if (f.tgt) {
         var h = document.getElementById('h_' + f.id);
         if (h) {
@@ -909,8 +963,19 @@
         var b = el('b', null, String(missing));
         c.appendChild(b);
         c.appendChild(document.createTextNode(' ' + t('empty')));
+        /* the number alone is not help on a form ten screens long */
+        if (firstEmpty) {
+          c.classList.add('findable');
+          c.title = t('findNext');
+          c.onclick = function () {
+            firstEmpty.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            try { firstEmpty.focus({ preventScroll: true }); } catch (e) {}
+          };
+        }
       } else {
         c.textContent = t('ready');
+        c.classList.remove('findable');
+        c.onclick = null;
       }
     }
     var send = document.getElementById('send');
@@ -974,6 +1039,12 @@
     var v = values[f.id];
     if (!has(v)) return '';
     if (f.t === 'yesno') return v === 'yes' ? t('yes') : t('no');
+    if (f.t === 'choice') {
+      for (var oi = 0; oi < (f.opts || []).length; oi++) {
+        if (f.opts[oi].v === v) return L(f.opts[oi]);
+      }
+      return String(v);
+    }
     if (f.t === 'date') {
       var dd = new Date(v);
       return isNaN(dd.getTime()) ? String(v) : shortDate(dd) + ' ' + dd.getFullYear();
@@ -1035,8 +1106,25 @@
     fill: function (v) { Object.keys(v).forEach(function (k) { values[k] = v[k]; }); refresh(); }
   };
 
+  /* Yesterday's drafts, swept once a day. Without this a phone accumulates one
+     key per report per day forever, and the quota error when it fills is
+     swallowed by store.set and by the offline outbox both. */
+  function sweepDrafts(keepStamp) {
+    try {
+      var kill = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('klever.draft.') === 0 && k.slice(-10) !== keepStamp) kill.push(k);
+      }
+      kill.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) { /* a full or blocked store is not worth taking the page down for */ }
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
-    ARCHIVE.flush();
+    /* save.js is not loaded on every page — the Chairman's page has no forms
+       to file, so it has no outbox to flush. Guard rather than assume. */
+    if (typeof ARCHIVE !== 'undefined') ARCHIVE.flush();
+    sweepDrafts(stamp());
     var root = document.getElementById('app');
     if (!root) return;
 
@@ -1048,6 +1136,10 @@
       AUTH._adopt(id);
       buildTop();
       if (!AUTH.who()) { renderSignIn(root); return; }
+      /* chairman.js owns #app on its own page. app.js is still loaded there
+         for buildTop, renderSignIn and the shared helpers, and must draw
+         nothing itself or the two race each other for the same node. */
+      if (document.body.dataset.page === 'chairman') return;
       if (document.body.dataset.page === 'form') renderForm(root);
       else renderIndex(root);
     });

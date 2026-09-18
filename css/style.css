@@ -656,3 +656,39 @@ body[data-page="chat"] .wrap{padding-bottom:104px}
 }
 .chmissing{margin-top:18px}
 .chfl{font-family:var(--mono);font-size:10px;letter-spacing:.13em;margin-bottom:5px}
+
+/* ---------------- what the audit found ---------------- */
+
+/* Archivo 400 is loaded now. Until it was, every rule that omitted a weight
+   rendered in Medium and the whole ladder collapsed to 500/600/700, a 2% step.
+   These are the body tier; they were never meant to be Medium. */
+.sub,.fld > label,.person .rl,.chan .rl,.railwhat,.chrr,.chfk,.codenote{font-weight:400}
+
+/* A yes/no answer records whether a compliance item passed, and it was being
+   squeezed into the 104px control column — about 49px a button on a 360px
+   phone. "አይደለም" is six Ethiopic glyphs and did not fit. Give it the width of
+   the row and a thumb-sized target. */
+.fld.yn{grid-template-columns:1fr}
+.fld.yn .seg{margin-top:5px}
+.fld.yn .seg button{padding:13px 6px;font-size:14.5px}
+
+/* The smallest target in the app was also the only destructive one: a bare ×
+   at about 19px square that deletes a row of typed work. */
+.reprowhead .rm{
+  min-width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--sans);font-size:20px;color:var(--muted);border-radius:var(--radius);
+}
+.reprowhead .rm:active{background:var(--debit-soft);color:var(--debit)}
+
+/* .miss was declared and never applied by anything — dead since it was written.
+   It is what tells a person which of 38 required fields is the empty one. */
+input.miss,textarea.miss,select.miss{
+  border-color:var(--debit);
+  box-shadow:inset 0 0 0 1px var(--debit);
+}
+.repwrap.miss{border-color:var(--debit)}
+
+/* The count in the bar said "12 still empty" and stopped there, across ten
+   screens of form. Now it is a button that takes you to the next one. */
+.count.findable{cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.count.findable:active{opacity:.6}

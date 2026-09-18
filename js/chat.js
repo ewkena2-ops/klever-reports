@@ -173,7 +173,10 @@ import {
     var optC = el('option', null, lang === 'am' ? 'ሊቀመንበር' : 'Chairman');
     optC.value = CHAIRMAN;
     sel.appendChild(optC);
+    /* only offer names that have an account — otherwise picking one gives a
+       password error that looks like the person's own mistake */
     PEOPLE.forEach(function (p) {
+      if (CHAT_ACCOUNTS.indexOf(p.id) === -1) return;
       var o = el('option', null, L(p) + ' · ' + (lang === 'am' ? p.roleAm : p.roleEn));
       o.value = p.id;
       sel.appendChild(o);

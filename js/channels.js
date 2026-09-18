@@ -15,6 +15,26 @@
 
 const CHAIRMAN = 'chairman';
 
+/* Who actually has a chat account.
+
+   This mirrors Firebase Authentication, which is the real source of truth —
+   a name here with no account behind it produces a channel nobody can open,
+   and the Chairman ends up scrolling past private lines to people who cannot
+   sign in. The 22 production workers were left out on 17 September 2026: they
+   are factory floor, and whether a web chat reaches them at all is worth
+   finding out before handing out twenty-two more passwords.
+
+   To add someone: create their account (see docs/firebase-setup.md), add their
+   id here, push, and press Set up channels again. */
+const CHAT_ACCOUNTS = [
+  'ephrata', 'liu', 'betty', 'seble', 'getachew', 'yordanos',
+  'amaha', 'wude', 'elyas', 'ashenafi',
+  'tsega', 'biruktayet',
+  'yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w'
+];
+
+function hasChat(id) { return id === CHAIRMAN || CHAT_ACCOUNTS.indexOf(id) !== -1; }
+
 /* the standing channels, in the order they appear on the phone */
 const CHANNEL_DEFS = [
   { id:'all',        kind:'team', en:'All staff',    am:'ሁሉም ሠራተኛ',
@@ -60,8 +80,9 @@ var CHANNELS = {
       ids = ids.concat(PEOPLE.filter(function (p) { return p.grp === def.grp; })
                              .map(function (p) { return p.id; }));
     }
-    /* a name can only appear once, however many rules put it there */
-    return ids.filter(function (v, i, a) { return a.indexOf(v) === i; });
+    /* a name can only appear once, however many rules put it there, and a
+       name with no account behind it is not a member of anything */
+    return ids.filter(function (v, i, a) { return a.indexOf(v) === i && hasChat(v); });
   },
 
   /* the channels this person can open, standing channels then their own
@@ -77,7 +98,7 @@ var CHANNELS = {
     if (id === CHAIRMAN) {
       /* the Chairman sees one private line per person */
       PEOPLE.forEach(function (p) {
-        out.push(CHANNELS.direct(p.id));
+        if (hasChat(p.id)) out.push(CHANNELS.direct(p.id));
       });
     } else {
       out.push(CHANNELS.direct(id));
@@ -120,7 +141,7 @@ var CHANNELS = {
       return { id:d.id, kind:d.kind, en:d.en, am:d.am,
                descEn:d.descEn, descAm:d.descAm, members:CHANNELS.membersOf(d) };
     });
-    PEOPLE.forEach(function (p) { out.push(CHANNELS.direct(p.id)); });
+    PEOPLE.forEach(function (p) { if (hasChat(p.id)) out.push(CHANNELS.direct(p.id)); });
     return out;
   }
 };

@@ -28,7 +28,7 @@ import {
   collection, doc, setDoc, addDoc, query, orderBy, limit, onSnapshot,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
-import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js';
+import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js?v=143a190a';
 
 (function () {
   'use strict';

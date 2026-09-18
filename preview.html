@@ -1,153 +1,310 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<title>Klever — three directions</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap">
 <style>
-:root{
-  --paper:#fbfbf9; --desk:#eceee9; --surface:#f3f4f1; --surface-2:#e7eae5;
-  --ink:#141b1a; --ink-2:#3a4442; --muted:#5c6662;
-  --rule:#d5dad5; --rule-strong:#b3bcb6;
-  --accent:#0f5c54; --accent-soft:#e3efec;
-  --debit:#8f3020; --debit-soft:#f8eae6;
-  --warn:#8a6a1c; --warn-soft:#faf0dd;
-  --sans:"Archivo","Noto Sans Ethiopic",Arial,sans-serif;
-  --serif:"Source Serif 4",Georgia,serif;
-  --mono:"IBM Plex Mono",Consolas,monospace;
-  --radius:3px;
-}
 *{box-sizing:border-box}
-body{margin:0;background:var(--desk);color:var(--ink);font-family:var(--serif);
-  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
-.wrap{max-width:680px;margin:0 auto;padding:0 16px;width:100%}
-.phone{width:100%;max-width:520px;margin:0 auto;background:var(--desk)}
+body{margin:0;background:#16191c;color:#e8ebe8;font-family:"Archivo",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
 
+.page{max-width:1300px;margin:0 auto;padding:26px 16px 60px}
+.lede{max-width:620px;margin:0 0 30px}
+.lede h1{font-size:23px;font-weight:700;letter-spacing:-.02em;margin:0 0 7px}
+.lede p{font-size:14px;line-height:1.6;color:#98a3a0;margin:0}
 
-/* ---- header: letterhead, not a nav bar ---- */
-.top{background:var(--paper);border-bottom:1px solid var(--rule-strong)}
-.top-in{max-width:680px;margin:0 auto;padding:11px 16px;display:flex;align-items:center;gap:12px}
-.top img{height:30px;display:block}
-.top .spacer{flex:1}
-.lang{display:flex;border:1px solid var(--rule-strong);border-radius:var(--radius);overflow:hidden}
-.lang button{font-family:var(--sans);font-size:11.5px;font-weight:600;letter-spacing:.06em;
-  padding:6px 10px;border:0;background:transparent;color:var(--muted);cursor:pointer}
-.lang button[aria-pressed=true]{background:var(--accent);color:#fff}
-.who{display:flex;align-items:center;gap:7px;border:1px solid var(--rule-strong);
-  border-radius:var(--radius);background:transparent;padding:5px 10px 5px 6px;cursor:pointer}
-.who i{width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
-  font-family:var(--sans);font-size:11px;font-weight:700;font-style:normal;
-  display:flex;align-items:center;justify-content:center}
-.who span{font-family:var(--sans);font-size:11.5px;font-weight:600;color:var(--muted)}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;justify-content:center}
+.col{width:372px;flex:none}
+.cap{margin:0 0 11px}
+.cap b{display:block;font-size:14.5px;font-weight:700;letter-spacing:.01em}
+.cap span{display:block;font-size:12.5px;line-height:1.5;color:#98a3a0;margin-top:3px}
+.frame{border-radius:14px;overflow:hidden;border:1px solid #2c3335;box-shadow:0 14px 40px rgba(0,0,0,.45)}
 
-/* ---- the one thing that matters: what is due, and when ---- */
-.hero{background:var(--paper);border:1px solid var(--rule-strong);border-top:3px solid var(--accent);
-  margin:18px 0 26px;padding:17px 18px 15px}
-.hero .nm{font-family:var(--sans);font-size:20px;font-weight:700;letter-spacing:-.015em;
-  line-height:1.15;margin:0}
-.hero .rl{font-family:var(--sans);font-size:13px;font-weight:400;color:var(--muted);margin:2px 0 0}
-.hero .date{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:11px;
-  padding-top:11px;border-top:1px solid var(--rule)}
-.hero .date b{color:var(--ink-2);font-weight:500}
-
-.lab{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.11em;
-  text-transform:uppercase;color:var(--accent);margin:0 0 9px;
-  display:flex;align-items:baseline;gap:9px}
-.lab::after{content:'';flex:1;height:1px;background:var(--rule)}
-
-/* ---- due rows: time is the subject, so time leads ---- */
-.due{display:flex;flex-direction:column;gap:7px;margin:0 0 28px}
-.duerow{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:11px;align-items:center;
-  background:var(--paper);border:1px solid var(--rule);border-left:3px solid var(--rule-strong);
-  padding:11px 13px;text-decoration:none;color:inherit}
-.duerow.soon{border-left-color:var(--warn);background:var(--warn-soft)}
-.duerow.gone{border-left-color:var(--debit);background:var(--debit-soft)}
-.duerow .t{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--ink-2);
+/* ============================================================ A */
+.A{--pap:#fbfbf9;--ink:#141b1a;--mut:#5c6662;--rule:#dfe3de;
+   --teal:#0f5c54;--tealx:#e3efec;--red:#8f3020;--redx:#f8eae6;--gold:#8a6a1c;--goldx:#faf0dd;
+   background:#eceee9;color:var(--ink);font-family:"Archivo","Noto Sans Ethiopic",sans-serif}
+.A .hd{background:var(--teal);padding:13px 18px;display:flex;align-items:center;gap:11px}
+.A .hd .mk{width:26px;height:26px;border-radius:5px;background:#fff;display:flex;
+  align-items:center;justify-content:center;font-weight:800;color:var(--teal);font-size:13px}
+.A .hd .nm{font-size:14px;font-weight:600;color:#fff;letter-spacing:.01em}
+.A .hd .sp{flex:1}
+.A .hd .lg{font-size:10.5px;font-weight:700;letter-spacing:.1em;color:#a8d4cc}
+.A .now{background:var(--pap);padding:22px 18px 20px;border-bottom:1px solid var(--rule)}
+.A .kick{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--red);margin:0 0 9px}
+.A .big{font-family:"IBM Plex Mono",monospace;font-size:46px;font-weight:500;line-height:.95;
+  letter-spacing:-.03em;margin:0;font-variant-numeric:tabular-nums}
+.A .big s{text-decoration:none;font-size:17px;color:var(--mut);margin-left:6px;letter-spacing:0}
+.A .what{font-size:17px;font-weight:700;letter-spacing:-.01em;margin:11px 0 2px;line-height:1.25}
+.A .to{font-size:12.5px;color:var(--mut)}
+.A .cta{display:block;width:100%;margin-top:15px;padding:14px;border:0;border-radius:6px;
+  background:var(--teal);color:#fff;font-family:inherit;font-size:15.5px;font-weight:600;
+  text-align:center;text-decoration:none}
+.A .strip{display:flex;background:var(--pap);border-bottom:1px solid var(--rule)}
+.A .st{flex:1;padding:12px 8px;text-align:center;border-right:1px solid var(--rule)}
+.A .st:last-child{border-right:0}
+.A .st b{display:block;font-family:"IBM Plex Mono",monospace;font-size:19px;font-weight:500;
+  line-height:1;font-variant-numeric:tabular-nums}
+.A .st span{display:block;font-size:9.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--mut);margin-top:5px}
+.A .st.bad b{color:var(--red)}
+.A .body{padding:18px}
+.A .lab{font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--mut);margin:0 0 9px}
+.A .it{display:flex;align-items:center;gap:12px;background:var(--pap);border-radius:7px;
+  padding:12px 13px;margin-bottom:7px;text-decoration:none;color:inherit;
+  border:1px solid var(--rule)}
+.A .it .dot{width:7px;height:7px;border-radius:50%;background:#bcc4bf;flex:none}
+.A .it.due .dot{background:var(--gold)}
+.A .it.late .dot{background:var(--red)}
+.A .it .tx{flex:1;min-width:0}
+.A .it .tx b{display:block;font-size:14px;font-weight:600;line-height:1.3}
+.A .it .tx span{display:block;font-size:11.5px;color:var(--mut);margin-top:1px}
+.A .it .tm{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--mut);
   font-variant-numeric:tabular-nums}
-.duerow .n{font-family:var(--sans);font-size:14.5px;font-weight:600;min-width:0;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.duerow .s{font-family:var(--sans);font-size:10.5px;font-weight:600;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--muted);white-space:nowrap}
-.duerow.soon .s{color:var(--warn)}
-.duerow.gone .s{color:var(--debit)}
+.A .chat{display:flex;align-items:center;gap:11px;background:var(--tealx);border-radius:7px;
+  padding:12px 13px;text-decoration:none;color:inherit;margin-top:14px}
+.A .chat .av{width:28px;height:28px;border-radius:50%;background:var(--teal);color:#fff;
+  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.A .chat .tx{flex:1;min-width:0}
+.A .chat .tx b{display:block;font-size:13px;font-weight:600}
+.A .chat .tx span{display:block;font-size:11.5px;color:var(--teal);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.A .chat .n{background:var(--teal);color:#fff;font-size:10.5px;font-weight:700;
+  border-radius:9px;padding:2px 7px}
 
-/* ---- report cards: a document, not a tile ---- */
-.reps{display:flex;flex-direction:column;gap:8px;margin:0 0 28px}
-.rep{display:block;background:var(--paper);border:1px solid var(--rule);
-  padding:13px 15px;text-decoration:none;color:inherit;position:relative}
-.rep:hover{border-color:var(--accent)}
-.rep .rt{font-family:var(--sans);font-weight:600;font-size:15px;line-height:1.3;
-  display:block;margin-bottom:5px}
-.rep .meta{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--sans);
-  font-size:12.5px;color:var(--muted);line-height:1.4}
-.rep .meta b{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink-2)}
-.rep .go{position:absolute;right:13px;top:50%;transform:translateY(-50%);
-  font-family:var(--mono);color:var(--rule-strong)}
+/* ============================================================ B */
+.B{--pap:#fdfdfb;--ink:#191c18;--mut:#6a706a;--rule:#e2e0d8;--red:#8f3020;--teal:#0f5c54;
+   background:var(--pap);color:var(--ink);font-family:"Source Serif 4",Georgia,serif}
+.B .hd{padding:19px 22px 15px;border-bottom:2px solid var(--ink);display:flex;
+  align-items:flex-end;justify-content:space-between}
+.B .hd .wm{font-family:"Archivo",sans-serif;font-size:17px;font-weight:800;letter-spacing:-.02em}
+.B .hd .wm i{display:block;font-style:normal;font-size:8.5px;font-weight:600;letter-spacing:.22em;
+  color:var(--mut);margin-top:2px}
+.B .hd .dt{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--mut);text-align:right;
+  line-height:1.6}
+.B .sal{padding:24px 22px 4px}
+.B .sal h2{font-family:"Source Serif 4",serif;font-size:26px;font-weight:600;line-height:1.15;
+  letter-spacing:-.01em;margin:0}
+.B .sal p{font-family:"Archivo",sans-serif;font-size:11px;font-weight:600;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--mut);margin:7px 0 0}
+.B .say{padding:14px 22px 20px;font-size:16.5px;line-height:1.6;color:#2e332e}
+.B .say b{font-weight:600;border-bottom:2px solid var(--red);padding-bottom:1px}
+.B .sec{font-family:"Archivo",sans-serif;font-size:10px;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--mut);padding:0 22px;margin:14px 0 0;
+  display:flex;align-items:center;gap:10px}
+.B .sec::after{content:'';flex:1;height:1px;background:var(--rule)}
+.B .lst{padding:10px 22px 0}
+.B .ln{display:flex;gap:14px;padding:13px 0;border-bottom:1px solid var(--rule);
+  text-decoration:none;color:inherit;align-items:baseline}
+.B .ln .tm{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--mut);
+  width:58px;flex:none;font-variant-numeric:tabular-nums}
+.B .ln .tx{flex:1;min-width:0}
+.B .ln .tx b{font-family:"Archivo",sans-serif;font-size:14.5px;font-weight:600;display:block;
+  line-height:1.3}
+.B .ln .tx span{font-family:"Archivo",sans-serif;font-size:11.5px;color:var(--mut)}
+.B .ln .fl{font-family:"Archivo",sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--red)}
+.B .ln.ok .fl{color:#4a7a2a}
+.B .act{margin:20px 22px 24px;display:block;padding:15px;background:var(--ink);color:var(--pap);
+  font-family:"Archivo",sans-serif;font-size:14.5px;font-weight:600;text-align:center;
+  text-decoration:none;letter-spacing:.01em}
+.B .ft{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--mut);text-align:center;
+  padding:0 22px 22px;line-height:1.7}
 
-/* ---- chat: one line, not a card pretending to be a section ---- */
-.chat{display:flex;align-items:center;gap:12px;background:var(--surface);
-  border:1px solid var(--rule);border-left:3px solid var(--accent);
-  padding:12px 14px;text-decoration:none;color:inherit;margin-bottom:26px}
-.chat i{width:30px;height:30px;flex:none;border-radius:50%;background:var(--accent-soft);
-  color:var(--accent);display:flex;align-items:center;justify-content:center;font-style:normal}
-.chat .cn{font-family:var(--sans);font-weight:600;font-size:14.5px;display:block}
-.chat .cl{font-family:var(--sans);font-size:12.5px;color:var(--muted);display:block;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chat .go{margin-left:auto;font-family:var(--mono);color:var(--rule-strong)}
+/* ============================================================ C */
+.C{--bg:#0e1513;--card:#152220;--ink:#eef2ef;--mut:#8ea09a;--rule:#213330;
+   --teal:#3fbfa8;--red:#e2765c;--gold:#e0b33c;
+   background:var(--bg);color:var(--ink);font-family:"Archivo",sans-serif}
+.C .hd{padding:15px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--rule)}
+.C .hd .mk{width:25px;height:25px;border-radius:6px;background:var(--teal);color:#06211c;
+  font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+.C .hd b{font-size:13.5px;font-weight:600}
+.C .hd .sp{flex:1}
+.C .hd .av{width:27px;height:27px;border-radius:50%;background:var(--rule);color:var(--teal);
+  font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.C .hero{padding:22px 18px 18px}
+.C .hero .k{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--gold);margin:0 0 10px}
+.C .ring{display:flex;align-items:center;gap:17px}
+.C .ring svg{flex:none}
+.C .ring .n{font-family:"IBM Plex Mono",monospace;font-size:30px;font-weight:500;line-height:1;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.C .ring .n s{text-decoration:none;font-size:13px;color:var(--mut)}
+.C .ring .w{font-size:15px;font-weight:600;margin-top:6px;line-height:1.3}
+.C .ring .s{font-size:11.5px;color:var(--mut);margin-top:2px}
+.C .cta{display:block;margin:16px 18px 0;padding:14px;border-radius:9px;background:var(--teal);
+  color:#06211c;font-size:15px;font-weight:700;text-align:center;text-decoration:none}
+.C .tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:18px}
+.C .tl{background:var(--card);border:1px solid var(--rule);border-radius:9px;padding:11px 10px}
+.C .tl b{display:block;font-family:"IBM Plex Mono",monospace;font-size:20px;font-weight:500;
+  line-height:1;font-variant-numeric:tabular-nums}
+.C .tl span{display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--mut);margin-top:6px}
+.C .tl.a b{color:var(--teal)} .C .tl.b b{color:var(--gold)} .C .tl.c b{color:var(--red)}
+.C .lab{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mut);padding:0 18px;margin:2px 0 10px}
+.C .it{display:flex;align-items:center;gap:12px;margin:0 18px 8px;background:var(--card);
+  border:1px solid var(--rule);border-radius:9px;padding:12px 13px;text-decoration:none;color:inherit}
+.C .it .bar{width:3px;align-self:stretch;border-radius:2px;background:var(--rule)}
+.C .it.due .bar{background:var(--gold)} .C .it.late .bar{background:var(--red)}
+.C .it .tx{flex:1;min-width:0}
+.C .it .tx b{display:block;font-size:14px;font-weight:600;line-height:1.3}
+.C .it .tx span{display:block;font-size:11.5px;color:var(--mut);margin-top:1px}
+.C .it .tm{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--mut)}
+.C .chat{display:flex;align-items:center;gap:11px;margin:14px 18px 22px;padding:13px;
+  border-radius:9px;background:linear-gradient(180deg,#16302c,#122522);
+  border:1px solid #234540;text-decoration:none;color:inherit}
+.C .chat .av{width:29px;height:29px;border-radius:50%;background:var(--teal);color:#06211c;
+  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.C .chat .tx{flex:1;min-width:0}
+.C .chat .tx b{display:block;font-size:13px;font-weight:600}
+.C .chat .tx span{display:block;font-size:11.5px;color:var(--mut);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.C .chat .n{background:var(--red);color:#2a0d05;font-size:10.5px;font-weight:800;
+  border-radius:9px;padding:2px 7px}
+</style></head>
+<body>
+<div class="page">
 
-.foot{font-family:var(--sans);font-size:11.5px;color:var(--muted);text-align:center;
-  margin:0 0 30px;line-height:1.6;padding-top:16px;border-top:1px solid var(--rule)}
-</style><title>Klever — proposed</title>
-<style>.note{font-family:var(--sans);font-size:12.5px;color:var(--muted);text-align:center;padding:14px 16px;background:var(--surface-2);border-bottom:1px solid var(--rule)}</style>
-</head>
-<body><div class="phone">
-<p class="note">Proposed home screen — nothing here is live yet.</p>
-<div class="top"><div class="top-in">
-  <img src="assets/logo.png" alt="Klever Küche">
-  <div class="spacer"></div>
-  <div class="lang"><button aria-pressed="true">EN</button><button>አማ</button></div>
-  <button class="who"><i>A</i><span>Sign out</span></button>
-</div></div>
+<div class="lede">
+  <h1>Three directions for the home screen</h1>
+  <p>Same information in all three — Amaha at 5:06 PM, one report already missed and one due
+     in twenty-four minutes. What differs is what the screen thinks it is for. Nothing here is
+     live; pick one and I will build it across every page.</p>
+</div>
 
-<main class="wrap">
+<div class="row">
 
-  <div class="hero">
-    <p class="nm">Amaha Temechew</p>
-    <p class="rl">Production Supervisor</p>
-    <div class="date">Friday <b>18 September 2026</b> · መስከረም 8 ቀን 2019 ዓ.ም.</div>
+  <!-- ============ A ============ -->
+  <div class="col">
+    <div class="cap"><b>A — The instrument</b>
+      <span>One job, one number. The countdown is the screen. Everything else gets out of the way.</span></div>
+    <div class="frame A">
+      <div class="hd"><div class="mk">K</div><div class="nm">Klever Küche</div>
+        <div class="sp"></div><div class="lg">EN · አማ</div></div>
+
+      <div class="now">
+        <p class="kick">Due next</p>
+        <p class="big">24<s>min</s></p>
+        <p class="what">Daily Production Report</p>
+        <p class="to">5:30 PM · to Mahelet and Ephrata</p>
+        <a class="cta" href="#">Fill it in</a>
+      </div>
+
+      <div class="strip">
+        <div class="st"><b>3</b><span>due today</span></div>
+        <div class="st"><b>1</b><span>filed</span></div>
+        <div class="st bad"><b>1</b><span>missed</span></div>
+      </div>
+
+      <div class="body">
+        <p class="lab">Today</p>
+        <a class="it late" href="#"><span class="dot"></span><span class="tx">
+          <b>Weekly Production Summary</b><span>Missed · 5:00 PM</span></span>
+          <span class="tm">−500</span></a>
+        <a class="it due" href="#"><span class="dot"></span><span class="tx">
+          <b>Daily Production Report</b><span>Due in 24 minutes</span></span>
+          <span class="tm">5:30</span></a>
+        <a class="it" href="#"><span class="dot"></span><span class="tx">
+          <b>Monthly Material Savings</b><span>Filed at 9:14 AM</span></span>
+          <span class="tm">✓</span></a>
+
+        <a class="chat" href="#"><span class="av">W</span><span class="tx">
+          <b>Production</b><span>Wude: edge banding again on K-214</span></span>
+          <span class="n">3</span></a>
+      </div>
+    </div>
   </div>
 
-  <p class="lab">Due from you today</p>
-  <div class="due">
-    <a class="duerow gone" href="#">
-      <span class="t">5:00 PM</span>
-      <span class="n">Weekly Production Summary</span>
-      <span class="s">passed</span>
-    </a>
-    <a class="duerow soon" href="#">
-      <span class="t">5:30 PM</span>
-      <span class="n">Daily Production Report</span>
-      <span class="s">in 24m</span>
-    </a>
+  <!-- ============ B ============ -->
+  <div class="col">
+    <div class="cap"><b>B — The letterhead</b>
+      <span>The site reads like the documents it serves. Serif, paper, a sentence that tells you
+        where you stand before any list does.</span></div>
+    <div class="frame B">
+      <div class="hd">
+        <div class="wm">KLEVER<i>KÜCHE</i></div>
+        <div class="dt">FRI 18 SEP 2026<br>መስከረም 8 ቀን 2019</div>
+      </div>
+
+      <div class="sal">
+        <h2>Amaha Temechew</h2>
+        <p>Production Supervisor</p>
+      </div>
+
+      <p class="say">You have <b>one report due in 24 minutes</b> and one that was due at five
+        o'clock and has not arrived.</p>
+
+      <p class="sec">Today</p>
+      <div class="lst">
+        <a class="ln" href="#"><span class="tm">5:00 PM</span><span class="tx">
+          <b>Weekly Production Summary</b><span>to Mahelet and Ephrata</span></span>
+          <span class="fl">Missed</span></a>
+        <a class="ln" href="#"><span class="tm">5:30 PM</span><span class="tx">
+          <b>Daily Production Report</b><span>to Mahelet and Ephrata</span></span>
+          <span class="fl">24 min</span></a>
+        <a class="ln ok" href="#"><span class="tm">9:14 AM</span><span class="tx">
+          <b>Monthly Material Savings</b><span>to Mahelet and Betty</span></span>
+          <span class="fl">Filed</span></a>
+      </div>
+
+      <a class="act" href="#">Open the Daily Production Report</a>
+      <p class="ft">Every report you send is filed to the Chairman's sheet<br>and posted to the group.</p>
+    </div>
   </div>
 
-  <p class="lab">Your reports</p>
-  <div class="reps">
-    <a class="rep" href="#"><span class="rt">Daily Production Report</span>
-      <span class="meta"><span>Due <b>5:30 PM</b> every working day</span><span>To Mahelet + Ephrata</span></span>
-      <span class="go">→</span></a>
-    <a class="rep" href="#"><span class="rt">Weekly Production Summary</span>
-      <span class="meta"><span>Due <b>Friday 5:00 PM</b></span><span>To Mahelet + Ephrata</span></span>
-      <span class="go">→</span></a>
-    <a class="rep" href="#"><span class="rt">Monthly Material Savings Report</span>
-      <span class="meta"><span>Due <b>1st of the month</b></span><span>To Mahelet + Betty</span></span>
-      <span class="go">→</span></a>
+  <!-- ============ C ============ -->
+  <div class="col">
+    <div class="cap"><b>C — The console</b>
+      <span>Dark, dense, built for a factory floor at dusk. The day as a set of figures you can
+        read at arm's length.</span></div>
+    <div class="frame C">
+      <div class="hd"><div class="mk">K</div><b>Klever</b><div class="sp"></div>
+        <div class="av">AT</div></div>
+
+      <div class="hero">
+        <p class="k">Due next</p>
+        <div class="ring">
+          <svg width="70" height="70" viewBox="0 0 70 70">
+            <circle cx="35" cy="35" r="30" fill="none" stroke="#213330" stroke-width="7"/>
+            <circle cx="35" cy="35" r="30" fill="none" stroke="#e0b33c" stroke-width="7"
+              stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="126"
+              transform="rotate(-90 35 35)"/>
+          </svg>
+          <div>
+            <div class="n">24<s> min</s></div>
+            <div class="w">Daily Production Report</div>
+            <div class="s">5:30 PM · Mahelet and Ephrata</div>
+          </div>
+        </div>
+      </div>
+      <a class="cta" href="#">Fill it in</a>
+
+      <div class="tiles">
+        <div class="tl a"><b>1</b><span>filed</span></div>
+        <div class="tl b"><b>1</b><span>due</span></div>
+        <div class="tl c"><b>1</b><span>missed</span></div>
+      </div>
+
+      <p class="lab">Today</p>
+      <a class="it late" href="#"><span class="bar"></span><span class="tx">
+        <b>Weekly Production Summary</b><span>Missed · 5:00 PM · −500 Birr</span></span>
+        <span class="tm">!</span></a>
+      <a class="it due" href="#"><span class="bar"></span><span class="tx">
+        <b>Daily Production Report</b><span>Due in 24 minutes</span></span>
+        <span class="tm">5:30</span></a>
+      <a class="it" href="#"><span class="bar"></span><span class="tx">
+        <b>Monthly Material Savings</b><span>Filed at 9:14 AM</span></span>
+        <span class="tm">✓</span></a>
+
+      <a class="chat" href="#"><span class="av">W</span><span class="tx">
+        <b>Production</b><span>Wude: edge banding again on K-214</span></span>
+        <span class="n">3</span></a>
+    </div>
   </div>
 
-  <p class="lab">Klever chat</p>
-  <a class="chat" href="#"><i>✉</i>
-    <span style="min-width:0"><span class="cn">Chat</span>
-    <span class="cl">Wude Birhanu: edge banding again on K-214</span></span>
-    <span class="go">→</span></a>
-
-  <p class="foot">Klever Küche · every report you send is filed to the Chairman's sheet and posted to the group.</p>
-</main>
-</div></body></html>
+</div>
+</div>
+</body></html>

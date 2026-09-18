@@ -195,44 +195,130 @@
     return h12 + ':' + p[1] + ' ' + ap;
   }
 
-  function todayPanel() {
-    var d = new Date(), e = toEthiopian(d);
-    var panel = el('div', 'today');
-    panel.appendChild(el('div', 'today-day',
-      (lang === 'am' ? DAYS_AM : DAYS_EN)[d.getDay()]));
-    panel.appendChild(el('div', 'today-date',
-      d.getDate() + ' ' + MONTHS_EN[d.getMonth()] + ' ' + d.getFullYear()));
-    panel.appendChild(el('div', 'today-eth',
-      ETH_MONTHS[e.m - 1] + ' ' + e.d + ' ቀን ' + e.y + ' ዓ.ም.'));
-    return panel;
+  /* ---------------- the top of a person's day ---------------- */
+
+  /* A letterhead, then one sentence saying where they stand, then the number
+     and the button. Everything below it is reference — this is the part that
+     has to work at 5:30pm with one hand.
+
+     The sentence matters more than it looks. A list tells you what exists; a
+     sentence tells you what is true. "One report due in 24 minutes and one
+     that was due at five and has not arrived" is the whole day. */
+  function standing(pid) {
+    var list = dueToday().filter(function (r) { return !pid || r.person === pid; });
+    var late = [], soon = null, soonMins = 1e9;
+    list.forEach(function (r) {
+      var m = minsUntil(r.dueTime);
+      if (m < 0) late.push(r);
+      else if (m < soonMins) { soonMins = m; soon = r; }
+    });
+    return { all: list, late: late, next: soon, mins: soon ? soonMins : null };
   }
 
-  function dueRail(pid) {
-    var wrap = el('section', 'due');
-    var list = dueToday();
-    if (pid) list = list.filter(function (r) { return r.person === pid; });
-    wrap.appendChild(el('p', 'eyebrow', pid ? t('dueForYou') : t('dueToday')));
-    if (!list.length) {
-      wrap.appendChild(el('p', 'sub', pid ? t('nothingForYou') : t('nothingToday')));
-      return wrap;
+  function letterhead(p) {
+    var d = new Date(), e = toEthiopian(d);
+    var head = el('header', 'lh');
+
+    var mark = el('div', 'lh-mark');
+    mark.appendChild(el('span', 'lh-k', 'KLEVER'));
+    mark.appendChild(el('span', 'lh-ku', 'KÜCHE'));
+    head.appendChild(mark);
+
+    var dt = el('div', 'lh-date');
+    dt.appendChild(el('span', null,
+      (lang === 'am' ? DAYS_AM : DAYS_EN)[d.getDay()] + ' ' +
+      d.getDate() + ' ' + MONTHS_EN[d.getMonth()] + ' ' + d.getFullYear()));
+    dt.appendChild(el('span', null,
+      ETH_MONTHS[e.m - 1] + ' ' + e.d + ' ቀን ' + e.y + ' ዓ.ም.'));
+    head.appendChild(dt);
+    return head;
+  }
+
+  /* the sentence, built from what is actually true right now */
+  function sentence(st) {
+    var p = el('p', 'says');
+    if (!st.all.length) { p.textContent = t('nothingForYou'); return p; }
+
+    function strong(txt) { var b = el('b', null, txt); return b; }
+
+    if (st.next && st.late.length) {
+      p.appendChild(document.createTextNode(t('sayHave') + ' '));
+      p.appendChild(strong(t('sayOneDue') + ' ' + countdown(st.mins).replace(t('inTime') + ' ', '')));
+      p.appendChild(document.createTextNode(' ' + t('sayAnd') + ' ' +
+        (st.late.length === 1 ? t('sayOneLate') : st.late.length + ' ' + t('sayManyLate')) + '.'));
+    } else if (st.next) {
+      p.appendChild(document.createTextNode(t('sayHave') + ' '));
+      p.appendChild(strong(t('sayOneDue') + ' ' + countdown(st.mins).replace(t('inTime') + ' ', '')));
+      p.appendChild(document.createTextNode('.'));
+    } else {
+      p.appendChild(document.createTextNode(t('sayAllIn') + ' '));
+      p.appendChild(strong(st.late.length === 1 ? t('sayOneLate') : st.late.length + ' ' + t('sayManyLate')));
+      p.appendChild(document.createTextNode('.'));
     }
-    var rail = el('div', 'railrows');
+    return p;
+  }
+
+  /* the one number, and the one thing to press */
+  function nextUp(st) {
+    var box = el('section', 'next');
+    var r = st.next || st.late[0];
+    if (!r) return box;
+
+    var late = !st.next;
+    box.className = 'next' + (late ? ' late' : '');
+    box.appendChild(el('p', 'next-k', late ? t('nextOverdue') : t('nextDue')));
+
+    var n = el('p', 'next-n');
+    if (late) {
+      n.appendChild(document.createTextNode(hhmm(r.dueTime)));
+    } else {
+      var mins = st.mins, hh = Math.floor(mins / 60), mm = mins % 60;
+      if (hh) {
+        n.appendChild(document.createTextNode(String(hh)));
+        n.appendChild(el('s', null, lang === 'am' ? 'ሰ' : 'h'));
+        if (mm) {
+          n.appendChild(document.createTextNode(' ' + mm));
+          n.appendChild(el('s', null, lang === 'am' ? 'ደ' : 'm'));
+        }
+      } else {
+        n.appendChild(document.createTextNode(String(mm || 0)));
+        n.appendChild(el('s', null, lang === 'am' ? 'ደቂቃ' : 'min'));
+      }
+    }
+    box.appendChild(n);
+
+    box.appendChild(el('p', 'next-w', L(r)));
+    box.appendChild(el('p', 'next-t',
+      hhmm(r.dueTime) + ' · ' + t('to').toLowerCase() + ' ' + (lang === 'am' ? r.toAm : r.toEn)));
+
+    var go = el('a', 'next-go', t('fillItIn'));
+    go.href = 'form.html?r=' + encodeURIComponent(r.id);
+    box.appendChild(go);
+    return box;
+  }
+
+  /* the day as a ruled list — time, what, where it stands */
+  function dayList(pid) {
+    var list = dueToday().filter(function (r) { return !pid || r.person === pid; });
+    if (!list.length) return null;
+    var wrap = el('div', 'dayl');
     list.forEach(function (r) {
-      var person = personById(r.person);
       var mins = minsUntil(r.dueTime);
-      var state = mins < 0 ? 'gone' : (mins <= 120 ? 'soon' : 'ahead');
-      var a = el('a', 'railrow ' + state);
+      var a = el('a', 'dayln' + (mins < 0 ? ' gone' : (mins <= 120 ? ' soon' : '')));
       a.href = 'form.html?r=' + encodeURIComponent(r.id);
-      a.appendChild(el('span', 'railtime', hhmm(r.dueTime)));
-      var mid = el('span', 'railmid');
-      /* on your own page the name above it is already yours */
-      if (!pid) mid.appendChild(el('span', 'railwho', L(person)));
-      mid.appendChild(el('span', 'railwhat', L(r)));
+      a.appendChild(el('span', 'dtm', hhmm(r.dueTime)));
+      var mid = el('span', 'dtx');
+      mid.appendChild(el('b', null, L(r)));
+      if (!pid) {
+        var who = personById(r.person);
+        mid.appendChild(el('span', null, who ? L(who) : r.person));
+      } else {
+        mid.appendChild(el('span', null, t('to').toLowerCase() + ' ' + (lang === 'am' ? r.toAm : r.toEn)));
+      }
       a.appendChild(mid);
-      a.appendChild(el('span', 'railstate', countdown(mins)));
-      rail.appendChild(a);
+      a.appendChild(el('span', 'dfl', mins < 0 ? t('passed') : countdown(mins).replace(t('inTime') + ' ', '')));
+      wrap.appendChild(a);
     });
-    wrap.appendChild(rail);
     return wrap;
   }
 
@@ -253,7 +339,7 @@
     root.innerHTML = '';
     rebuildTop();
     clearInterval(renderIndex.tick);
-    root.appendChild(todayPanel());
+    root.appendChild(letterhead(null));
 
     var card = el('section', 'signin');
     card.appendChild(el('h1', null, t('signIn')));
@@ -385,8 +471,21 @@
     }
     document.title = t('siteTitle');
     root.innerHTML = '';
-    root.appendChild(todayPanel());
-    root.appendChild(dueRail());
+    root.appendChild(letterhead(null));
+
+    var sal = el('div', 'sal');
+    sal.appendChild(el('h1', null, lang === 'am' ? 'ሊቀመንበር' : 'Chairman'));
+    sal.appendChild(el('p', null, 'Amare Feleke'));
+    root.appendChild(sal);
+
+    var st = standing(null);
+    root.appendChild(sentence(st));
+
+    var dl = dayList(null);
+    if (dl) {
+      root.appendChild(el('p', 'eyebrow', t('dueToday')));
+      root.appendChild(dl);
+    }
 
     root.appendChild(el('p', 'eyebrow', t('whoReports')));
     var due = dueToday();
@@ -447,13 +546,28 @@
       root.appendChild(back);
     }
 
-    root.appendChild(el('h1', null, L(p)));
-    root.appendChild(el('p', 'sub', lang === 'am' ? p.roleAm : p.roleEn));
-    root.appendChild(dueRail(p.id));
+    root.appendChild(letterhead(p));
+
+    var sal = el('div', 'sal');
+    sal.appendChild(el('h1', null, L(p)));
+    sal.appendChild(el('p', null, lang === 'am' ? p.roleAm : p.roleEn));
+    root.appendChild(sal);
+
+    var st = standing(p.id);
+    root.appendChild(sentence(st));
+    if (st.all.length) root.appendChild(nextUp(st));
+
+    /* the card above already is the day when the day is one report */
+    if (st.all.length > 1) {
+      var dl = dayList(p.id);
+      if (dl) {
+        root.appendChild(el('p', 'eyebrow', t('dueForYou')));
+        root.appendChild(dl);
+      }
+    }
 
     var rs = reportsFor(p.id);
     if (!rs.length) {
-      root.appendChild(el('p', 'sub', t('noReports')));
       root.appendChild(chatCard());
       root.appendChild(foot());
       return;

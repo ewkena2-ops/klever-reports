@@ -776,3 +776,118 @@ fieldset legend{color:var(--ink-2)}
   border:1px dashed var(--rule-strong);border-radius:var(--radius);
 }
 .designlink:hover{color:var(--accent);border-color:var(--accent)}
+
+/* ================= the home screen, rebuilt ================= */
+/* The letterhead, a sentence saying where you stand, then one number and one
+   button. Taken from direction B with A's countdown — the identity of the
+   signed letters, doing the job of an instrument. */
+
+.lh{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+  padding:20px 0 13px;border-bottom:2px solid var(--ink);margin-bottom:0;
+}
+.lh-mark{line-height:1}
+.lh-k{
+  display:block;font-family:var(--sans);font-size:17px;font-weight:800;
+  letter-spacing:-.02em;color:var(--ink);
+}
+.lh-ku{
+  display:block;font-family:var(--sans);font-size:8.5px;font-weight:600;
+  letter-spacing:.24em;color:var(--muted);margin-top:2px;
+}
+.lh-date{
+  font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;line-height:1.65;
+}
+.lh-date span{display:block}
+
+.sal{padding:22px 0 0}
+.sal h1{
+  font-family:var(--serif);font-size:26px;font-weight:600;line-height:1.14;
+  letter-spacing:-.01em;margin:0;text-wrap:balance;
+}
+.sal p{
+  font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--muted);margin:7px 0 0;
+}
+
+/* the sentence — the only thing on the page that talks */
+.says{
+  font-family:var(--serif);font-size:16.5px;line-height:1.6;color:var(--ink-2);
+  margin:15px 0 20px;text-wrap:pretty;
+}
+.says b{font-weight:600;color:var(--ink);box-shadow:inset 0 -2px 0 var(--debit)}
+
+/* one number, one button */
+.next{
+  background:var(--paper);border:1px solid var(--rule-strong);
+  border-top:3px solid var(--accent);padding:17px 18px 16px;margin:0 0 26px;
+}
+.next.late{border-top-color:var(--debit)}
+.next-k{
+  font-family:var(--sans);font-size:10.5px;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--accent);margin:0 0 8px;
+}
+.next.late .next-k{color:var(--debit)}
+.next-n{
+  font-family:var(--mono);font-size:44px;font-weight:500;line-height:.95;
+  letter-spacing:-.03em;margin:0;color:var(--ink);font-variant-numeric:tabular-nums;
+}
+.next-n s{text-decoration:none;font-size:16px;color:var(--muted);margin-left:7px;letter-spacing:0}
+.next-w{
+  font-family:var(--sans);font-size:17px;font-weight:700;letter-spacing:-.01em;
+  line-height:1.25;margin:11px 0 3px;
+}
+.next-t{font-family:var(--sans);font-size:12.5px;color:var(--muted);margin:0}
+.next-go{
+  display:block;margin-top:15px;padding:14px;background:var(--accent);color:#fff;
+  font-family:var(--sans);font-size:15.5px;font-weight:600;text-align:center;
+  text-decoration:none;border-radius:var(--radius);
+}
+.next-go:active{opacity:.88}
+.next.late .next-go{background:var(--ink)}
+
+/* the day, as a ruled list rather than a stack of boxes */
+.dayl{margin:0 0 26px}
+.dayln{
+  display:flex;gap:13px;align-items:baseline;padding:13px 0;
+  border-bottom:1px solid var(--rule);text-decoration:none;color:inherit;
+}
+.dayln:first-child{border-top:1px solid var(--rule)}
+.dayln .dtm{
+  font-family:var(--mono);font-size:11.5px;color:var(--muted);width:60px;flex:none;
+  font-variant-numeric:tabular-nums;
+}
+.dayln .dtx{flex:1;min-width:0}
+.dayln .dtx b{
+  font-family:var(--sans);font-size:14.5px;font-weight:600;display:block;line-height:1.3;
+}
+.dayln .dtx span{font-family:var(--sans);font-size:11.5px;color:var(--muted)}
+.dayln .dfl{
+  font-family:var(--sans);font-size:9.5px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted);white-space:nowrap;
+}
+.dayln.soon .dfl{color:var(--warn,#8a6a1c)}
+.dayln.gone .dfl{color:var(--debit)}
+.dayln.gone .dtx b{color:var(--debit)}
+
+@media (prefers-color-scheme:dark){
+  .lh{border-bottom-color:var(--rule-strong)}
+  .next.late .next-go{background:var(--debit);color:#fff}
+}
+
+/* The report cards were the last thing still speaking in monospace, which is
+   why the lower half of the screen read like a terminal while the upper half
+   read like a letter. Mono is for figures now — times and deadlines — and the
+   words around them are set in the same sans as everything else. */
+.report{border-left:2px solid var(--rule-strong);padding:13px 15px}
+.report:hover,.report:focus-visible{border-left-color:var(--accent)}
+.report .rt{font-size:15px;margin-bottom:4px}
+.report .meta{
+  font-family:var(--sans);font-size:12.5px;gap:3px 14px;color:var(--muted);
+}
+.report .meta .due{color:var(--muted)}
+/* ::first-line was the wrong tool — a one-line element is all first line, so
+   that put the whole thing back in mono. The deadline reads perfectly well in
+   the sans; mono is reserved for the countdown and the day list, where the
+   figures need to align. */
+.reports{gap:8px}

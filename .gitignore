@@ -4,3 +4,9 @@ apps-script/.clasp.json
 _shot.png
 _dom.txt
 _diag.html
+
+# the browser driver used for checking screens — never ship it
+node_modules/
+package-lock.json
+_live_*.png
+_signin_test.js

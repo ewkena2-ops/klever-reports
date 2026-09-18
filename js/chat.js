@@ -234,8 +234,25 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
   function renderChannels() {
     stopAll();
     clear(); buildTop();
-    root.appendChild(el('h1', null, t('chatTitle')));
-    root.appendChild(el('p', 'sub', t('chatPickSub')));
+
+    /* the same masthead the reports and the forms open with */
+    var lh = el('header', 'lh');
+    var mk = el('div', 'lh-mark');
+    mk.appendChild(el('span', 'lh-k', 'KLEVER'));
+    mk.appendChild(el('span', 'lh-ku', 'KÜCHE'));
+    lh.appendChild(mk);
+    var dd = new Date();
+    var dt = el('div', 'lh-date');
+    dt.appendChild(el('span', null, nameOf(me)));
+    dt.appendChild(el('span', null,
+      ('0' + dd.getHours()).slice(-2) + ':' + ('0' + dd.getMinutes()).slice(-2)));
+    lh.appendChild(dt);
+    root.appendChild(lh);
+
+    var sal = el('div', 'sal');
+    sal.appendChild(el('h1', null, t('chatTitle')));
+    sal.appendChild(el('p', null, t('chatPickSub')));
+    root.appendChild(sal);
 
     var mine = CHANNELS.forPerson(me);
 
@@ -314,8 +331,10 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
     back.onclick = renderChannels;
     root.appendChild(back);
 
-    root.appendChild(el('h1', null, L(ch)));
-    root.appendChild(el('p', 'sub', D(ch)));
+    var sal = el('div', 'sal thread-sal');
+    sal.appendChild(el('h1', null, L(ch)));
+    sal.appendChild(el('p', null, D(ch)));
+    root.appendChild(sal);
 
     var thread = el('div', 'thread');
     root.appendChild(thread);

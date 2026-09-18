@@ -925,3 +925,92 @@ fieldset legend{color:var(--ink-2)}
   margin-top:11px;padding-left:10px;border-left:2px solid var(--debit);line-height:1.5;
 }
 .penalty.soft{color:var(--muted);border-left-color:var(--rule-strong)}
+
+/* ================= chat, in the same voice ================= */
+/* The channel list was a stack of grey boxes that looked like rows in a
+   spreadsheet. It reads as a contents page now: a ruled list with the channel
+   named in the sans and the last thing said underneath it. */
+.chanlist{gap:0;margin-bottom:26px}
+.chan{
+  border:0;border-bottom:1px solid var(--rule);border-left:0;
+  background:transparent;padding:13px 2px;gap:12px;
+}
+.chan:first-child{border-top:1px solid var(--rule)}
+.chan:hover,.chan:focus-visible{border-color:var(--rule);background:var(--surface)}
+.chan .chinit{
+  width:30px;height:30px;border-radius:2px;font-family:var(--sans);font-size:13px;
+  font-weight:700;background:var(--accent-soft);color:var(--accent);
+}
+.chan .nm{font-size:14.5px}
+.chan .rl{font-size:12.5px;font-family:var(--sans)}
+.chan .arrow{display:none}
+
+/* the thread's own heading, tighter than a page heading */
+.thread-sal{padding-top:14px}
+.thread-sal h1{font-size:20px}
+.thread-sal p{font-size:10.5px}
+
+/* a message is a said thing, so it is set in the reading face and given air */
+.msg{max-width:84%;border-radius:2px;padding:9px 12px 7px}
+.msgwho{font-size:11px;letter-spacing:.04em;text-transform:none}
+.msgtext{font-size:15.5px;line-height:1.52}
+.msgtime{font-size:10px;letter-spacing:.06em}
+.daymark{background:transparent;border-top:1px solid var(--rule);border-radius:0;
+  width:100%;text-align:center;padding:14px 0 8px;margin:10px 0 6px}
+
+/* ================= the Chairman's sky ================= */
+/* The one dark room in a paper building. It is the only screen that is about
+   looking rather than doing, and a night sky is the right instrument for
+   "where should my eye go" — which is the whole question sixteen findings
+   otherwise answer with sixteen paragraphs. */
+body[data-page="chairman"] .chanalysis{
+  background:#0b1211;border:1px solid #1e2f2c;border-radius:12px;
+  padding:14px 12px 16px;margin:0 0 26px;
+}
+.skysub{
+  font-family:var(--sans);font-size:12.5px;color:#7e908b;
+  text-align:center;margin:2px 0 4px;line-height:1.5;
+}
+svg.sky{display:block;width:100%;height:auto;touch-action:manipulation}
+svg.sky .node{cursor:pointer}
+svg.sky .node circle.hit{fill:transparent}
+svg.sky .node .glow{opacity:.5}
+svg.sky .node text{
+  font-family:var(--sans);font-size:7.6px;font-weight:600;fill:#7e908b;
+  text-anchor:middle;pointer-events:none;
+}
+svg.sky .node.on text{fill:#eaf0ee}
+svg.sky .node.quiet text{fill:#55645f}
+svg.sky .node.absent{opacity:.35;cursor:default}
+svg.sky .core{cursor:pointer}
+svg.sky .core text.n{
+  font-family:var(--mono);font-size:15px;font-weight:500;fill:#eaf0ee;text-anchor:middle;
+}
+svg.sky .core text.l{
+  font-family:var(--sans);font-size:6.6px;font-weight:700;fill:#3fbfa8;
+  letter-spacing:.16em;text-anchor:middle;
+}
+
+/* the finding that is open, underneath the sky */
+body[data-page="chairman"] .chfind{
+  background:#111d1b;border:1px solid #2b4340;border-left:3px solid #2b4340;
+  border-radius:10px;padding:13px 15px;margin:12px 4px 2px;
+}
+body[data-page="chairman"] .chfind.brief{
+  background:linear-gradient(170deg,#15312c,#101f1d);border-color:#29514a;
+  border-left-color:#3fbfa8;
+}
+body[data-page="chairman"] .chfind.decision{border-left-color:#e2765c;background:#1a1311}
+body[data-page="chairman"] .chfind.loud{border-left-color:#e2765c}
+body[data-page="chairman"] .chfh{
+  font-family:var(--sans);font-weight:600;font-size:13.5px;color:#3fbfa8;margin-bottom:6px;
+}
+body[data-page="chairman"] .chfind.decision .chfh,
+body[data-page="chairman"] .chfind.loud .chfh{color:#e2765c}
+body[data-page="chairman"] .chft{
+  font-family:var(--serif);font-size:14.5px;line-height:1.62;color:#cdd8d4;
+  white-space:pre-line;
+}
+body[data-page="chairman"] .codenote{
+  font-family:var(--mono);font-size:10px;color:#55645f;text-align:center;margin:10px 0 0;
+}

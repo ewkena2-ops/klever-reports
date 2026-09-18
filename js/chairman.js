@@ -128,6 +128,131 @@ import {
     return { box: box, set: function (x) { v.textContent = x; } };
   }
 
+
+  /* ---------------- the day as a sky ---------------- */
+
+  /* Sixteen findings is a wall of paragraphs. As a sky it is one glance: a
+     bright star wants him, a dim one had an ordinary day. Positions are fixed
+     on purpose — he should come to know where Store sits the way he knows
+     where a thing sits on his own desk, and a layout that rearranges itself
+     every evening teaches nothing. */
+  var SEATS = [
+    ['decide',         200, 128, 'in'],
+    ['store',          115, 152, 'mid'],
+    ['production',     292, 240, 'mid'],
+    ['quality',        106, 256, 'mid'],
+    ['compliance',     300, 150, 'mid'],
+    ['penalties',      200, 322, 'mid'],
+    ['finance',         66, 200, 'out'],
+    ['commercial',     334, 200, 'out'],
+    ['site',           150, 352, 'out'],
+    ['attendance',     258, 348, 'out'],
+    ['purchasing',      86,  96, 'out'],
+    ['margin',         318,  96, 'out'],
+    ['design',          52, 272, 'out'],
+    ['customer',       348, 272, 'out'],
+    ['contradictions', 200,  52, 'out']
+  ];
+
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function sv(tag, attrs) {
+    var e = document.createElementNS(SVGNS, tag);
+    Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    return e;
+  }
+
+  /* How loud a finding is. The agents do not rank themselves, so this reads
+     the words they used, and errs quiet on purpose: an evening where every
+     star is lit tells him nothing at all. */
+  var LOUD = /stopped|missed|ran short|ran out|below the|not reported as required|blocking|halt/;
+  var WARM = /\blate\b|not filed|did not file|waste|rework|unanswered|delay|short of/;
+
+  function heat(text) {
+    var x = String(text || '').toLowerCase();
+    if (!x) return 0;
+    if (LOUD.test(x)) return 2;
+    if (WARM.test(x)) return 1;
+    return 0;
+  }
+
+  var HEAT = [
+    { ring: '#2f4a45', dot: '#0f1c1a', glow: null },
+    { ring: '#e0b33c', dot: '#1d1a10', glow: 'g-gold' },
+    { ring: '#e2765c', dot: '#1d1211', glow: 'g-red' }
+  ];
+
+  function buildSky(findings, onPick) {
+    var by = {};
+    (findings || []).forEach(function (f) { by[f.id] = f; });
+
+    var svg = sv('svg', { 'class': 'sky', viewBox: '0 0 400 400', role: 'img',
+                          'aria-label': t('chSkyAlt') });
+
+    var defs = sv('defs', {});
+    [['g-core', '#5fe0c6', '.9'], ['g-red', '#e2765c', '.85'], ['g-gold', '#e0b33c', '.8']]
+      .forEach(function (g) {
+        var rg = sv('radialGradient', { id: g[0] });
+        rg.appendChild(sv('stop', { offset: '0', 'stop-color': g[1], 'stop-opacity': g[2] }));
+        rg.appendChild(sv('stop', { offset: '1', 'stop-color': g[1], 'stop-opacity': '0' }));
+        defs.appendChild(rg);
+      });
+    svg.appendChild(defs);
+
+    [72, 122, 168].forEach(function (r, i) {
+      svg.appendChild(sv('circle', { cx: 200, cy: 200, r: r, fill: 'none',
+        stroke: ['#152724', '#132220', '#111d1b'][i], 'stroke-width': 1 }));
+    });
+
+    /* a spoke to each one that is loud, so the eye is led rather than hunting */
+    SEATS.forEach(function (p) {
+      if (heat((by[p[0]] || {}).text) !== 2) return;
+      svg.appendChild(sv('line', { x1: 200, y1: 200, x2: p[1], y2: p[2],
+        stroke: '#2a4a44', 'stroke-width': '.8', opacity: '.7' }));
+    });
+
+    var core = sv('g', { 'class': 'core' });
+    core.appendChild(sv('circle', { cx: 200, cy: 200, r: 46, fill: 'url(#g-core)' }));
+    core.appendChild(sv('circle', { cx: 200, cy: 200, r: 27, fill: '#0c1a18',
+      stroke: '#3fbfa8', 'stroke-width': 1.4 }));
+    var n = sv('text', { 'class': 'n', x: 200, y: 200 });
+    n.textContent = String((findings || []).length || 0);
+    core.appendChild(n);
+    var lb = sv('text', { 'class': 'l', x: 200, y: 212 });
+    lb.textContent = t('chAgents');
+    core.appendChild(lb);
+    core.addEventListener('click', function () {
+      var b = (findings || []).filter(function (f) { return f.kind === 'brief'; })[0];
+      if (b) onPick(b, 0);
+    });
+    svg.appendChild(core);
+
+    SEATS.forEach(function (p) {
+      var id = p[0], x = p[1], y = p[2], ring = p[3];
+      var f = by[id];
+      var h = f ? heat(f.text) : 0;
+      var style = HEAT[h];
+      var r = h ? (ring === 'in' ? 9 : 7.5) : (ring === 'out' ? 4.6 : 5.6);
+
+      var g = sv('g', { 'class': 'node ' + (h ? 'on' : 'quiet') + (f ? '' : ' absent') });
+      if (style.glow) {
+        g.appendChild(sv('circle', { 'class': 'glow', cx: x, cy: y,
+          r: h === 2 ? 22 : 16, fill: 'url(#' + style.glow + ')' }));
+      }
+      g.appendChild(sv('circle', { cx: x, cy: y, r: r, fill: style.dot,
+        stroke: style.ring, 'stroke-width': h ? 1.6 : 1.1 }));
+      if (h === 2) g.appendChild(sv('circle', { cx: x, cy: y, r: 3.2, fill: style.ring }));
+      g.appendChild(sv('circle', { 'class': 'hit', cx: x, cy: y, r: 24 }));
+
+      var tx = sv('text', { x: x, y: y < 200 ? y - 19 : y + 23 });
+      tx.textContent = f ? (lang === 'am' && f.am ? f.am : f.en) : id;
+      g.appendChild(tx);
+
+      if (f) g.addEventListener('click', function () { onPick(f, h); });
+      svg.appendChild(g);
+    });
+    return svg;
+  }
+
   /* ---------------- the analysis ---------------- */
 
   function watchAnalysis(into) {
@@ -139,14 +264,37 @@ import {
       }
       var d = snap.data();
       var when = d.ranAt && d.ranAt.toDate ? d.ranAt.toDate() : null;
-      if (when) into.appendChild(el('p', 'codenote', t('chRanAt') + ' ' + hhmm(when)));
+      var finds = d.findings || [];
 
-      (d.findings || []).forEach(function (f) {
-        var card = el('div', 'chfind ' + (f.kind || 'finding'));
-        card.appendChild(el('div', 'chfh', lang === 'am' && f.am ? f.am : f.en));
-        card.appendChild(el('div', 'chft', f.text || ''));
-        into.appendChild(card);
-      });
+      var loud = finds.filter(function (f) { return heat(f.text) === 2; }).length;
+      into.appendChild(el('p', 'skysub',
+        finds.length + ' ' + t('chAgentsRead') + ' ' +
+        (loud ? loud + ' ' + t('chWantYou') : t('chAllQuiet'))));
+
+      var panel = el('div', 'chfind');
+
+      into.appendChild(buildSky(finds, function (f, h) {
+        panel.className = 'chfind ' + (f.kind === 'brief' ? 'brief'
+                          : (f.kind === 'decision' ? 'decision' : 'finding'))
+                          + (h === 2 ? ' loud' : '');
+        panel.innerHTML = '';
+        panel.appendChild(el('div', 'chfh', lang === 'am' && f.am ? f.am : f.en));
+        panel.appendChild(el('div', 'chft', f.text || ''));
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }));
+
+      /* the brief is the reading of the whole day, so it is open already */
+      var brief = finds.filter(function (f) { return f.kind === 'brief'; })[0];
+      if (brief) {
+        panel.className = 'chfind brief';
+        panel.appendChild(el('div', 'chfh', lang === 'am' && brief.am ? brief.am : brief.en));
+        panel.appendChild(el('div', 'chft', brief.text || ''));
+      } else {
+        panel.appendChild(el('div', 'chft', t('chTapStar')));
+      }
+      into.appendChild(panel);
+
+      if (when) into.appendChild(el('p', 'codenote', t('chRanAt') + ' ' + hhmm(when)));
     }, function () {
       into.innerHTML = '';
       into.appendChild(el('p', 'codeerr', t('chOnlyChairman')));

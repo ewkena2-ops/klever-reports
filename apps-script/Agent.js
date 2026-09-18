@@ -64,11 +64,25 @@ var REPORT_PENALTY = {
      nothing, which is what the signed paper actually says. */
 };
 
-/* Weekly reports are charged separately and only on their due day. */
+/* Weekly reports are charged separately and only on their due day.
+
+   NOTE THE MISSING `miss`, AND THAT IT IS NOT AN OVERSIGHT HERE.
+   Every letter sets a figure for a weekly report filed LATE — 500 Birr, the
+   same in all of them — and not one sets a figure for a weekly report that
+   never arrives at all. Ephrata's is the single exception, and only for her
+   marketing report. So under the paper as signed, filing a weekly report an
+   hour late costs 500 Birr and not filing it costs nothing, which cannot be
+   what was meant.
+
+   This charges what the letters actually say, which is zero, and the decision
+   register raises it on the days it costs something. Adding a number here
+   before the Chairman sets one would be inventing a fine. */
 var WEEKLY_PENALTY = {
   ephrata: { late: 500, src: 'Ephrata — weekly commercial report late' },
   liu:     { late: 500, src: 'Mahelet — weekly report late' },
-  betty:   { late: 500, src: 'Betelhem — weekly finance report late' }
+  betty:   { late: 500, src: 'Betelhem — weekly finance report late' },
+  amaha:   { late: 500, src: 'Amaha — weekly production summary late' },
+  wude:    { late: 500, src: 'Wude — weekly QC summary late' }
 };
 
 /* ------------------------------------------------------------------ *
@@ -199,8 +213,23 @@ function fsToken_() {
         email: 'ledger@' + prop_('KLEVER_DOMAIN', 'klever.local'),
         password: pw, returnSecureToken: true }) });
   if (res.getResponseCode() !== 200) {
-    throw new Error('Ledger sign-in failed (HTTP ' + res.getResponseCode() +
-                    '). Check LEDGER_PASSWORD.');
+    /* Firebase says exactly what is wrong; repeat it rather than guessing.
+       The first version of this blamed LEDGER_PASSWORD for every 400, which
+       sent the reader after the wrong property when the web key was the one
+       mistyped. */
+    var why = '';
+    try { why = JSON.parse(res.getContentText()).error.message; } catch (e) { why = ''; }
+    var hint = {
+      'INVALID_LOGIN_CREDENTIALS': 'LEDGER_PASSWORD is wrong.',
+      'INVALID_PASSWORD':          'LEDGER_PASSWORD is wrong.',
+      'EMAIL_NOT_FOUND':           'There is no ledger@klever.local account in this project.',
+      'API_KEY_INVALID':           'FIREBASE_WEB_KEY is wrong.',
+      'INVALID_EMAIL':             'KLEVER_DOMAIN is wrong — it should be klever.local.',
+      'MISSING_PASSWORD':          'LEDGER_PASSWORD is empty.'
+    }[why] || ('Firebase said: ' + (why || 'nothing useful') + '.');
+    throw new Error('Ledger sign-in failed (HTTP ' + res.getResponseCode() + '). ' + hint +
+                    '  Lengths now stored — key ' + key.length + ', password ' + pw.length +
+                    '. They should be 39 and 21. A trailing space counts.');
   }
   return JSON.parse(res.getContentText()).idToken;
 }
@@ -312,6 +341,25 @@ function charge_(due, filed, when) {
     }
     ledger.push(line);
   });
+
+  /* Nothing is charged before the day the team was told this was running.
+     Without this the ledger charges from the moment it is switched on, and the
+     first thing it would have done here is fine fifteen people 8,300 Birr for
+     a Friday on which nobody had been told the system existed. Set
+     LEDGER_START to that day (yyyy-mm-dd) and the figures are still calculated
+     and still emailed — they simply cost nobody anything until then. */
+  var start = prop_('LEDGER_START', '');
+  if (start) {
+    var today = Utilities.formatDate(when, tz_(), 'yyyy-MM-dd');
+    if (today < start) {
+      ledger.forEach(function (l) {
+        if (l.amount > 0) {
+          l.why = 'Not charged — before LEDGER_START (' + start + '). ' + l.why;
+          l.amount = 0;
+        }
+      });
+    }
+  }
 
   /* heaviest first — the Chairman reads the top of the list */
   ledger.sort(function (a, b) { return b.amount - a.amount; });

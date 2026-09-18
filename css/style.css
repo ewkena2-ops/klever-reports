@@ -604,3 +604,55 @@ body[data-page="chat"] .wrap{padding-bottom:104px}
 /* chat on the report home screen — the reason one link is enough */
 .chatcard{text-decoration:none;border-left-color:var(--accent)}
 .chatcard .chinit{font-size:16px}
+
+/* ---------------- the Chairman's page ---------------- */
+.chtiles{display:flex;gap:10px;margin:0 0 26px}
+.chtile{flex:1;background:var(--surface);border:1px solid var(--rule);padding:11px 13px}
+.chtl{font-family:var(--mono);font-size:10px;letter-spacing:.13em;color:var(--muted)}
+.chtv{font-family:var(--mono);font-size:19px;margin-top:4px;color:var(--ink)}
+
+.chanalysis{margin:0 0 30px}
+.chfind{
+  background:var(--paper);border:1px solid var(--rule);
+  border-left:3px solid var(--rule-strong);padding:12px 15px;margin-bottom:9px;
+}
+/* the brief first and loudest, then what to decide, then the rest */
+.chfind.brief{border-left-color:var(--accent);background:var(--accent-soft)}
+.chfind.decision{border-left-color:var(--debit);background:var(--debit-soft)}
+.chfh{font-family:var(--sans);font-weight:600;font-size:13px;margin-bottom:5px;color:var(--accent)}
+.chfind.decision .chfh{color:var(--debit)}
+.chft{font-family:var(--serif);font-size:14px;line-height:1.6;white-space:pre-wrap;color:var(--ink-2)}
+
+/* one filed report, closed until he wants it */
+.chrow{
+  background:var(--paper);border:1px solid var(--rule);border-left:3px solid var(--credit);
+  margin-bottom:8px;
+}
+.chrow.late{border-left-color:var(--debit)}
+.chrow summary{
+  display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
+  padding:11px 14px;cursor:pointer;list-style:none;
+}
+.chrow summary::-webkit-details-marker{display:none}
+.chrow summary::after{content:'+';margin-left:auto;font-family:var(--mono);color:var(--muted)}
+.chrow[open] summary::after{content:'−'}
+.chrw{font-family:var(--sans);font-weight:600;font-size:14.5px}
+.chrr{font-family:var(--sans);font-size:13px;color:var(--muted);flex:1;min-width:0}
+.chrt{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.chrow.late .chrt{color:var(--debit)}
+.chrbody{padding:0 14px 14px;border-top:1px solid var(--rule)}
+
+.chsec{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--accent);margin:14px 0 6px;
+}
+.chf{display:flex;gap:12px;padding:4px 0;border-bottom:1px dotted var(--rule);align-items:baseline}
+.chfk{font-family:var(--sans);font-size:13px;color:var(--muted);flex:1;min-width:0}
+.chfv{font-family:var(--mono);font-size:13px;color:var(--ink);text-align:right;word-break:break-word;max-width:60%}
+
+.chflags,.chmissing{
+  margin-top:14px;background:var(--debit-soft);border:1px solid var(--rule);
+  padding:10px 13px;font-family:var(--sans);font-size:13px;color:var(--debit);
+}
+.chmissing{margin-top:18px}
+.chfl{font-family:var(--mono);font-size:10px;letter-spacing:.13em;margin-bottom:5px}

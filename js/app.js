@@ -395,6 +395,19 @@
       list.appendChild(b);
     });
     root.appendChild(list);
+
+    /* his own page: today's filed reports, and what the agents made of them */
+    var ov = el('a', 'chan chatcard');
+    ov.href = 'chairman.html';
+    ov.appendChild(el('span', 'chinit', '▣'));
+    var ow = el('span', 'who');
+    ow.appendChild(el('span', 'nm', t('chOverview')));
+    ow.appendChild(el('span', 'rl', t('chAnalysis')));
+    ov.appendChild(ow);
+    ov.appendChild(el('span', 'arrow', '→'));
+    root.appendChild(el('p', 'eyebrow', t('chRaw')));
+    root.appendChild(ov);
+
     root.appendChild(chatCard());
     root.appendChild(foot());
 

@@ -130,6 +130,33 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    /* ---------------------------------------------------------------- *
+     *  What the agents found                                             *
+     * ---------------------------------------------------------------- *
+     *  Written by the ledger account after a run, one document per day,
+     *  so the Chairman can read it on his phone instead of only in an
+     *  email. Nobody else can see it: it names people and what they owe. */
+    match /analysis/{day} {
+      allow get, list: if isChairman();
+      allow create, update: if isLedger();
+      allow delete: if false;
+    }
+
+    /* ---------------------------------------------------------------- *
+     *  Asking for a run                                                  *
+     * ---------------------------------------------------------------- *
+     *  The Chairman presses a button; this is the button. A trigger picks
+     *  it up within a few minutes and runs the agents.
+     *
+     *  Only he can write it, because a run costs money — anyone able to
+     *  set this could spend the Gemini budget by holding down a key. */
+    match /control/{doc} {
+      allow get: if isChairman() || isLedger();
+      allow create, update: if isChairman()
+                            && request.resource.data.at == request.time;
+      allow delete: if isLedger();
+    }
+
     /* anything not named above is closed */
     match /{document=**} {
       allow read, write: if false;

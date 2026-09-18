@@ -116,6 +116,26 @@ var DECISIONS = [
                  'sets no figure. Everyone else in the same position paid.' : null;
   } },
 
+{ id:'weekly-missing', what:'What a weekly report costs when it never arrives',
+  yours:true,
+  detail:'Every letter sets 500 Birr for a weekly report filed late. Not one sets anything for '+
+         'a weekly report that never arrives — Ephrata’s marketing report is the only exception '+
+         'in the whole set. So filing an hour late costs 500 and not filing costs nothing, which '+
+         'is the wrong way round and is what the ledger currently charges, because it charges '+
+         'what the paper says.',
+  blocks:'Every letter with a weekly report in it — Ephrata, Mahelet, Betelhem, Amaha, Wude, '+
+         'Elyas, Getachew, Yordanos, both salespeople, all five designers',
+  bites: function (d) {
+    var n = 0;
+    d.ledger.forEach(function (l) {
+      if (l.status === 'MISSING' && /Weekly|Summary|Projection|Plan/i.test(l.report) &&
+          l.amount === 0) n++;
+    });
+    return n ? n + ' weekly report' + (n > 1 ? 's' : '') + ' never arrived today and cost '+
+               'nobody anything, while filing one an hour late would have cost 500 Birr each.'
+             : null;
+  } },
+
 { id:'rework-band', what:'The 2–5% rework dead band',
   detail:'Wude earns a bonus below 2% and is fined above 5%. Between the two, nothing in her '+
          'letter reacts at all.',
@@ -633,6 +653,7 @@ function runAgents() {
   var d = gather_(when);
   var results = askAll_(d);
   writeAnalysis_(results, when);
+  publishAnalysis_(results, d, when);
   mailAnalysis_(results, d, when);
 }
 
@@ -848,4 +869,105 @@ function tile_(label, value) {
   return '<div style="flex:1;background:#f3f4f1;border:1px solid #e4e7e3;padding:10px 12px">' +
          '<div style="font-size:10px;letter-spacing:.12em;color:#66716d">' + label + '</div>' +
          '<div style="font-size:17px;margin-top:3px">' + esc_(value) + '</div></div>';
+}
+
+/* ------------------------------------------------------------------ *
+ *  One-time setup                                                     *
+ * ------------------------------------------------------------------ */
+
+/* Sets the three Script Properties the ledger and the agents need.
+
+   The values are passed in as arguments and are not written anywhere in this
+   file, because this file lives in a public repository. The Gemini key spends
+   money; it belongs in Script Properties and in Klever-Access-Codes.txt, and
+   nowhere else.
+
+   Run it once — from the editor, or remotely with:
+     clasp run setKeys --params '["<gemini>","<firebase-web>","<ledger-pw>"]'
+
+   Then setKeys can be forgotten about. Running it again just overwrites. */
+function setKeys(geminiKey, firebaseWebKey, ledgerPassword) {
+  var props = PropertiesService.getScriptProperties();
+  if (geminiKey) props.setProperty('GEMINI_KEY', String(geminiKey));
+  if (firebaseWebKey) props.setProperty('FIREBASE_WEB_KEY', String(firebaseWebKey));
+  if (ledgerPassword) props.setProperty('LEDGER_PASSWORD', String(ledgerPassword));
+
+  /* report what is set without ever printing a secret back */
+  var have = props.getProperties();
+  return ['GEMINI_KEY', 'FIREBASE_WEB_KEY', 'LEDGER_PASSWORD', 'GEMINI_MODEL', 'FIREBASE_PROJECT']
+    .map(function (k) {
+      var v = have[k];
+      return k + ': ' + (v ? 'set (' + String(v).length + ' chars)' : 'NOT SET');
+    }).join(String.fromCharCode(10));
+}
+
+/* What is configured, printing nothing secret. Safe to run any time. */
+function checkKeys() {
+  return setKeys(null, null, null);
+}
+
+/* ------------------------------------------------------------------ *
+ *  Publishing the result, and the button                              *
+ * ------------------------------------------------------------------ */
+
+/* The email is a good place to read this once. It is a bad place to find it
+   again three days later, and it is not on the phone of a man standing in the
+   factory. So a run also writes its findings to Firestore, where the
+   Chairman's own page reads them — and only his: the rules let nobody else
+   near this collection, because it names people and what they owe. */
+function publishAnalysis_(results, d, when) {
+  var day = Utilities.formatDate(when, tz_(), 'yyyy-MM-dd');
+  var fields = {
+    day:      { stringValue: day },
+    dayLabel: { stringValue: d.dayLabel },
+    ranAt:    { timestampValue: new Date().toISOString().replace(/\.\d+Z$/, 'Z') },
+    filed:    { integerValue: String(d.filed.length) },
+    due:      { integerValue: String(d.ledger.length) },
+    owed:     { integerValue: String(d.ledger.reduce(function (a, l) { return a + l.amount; }, 0)) },
+    findings: { arrayValue: { values: results.map(function (r) {
+      return { mapValue: { fields: {
+        id:   { stringValue: r.id },
+        en:   { stringValue: r.en },
+        am:   { stringValue: r.am },
+        text: { stringValue: String(r.text || '') },
+        kind: { stringValue: r.id === 'brief' ? 'brief'
+                           : (r.decision ? 'decision' : 'finding') }
+      } } };
+    }) } }
+  };
+
+  var res = UrlFetchApp.fetch(fsBase_() + '/documents/analysis/' + day, {
+    method: 'patch', contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + fsToken_() },
+    muteHttpExceptions: true,
+    payload: JSON.stringify({ fields: fields })
+  });
+  if (res.getResponseCode() !== 200) {
+    /* the email already went; a failed publish must not lose it */
+    Logger.log('Could not publish to Firestore: HTTP %s %s',
+               res.getResponseCode(), res.getContentText().substring(0, 200));
+  }
+}
+
+/* The Chairman presses "Analyse now" on his page, which writes one document.
+   This runs every ten minutes, sees it, deletes it and does the run. It is
+   deleted first and on purpose: if the run then fails, it fails once rather
+   than retrying every ten minutes for the rest of the day with a model that
+   charges for each attempt. */
+function watchForRunRequest() {
+  var token = fsToken_();
+  var res = UrlFetchApp.fetch(fsBase_() + '/documents/control/run', {
+    headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true
+  });
+  if (res.getResponseCode() === 404) return;           /* nobody asked */
+  if (res.getResponseCode() !== 200) {
+    Logger.log('control/run unreadable: HTTP %s', res.getResponseCode());
+    return;
+  }
+  UrlFetchApp.fetch(fsBase_() + '/documents/control/run', {
+    method: 'delete', headers: { Authorization: 'Bearer ' + token },
+    muteHttpExceptions: true
+  });
+  Logger.log('Run requested from the Chairman’s page — running now.');
+  runAgents();
 }

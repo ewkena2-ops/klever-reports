@@ -73,6 +73,37 @@ service cloud.firestore {
       }
     }
 
+    /* ---------------------------------------------------------------- *
+     *  Filed reports                                                     *
+     * ---------------------------------------------------------------- *
+     *  The Sheet keeps its copy and always will — it is the Chairman's
+     *  window on the day. This is the copy that is signed, and it is the
+     *  one the penalty ledger answers for, so it has to be impossible to
+     *  forge: you file as yourself, for yourself, at a time the server
+     *  sets, and nothing can be altered afterwards.                      */
+    match /reports/{rid} {
+
+      /* your own reports, and the Chairman sees everyone's */
+      allow get, list: if signedIn()
+                       && (isChairman() || resource.data.person == me());
+
+      allow create: if signedIn()
+                    /* you cannot file under someone else's name */
+                    && request.resource.data.by == me()
+                    /* and only for yourself — unless you are the Chairman,
+                       who may file on anyone's behalf; the row records that
+                       it was him rather than reading as theirs */
+                    && (request.resource.data.person == me() || isChairman())
+                    /* the clock is the server's, so a late report cannot be
+                       filed as though it arrived before the deadline */
+                    && request.resource.data.at == request.time
+                    && request.resource.data.report is string
+                    && request.resource.data.person is string;
+
+      /* a filed report is filed. A correction is a new filing. */
+      allow update, delete: if false;
+    }
+
     /* anything not named above is closed */
     match /{document=**} {
       allow read, write: if false;

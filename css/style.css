@@ -550,3 +550,12 @@ body[data-page="chat"] .wrap{padding-bottom:104px}
   border:1px solid var(--rule-strong);border-radius:var(--radius);
 }
 .crosslink:hover{border-color:var(--accent)}
+
+/* the report sign-in takes a name and a password now, not six digits */
+.signfield{
+  width:100%;font:inherit;font-family:var(--sans);font-size:16px;
+  padding:12px;margin-bottom:16px;
+  background:var(--paper);color:var(--ink);
+  border:1px solid var(--rule-strong);border-radius:var(--radius);
+}
+.signfield:focus{outline:2px solid var(--accent);outline-offset:-2px}

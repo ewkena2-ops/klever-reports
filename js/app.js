@@ -120,9 +120,7 @@
       out.appendChild(el('span', 'sotext', t('signOut')));
       out.title = AUTH.isChairman() ? 'Chairman' : L(me);
       out.onclick = function () {
-        AUTH.signOut();
-        if (document.body.dataset.page === 'form') location.href = 'index.html';
-        else renderSignIn(document.getElementById('app'));
+        AUTH.signOut().then(function () { location.href = 'index.html'; });
       };
       inner.appendChild(out);
     }
@@ -243,7 +241,10 @@
   function signOutLink(root) {
     var a = el('a', 'signout', t('signOut'));
     a.href = '#';
-    a.onclick = function (e) { e.preventDefault(); AUTH.signOut(); renderSignIn(root); };
+    a.onclick = function (e) {
+      e.preventDefault();
+      AUTH.signOut().then(function () { location.href = 'index.html'; });
+    };
     return a;
   }
 
@@ -258,17 +259,33 @@
     card.appendChild(el('h1', null, t('signIn')));
     card.appendChild(el('p', 'sub', t('signInSub')));
 
-    var lab = el('label', 'codelab', t('codeLabel'));
-    lab.htmlFor = 'code';
+    /* Name first, then password. Picking your own name from a list is
+       easier on a phone than typing an address, and it means nobody has to
+       remember that the account is really betty@klever.local. */
+    var lab = el('label', 'codelab', t('chatWho'));
     card.appendChild(lab);
 
+    var sel = document.createElement('select');
+    sel.className = 'signfield';
+    var optC = el('option', null, lang === 'am' ? 'ሲቀመንበር' : 'Chairman');
+    optC.value = AUTH.CHAIR_ID;
+    sel.appendChild(optC);
+    PEOPLE.forEach(function (p) {
+      if (typeof CHAT_ACCOUNTS !== 'undefined' && CHAT_ACCOUNTS.indexOf(p.id) === -1) return;
+      var o = el('option', null, L(p) + ' · ' + (lang === 'am' ? p.roleAm : p.roleEn));
+      o.value = p.id;
+      sel.appendChild(o);
+    });
+    card.appendChild(sel);
+
+    var lab2 = el('label', 'codelab', t('chatPassword'));
+    card.appendChild(lab2);
+
     var input = document.createElement('input');
-    input.type = 'text';
+    input.type = 'password';
     input.id = 'code';
-    input.className = 'codebox';
-    input.inputMode = 'numeric';
-    input.autocomplete = 'off';
-    input.maxLength = 6;
+    input.className = 'signfield';
+    input.autocomplete = 'current-password';
     card.appendChild(input);
 
     var err = el('p', 'codeerr');
@@ -281,11 +298,23 @@
     card.appendChild(el('p', 'codenote', t('staySignedIn')));
 
     function attempt() {
-      if (AUTH.signIn(input.value)) { rebuildTop(); renderIndex(root); return; }
-      err.textContent = t('badCode');
-      err.hidden = false;
-      input.value = '';
-      input.focus();
+      if (go.disabled) return;
+      err.hidden = true;
+      go.disabled = true;
+      go.textContent = t('chatSigningIn');
+      AUTH.signIn(sel.value, input.value).then(function () {
+        rebuildTop();
+        renderIndex(root);
+      })['catch'](function (e) {
+        /* never say which half was wrong */
+        err.textContent = (e && e.message === 'offline')
+          ? t('signInOffline') : t('chatBadSignIn');
+        err.hidden = false;
+        go.disabled = false;
+        go.textContent = t('codeGo');
+        input.value = '';
+        input.focus();
+      });
     }
     go.onclick = attempt;
     input.onkeydown = function (e) { if (e.key === 'Enter') attempt(); };
@@ -721,6 +750,23 @@
     send.type = 'button'; send.id = 'send';
     send.onclick = function () {
       var txt = buildMessage();
+
+      /* Two homes, on purpose. The Sheet is the Chairman's window on the day
+         and it drives the emails; Firestore is the copy that is signed in and
+         cannot be forged, which is the one the penalty ledger will answer for. */
+      if (window.FB && window.FB.live() && AUTH.who()) {
+        window.FB.fileReport({
+          person: report.person,
+          report: report.id,
+          late: isLate(report.dueTime, report.dueDay),
+          due: lang === 'am' ? report.dueAm : report.dueEn,
+          values: values,
+          flags: reportFlags(),
+          text: txt,
+          lang: lang
+        })['catch'](function () { /* the cache will retry; the Sheet still has it */ });
+      }
+
       ARCHIVE.file({
         at: new Date().toISOString(),
         person: report.person,
@@ -934,11 +980,19 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     ARCHIVE.flush();
-    buildTop();
     var root = document.getElementById('app');
     if (!root) return;
-    if (!AUTH.who()) { renderSignIn(root); return; }
-    if (document.body.dataset.page === 'form') renderForm(root);
-    else renderIndex(root);
+
+    /* Who is signed in is Firebase's answer, and it takes a moment to arrive.
+       Render nothing until it does, rather than flashing the sign-in card at
+       somebody who is already signed in. */
+    var settled = window.FB ? window.FB.ready : Promise.resolve(null);
+    settled.then(function (id) {
+      AUTH._adopt(id);
+      buildTop();
+      if (!AUTH.who()) { renderSignIn(root); return; }
+      if (document.body.dataset.page === 'form') renderForm(root);
+      else renderIndex(root);
+    });
   });
 })();

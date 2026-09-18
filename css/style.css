@@ -1014,3 +1014,7 @@ body[data-page="chairman"] .chft{
 body[data-page="chairman"] .codenote{
   font-family:var(--mono);font-size:10px;color:#55645f;text-align:center;margin:10px 0 0;
 }
+
+/* a channel name is a destination, not a hyperlink in prose */
+.chan .nm,.chan .rl{text-decoration:none}
+.chan{text-decoration:none}

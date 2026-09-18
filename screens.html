@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Klever — four screens</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Noto+Serif+Ethiopic:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#191d1f;color:#e8ebe8;font-family:"Archivo",sans-serif}
+.page{padding:26px 18px 40px}
+h1{font-size:21px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px}
+.sub{font-size:13px;color:#98a3a0;margin:0 0 26px}
+.row{display:flex;gap:18px;align-items:flex-start;justify-content:center;flex-wrap:nowrap}
+.col{width:392px;flex:none}
+.cap{font-size:13px;font-weight:700;margin:0 0 3px}
+.cap span{display:block;font-size:11.5px;font-weight:400;color:#98a3a0;margin-top:2px;line-height:1.45}
+.dev{
+  margin-top:10px;width:392px;height:800px;overflow:hidden;border-radius:12px;
+  border:1px solid #2c3335;box-shadow:0 12px 36px rgba(0,0,0,.5);background:#fbfbf9;
+}
+.dev iframe{width:392px;height:800px;border:0;display:block}
+</style></head>
+<body><div class="page">
+<h1>Klever — the four screens</h1>
+<p class="sub">Rendered from the live code. Amaha's own day; the Chairman's sky on the right.</p>
+<div class="row">
+  <div class="col"><p class="cap">Home<span>Letterhead, a sentence, one number, one button.</span></p>
+    <div class="dev"><iframe src="screens/home.html"></iframe></div></div>
+  <div class="col"><p class="cap">The form<span>A memo grid, and what missing it costs.</span></p>
+    <div class="dev"><iframe src="screens/form.html"></iframe></div></div>
+  <div class="col"><p class="cap">Chat<span>A ruled contents page, not a stack of tiles.</span></p>
+    <div class="dev"><iframe src="screens/chat.html"></iframe></div></div>
+  <div class="col"><p class="cap">The Chairman's sky<span>Sixteen agents. Bright wants you.</span></p>
+    <div class="dev"><iframe src="screens/sky.html"></iframe></div></div>
+</div>
+</div></body></html>

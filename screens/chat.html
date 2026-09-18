@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Noto+Serif+Ethiopic:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<link rel="stylesheet" href="../css/style.css">
+<style>:root{color-scheme:light}body{background:var(--desk)}</style></head>
+<body data-page="chat"><main class="wrap" id="app"></main>
+<script src="../js/i18n.js"></script><script src="../js/forms.js"></script>
+<script>
+/* the channel list, drawn the way chat.js draws it, without Firebase */
+var lang='en';
+function t(k){return T.en[k];}
+function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+var root=document.getElementById('app');
+
+var lh=el('header','lh');
+var mk=el('div','lh-mark');
+mk.appendChild(el('span','lh-k','KLEVER'));
+mk.appendChild(el('span','lh-ku','KÜCHE'));
+lh.appendChild(mk);
+var dt=el('div','lh-date');
+dt.appendChild(el('span',null,'Amaha Temechew'));
+dt.appendChild(el('span',null,'17:06'));
+lh.appendChild(dt);
+root.appendChild(lh);
+
+var sal=el('div','sal');
+sal.appendChild(el('h1',null,t('chatTitle')));
+sal.appendChild(el('p',null,t('chatPickSub')));
+root.appendChild(sal);
+
+root.appendChild(el('p','eyebrow',t('chatChannels')));
+var list=el('div','chanlist');
+[['#','All staff','Ephrata Assfa: the Adama order moves to Monday'],
+ ['#','Leads','Betelhem Aklog: reserve is under six million tonight'],
+ ['#','Production','Wude Birhanu: edge banding again on K-214'],
+ ['✉','Amaha Temechew · Chairman','Chairman: what stopped the line at eleven?']
+].forEach(function(r){
+  var a=el('a','chan'); a.href='#';
+  a.appendChild(el('span','chinit',r[0]));
+  var w=el('span','who');
+  w.appendChild(el('span','nm',r[1]));
+  var l=el('span','rl lastmsg',r[2]);
+  w.appendChild(l);
+  a.appendChild(w);
+  a.appendChild(el('span','arrow','→'));
+  list.appendChild(a);
+});
+root.appendChild(list);
+root.appendChild(el('p','codenote',t('chatKept')));
+</script></body></html>

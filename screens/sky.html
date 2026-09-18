@@ -1,0 +1,72 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Noto+Serif+Ethiopic:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<link rel="stylesheet" href="../css/style.css">
+<style>:root{color-scheme:light}body{background:var(--desk)}</style></head>
+<body data-page="chairman"><main class="wrap" id="app"></main>
+<script src="../js/i18n.js"></script><script src="../js/forms.js"></script>
+<script type="module">
+/* the real buildSky, lifted out of chairman.js so this shows the shipped code */
+const src = await (await fetch('../js/chairman.js')).text();
+const body = src.slice(src.indexOf('var SEATS'), src.indexOf('/* ---------------- the analysis'));
+const lang = 'en';
+const t = k => T.en[k];
+const el = (tag, cls, txt) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (txt != null) e.textContent = txt;
+  return e;
+};
+const buildSky = new Function('t', 'el', 'lang', body + '; return buildSky;')(t, el, lang);
+
+const F = [
+ {id:'brief', en:'The brief', kind:'brief', text:'Melamine ran out at eleven and the factory lost three hours. Nobody told Getachew until the afternoon, and the store had flagged two days of cover on Tuesday.'},
+ {id:'decide', en:'What to decide', kind:'decision', text:'Assembler pay is blocking the handbooks from printing for another day.'},
+ {id:'store', en:'Store and stock', text:'White 18mm melamine ran short and stopped production today. Two days of cover left.'},
+ {id:'production', en:'Production', text:'31 against 40. Waste at 24%, and edge banding is holding seven jobs.'},
+ {id:'quality', en:'Quality', text:'Edge banding caused five of nine defects. Rework at 3.4%.'},
+ {id:'compliance', en:'Who reported', text:'Mahelet did not file operations. Wude filed late.'},
+ {id:'penalties', en:'Penalty ledger', text:'1,200 Birr across three people. No pattern yet.'},
+ {id:'finance', en:'Finance', text:'Cash all banked, nothing in hand, no discrepancy.'},
+ {id:'commercial', en:'Sales', text:'1.74 million against a three million week.'},
+ {id:'site', en:'Installation', text:'Five hours lost to sites that were not ours to fix.'},
+ {id:'attendance', en:'Attendance', text:'Seventeen of twenty-two present.'},
+ {id:'purchasing', en:'Purchasing', text:'Melamine up 13% on the last purchase.'},
+ {id:'margin', en:'Margin', text:'Waste is the thing eating the floor today.'},
+ {id:'design', en:'Design', text:'No designer filed today.'},
+ {id:'customer', en:'Customers', text:'One complaint at site, one in the group.'},
+ {id:'contradictions', en:'Reports that disagree', text:'Store logged fourteen offcut received; factory logged none sent.'}
+];
+
+const root = document.getElementById('app');
+
+const lh = el('header', 'lh');
+const mk = el('div', 'lh-mark');
+mk.appendChild(el('span', 'lh-k', 'KLEVER'));
+mk.appendChild(el('span', 'lh-ku', 'KÜCHE'));
+lh.appendChild(mk);
+const dt = el('div', 'lh-date');
+dt.appendChild(el('span', null, 'Friday 18 September 2026'));
+dt.appendChild(el('span', null, 'መስከረም 8 ቀን 2019 ዓ.ም.'));
+lh.appendChild(dt);
+root.appendChild(lh);
+
+const sal = el('div', 'sal');
+sal.appendChild(el('h1', null, 'The day'));
+sal.appendChild(el('p', null, 'Chairman'));
+root.appendChild(sal);
+
+const wrap = el('div', 'chanalysis');
+wrap.appendChild(el('p', 'skysub', '16 agents read today. 2 want you.'));
+const panel = el('div', 'chfind brief');
+wrap.appendChild(buildSky(F, (f, h) => {
+  panel.className = 'chfind ' + (f.kind === 'brief' ? 'brief' : (f.kind === 'decision' ? 'decision' : 'finding')) + (h === 2 ? ' loud' : '');
+  panel.innerHTML = '';
+  panel.appendChild(el('div', 'chfh', f.en));
+  panel.appendChild(el('div', 'chft', f.text));
+}));
+panel.appendChild(el('div', 'chfh', 'The brief'));
+panel.appendChild(el('div', 'chft', F[0].text));
+wrap.appendChild(panel);
+root.appendChild(wrap);
+</script></body></html>

@@ -760,3 +760,10 @@ fieldset legend{color:var(--ink-2)}
     letter-spacing:.1em;text-transform:uppercase;
   }
 }
+
+/* Shown while Firebase is asked who is signed in. The header is already up by
+   the time this appears, so the page never looks broken — it looks busy. */
+.booting{
+  font-family:var(--mono);font-size:12px;color:var(--muted);
+  margin:40px 0;text-align:center;
+}

@@ -1128,13 +1128,38 @@
     var root = document.getElementById('app');
     if (!root) return;
 
-    /* Who is signed in is Firebase's answer, and it takes a moment to arrive.
-       Render nothing until it does, rather than flashing the sign-in card at
-       somebody who is already signed in. */
+    /* The header goes up first, always. It used to be drawn inside the promise
+       below, which meant that if Firebase never answered — no signal, a blocked
+       CDN, a wedged cache — the person got a blank white page with nothing on
+       it at all, not even a logo. Nothing that is not waiting on an answer
+       should wait for one. */
+    buildTop();
+    root.appendChild(el('p', 'booting', t('connecting')));
+
+    /* Who is signed in is Firebase's answer and it takes a moment. But a
+       promise that can hang forever must not be the only thing standing
+       between a person and a usable page, so it races a clock: after four
+       seconds we carry on as signed-out, which shows the sign-in card rather
+       than nothing. A late answer is still honoured — FB.on() re-renders. */
     var settled = window.FB ? window.FB.ready : Promise.resolve(null);
-    settled.then(function (id) {
+    var raced = Promise.race([
+      settled,
+      new Promise(function (resolve) { setTimeout(function () { resolve(null); }, 4000); })
+    ]);
+
+    if (window.FB && window.FB.on) {
+      window.FB.on(function (id) {
+        /* the answer arrived after we gave up, or the person signed out in
+           another tab */
+        if (id === AUTH.who() || (id === null && AUTH.who() === null)) return;
+        location.reload();
+      });
+    }
+
+    raced.then(function (id) {
       AUTH._adopt(id);
-      buildTop();
+      var b = root.querySelector('.booting');
+      if (b) b.parentNode.removeChild(b);
       if (!AUTH.who()) { renderSignIn(root); return; }
       /* chairman.js owns #app on its own page. app.js is still loaded there
          for buildTop, renderSignIn and the shared helpers, and must draw

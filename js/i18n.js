@@ -4,6 +4,7 @@ const T = {
   en:{
     siteTitle:'Klever Reports',
     signIn:'Sign in',
+    connecting:'Connecting…',
     printBtn:'PDF',
     from:'From',
     footSaved:'Klever Küche · every report you send is filed to the Chairman’s sheet and posted to the group.',
@@ -104,6 +105,7 @@ const T = {
   am:{
     siteTitle:'የክሌቨር ሪፖርቶች',
     signIn:'ግባ',
+    connecting:'በመገናኘት ላይ…',
     printBtn:'PDF',
     from:'ላኪ',
     footSaved:'ክሌቨር ኩሽ · የላኩት እያንዳንዱ ሪፖርት ወደ ሊቀመንበሩ ሉህ ተመዝግቦ ወደ ግሩፑ ይላካል።',

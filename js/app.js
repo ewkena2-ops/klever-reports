@@ -420,6 +420,14 @@
     root.appendChild(ov);
 
     root.appendChild(chatCard());
+
+    /* the design sketches, reachable from the one address rather than living
+       at links of their own. Chairman only — nobody else needs to see a
+       half-finished idea of the thing they use every day. */
+    var dz = el('a', 'designlink', t('designPreview'));
+    dz.href = 'preview.html';
+    root.appendChild(dz);
+
     root.appendChild(foot());
 
     /* keep the countdowns honest without reloading the page */

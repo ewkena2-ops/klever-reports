@@ -1147,17 +1147,25 @@
       new Promise(function (resolve) { setTimeout(function () { resolve(null); }, 4000); })
     ]);
 
+    /* An answer that arrives after we gave up waiting, or a sign-out in another
+       tab, should put the page right. It must compare like with like: Firebase
+       says 'chairman' and AUTH.who() says '*', and comparing those two directly
+       is never equal — which reloaded the page forever. And nothing may reload
+       before the first answer has been adopted, or the very first callback
+       fires against a null we have not filled in yet. */
+    var settledOnce = false;
     if (window.FB && window.FB.on) {
       window.FB.on(function (id) {
-        /* the answer arrived after we gave up, or the person signed out in
-           another tab */
-        if (id === AUTH.who() || (id === null && AUTH.who() === null)) return;
+        if (!settledOnce) return;
+        var mapped = id ? AUTH._fromFb(id) : null;
+        if (mapped === AUTH.who()) return;
         location.reload();
       });
     }
 
     raced.then(function (id) {
       AUTH._adopt(id);
+      settledOnce = true;
       var b = root.querySelector('.booting');
       if (b) b.parentNode.removeChild(b);
       if (!AUTH.who()) { renderSignIn(root); return; }

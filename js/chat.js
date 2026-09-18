@@ -28,6 +28,7 @@ import {
   collection, doc, setDoc, addDoc, query, orderBy, limit, onSnapshot,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js';
 
 (function () {
   'use strict';
@@ -325,6 +326,28 @@ import {
 
     /* composer */
     var form = el('form', 'composer');
+
+    /* the picture button is a label over a hidden file input — on a phone that
+       is what offers Camera as well as Gallery */
+    var pickLabel = el('label', 'compbtn');
+    pickLabel.title = t('chatPhoto');
+    pickLabel.appendChild(el('span', null, '\ud83d\udcf7'));
+    var pick = el('input');
+    pick.type = 'file';
+    pick.accept = 'image/*';
+    pick.hidden = true;
+    pickLabel.appendChild(pick);
+    form.appendChild(pickLabel);
+
+    var micBtn = null;
+    if (canRecord()) {
+      micBtn = el('button', 'compbtn');
+      micBtn.type = 'button';
+      micBtn.title = t('chatVoice');
+      micBtn.appendChild(el('span', null, '\ud83c\udfa4'));
+      form.appendChild(micBtn);
+    }
+
     var box = el('textarea');
     box.rows = 1;
     box.placeholder = t('chatWrite');
@@ -334,6 +357,92 @@ import {
     form.appendChild(box);
     form.appendChild(send);
     root.appendChild(form);
+
+    /* while recording, the composer is replaced by the recorder — there is
+       nothing else to do until the note is sent or thrown away */
+    var recBar = el('div', 'recbar');
+    recBar.hidden = true;
+    root.appendChild(recBar);
+
+    /* ---- one message, whatever it carries ---- */
+    function put(extra, text) {
+      var row = {
+        who: me, text: text || '', lang: lang, at: serverTimestamp()
+      };
+      if (extra) Object.keys(extra).forEach(function (k) { row[k] = extra[k]; });
+      return addDoc(collection(db, 'channels', ch.id, 'messages'), row);
+    }
+
+    /* ---- a picture ---- */
+    pick.onchange = function () {
+      var file = pick.files && pick.files[0];
+      pick.value = '';
+      if (!file) return;
+      pickLabel.classList.add('busy');
+      var caption = box.value.trim();
+      shrinkImage(file).then(function (img) {
+        box.value = '';
+        box.style.height = 'auto';
+        return put({ kind: 'image', media: img.data, mime: 'image/jpeg',
+                     w: img.w, h: img.h }, caption);
+      })['catch'](function (e) {
+        toast(e && e.message === 'too-big' ? t('chatTooBig') : t('chatSendFailed'));
+      }).then(function () { pickLabel.classList.remove('busy'); });
+    };
+
+    /* ---- a voice note ---- */
+    var live = null;
+    if (micBtn) {
+      micBtn.onclick = function () {
+        micBtn.disabled = true;
+        record(function (secs) {
+          var c = recBar.querySelector('.rectime');
+          if (c) c.textContent = clockOf(secs) + ' / ' + clockOf(MAX_SECONDS);
+        }).then(function (handle) {
+          live = handle;
+          micBtn.disabled = false;
+          form.hidden = true;
+          recBar.hidden = false;
+          recBar.innerHTML = '';
+          recBar.appendChild(el('span', 'recdot'));
+          recBar.appendChild(el('span', 'rectime', '0:00 / ' + clockOf(MAX_SECONDS)));
+          recBar.appendChild(el('div', 'spacer'));
+
+          var drop = el('button', 'compbtn', t('chatDiscard'));
+          drop.type = 'button';
+          drop.onclick = function () {
+            if (live) live.cancel();
+            live = null;
+            recBar.hidden = true;
+            form.hidden = false;
+          };
+          recBar.appendChild(drop);
+
+          var done = el('button', 'codego chatsend', t('chatSend'));
+          done.type = 'button';
+          done.onclick = function () {
+            if (!live) return;
+            done.disabled = true;
+            live.stop().then(function (clip) {
+              live = null;
+              recBar.hidden = true;
+              form.hidden = false;
+              return put({ kind: 'voice', media: clip.data, mime: clip.mime,
+                           dur: clip.seconds }, '');
+            })['catch'](function (e) {
+              live = null;
+              recBar.hidden = true;
+              form.hidden = false;
+              toast(e && e.message === 'too-long' ? t('chatTooLong') : t('chatSendFailed'));
+            });
+          };
+          recBar.appendChild(done);
+        })['catch'](function () {
+          micBtn.disabled = false;
+          toast(t('chatNoMic'));
+        });
+      };
+    }
 
     /* grow the box with the message, up to a point */
     box.addEventListener('input', function () {
@@ -357,9 +466,7 @@ import {
       box.style.height = 'auto';
       /* Firestore's cache takes it now and sends it when there is signal, so
          this promise is not what tells us it arrived — the listener is. */
-      addDoc(collection(db, 'channels', ch.id, 'messages'), {
-        who: me, text: text, lang: lang, at: serverTimestamp()
-      })['catch'](function (e) {
+      put(null, text)['catch'](function () {
         toast(t('chatSendFailed'));
         box.value = text;
       });
@@ -390,7 +497,30 @@ import {
         if (m.who !== lastWho) {
           msg.appendChild(el('div', 'msgwho', nameOf(m.who)));
         }
-        msg.appendChild(el('div', 'msgtext', m.text));
+
+        if (m.kind === 'image' && m.media) {
+          var fig = el('a', 'msgimg');
+          fig.href = m.media;
+          fig.target = '_blank';
+          fig.rel = 'noopener';
+          var im = new Image();
+          im.src = m.media;
+          im.alt = m.text || t('chatPhoto');
+          im.loading = 'lazy';
+          if (m.w && m.h) { im.width = m.w; im.height = m.h; }
+          fig.appendChild(im);
+          msg.appendChild(fig);
+        } else if (m.kind === 'voice' && m.media) {
+          var au = document.createElement('audio');
+          au.controls = true;
+          au.preload = 'none';
+          au.className = 'msgvoice';
+          au.src = m.media;
+          msg.appendChild(au);
+          if (m.dur) msg.appendChild(el('div', 'msgdur', clockOf(m.dur)));
+        }
+
+        if (m.text) msg.appendChild(el('div', 'msgtext', m.text));
         var meta = el('div', 'msgtime', hhmm(when));
         if (d.metadata.hasPendingWrites) meta.textContent = t('chatSending');
         msg.appendChild(meta);

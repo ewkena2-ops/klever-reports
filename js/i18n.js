@@ -73,7 +73,13 @@ const T = {
     chatEmpty:'Nothing here yet. Write the first message.',
     chatNoAccess:'You are not in this channel.',
     chatToday:'Today',
-    chatYesterday:'Yesterday'
+    chatYesterday:'Yesterday',
+    chatPhoto:'Photo',
+    chatVoice:'Voice note',
+    chatDiscard:'Discard',
+    chatNoMic:'Cannot use the microphone. Allow it for this site, then try again.',
+    chatTooBig:'That picture is too large even after shrinking. Try another.',
+    chatTooLong:'That note is too long to send. Keep it under two minutes.'
   },
   am:{
     siteTitle:'የክሌቨር ሪፖርቶች',
@@ -147,6 +153,12 @@ const T = {
     chatEmpty:'እስካሁን ምንም የለም። የመጀመሪያውን መልእክት ይጻፉ።',
     chatNoAccess:'በዚህ ቻናል ውስጥ የሉም።',
     chatToday:'ዛሬ',
-    chatYesterday:'ትናንት'
+    chatYesterday:'ትናንት',
+    chatPhoto:'ፎቶ',
+    chatVoice:'የድምፅ መልእክት',
+    chatDiscard:'ተወው',
+    chatNoMic:'ማይክሮፎኑን መጠቀም አልተቻለም። ለዚህ ገጽ ፍቃድ ሰጥተው እንደገና ይሞክሩ።',
+    chatTooBig:'ይህ ፎቶ ካሳነሱትም በኋላ በጣም ትልቅ ነው። ሌላ ይሞክሩ።',
+    chatTooLong:'ይህ የድምፅ መልእክት ለመላክ በጣም ረጅም ነው። ከሁለት ደቂቃ በታች ያድርጉት።'
   }
 };

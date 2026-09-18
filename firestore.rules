@@ -70,12 +70,27 @@ service cloud.firestore {
                       /* you can only write as yourself */
                       && request.resource.data.who == me()
                       && request.resource.data.text is string
-                      && request.resource.data.text.size() > 0
                       && request.resource.data.text.size() <= 4000
                       /* the time comes from the server, so nobody can file a
                          message as though it were sent before a deadline */
                       && request.resource.data.at == request.time
-                      && request.resource.data.keys().hasOnly(['who','text','lang','at']);
+                      && request.resource.data.keys().hasOnly(
+                           ['who','text','lang','at','kind','media','mime','dur','w','h'])
+                      /* either it says something, or it carries something */
+                      && (
+                           (!('kind' in request.resource.data)
+                             && request.resource.data.text.size() > 0)
+                           ||
+                           (request.resource.data.kind in ['image','voice']
+                             && request.resource.data.media is string
+                             && request.resource.data.media.size() > 0
+                             /* a Firestore document caps at 1 MiB and base64
+                                inflates by a third, so the client shrinks a
+                                photo until it fits. This is the backstop —
+                                without it one oversized send makes a channel
+                                expensive for every phone that opens it. */
+                             && request.resource.data.media.size() < 700000)
+                         );
 
         /* append-only, for everyone, forever */
         allow update, delete: if false;

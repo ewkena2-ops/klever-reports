@@ -135,6 +135,27 @@ Setup — forty minutes in a browser, once, no developer needed:
 Free at Klever's size. The allowance is 50,000 reads and 20,000 writes a day;
 thirty-nine people sending a couple of hundred messages uses about 2,000 reads.
 
+
+### Pictures and voice notes
+
+The camera and microphone buttons sit left of the message box. A photo is
+shrunk on the phone before it is sent — 1280px and stepping down only as far
+as it must, because a photo of a defect is evidence and should degrade
+reluctantly. A voice note records at 16kbps Opus, speech-grade, capped at two
+minutes.
+
+Both travel **inside the message document**, not in Firebase Storage. Storage
+needs the paid Blaze plan — since February 2026 a Spark project gets 403 on
+every bucket — and attaching a card to send a photo of a chipped door is the
+wrong trade. A Firestore document caps at 1 MiB and base64 inflates by a
+third, so `js/media.js` shrinks until it fits and the rules refuse anything
+over 700KB regardless. That backstop matters: every phone that opens a channel
+downloads every message in it, so one oversized send is somebody's data bundle
+on a site with one bar of signal.
+
+What this rules out is documents. A supplier's PDF will not fit and should go
+by email until somebody decides Storage is worth the card.
+
 ## The penalty ledger
 
 `apps-script/Agent.js` — runs once a day and answers a question nobody was

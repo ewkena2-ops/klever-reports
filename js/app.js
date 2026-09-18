@@ -626,19 +626,36 @@
     back.href = 'index.html';
     root.appendChild(back);
 
-    /* header */
+    /* The form opens the way the letters do — masthead, then who it is from
+       and who it is to, then the deadline standing on its own. It is the
+       document he is filling in, so it should look like one before he starts
+       rather than only after he prints it. */
+    root.appendChild(letterhead(person));
+
     var head = el('div', 'formhead');
     head.appendChild(el('h1', null, L(report)));
-    head.appendChild(el('div', 'sub', L(person) + ' · ' + (lang === 'am' ? person.roleAm : person.roleEn)));
-    var line = el('div', 'line');
-    line.appendChild(el('span', null, today() + ' · ' + clock()));
+
+    var meta = el('div', 'fmeta');
+    function metaRow(k, v, cls) {
+      var r = el('div', 'fmrow' + (cls ? ' ' + cls : ''));
+      r.appendChild(el('dt', null, k));
+      r.appendChild(el('dd', null, v));
+      meta.appendChild(r);
+    }
+    metaRow(t('from'), L(person) + ' · ' + (lang === 'am' ? person.roleAm : person.roleEn));
+    metaRow(t('to'), lang === 'am' ? report.toAm : report.toEn);
+    metaRow(t('due'), lang === 'am' ? report.dueAm : report.dueEn);
+    head.appendChild(meta);
+
     var lateNow = isLate(report.dueTime, report.dueDay);
-    var pill = el('span', 'pill ' + (lateNow ? 'late' : 'ontime'), lateNow ? t('late') : t('onTime'));
-    line.appendChild(pill);
-    head.appendChild(line);
-    head.appendChild(el('div', 'line', t('due') + ' · ' + (lang === 'am' ? report.dueAm : report.dueEn)));
+    var stat = el('div', 'fstat' + (lateNow ? ' late' : ''));
+    stat.appendChild(el('span', 'fsp', lateNow ? t('late') : t('onTime')));
+    stat.appendChild(el('span', 'fsc', today() + ' · ' + clock()));
+    head.appendChild(stat);
+
+    /* the penalty is the reason the deadline matters, so it is not a footnote */
     if (report.penEn) head.appendChild(el('div', 'penalty', lang === 'am' ? report.penAm : report.penEn));
-    if (report.derived) head.appendChild(el('div', 'penalty', t('derived')));
+    if (report.derived) head.appendChild(el('div', 'penalty soft', t('derived')));
     root.appendChild(head);
 
     var prog = el('div', 'progress'); prog.appendChild(el('i'));
@@ -1039,6 +1056,9 @@
     return f.tgt.op === 'gte' ? v < f.tgt.v : v > f.tgt.v;
   }
 
+  /* The red marks are off until he asks. See showMissing() below. */
+  var marking = false;
+
   function refresh() {
     store.set(draftKey, JSON.stringify(values));
 
@@ -1059,11 +1079,9 @@
         var node = document.getElementById('f_' + f.id) ||
                    document.getElementById('w_' + f.id);
         if (node) {
-          if (ok) node.classList.remove('miss');
-          else { node.classList.add('miss'); if (!firstEmpty) firstEmpty = node; }
-        } else if (!ok && !firstEmpty) {
-          var wrap = document.getElementById('w_' + f.id);
-          if (wrap) firstEmpty = wrap;
+          if (ok || !marking) node.classList.remove('miss');
+          else node.classList.add('miss');
+          if (!ok && !firstEmpty) firstEmpty = node;
         }
       }
       if (f.tgt) {
@@ -1090,8 +1108,12 @@
           c.classList.add('findable');
           c.title = t('findNext');
           c.onclick = function () {
-            firstEmpty.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            try { firstEmpty.focus({ preventScroll: true }); } catch (e) {}
+            /* first tap turns the marks on, so the rest of the hunt is visible */
+            marking = true;
+            refresh();
+            var target = document.querySelector('.miss') || firstEmpty;
+            target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            try { target.focus({ preventScroll: true }); } catch (e) {}
           };
         }
       } else {

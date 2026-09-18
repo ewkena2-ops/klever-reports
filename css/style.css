@@ -891,3 +891,37 @@ fieldset legend{color:var(--ink-2)}
    the sans; mono is reserved for the countdown and the day list, where the
    figures need to align. */
 .reports{gap:8px}
+
+/* ================= the form, in the same voice ================= */
+.formhead{margin:20px 0 22px}
+.formhead h1{
+  font-family:var(--serif);font-size:24px;font-weight:600;line-height:1.16;
+  letter-spacing:-.01em;margin:0 0 15px;text-wrap:balance;
+}
+
+/* from / to / due, set like the memo grid at the top of every letter */
+.fmeta{border-top:1px solid var(--rule);margin-bottom:13px}
+.fmrow{
+  display:grid;grid-template-columns:74px minmax(0,1fr);gap:12px;
+  padding:8px 0;border-bottom:1px solid var(--rule);align-items:baseline;
+}
+.fmrow dt{
+  margin:0;font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--muted);
+}
+.fmrow dd{margin:0;font-family:var(--sans);font-size:13.5px;color:var(--ink-2)}
+
+.fstat{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fsp{
+  font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--credit);
+  background:var(--credit-soft);padding:4px 9px;border-radius:2px;
+}
+.fstat.late .fsp{color:var(--debit);background:var(--debit-soft)}
+.fsc{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+.penalty{
+  font-family:var(--sans);font-size:12.5px;color:var(--debit);
+  margin-top:11px;padding-left:10px;border-left:2px solid var(--debit);line-height:1.5;
+}
+.penalty.soft{color:var(--muted);border-left-color:var(--rule-strong)}

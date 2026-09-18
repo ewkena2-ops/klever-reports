@@ -314,7 +314,25 @@ const REPORTS = [
       {id:'sup_quality', en:'Quality issues', am:'የጥራት ችግሮች', t:'num'},
       {id:'sup_reported', en:'Reported to Mahelet and Betty', am:'ለማህሌትና ለቤቲ ተነግሯል', t:'yesno'}
     ]},
-    { en:'7 · Problems and solutions', am:'7 · ችግሮችና መፍትሔዎች', fields:[
+    { en:'7 · What we paid, against last time', am:'7 · ካለፈው ጋር ሲነጻጸር የከፈልነው', fields:[
+      {id:'p_rows', en:'Price per material bought today', am:'ዛሬ የተገዛው ዕቃ ዋጋ',
+       t:'table', addEn:'Add material', addAm:'ዕቃ ጨምር', cols:[
+        {id:'pitem', en:'Material', am:'ዕቃ', t:'text'},
+        {id:'psup',  en:'Supplier', am:'አቅራቢ', t:'text'},
+        {id:'punit', en:'Unit', am:'መለኪያ', t:'text'},
+        {id:'pnow',  en:'Price now', am:'የአሁን ዋጋ', t:'money'},
+        {id:'plast', en:'Price last time', am:'ያለፈው ዋጋ', t:'money'},
+        {id:'pchg',  en:'Change %', am:'ለውጥ %', t:'pct'},
+        {id:'pquot', en:'Quotes compared', am:'የተነጻጸሩ ዋጋዎች', t:'num'}
+      ]},
+      {id:'p_up', en:'Materials that went up more than 10%', am:'ከ10% በላይ የጨመሩ ዕቃዎች', t:'num',
+        tgt:{op:'lte', v:0, en:'The margin floor is 6,000 Birr/m² — a 10% rise must reach Ephrata before the next quote',
+             am:'የትርፍ ወለሉ 6,000 ብር/ካሬ ሜትር ነው — የ10% ጭማሪ ከቀጣዩ ዋጋ በፊት ኤፍራታ ጋር መድረስ አለበት'}},
+      {id:'p_told', en:'If any, Ephrata and Betty told today', am:'ካሉ ለኤፍራታና ለቤተልሔም ዛሬ ተነግሯል', t:'yesno', opt:1, i:1},
+      {id:'p_sub', en:'Any material substituted for a cheaper one', am:'በርካሽ የተተካ ዕቃ አለ', t:'yesno'},
+      {id:'p_subok', en:'If yes, Wude approved it before it was bought', am:'አዎ ከሆነ ውዱ ከመገዛቱ በፊት አጽድቃለች', t:'yesno', opt:1, i:1}
+    ]},
+    { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'Problem', am:'ችግር', t:'area', opt:1},
       {id:'action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1},
       {id:'need_chair', en:'Need Chairman decision', am:'የሊቀመንበር ውሳኔ ያስፈልጋል', t:'yesno'}
@@ -371,7 +389,35 @@ const REPORTS = [
       {id:'sec_theft', en:'Theft or unauthorized removal', am:'ስርቆት ወይም ያልተፈቀደ ማውጣት', t:'yesno'},
       {id:'sec_sep', en:'Job materials separated from consumables', am:'የሥራ ዕቃና የፍጆታ ዕቃ ተለያይተዋል', t:'yesno'}
     ]},
-    { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
+    { en:'8 · What is on the shelf, and how long it lasts', am:'8 · በመጋዘን ያለውና ምን ያህል እንደሚቆይ', fields:[
+      {id:'k_stock', en:'Stock at close, and days of cover at this week’s rate',
+       am:'በመዝጊያ ሰዓት ያለ ክምችት፣ እና በዚህ ሳምንት ፍጆታ ስንት ቀን እንደሚበቃ',
+       t:'grid', rows:[
+        {en:'MDF 18mm', am:'ኤምዲኤፍ 18ሚሜ'},
+        {en:'MDF 16mm', am:'ኤምዲኤፍ 16ሚሜ'},
+        {en:'Melamine 18mm', am:'ሜላሚን 18ሚሜ'},
+        {en:'Melamine 16mm', am:'ሜላሚን 16ሚሜ'},
+        {en:'Plywood', am:'ፕላይውድ'},
+        {en:'Back panel 3mm', am:'የኋላ ሰሌዳ 3ሚሜ'},
+        {en:'Edge banding (m)', am:'ጠርዝ ማሰሪያ (ሜትር)'},
+        {en:'Hinges', am:'ማጠፊያዎች'},
+        {en:'Drawer slides', am:'የመሳቢያ ተንሸራታቾች'},
+        {en:'Handles', am:'መያዣዎች'},
+        {en:'Legs and shelf pins', am:'እግሮችና የመደርደሪያ ችንካሮች'},
+        {en:'Glue and screws', am:'ሙጫና ብሎኖች'}
+      ], cols:[
+        {id:'qty',  en:'On hand', am:'በእጅ ያለ', t:'num'},
+        {id:'used', en:'Used this week', am:'በሳምንቱ የዋለ', t:'num'},
+        {id:'days', en:'Days of cover', am:'የሚበቃበት ቀን', t:'num'}
+      ]},
+      {id:'k_low', en:'Anything at 5 days of cover or less', am:'ለ5 ቀን ወይም ከዚያ በታች የሚበቃ አለ', t:'yesno',
+        tgt:{op:'lte', v:0, en:'Anything this low has to reach Getachew today, not tomorrow',
+             am:'ይህን ያህል ያነሰ ዛሬ ለጌታቸው መድረስ አለበት'}},
+      {id:'k_which', en:'If yes, which — and was Getachew told today', am:'አዎ ከሆነ የትኛው — ለጌታቸው ዛሬ ተነግሯል', t:'area', opt:1, i:1},
+      {id:'k_offin', en:'Offcut m² returned from the factory today', am:'ዛሬ ከፋብሪካ የተመለሰ ቁራጭ (ካሬ ሜትር)', t:'num'},
+      {id:'k_offout', en:'Offcut m² issued back out for a job', am:'ለሥራ ተመልሶ የወጣ ቁራጭ (ካሬ ሜትር)', t:'num'}
+    ]},
+    { en:'9 · Problems and solutions', am:'9 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'Problem', am:'ችግር', t:'area', opt:1},
       {id:'action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1},
       {id:'need_chair', en:'Need Chairman decision', am:'የሊቀመንበር ውሳኔ ያስፈልጋል', t:'yesno'}
@@ -1144,13 +1190,68 @@ const REPORTS = [
       {id:'u_any', en:'Any unauthorized production or dispatch today', am:'ዛሬ ፈቃድ የሌለው ምርት ወይም ማስወጣት ተፈጽሟል', t:'yesno'},
       {id:'u_reported', en:'If yes, reported to Mahelet within 1 hour', am:'አዎ ከሆነ በ1 ሰዓት ውስጥ ለማህሌት ተነግሯል', t:'yesno', opt:1}
     ]},
-    { en:'10 · Problems and solutions', am:'10 · ችግሮችና መፍትሔዎች', fields:[
+    { en:'10 · Boards and yield', am:'10 · ሰሌዳዎችና ውጤታማነት', fields:[
+      {id:'b_rows', en:'Boards cut today', am:'ዛሬ የተቆረጡ ሰሌዳዎች',
+       t:'table', addEn:'Add board type', addAm:'የሰሌዳ ዓይነት ጨምር', cols:[
+        {id:'btype', en:'Board', am:'ሰሌዳ', t:'choice', opts:[
+          {v:'mdf', en:'MDF', am:'ኤምዲኤፍ'},
+          {v:'mel', en:'Melamine', am:'ሜላሚን'},
+          {v:'ply', en:'Plywood', am:'ፕላይውድ'},
+          {v:'chip', en:'Chipboard', am:'ቺፕቦርድ'},
+          {v:'hpl', en:'HPL / laminate', am:'ኤችፒኤል'}
+        ]},
+        {id:'bmm',    en:'Thickness (mm)', am:'ውፍረት (ሚሜ)', t:'num'},
+        {id:'bcol',   en:'Colour / finish', am:'ቀለም', t:'text'},
+        {id:'bsheet', en:'Sheets used', am:'የተጠቀሙት ሰሌዳ ብዛት', t:'num'},
+        {id:'bpanel', en:'Panels cut', am:'የተቆረጡ ፓነሎች', t:'num'},
+        {id:'boff',   en:'Offcut m² to store', am:'ወደ መጋዘን የተመለሰ ቁራጭ (ካሬ ሜትር)', t:'num'}
+      ]},
+      {id:'b_sheets', en:'Total sheets used today', am:'ዛሬ ጠቅላላ የተጠቀሙት ሰሌዳ', t:'num'},
+      {id:'b_yield', en:'m² produced per sheet', am:'በአንድ ሰሌዳ የተመረተ ካሬ ሜትር', t:'num',
+        tgt:{op:'gte', v:2.2, en:'Below 2.2 m² a sheet, the cutting plan is wasting board',
+             am:'ከ2.2 ካሬ ሜትር በታች ከሆነ የመቁረጫ ዕቅዱ ሰሌዳ እያባከነ ነው'}},
+      {id:'b_edge', en:'Edge banding used (m)', am:'የተጠቀሙት ጠርዝ ማሰሪያ (ሜትር)', t:'num'},
+      {id:'b_redo', en:'Edge banding re-run because it lifted', am:'ተላቆ ዳግም የተሰራ ጠርዝ', t:'num',
+        tgt:{op:'lte', v:2, en:'More than 2 a day — check the machine or the glue',
+             am:'በቀን ከ2 በላይ ከሆነ ማሽኑን ወይም ሙጫውን ይፈትሹ'}},
+      {id:'b_short', en:'Any cut stopped for want of the right board', am:'ተገቢው ሰሌዳ ጠፍቶ የቆመ ቁረጣ', t:'yesno'},
+      {id:'b_shortw', en:'If yes, which board', am:'አዎ ከሆነ የትኛው ሰሌዳ', t:'text', opt:1, i:1}
+    ]},
+    { en:'11 · Work in progress, by stage', am:'11 · በየደረጃው ያለ ሥራ', fields:[
+      {id:'w_stage', en:'Jobs at each stage at close', am:'በመዝጊያ ሰዓት በየደረጃው ያሉ ሥራዎች',
+       t:'grid', rows:[
+        {en:'Cutting', am:'ቁረጣ'},
+        {en:'Edge banding', am:'ጠርዝ ማሰር'},
+        {en:'Drilling', am:'ቀዳዳ መብሳት'},
+        {en:'Assembly', am:'መገጣጠም'},
+        {en:'Finishing and packing', am:'ማጠናቀቅና ማሸግ'},
+        {en:'Waiting for hardware', am:'ሃርድዌር በመጠበቅ ላይ'},
+        {en:'Waiting for QC', am:'QC በመጠበቅ ላይ'}
+      ], cols:[
+        {id:'jobs', en:'Jobs', am:'ሥራዎች', t:'num'},
+        {id:'m2', en:'m²', am:'ካሬ ሜትር', t:'num'},
+        {id:'held', en:'Longest waiting (days)', am:'ረጅሙ ቆይታ (ቀን)', t:'num'}
+      ]},
+      {id:'w_block', en:'What held the factory up today', am:'ዛሬ ፋብሪካውን ያዘገየው', t:'choice', opts:[
+        {v:'none', en:'Nothing held it up', am:'ምንም አላዘገየም'},
+        {v:'cut', en:'Cutting', am:'ቁረጣ'},
+        {v:'edge', en:'Edge banding', am:'ጠርዝ ማሰር'},
+        {v:'drill', en:'Drilling', am:'ቀዳዳ መብሳት'},
+        {v:'asm', en:'Assembly', am:'መገጣጠም'},
+        {v:'hw', en:'Hardware missing', am:'ሃርድዌር ጠፍቷል'},
+        {v:'board', en:'Board missing', am:'ሰሌዳ ጠፍቷል'},
+        {v:'qc', en:'Waiting for QC', am:'QC በመጠበቅ ላይ'},
+        {v:'power', en:'Power cut', am:'የመብራት መቋረጥ'}
+      ]},
+      {id:'w_lost', en:'Hours lost to it', am:'በዚህ የጠፋ ሰዓት', t:'num', opt:1, i:1}
+    ]},
+    { en:'12 · Problems and solutions', am:'12 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'Problem', am:'ችግር', t:'area', opt:1},
       {id:'cause', en:'Root cause', am:'መሠረታዊ ምክንያት', t:'area', opt:1},
       {id:'action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1},
       {id:'need_lead', en:'Need Mahelet decision', am:'የማህሌት ውሳኔ ያስፈልጋል', t:'yesno'}
     ]},
-    { en:"11 · Tomorrow's top 3", am:'11 · የነገ ሦስት ቅድሚያዎች', fields:[
+    { en:"13 · Tomorrow's top 3", am:'13 · የነገ ሦስት ቅድሚያዎች', fields:[
       {id:'p1', en:'1', am:'1', t:'text'},
       {id:'p2', en:'2', am:'2', t:'text'},
       {id:'p3', en:'3', am:'3', t:'text'}
@@ -1352,13 +1453,33 @@ const REPORTS = [
       {id:'pr_who', en:'If yes, who', am:'አዎ ከሆነ ማን', t:'text', opt:1},
       {id:'pr_reported', en:'Reported to Mahelet', am:'ለማህሌት ተነግሯል', t:'yesno', opt:1}
     ]},
-    { en:'5 · Problems and solutions', am:'5 · ችግሮችና መፍትሔዎች', fields:[
+    { en:'5 · Where the defects came from', am:'5 · ጉድለቶቹ ከየት እንደመጡ', fields:[
+      {id:'c_stage', en:'Defects by the stage that caused them', am:'ጉድለቶች ባስከተላቸው ደረጃ',
+       t:'grid', rows:[
+        {en:'Cutting — wrong size or not square', am:'ቁረጣ — የተሳሳተ ልኬት'},
+        {en:'Edge banding — lifting or chipped', am:'ጠርዝ — ተላቋል ወይም ተሰብሯል'},
+        {en:'Drilling — hinge or shelf holes out', am:'ቀዳዳ — የማጠፊያ ወይም የመደርደሪያ ቀዳዳ ስህተት'},
+        {en:'Assembly — not square, doors not flush', am:'መገጣጠም — በሽ አልሆነም'},
+        {en:'Handling — scratched or knocked', am:'አያያዝ — ተቧጭሯል'},
+        {en:'Board itself — warped or damaged on arrival', am:'ሰሌዳው ራሱ — ጎብጧል ወይም ተጎድቶ መጥቷል'},
+        {en:'Hardware — faulty hinge, slide or handle', am:'ሃርድዌር — የተበላሸ ማጠፊያ ወይም መያዣ'}
+      ], cols:[
+        {id:'n', en:'Defects', am:'ጉድለቶች', t:'num'},
+        {id:'m2', en:'m² affected', am:'የተጎዳ ካሬ ሜትር', t:'num'}
+      ]},
+      {id:'c_worst', en:'The stage that caused the most today', am:'ዛሬ በብዛት ያስከተለው ደረጃ', t:'text'},
+      {id:'c_repeat', en:'Same stage as yesterday', am:'ከትናንቱ ጋር ተመሳሳይ ደረጃ', t:'yesno'},
+      {id:'c_told', en:'Amaha told, with the cause named', am:'ለአማሃ ምክንያቱ ተነግሮታል', t:'yesno'},
+      {id:'c_sup', en:'Defects that are the supplier’s fault, not ours', am:'የአቅራቢው ጥፋት የሆኑ ጉድለቶች', t:'num'},
+      {id:'c_suptold', en:'If any, Getachew and Yordanos told the same day', am:'ካሉ ለጌታቸውና ለዮርዳኖስ በዚያኑ ቀን ተነግሯል', t:'yesno', opt:1, i:1}
+    ]},
+    { en:'6 · Problems and solutions', am:'6 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'Problem', am:'ችግር', t:'area', opt:1},
       {id:'cause', en:'Root cause', am:'መሠረታዊ ምክንያት', t:'area', opt:1},
       {id:'action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1},
       {id:'need_lead', en:'Need Mahelet decision', am:'የማህሌት ውሳኔ ያስፈልጋል', t:'yesno'}
     ]},
-    { en:"6 · Tomorrow's top 3", am:'6 · የነገ ሦስት ቅድሚያዎች', fields:[
+    { en:"7 · Tomorrow's top 3", am:'7 · የነገ ሦስት ቅድሚያዎች', fields:[
       {id:'p1', en:'1', am:'1', t:'text'},
       {id:'p2', en:'2', am:'2', t:'text'},
       {id:'p3', en:'3', am:'3', t:'text'}
@@ -1532,13 +1653,34 @@ const REPORTS = [
         tgt:{op:'lte', v:0, en:'3 or more in a week cancels the 1,000 Birr bonus',
              am:'በሳምንት 3 እና ከዚያ በላይ የ1,000 ብር ጉርሻን ይሰርዛል'}}
     ]},
-    { en:'7 · Problems and solutions', am:'7 · ችግሮችና መፍትሔዎች', fields:[
+    { en:'7 · Was the site ready', am:'7 · ቦታው ዝግጁ ነበር', fields:[
+      {id:'r_rows', en:'Site condition on arrival, per job', am:'በደረሱበት ጊዜ የቦታው ሁኔታ፣ በየሥራው',
+       t:'table', addEn:'Add job', addAm:'ሥራ ጨምር', cols:[
+        {id:'rcode',  en:'Job code', am:'የሥራ ኮድ', t:'text'},
+        {id:'rwalls', en:'Walls and floor finished', am:'ግድግዳና ወለል ተጠናቋል', t:'yesno'},
+        {id:'rpower', en:'Power available', am:'መብራት አለ', t:'yesno'},
+        {id:'rwater', en:'Water and drain ready', am:'ውሃና ፍሳሽ ዝግጁ', t:'yesno'},
+        {id:'rlevel', en:'Floor level within tolerance', am:'ወለሉ ልክ ነው', t:'yesno'},
+        {id:'rmeas',  en:'Site matched our measurement', am:'ቦታው ከልኬታችን ጋር ተመሳስሏል', t:'yesno'},
+        {id:'rappl',  en:'Appliances on site and correct', am:'የኤሌክትሪክ ዕቃዎች ደርሰዋል', t:'yesno'},
+        {id:'rlost',  en:'Hours lost', am:'የጠፋ ሰዓት', t:'num'}
+      ]},
+      {id:'r_notready', en:'Jobs where the site was not ready', am:'ቦታው ዝግጁ ያልነበረባቸው ሥራዎች', t:'num'},
+      {id:'r_meas', en:'Jobs where the site did not match our measurement', am:'ከልኬታችን ጋር ያልተመሳሰሉ ሥራዎች', t:'num',
+        tgt:{op:'lte', v:0, en:'A measurement that does not match is a design or survey failure — name the job',
+             am:'ያልተመሳሰለ ልኬት የዲዛይን ወይም የዳሰሳ ስህተት ነው — ሥራውን ይጥቀሱ'}},
+      {id:'r_whose', en:'If any, whose measurement was it', am:'ካሉ የማን ልኬት ነበር', t:'text', opt:1, i:1},
+      {id:'r_lost', en:'Total hours lost to the site not being ready', am:'ቦታው ዝግጁ ባለመሆኑ የጠፋ ጠቅላላ ሰዓት', t:'num'},
+      {id:'r_told', en:'Customer told the same day why we could not finish', am:'ለምን መጨረስ እንዳልተቻለ ለደንበኛው በዚያኑ ቀን ተነግሯል', t:'yesno'},
+      {id:'r_photo', en:'Photographed before we touched anything', am:'ምንም ሳንነካ ፎቶ ተነስቷል', t:'yesno'}
+    ]},
+    { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'Problem', am:'ችግር', t:'area', opt:1},
       {id:'cause', en:'Root cause', am:'መሠረታዊ ምክንያት', t:'area', opt:1},
       {id:'action', en:'Action taken', am:'የተወሰደ እርምጃ', t:'area', opt:1},
       {id:'need_lead', en:'Need Mahelet decision', am:'የማህሌት ውሳኔ ያስፈልጋል', t:'yesno'}
     ]},
-    { en:"8 · Tomorrow's plan", am:'8 · የነገ ዕቅድ', fields:[
+    { en:"9 · Tomorrow's plan", am:'9 · የነገ ዕቅድ', fields:[
       {id:'t_rows', en:'Jobs planned for tomorrow', am:'ለነገ የታቀዱ ሥራዎች',
        t:'table', addEn:'Add job', addAm:'ሥራ ጨምር', cols:[
         {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},

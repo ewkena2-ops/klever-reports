@@ -7,7 +7,7 @@
   --surface-2:#e7eae5;
   --ink:#141b1a;
   --ink-2:#3a4442;
-  --muted:#66716d;
+  --muted:#5c6662;
   --rule:#d5dad5;
   --rule-strong:#b3bcb6;
   --accent:#0f5c54;
@@ -17,8 +17,8 @@
   --credit:#41631a;
   --credit-soft:#ecf1df;
   --sans:"Archivo","Noto Sans Ethiopic","Helvetica Neue",Arial,sans-serif;
-  --serif:"Source Serif 4","Noto Sans Ethiopic",Georgia,serif;
-  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --serif:"Source Serif 4","Noto Serif Ethiopic",Georgia,serif;
+  --mono:"IBM Plex Mono","Noto Sans Ethiopic",ui-monospace,Consolas,monospace;
   --radius:3px;
 }
 @media (prefers-color-scheme:dark){
@@ -40,6 +40,12 @@
     --credit-soft:#212a16;
   }
 }
+
+/* Without this the page goes dark and the browser's own widgets do not —
+   the audio bar in a voice note, date pickers, selects and scrollbars all stay
+   bright. It has to be declared, not inferred. */
+:root{color-scheme:light dark}
+@media print{:root{color-scheme:light}}
 
 *{box-sizing:border-box}
 html{background:var(--desk)}
@@ -692,3 +698,65 @@ input.miss,textarea.miss,select.miss{
    screens of form. Now it is a button that takes you to the next one. */
 .count.findable{cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .count.findable:active{opacity:.6}
+
+/* ---------------- one label, not fifteen ---------------- */
+
+/* The small tracked capital is this identity's signature gesture, taken
+   straight from the letters — and it had been written fifteen different ways.
+   Seven sizes between 9px and 12px. Nine tracking values for one effect, with
+   nothing connecting tracking to size. Some sans, some mono. Two of them
+   forgot uppercase and relied on the strings already being capitals.
+
+   Define it once. Colour is the only thing that varies. */
+.eyebrow,
+.codelab,
+.daymark,
+.chsec,
+.chfl,
+.chtl,
+.person .count,
+.reprowhead .idx,
+.railstate,
+.pill,
+fieldset legend{
+  font-family:var(--sans);
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  line-height:1.3;
+}
+
+/* and now only the colour differs */
+.eyebrow{color:var(--accent)}
+fieldset legend{color:var(--ink-2)}
+.codelab{color:var(--muted)}
+.chsec{color:var(--accent)}
+.chtl,.chfl{color:var(--muted)}
+
+/* A heading that is smaller than everything it heads is not a heading. The
+   eyebrow was 11px above 16px/600 names. It gets its standing back from space
+   and a rule, not from size — which is how the letters do it too. */
+.eyebrow{
+  margin:34px 0 12px;
+  padding-bottom:7px;
+  border-bottom:1px solid var(--rule);
+}
+.eyebrow:first-child{margin-top:22px}
+
+/* The logo is a white PNG with no alpha — 66% pure #ffffff. In dark mode it
+   was an ~89x34px white rectangle at the top of every page, the brightest
+   object on the screen, reading as a leaked background. Make it a deliberate
+   plate instead. */
+.top img{padding:3px 5px}
+@media (prefers-color-scheme:dark){
+  .top img{border:1px solid var(--rule-strong)}
+}
+
+/* Print carries the same gesture at print size. */
+@media print{
+  .pd-kind,.pd-sec,.pd-siglbl,.pd-meta dt{
+    font-family:var(--sans);font-size:10px;font-weight:600;
+    letter-spacing:.1em;text-transform:uppercase;
+  }
+}

@@ -156,6 +156,40 @@ on a site with one bar of signal.
 What this rules out is documents. A supplier's PDF will not fit and should go
 by email until somebody decides Storage is worth the card.
 
+
+### The fifteen agents
+
+`apps-script/Agents.js` — once a day, fifteen analysts read the day.
+
+Attendance · production · quality · store and stock · purchasing and prices ·
+finance · sales and commercial · design · installation and site · customers ·
+who reported and who did not · the penalty ledger · margin watch · reports that
+disagree · and the Chairman's brief, which reads the other fourteen.
+
+**Every number they are given is calculated in code.** The model is never asked
+to count, total or compare — it is asked what the numbers mean. Arithmetic is
+the one thing a model will eventually get wrong, and here a wrong one either
+takes money off somebody's pay or sends the Chairman after the wrong person.
+
+Fourteen run at once in a single `fetchAll`. One after another would sit near
+the six-minute execution limit and eventually cross it.
+
+Two traps that cost a rewrite and are worth not walking back into:
+
+- **A missing report is not a zero.** `n_()` hands back 0 for a report nobody
+  filed, and the first draft duly told the Chairman that Mahelet had recorded
+  zero production when Mahelet had recorded nothing at all. Anywhere an absent
+  figure could be read as a real one — above all when comparing two people's
+  reports — use `nOrNull_()`, and every prompt now carries the list of what
+  never arrived.
+- **An agent will explain a shortfall with the first cause it can see.** The
+  attendance agent was given absences and output but not the three hours lost
+  to a board shortage, so it confidently blamed the people who were away. If an
+  agent can reach a conclusion about cause, give it the competing causes too.
+
+`previewAgents()` shows what each agent would be given without spending
+anything on the model. Run that first.
+
 ## The penalty ledger
 
 `apps-script/Agent.js` — runs once a day and answers a question nobody was

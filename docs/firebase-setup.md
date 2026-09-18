@@ -1,5 +1,13 @@
 # Setting up the chat
 
+> **This is already done.** Project `klever-26ad1`, database in `eur3`, rules
+> published, Email/Password on, 18 accounts made, 23 channels seeded — all on
+> 18 September 2026. Steps 1 to 6 below are kept as the record of what was done
+> and as the recipe if it ever has to be rebuilt. **Do not run them again.**
+> What you may still need is the last section, the ledger's Script Properties.
+>
+> Passwords are in `Klever-Access-Codes.txt`, in `all in final`, never here.
+
 Forty minutes, once. Everything here is done in a browser by the Chairman —
 nothing needs a developer, and nothing here costs money at Klever's size.
 
@@ -148,3 +156,34 @@ for people's phones.
 **Membership lives in `js/channels.js`.** Change a channel there, push, and
 press **Set up channels** again. The page and the rules must agree; the button
 is what makes them agree.
+
+---
+
+## The penalty ledger's Script Properties
+
+`apps-script/Agent.js` reads filed reports from Firestore, not from the Sheet.
+Two reasons, both of which matter: the Sheet is fed by an endpoint anyone can
+POST to, so a fine calculated from it rests on a row anybody could have
+written; and the Sheet version read every row of every tab each evening, which
+would have quietly started timing out in about its second year.
+
+In the Apps Script, **Project Settings → Script Properties**:
+
+| Property | Value |
+|---|---|
+| `GEMINI_KEY` | your key from aistudio.google.com |
+| `FIREBASE_WEB_KEY` | the `apiKey` from `js/firebase-config.js` |
+| `LEDGER_PASSWORD` | the `ledger` password in `Klever-Access-Codes.txt` |
+| `GEMINI_MODEL` | optional — defaults to `gemini-3.8-flash` |
+| `FIREBASE_PROJECT` | optional — defaults to `klever-26ad1` |
+
+Then run **`authorizeAgent()`** once from the editor. It now checks the archive
+is reachable as well as granting permissions, so a wrong password fails in
+front of you rather than silently at six in the evening.
+
+`previewLedger()` writes nothing and sends nothing. Run that before the trigger.
+
+**The ledger account is not a person.** It reads filed reports and nothing
+else — it cannot file one, cannot open chat, cannot alter anything. That is
+enforced in `firestore.rules`, not by convention, so if its password ever
+leaks what leaks is a reader.

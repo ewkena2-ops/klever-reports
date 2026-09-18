@@ -35,6 +35,15 @@ service cloud.firestore {
       return signedIn() && me() == 'chairman';
     }
 
+    /* The penalty ledger's own account. It reads filed reports and nothing
+       else — it cannot write one, cannot touch chat, and cannot alter
+       anything. It exists so that the nightly job does not have to carry the
+       Chairman's password around in a script property, and so that if it ever
+       leaks, what leaks is a reader. */
+    function isLedger() {
+      return signedIn() && me() == 'ledger';
+    }
+
     /* one read of the channel document, cached for the rest of this request */
     function memberOf(cid) {
       return signedIn()
@@ -85,9 +94,11 @@ service cloud.firestore {
 
       /* your own reports, and the Chairman sees everyone's */
       allow get, list: if signedIn()
-                       && (isChairman() || resource.data.person == me());
+                       && (isChairman() || isLedger() || resource.data.person == me());
 
       allow create: if signedIn()
+                    /* the ledger reads; it does not report */
+                    && !isLedger()
                     /* you cannot file under someone else's name */
                     && request.resource.data.by == me()
                     /* and only for yourself — unless you are the Chairman,

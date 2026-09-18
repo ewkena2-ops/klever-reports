@@ -18,9 +18,12 @@
    here only when the letter changes.
 
    SET UP: Project Settings -> Script Properties
-     GEMINI_KEY   your key from aistudio.google.com   (required)
-     GEMINI_MODEL defaults to gemini-3.8-flash        (optional)
-     SITE         defaults to the GitHub Pages URL    (optional)
+     GEMINI_KEY       your key from aistudio.google.com     (required)
+     FIREBASE_WEB_KEY the apiKey from js/firebase-config.js  (required)
+     LEDGER_PASSWORD  the ledger@klever.local password       (required)
+     GEMINI_MODEL     defaults to gemini-3.8-flash           (optional)
+     FIREBASE_PROJECT defaults to klever-26ad1               (optional)
+     SITE             defaults to the GitHub Pages URL       (optional)
    Then Triggers -> Add trigger -> dailyLedger -> Time-driven -> Day timer
    -> 6pm to 7pm. Run authorizeAgent() once from the editor first: a deployed
    script's permissions are frozen at first approval, and adding UrlFetch will
@@ -77,6 +80,7 @@ var WEEKLY_PENALTY = {
    re-runs the old permission set and will not prompt. */
 function authorizeAgent() {
   UrlFetchApp.fetch(AGENT_DEFAULT_SITE + 'js/forms.js').getResponseCode();
+  fsToken_();   /* fail here, in the editor, rather than silently at 6pm */
   MailApp.sendEmail(Session.getEffectiveUser().getEmail(),
                     'Klever agent — permission granted',
                     'The ledger can now read the schedule and call Gemini.');
@@ -156,32 +160,112 @@ function dueToday_(schedule, when) {
  *  What actually arrived                                              *
  * ------------------------------------------------------------------ */
 
-/* Every row filed today, across every report tab. The archive writes one tab
-   per report type with 'Sent at' in column A and 'Person' in column B. */
+/* This reads Firestore, not the Sheet, for two reasons.
+
+   The first is that it has to. The Sheet is fed by an Apps Script web app
+   deployed ANYONE_ANONYMOUS whose URL ships in a public repo, so a row there
+   can be written by anyone — including one backdated to look as though it beat
+   a deadline. A fine calculated from a source like that is worse than no fine,
+   because it looks rigorous and is not. Firestore's copy is signed in: you
+   file as yourself, for yourself, at a time the server sets.
+
+   The second is that it keeps working. The Sheet version read every row of
+   every tab each evening to find the day's thirty — about 440,000 cells after
+   a year, 880,000 after two, against a six-minute execution limit. It would
+   have timed out silently somewhere in year two and simply stopped emailing.
+   A query asks for the day and gets the day: thirty reads whether the archive
+   holds a thousand reports or a million.                                    */
+
+function fsBase_() {
+  return 'https://firestore.googleapis.com/v1/projects/' +
+         prop_('FIREBASE_PROJECT', 'klever-26ad1') + '/databases/(default)';
+}
+
+/* An hour-long token for the ledger's own account — a reader that cannot file
+   a report, touch chat, or alter anything. Set LEDGER_PASSWORD in Script
+   Properties; it is not the Chairman's password and must not be. */
+function fsToken_() {
+  var key = prop_('FIREBASE_WEB_KEY', '');
+  var pw = prop_('LEDGER_PASSWORD', '');
+  if (!key || !pw) {
+    throw new Error('Set FIREBASE_WEB_KEY and LEDGER_PASSWORD in Script Properties ' +
+                    '(Project Settings -> Script Properties).');
+  }
+  var res = UrlFetchApp.fetch(
+    'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' +
+      encodeURIComponent(key),
+    { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      payload: JSON.stringify({
+        email: 'ledger@' + prop_('KLEVER_DOMAIN', 'klever.local'),
+        password: pw, returnSecureToken: true }) });
+  if (res.getResponseCode() !== 200) {
+    throw new Error('Ledger sign-in failed (HTTP ' + res.getResponseCode() +
+                    '). Check LEDGER_PASSWORD.');
+  }
+  return JSON.parse(res.getContentText()).idToken;
+}
+
+/* Firestore wraps every value in its type. Unwrap it back into ordinary
+   JavaScript so the rest of this file never has to know. */
+function fsValue_(v) {
+  if (v == null) return null;
+  if ('stringValue' in v) return v.stringValue;
+  if ('integerValue' in v) return Number(v.integerValue);
+  if ('doubleValue' in v) return v.doubleValue;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('timestampValue' in v) return new Date(v.timestampValue);
+  if ('nullValue' in v) return null;
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(fsValue_);
+  if ('mapValue' in v) {
+    var out = {}, f = v.mapValue.fields || {};
+    Object.keys(f).forEach(function (k) { out[k] = fsValue_(f[k]); });
+    return out;
+  }
+  return null;
+}
+
+/* Every report filed today. One query, one page — it does not get slower as
+   the archive grows. */
 function filedOn_(when) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var day = Utilities.formatDate(when, tz_(), 'yyyy-MM-dd');
+  var tz = tz_();
+  var day = Utilities.formatDate(when, tz, 'yyyy-MM-dd');
+  var midnight = new Date(when.getFullYear(), when.getMonth(), when.getDate(), 0, 0, 0);
+  var from = Utilities.formatDate(midnight, 'UTC', "yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+  var res = UrlFetchApp.fetch(fsBase_() + '/documents:runQuery', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + fsToken_() },
+    muteHttpExceptions: true,
+    payload: JSON.stringify({ structuredQuery: {
+      from: [{ collectionId: 'reports' }],
+      where: { fieldFilter: { field: { fieldPath: 'at' },
+                              op: 'GREATER_THAN_OR_EQUAL',
+                              value: { timestampValue: from } } },
+      orderBy: [{ field: { fieldPath: 'at' }, direction: 'ASCENDING' }]
+    } })
+  });
+
+  if (res.getResponseCode() !== 200) {
+    throw new Error('Could not read the archive (HTTP ' + res.getResponseCode() +
+                    '): ' + res.getContentText().substring(0, 300));
+  }
+
   var out = [];
-
-  ss.getSheets().forEach(function (sh) {
-    var name = sh.getName();
-    if (name === LEDGER_TAB_ || name === 'Chat') return;
-    var last = sh.getLastRow();
-    if (last < 2) return;
-
-    var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-    if (String(head[0]).indexOf('Sent at') === -1) return;   /* not an archive tab */
-
-    var rows = sh.getRange(2, 1, last - 1, sh.getLastColumn()).getValues();
-    rows.forEach(function (row) {
-      var at = row[0];
-      if (!(at instanceof Date)) return;
-      if (Utilities.formatDate(at, tz_(), 'yyyy-MM-dd') !== day) return;
-      var rec = { tab: name, at: at, person: String(row[1] || ''), status: String(row[2] || ''), fields: {} };
-      for (var c = 4; c < head.length; c++) {
-        if (head[c] && row[c] !== '' && row[c] != null) rec.fields[head[c]] = row[c];
-      }
-      out.push(rec);
+  JSON.parse(res.getContentText()).forEach(function (row) {
+    if (!row.document) return;        /* an empty result carries one blank entry */
+    var f = row.document.fields || {};
+    var at = fsValue_(f.at);
+    if (!at || Utilities.formatDate(at, tz, 'yyyy-MM-dd') !== day) return;
+    out.push({
+      person: fsValue_(f.person),
+      report: fsValue_(f.report),
+      by:     fsValue_(f.by),
+      late:   !!fsValue_(f.late),
+      at:     at,
+      fields: fsValue_(f.values) || {},
+      flags:  fsValue_(f.flags) || [],
+      text:   fsValue_(f.text) || ''
     });
   });
   return out;
@@ -199,9 +283,9 @@ function charge_(due, filed, when) {
   due.forEach(function (r) {
     var hit = null;
     for (var i = 0; i < filed.length; i++) {
-      /* the archive names a tab after the report, which is how a filing is
-         matched back to what was owed */
-      if (filed[i].tab === r.en || filed[i].tab.indexOf(r.en) === 0) { hit = filed[i]; break; }
+      /* a filed report carries the id of the report it answers, so this is an
+         exact match rather than the tab-name guess the Sheet version needed */
+      if (filed[i].report === r.id) { hit = filed[i]; break; }
     }
 
     var table = r.cadence === 'weekly' ? WEEKLY_PENALTY : REPORT_PENALTY;
@@ -219,7 +303,7 @@ function charge_(due, filed, when) {
     if (!hit) {
       line.status = 'MISSING';
       line.amount = rule && rule.miss ? rule.miss : 0;
-    } else if (String(hit.status).toUpperCase().indexOf('LATE') === 0) {
+    } else if (hit.late) {
       line.status = 'LATE';
       line.amount = rule && rule.late ? rule.late : 0;
     } else {
@@ -265,7 +349,7 @@ function askGemini_(ledger, filed, when) {
     '',
     '--- REPORTS FILED ---',
     JSON.stringify(filed.map(function (f) {
-      return { report: f.tab, person: f.person, at: String(f.at), values: f.fields };
+      return { report: f.report, person: f.person, at: String(f.at), values: f.fields };
     }), null, 1),
     '',
     '--- NOT FILED / LATE (for context only) ---',

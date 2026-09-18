@@ -487,10 +487,12 @@
       root.appendChild(dl);
     }
 
-    root.appendChild(el('p', 'eyebrow', t('whoReports')));
+    /* Thirty-nine people, of whom twenty-two file nothing at all. Listing
+       every one of them buried the handful who owe him something today in a
+       scroll eleven thousand pixels long. The people with something due come
+       first; the rest are behind a line he can open when he wants them. */
     var due = dueToday();
-    var list = el('div', 'people');
-    PEOPLE.forEach(function (p) {
+    function card(p) {
       var b = el('button', 'person');
       b.type = 'button';
       b.appendChild(el('span', 'initial', L(p).charAt(0)));
@@ -502,9 +504,31 @@
       if (n) b.appendChild(el('span', 'count', n + ' ' + t('reportsDue')));
       b.appendChild(el('span', 'arrow', '\u2192'));
       b.onclick = function () { renderPersonReports(root, p); };
-      list.appendChild(b);
+      return b;
+    }
+
+    var owing = PEOPLE.filter(function (p) {
+      return due.some(function (r) { return r.person === p.id; });
     });
-    root.appendChild(list);
+    var rest = PEOPLE.filter(function (p) { return owing.indexOf(p) === -1; });
+
+    if (owing.length) {
+      root.appendChild(el('p', 'eyebrow', t('whoReports')));
+      var list = el('div', 'people');
+      owing.forEach(function (p) { list.appendChild(card(p)); });
+      root.appendChild(list);
+    }
+
+    if (rest.length) {
+      var more = el('details', 'everyone');
+      var sum = el('summary');
+      sum.appendChild(el('span', null, t('everyoneElse').replace('{n}', rest.length)));
+      more.appendChild(sum);
+      var rlist = el('div', 'people');
+      rest.forEach(function (p) { rlist.appendChild(card(p)); });
+      more.appendChild(rlist);
+      root.appendChild(more);
+    }
 
     /* his own page: today's filed reports, and what the agents made of them */
     var ov = el('a', 'chan chatcard');

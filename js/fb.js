@@ -32,7 +32,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, addDoc, serverTimestamp
+  collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 (function () {
@@ -110,6 +110,29 @@ import {
         lang:    row.lang || 'en',
         at:      serverTimestamp()
       });
+    },
+
+    /* The newest thing said in any of this person's channels, for the home
+       screen. One listener per channel, one document each — a person has three
+       or four, so this is a handful of reads on a page load, and it is what
+       makes a single link worth handing out instead of two. */
+    watchLatest: function (channelIds, cb) {
+      if (!db) return function () {};
+      var best = null, stops = [];
+      channelIds.forEach(function (cid) {
+        var q = query(collection(db, 'channels', cid, 'messages'),
+                      orderBy('at', 'desc'), limit(1));
+        stops.push(onSnapshot(q, function (snap) {
+          if (snap.empty) return;
+          var d = snap.docs[0].data();
+          var at = d.at && d.at.toDate ? d.at.toDate() : new Date();
+          if (best && best.at >= at) return;
+          best = { channel: cid, who: d.who, text: d.text || '',
+                   kind: d.kind || null, at: at };
+          cb(best);
+        }, function () { /* a channel we cannot read is simply skipped */ }));
+      });
+      return function () { stops.forEach(function (f) { try { f(); } catch (e) {} }); };
     }
   };
 })();

@@ -89,14 +89,6 @@
     inner.appendChild(a);
     inner.appendChild(el('div', 'spacer'));
 
-    /* the way across to chat. Only for someone signed in — it is the same
-       team either side, but the chat asks for its own password. */
-    if (AUTH.who()) {
-      var toChat = el('a', 'crosslink', t('chatOpen'));
-      toChat.href = 'chat.html';
-      inner.appendChild(toChat);
-    }
-
     var tg = el('div', 'langtoggle');
     [['en', 'EN'], ['am', 'አማ']].forEach(function (p) {
       var b = el('button', null, p[1]);
@@ -325,6 +317,51 @@
     input.focus();
   }
 
+
+  /* ---------------- chat, on the home screen ---------------- */
+
+  /* Two links to hand out is one too many. Chat used to be a small button in
+     the top bar, which is fine once you know it is there and invisible until
+     then. Here it sits under the reports — duty first, conversation second —
+     and carries the last thing anyone said, so the home screen is worth
+     opening even on a day with nothing due. */
+  var stopWatch = null;
+  function chatCard() {
+    if (stopWatch) { try { stopWatch(); } catch (e) {} stopWatch = null; }
+
+    var wrap = el('div');
+    wrap.appendChild(el('p', 'eyebrow', t('chatTitle')));
+
+    var a = el('a', 'chan chatcard');
+    a.href = 'chat.html';
+    a.appendChild(el('span', 'chinit', '✉'));
+    var who = el('span', 'who');
+    who.appendChild(el('span', 'nm', t('chatOpen')));
+    var line = el('span', 'rl', t('chatPickSub'));
+    who.appendChild(line);
+    a.appendChild(who);
+    a.appendChild(el('span', 'arrow', '→'));
+    wrap.appendChild(a);
+
+    /* the newest message across this person's own channels */
+    if (window.FB && window.FB.live() && typeof CHANNELS !== 'undefined' && AUTH.who()) {
+      var mine = CHANNELS.forPerson(AUTH.isChairman() ? CHAIRMAN : AUTH.who());
+      var ids = mine.map(function (c) { return c.id; });
+      if (ids.length) {
+        stopWatch = window.FB.watchLatest(ids, function (m) {
+          var p = personById(m.who);
+          var name = m.who === CHAIRMAN
+            ? (lang === 'am' ? 'ሰቀመንበር' : 'Chairman')
+            : (p ? L(p) : m.who);
+          var said = m.text || (m.kind === 'voice' ? t('chatVoice') : t('chatPhoto'));
+          line.textContent = name + ': ' + said;
+          line.classList.add('lastmsg');
+        });
+      }
+    }
+    return wrap;
+  }
+
   function renderIndex(root) {
     if (!AUTH.who()) return renderSignIn(root);
     /* everyone but the Chairman lands straight on their own reports —
@@ -358,6 +395,7 @@
       list.appendChild(b);
     });
     root.appendChild(list);
+    root.appendChild(chatCard());
     root.appendChild(foot());
 
     /* keep the countdowns honest without reloading the page */
@@ -382,7 +420,12 @@
     root.appendChild(dueRail(p.id));
 
     var rs = reportsFor(p.id);
-    if (!rs.length) { root.appendChild(el('p', 'sub', t('noReports'))); root.appendChild(foot()); return; }
+    if (!rs.length) {
+      root.appendChild(el('p', 'sub', t('noReports')));
+      root.appendChild(chatCard());
+      root.appendChild(foot());
+      return;
+    }
 
     root.appendChild(el('p', 'eyebrow', t('yourReports')));
     var list = el('div', 'reports');
@@ -397,6 +440,7 @@
       list.appendChild(a);
     });
     root.appendChild(list);
+    root.appendChild(chatCard());
     root.appendChild(foot());
   }
 

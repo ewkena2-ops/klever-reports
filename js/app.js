@@ -215,6 +215,129 @@
     return { all: list, late: late, next: soon, mins: soon ? soonMins : null };
   }
 
+
+  /* ---------------- the ring ---------------- */
+
+  /* A number tells you how long is left. A ring tells you how much of the
+     window has gone, which is the thing he actually reacts to — a quarter
+     circle left reads as "now" before you have finished reading "23m". */
+  var NS = 'http://www.w3.org/2000/svg';
+  function svg(tag, a) {
+    var e = document.createElementNS(NS, tag);
+    Object.keys(a || {}).forEach(function (k) { e.setAttribute(k, a[k]); });
+    return e;
+  }
+
+  function ring(mins, late) {
+    /* the window is the last twelve hours before the deadline; beyond that
+       the ring is simply full and the number does the talking */
+    var span = 12 * 60;
+    var left = Math.max(0, Math.min(1, mins / span));
+    var R = 54, C = 2 * Math.PI * R;
+
+    var g = svg('svg', { 'class': 'ringwrap', viewBox: '0 0 130 130',
+                         'aria-hidden': 'true' });
+    var defs = svg('defs', {});
+    var lg = svg('linearGradient', { id: 'rg', x1: '0', y1: '0', x2: '1', y2: '1' });
+    lg.appendChild(svg('stop', { offset: '0', 'stop-color': late ? '#e2765c' : '#5fe0c6' }));
+    lg.appendChild(svg('stop', { offset: '1', 'stop-color': late ? '#8f3020' : '#2a9d8a' }));
+    defs.appendChild(lg);
+    g.appendChild(defs);
+
+    g.appendChild(svg('circle', { cx: 65, cy: 65, r: R, fill: 'none',
+      stroke: 'rgba(255,255,255,.06)', 'stroke-width': 7 }));
+    g.appendChild(svg('circle', { cx: 65, cy: 65, r: R, fill: 'none',
+      stroke: 'url(#rg)', 'stroke-width': 7, 'stroke-linecap': 'round',
+      'stroke-dasharray': C.toFixed(1),
+      'stroke-dashoffset': (C * (1 - left)).toFixed(1),
+      transform: 'rotate(-90 65 65)' }));
+    return g;
+  }
+
+  /* ---------------- the top of the day ---------------- */
+
+  function deck(p, st) {
+    var wrap = el('section', 'deck');
+
+    var who = el('div', 'deck-who');
+    who.appendChild(el('span', 'deck-nm', p ? L(p) : (lang === 'am' ? 'ሊቀመንበር' : 'Chairman')));
+    who.appendChild(el('span', 'deck-rl',
+      p ? (lang === 'am' ? p.roleAm : p.roleEn) : 'Amare Feleke'));
+    wrap.appendChild(who);
+
+    var r = st.next || st.late[0];
+    if (!r) {
+      wrap.appendChild(el('p', 'deck-clear', t('nothingForYou')));
+      return wrap;
+    }
+
+    var late = !st.next;
+    var dial = el('div', 'dial' + (late ? ' late' : ''));
+    dial.appendChild(ring(late ? 0 : st.mins, late));
+
+    var mid = el('div', 'dial-mid');
+    if (late) {
+      mid.appendChild(el('span', 'dial-n', hhmm(r.dueTime)));
+      mid.appendChild(el('span', 'dial-u', t('passed')));
+    } else {
+      var hh = Math.floor(st.mins / 60), mm = st.mins % 60;
+      mid.appendChild(el('span', 'dial-n', hh ? String(hh) : String(mm)));
+      mid.appendChild(el('span', 'dial-u',
+        hh ? (lang === 'am' ? 'ሰዓት' : 'hours') : (lang === 'am' ? 'ደቂቃ' : 'minutes')));
+      if (hh && mm) mid.appendChild(el('span', 'dial-s', mm + (lang === 'am' ? ' ደ' : 'm')));
+    }
+    dial.appendChild(mid);
+    wrap.appendChild(dial);
+
+    wrap.appendChild(el('p', 'deck-w', L(r)));
+    wrap.appendChild(el('p', 'deck-t',
+      hhmm(r.dueTime) + '  ·  ' + (lang === 'am' ? r.toAm : r.toEn)));
+
+    var go = el('a', 'deck-go' + (late ? ' late' : ''), t('fillItIn'));
+    go.href = 'form.html?r=' + encodeURIComponent(r.id);
+    wrap.appendChild(go);
+
+    if (st.all.length > 1) {
+      var n = st.all.length - 1;
+      wrap.appendChild(el('p', 'deck-more',
+        n + ' ' + (lang === 'am' ? 'ሌሎች ዛሬ' : (n === 1 ? 'more today' : 'more today'))));
+    }
+    return wrap;
+  }
+
+  /* ---------------- the day as a run of lights ---------------- */
+
+  function timeline(pid) {
+    var list = dueToday().filter(function (r) { return !pid || r.person === pid; });
+    if (list.length < 2) return null;
+
+    var wrap = el('div', 'tl');
+    list.forEach(function (r) {
+      var mins = minsUntil(r.dueTime);
+      var state = mins < 0 ? 'gone' : (mins <= 120 ? 'soon' : '');
+      var a = el('a', 'tlrow ' + state);
+      a.href = 'form.html?r=' + encodeURIComponent(r.id);
+
+      var led = el('span', 'tled');
+      led.appendChild(el('i'));
+      a.appendChild(led);
+
+      var b = el('span', 'tlbody');
+      b.appendChild(el('span', 'tlt', hhmm(r.dueTime)));
+      b.appendChild(el('span', 'tlw', L(r)));
+      if (!pid) {
+        var who = personById(r.person);
+        b.appendChild(el('span', 'tlp', who ? L(who) : r.person));
+      }
+      a.appendChild(b);
+
+      a.appendChild(el('span', 'tls',
+        mins < 0 ? t('passed') : countdown(mins).replace(t('inTime') + ' ', '')));
+      wrap.appendChild(a);
+    });
+    return wrap;
+  }
+
   function letterhead(p) {
     var d = new Date(), e = toEthiopian(d);
     var head = el('header', 'lh');
@@ -471,20 +594,13 @@
     }
     document.title = t('siteTitle');
     root.innerHTML = '';
-    root.appendChild(letterhead(null));
-
-    var sal = el('div', 'sal');
-    sal.appendChild(el('h1', null, lang === 'am' ? 'ሊቀመንበር' : 'Chairman'));
-    sal.appendChild(el('p', null, 'Amare Feleke'));
-    root.appendChild(sal);
-
     var st = standing(null);
-    root.appendChild(sentence(st));
+    root.appendChild(deck(null, st));
 
-    var dl = dayList(null);
-    if (dl) {
+    var tl = timeline(null);
+    if (tl) {
       root.appendChild(el('p', 'eyebrow', t('dueToday')));
-      root.appendChild(dl);
+      root.appendChild(tl);
     }
 
     /* Thirty-nine people, of whom twenty-two file nothing at all. Listing
@@ -570,24 +686,13 @@
       root.appendChild(back);
     }
 
-    root.appendChild(letterhead(p));
-
-    var sal = el('div', 'sal');
-    sal.appendChild(el('h1', null, L(p)));
-    sal.appendChild(el('p', null, lang === 'am' ? p.roleAm : p.roleEn));
-    root.appendChild(sal);
-
     var st = standing(p.id);
-    root.appendChild(sentence(st));
-    if (st.all.length) root.appendChild(nextUp(st));
+    root.appendChild(deck(p, st));
 
-    /* the card above already is the day when the day is one report */
-    if (st.all.length > 1) {
-      var dl = dayList(p.id);
-      if (dl) {
-        root.appendChild(el('p', 'eyebrow', t('dueForYou')));
-        root.appendChild(dl);
-      }
+    var tl = timeline(p.id);
+    if (tl) {
+      root.appendChild(el('p', 'eyebrow', t('dueForYou')));
+      root.appendChild(tl);
     }
 
     var rs = reportsFor(p.id);

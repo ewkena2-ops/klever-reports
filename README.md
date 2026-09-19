@@ -4,8 +4,9 @@ One link the team opens on a phone to file the daily reports their terms letters
 
 **Live:** https://ewkena2-ops.github.io/klever-reports/
 
-Pick your name → pick the report → fill it → **Send on WhatsApp**. WhatsApp opens with the whole
-report written out; you choose the group and send. There is also a **Copy** button for desktop.
+Pick your name → pick the report → fill it → **Send**. It is filed, and delivered to the people
+the report is addressed to — into their channel, not into a group somebody has to remember to
+choose. There is also **Copy** and **PDF**.
 
 ## What it does
 
@@ -20,9 +21,9 @@ report written out; you choose the group and send. There is also a **Copy** butt
 
 ## What it does not do
 
-Nothing is stored on a server. No accounts, no database, no analytics. Each report goes from the
-phone straight into WhatsApp. The only thing kept is the unfinished draft, in that phone's own
-browser storage.
+WhatsApp. It used to be the only way a report left the phone, and the person had to choose a
+group themselves — which is where reports were lost. Send delivers now. The unfinished draft is
+still kept in that phone's own browser storage and swept the next day.
 
 ## Reports covered
 

@@ -1,6 +1,6 @@
 # Where the reports get kept
 
-The site has no server, so a sent report lives only in WhatsApp unless it is
+The site has no server of its own, so a sent report would live only in the recipient's chat unless it is
 also filed somewhere. This is that somewhere: a Google Sheet the Chairman owns,
 fed by a small script. It is free, it needs no accounts for the team, and the
 sheet is a normal spreadsheet — sort it, filter it, chart it, export it.
@@ -274,7 +274,7 @@ only place Google re-asks.
 
 ## What the phones do
 
-`js/save.js` posts the report the moment Send is tapped, then opens WhatsApp as
+`js/save.js` posts the report the moment Send is tapped, alongside the delivery as
 before. If the phone has no signal the row waits in an outbox on that phone and
 goes out the next time the app is opened with a connection — so a report filled
 in a basement with no bars is not lost.

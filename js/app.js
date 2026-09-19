@@ -1172,14 +1172,6 @@
     pdf.onclick = function () { window.print(); };
     /* Ctrl+P, or a phone's own Print menu, must give the same document */
     window.addEventListener('beforeprint', buildPrintDoc);
-    /* WhatsApp is still here for the customer-facing habit, but it is no
-       longer what Send means. */
-    var wa = el('button', 'btn ghost', t('whatsapp'));
-    wa.type = 'button';
-    wa.onclick = function () {
-      window.open('https://wa.me/?text=' + encodeURIComponent(buildMessage()), '_blank');
-    };
-
     var send = el('button', 'btn', t('send'));
     send.type = 'button'; send.id = 'send';
     send.onclick = function () {
@@ -1238,7 +1230,7 @@
       }
     };
     inner.appendChild(count); inner.appendChild(pdf); inner.appendChild(copy);
-    inner.appendChild(wa); inner.appendChild(send);
+    inner.appendChild(send);
     bar.appendChild(inner);
     document.body.appendChild(bar);
   }

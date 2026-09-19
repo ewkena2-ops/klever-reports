@@ -1209,3 +1209,76 @@ body[data-page="index"] .everyone summary{
 }
 body[data-page="index"] .foot,
 body[data-page="index"] .designlink{color:var(--dim);border-color:var(--edge)}
+
+/* ================= tighter, and off the cards =================
+   Every list was a stack of bordered boxes, and a box costs about forty
+   pixels of chrome to say nothing. Rows on a rule say the same thing and
+   three more of them fit on the screen. The only thing still on a card is
+   the deck, because that one is meant to be the object you look at. */
+
+body[data-page="index"] .reports,
+body[data-page="index"] .people,
+body[data-page="index"] .chanlist{gap:0;margin-bottom:22px}
+
+body[data-page="index"] .report,
+body[data-page="index"] .person,
+body[data-page="index"] .chan{
+  background:transparent;border:0;border-radius:0;
+  border-bottom:1px solid var(--edge);
+  padding:12px 2px;
+}
+body[data-page="index"] .report:first-child,
+body[data-page="index"] .person:first-child,
+body[data-page="index"] .chan:first-child{border-top:1px solid var(--edge)}
+body[data-page="index"] .report:hover,
+body[data-page="index"] .person:hover,
+body[data-page="index"] .chan:hover{
+  background:rgba(255,255,255,.022);border-color:var(--edge2);
+}
+
+/* a report is one line and its due time, not a paragraph */
+body[data-page="index"] .report{display:flex;align-items:baseline;gap:12px}
+body[data-page="index"] .report .rt{
+  font-size:14.5px;margin:0;flex:1;min-width:0;line-height:1.3;
+}
+body[data-page="index"] .report .meta{
+  display:block;font-size:11px;color:var(--dim);white-space:nowrap;
+  text-align:right;flex:none;
+}
+/* who it goes to is in the report; it does not need saying in the list */
+body[data-page="index"] .report .meta span:not(.due){display:none}
+body[data-page="index"] .report .meta .due{color:var(--dim)}
+
+/* people, smaller and without the circle taking a third of the row */
+body[data-page="index"] .person{gap:11px}
+body[data-page="index"] .person .initial{
+  width:28px;height:28px;font-size:12px;border-radius:7px;
+}
+body[data-page="index"] .person .nm{font-size:14px}
+body[data-page="index"] .person .rl{font-size:11.5px}
+body[data-page="index"] .person .count{font-size:10px}
+body[data-page="index"] .person .arrow{display:none}
+
+body[data-page="index"] .chan{gap:11px}
+body[data-page="index"] .chan .chinit{width:28px;height:28px;font-size:13px;border-radius:7px}
+body[data-page="index"] .chan .nm{font-size:14px}
+
+/* the deck gives back some of its air */
+.deck{padding:20px 18px 18px;margin:12px 0 22px;border-radius:15px}
+.deck-who{margin-bottom:14px}
+.dial{width:112px;height:112px;margin-bottom:14px}
+.ringwrap{width:112px;height:112px}
+.dial-n{font-size:36px}
+.deck-w{font-size:16.5px}
+.deck-t{margin-bottom:16px}
+.deck-go{padding:13px;font-size:15px}
+.deck-more{margin-top:12px}
+
+/* the day runs closer together */
+.tl{margin-bottom:24px}
+.tlrow{padding:10px 2px;gap:12px}
+.tlw{font-size:14px}
+.tlrow:first-child .tled::before{top:6px}
+
+body[data-page="index"] .eyebrow{margin:24px 0 8px;padding-bottom:6px}
+body[data-page="index"] .eyebrow:first-child{margin-top:16px}

@@ -32,7 +32,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot
+  collection, doc, setDoc, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 (function () {
@@ -109,6 +109,25 @@ import {
         text:    row.text || '',
         lang:    row.lang || 'en',
         at:      serverTimestamp()
+      });
+    },
+
+    /* Put the filed report in front of the people it is addressed to.
+
+       A report that is filed and not read is a report nobody acted on. Every
+       one of them names its recipients, and every one of those people has a
+       channel, so the sending is a real delivery rather than a suggestion that
+       the person go and find a WhatsApp group.
+
+       It posts as the person who filed it, which the rules require anyway, so
+       the message carries their name and cannot be written by anyone else. */
+    deliverReport: function (channelId, text) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      return addDoc(collection(db, 'channels', channelId, 'messages'), {
+        who: idOf(user),
+        text: text,
+        lang: 'en',
+        at: serverTimestamp()
       });
     },
 

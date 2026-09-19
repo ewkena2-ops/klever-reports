@@ -63,18 +63,23 @@ const CHANNEL_DEFS = [
     grp:'commercial' },
 
   { id:'finance',    kind:'team', en:'Finance',      am:'ፋይናንስ',
-    descEn:'Betelhem, Seble, Getachew, Yordanos.',
-    descAm:'ቤተልሔም፣ ሰብለ፣ ጌታቸው፣ ዮርዳኖስ።',
-    grp:'finance' }
+    descEn:'Betelhem, Seble, Getachew, Yordanos — and Mahelet, who is copied on their reports.',
+    descAm:'ቤተልሔም፣ ሰብለ፣ ጌታቸው፣ ዮርዳኖስ — እና ሪፖርቶቻቸው የሚደርሳት ማህሌት።',
+    grp:'finance',
+    /* Mahelet is Operations, not Finance, but Getachew's and Yordanos's
+       letters both address their reports to "Chairman, copied to Mahelet and
+       Betelhem". Without her here there is no room holding all three
+       recipients that either man belongs to, and their reports would be
+       delivered somewhere two of the three people named could not read them. */
+    ids:['liu'] }
 ];
 
 var CHANNELS = {
   /* every id that belongs in a channel, the Chairman always included */
   membersOf: function (def) {
     var ids = [CHAIRMAN];
-    if (def.ids) {
-      ids = ids.concat(def.ids);
-    } else if (def.grp === '*') {
+    if (def.ids) ids = ids.concat(def.ids);
+    if (def.grp === '*') {
       ids = ids.concat(PEOPLE.map(function (p) { return p.id; }));
     } else if (def.grp) {
       ids = ids.concat(PEOPLE.filter(function (p) { return p.grp === def.grp; })

@@ -216,6 +216,74 @@
   }
 
 
+
+  /* ---------------- who a report is addressed to ---------------- */
+
+  /* Reports name their recipients in prose — "Mahelet + Ephrata", "Chairman,
+     copied to Mahelet and Betty". Those strings are what a person reads at the
+     top of the form and should stay that way; this is the machine's reading of
+     the same line. */
+  var TO_IDS = {
+    'Chairman': ['chairman'],
+    'Mahelet': ['liu'],
+    'Ephrata': ['ephrata'],
+    'Betty': ['betty'],
+    'Betelhem': ['betty'],
+    'Elyas': ['elyas'],
+    'Kidan': []          /* Kidan has no account — he has no letter either */
+  };
+
+  function recipientsOf(report) {
+    var out = [];
+    Object.keys(TO_IDS).forEach(function (name) {
+      if (report.toEn.indexOf(name) !== -1) {
+        TO_IDS[name].forEach(function (id) {
+          if (out.indexOf(id) === -1) out.push(id);
+        });
+      }
+    });
+    return out;
+  }
+
+  /* A channel both the sender and the recipients can open.
+
+     Sending it to #leads because that is where the recipients are only works
+     if the sender is in #leads too, and most are not: fourteen reports go to
+     Ephrata and they come from designers and salespeople, none of whom are
+     leads. The rules would have refused every one of those sends. So look for
+     a channel they actually share — for those fourteen it is #commercial,
+     where Ephrata sits with the people who report to her. */
+  function channelFor(report, fromId) {
+    var to = recipientsOf(report);
+    if (!to.length || typeof CHANNELS === 'undefined') return null;
+
+    var mine = CHANNELS.forPerson(fromId);
+
+    /* a report to the Chairman alone belongs on the filer's private line */
+    if (to.length === 1 && to[0] === 'chairman') return 'direct-' + fromId;
+
+    /* otherwise the smallest shared room that holds every recipient — the
+       smaller it is, the fewer people are shown something not addressed
+       to them */
+    var best = null;
+    mine.forEach(function (ch) {
+      if (ch.kind === 'direct') return;
+      /* never #all. Yordanos's store report names the Chairman, Mahelet and
+         Betelhem, and the only room holding all three that he is also in is
+         everyone — so the smallest-room rule would have put his stock figures
+         in front of forty people including twenty-two men on the factory
+         floor. A report going to three people should not be a broadcast. */
+      if (ch.id === 'all') return;
+      var holdsAll = to.every(function (id) { return ch.members.indexOf(id) !== -1; });
+      if (!holdsAll) return;
+      if (!best || ch.members.length < best.members.length) best = ch;
+    });
+    if (best) return best.id;
+
+    /* nowhere shared — the Chairman is in everything, so his line always works */
+    return 'direct-' + fromId;
+  }
+
   /* ---------------- the ring ---------------- */
 
   /* A number tells you how long is left. A ring tells you how much of the
@@ -1104,6 +1172,14 @@
     pdf.onclick = function () { window.print(); };
     /* Ctrl+P, or a phone's own Print menu, must give the same document */
     window.addEventListener('beforeprint', buildPrintDoc);
+    /* WhatsApp is still here for the customer-facing habit, but it is no
+       longer what Send means. */
+    var wa = el('button', 'btn ghost', t('whatsapp'));
+    wa.type = 'button';
+    wa.onclick = function () {
+      window.open('https://wa.me/?text=' + encodeURIComponent(buildMessage()), '_blank');
+    };
+
     var send = el('button', 'btn', t('send'));
     send.type = 'button'; send.id = 'send';
     send.onclick = function () {
@@ -1142,9 +1218,27 @@
         values: values,
         text: txt
       });
-      window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+      /* Deliver it. Filing it is the record; this is the part that puts it
+         in front of the person who has to act on it. */
+      var chan = channelFor(report, AUTH.isChairman() ? 'chairman' : AUTH.who());
+      var names = lang === 'am' ? report.toAm : report.toEn;
+      if (window.FB && window.FB.live() && chan) {
+        send.disabled = true;
+        send.textContent = t('sending');
+        window.FB.deliverReport(chan, txt).then(function () {
+          toast(t('sentTo').replace('{who}', names));
+          send.textContent = t('sentDone');
+        })['catch'](function () {
+          send.disabled = false;
+          send.textContent = t('send');
+          toast(t('sendNotDelivered'));
+        });
+      } else {
+        toast(t('sendNotDelivered'));
+      }
     };
-    inner.appendChild(count); inner.appendChild(pdf); inner.appendChild(copy); inner.appendChild(send);
+    inner.appendChild(count); inner.appendChild(pdf); inner.appendChild(copy);
+    inner.appendChild(wa); inner.appendChild(send);
     bar.appendChild(inner);
     document.body.appendChild(bar);
   }

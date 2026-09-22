@@ -1824,10 +1824,11 @@ const REPORTS = [
    --------------------------------------------------------------------------- */
 
 const SALES_DAILY = {
-  id:'sales-daily', cadence:'daily', dueTime:'17:30',
+  id:'sales-daily', cadence:'daily', dueTime:'17:00',
   en:'Daily Sales Activity Report', am:'ዕለታዊ የሽያጭ እንቅስቃሴ ሪፖርት',
   toEn:'Ephrata', toAm:'ኤፍራታ',
-  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
+  dueEn:'5:00 PM every working day — Ephrata needs it for her 5:30 PM report',
+  dueAm:'በየሥራ ቀኑ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   sections:[
     { en:'1 · Leads today', am:'1 · የዛሬ አዲስ ደንበኞች', fields:[
@@ -1894,10 +1895,11 @@ const SALES_DAILY = {
 };
 
 const SALES_WEEKLY = {
-  id:'sales-weekly', cadence:'weekly', dueTime:'16:00', dueDay:5,
+  id:'sales-weekly', cadence:'weekly', dueTime:'15:30', dueDay:5,
   en:'Weekly Sales Summary', am:'ሳምንታዊ የሽያጭ ማጠቃለያ',
   toEn:'Ephrata', toAm:'ኤፍራታ',
-  dueEn:'Friday 4:00 PM', dueAm:'ዓርብ ከቀኑ 10፡00 (4:00 PM)',
+  dueEn:'Friday 3:30 PM — Ephrata needs it for her 4:00 PM report',
+  dueAm:'ዓርብ ከቀኑ 9፡30 (3:30 PM)',
   penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
   sections:[
     { en:'1 · Sales performance', am:'1 · የሽያጭ አፈጻጸም', fields:[

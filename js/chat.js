@@ -107,6 +107,29 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
     inner.appendChild(a);
     inner.appendChild(el('div', 'spacer'));
 
+    /* the same two buttons the reports side has: the Chairman's page, and
+       this one, marked as where you are */
+    if (me) {
+      var navs = [['chat.html', 'M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 17H10l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5z', t('chatOpen'), true]];
+      if (me === CHAIRMAN) navs.unshift(['chairman.html', 'M3 12.5h4l2.5-6 5 12 2.5-6h4', t('chOverview'), false]);
+      navs.forEach(function (n) {
+        var a2 = el('a', 'navbtn' + (n[3] ? ' on' : ''));
+        a2.href = n[0];
+        a2.title = n[2];
+        a2.setAttribute('aria-label', n[2]);
+        var NS = 'http://www.w3.org/2000/svg';
+        var s = document.createElementNS(NS, 'svg');
+        [['viewBox', '0 0 24 24'], ['fill', 'none'], ['stroke', 'currentColor'], ['stroke-width', '1.7'],
+         ['stroke-linecap', 'round'], ['stroke-linejoin', 'round'], ['aria-hidden', 'true']]
+          .forEach(function (kv) { s.setAttribute(kv[0], kv[1]); });
+        var pth = document.createElementNS(NS, 'path');
+        pth.setAttribute('d', n[1]);
+        s.appendChild(pth);
+        a2.appendChild(s);
+        inner.appendChild(a2);
+      });
+    }
+
     var tg = el('div', 'langtoggle');
     [['en', 'EN'], ['am', 'አማ']].forEach(function (p) {
       var b = el('button', null, p[1]);

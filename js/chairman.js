@@ -44,8 +44,12 @@ import {
   function el(tag, cls, txt) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
-    if (txt != null) e.textContent = txt;
+    if (txt != null) e.textContent = cls === 'chft' ? bullets(txt) : txt;
     return e;
+  }
+  /* the model writes its bullets as "* "; on his page they read as bullets */
+  function bullets(s) {
+    return String(s).replace(/^[ \t]*[*-][ \t]+/gm, '\u2022 ');
   }
   function personById(id) {
     for (var i = 0; i < PEOPLE.length; i++) if (PEOPLE[i].id === id) return PEOPLE[i];

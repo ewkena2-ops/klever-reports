@@ -109,6 +109,21 @@
       };
       tg.appendChild(b);
     });
+    /* signed in? then chat — and for the Chairman his own page — are one
+       tap from anywhere, instead of a card at the foot of the home screen */
+    if (AUTH.who()) {
+      var here = document.body.dataset.page;
+      var navs = [['chat.html', 'chat', t('chatOpen'), here === 'chat']];
+      if (AUTH.isChairman()) navs.unshift(['chairman.html', 'day', t('chOverview'), here === 'chairman']);
+      navs.forEach(function (n) {
+        var a2 = el('a', 'navbtn' + (n[3] ? ' on' : ''));
+        a2.href = n[0];
+        a2.title = n[2];
+        a2.setAttribute('aria-label', n[2]);
+        a2.appendChild(icon(n[1]));
+        inner.appendChild(a2);
+      });
+    }
     inner.appendChild(tg);
 
     /* signed in? then the way out is in the bar, on every page */
@@ -148,6 +163,8 @@
   var DAYS_AM = ['እሁድ','ሰኞ','ማክሰኞ','ረቡዕ','ሐሙስ','ዓርብ','ቅዳሜ'];
   var MONTHS_EN = ['January','February','March','April','May','June','July',
                    'August','September','October','November','December'];
+  var MONTHS_AM = ['ጃንዋሪ','ፌብሩዋሪ','ማርች','ኤፕሪል','ሜይ','ጁን','ጁላይ',
+                   'ኦገስት','ሴፕቴምበር','ኦክቶበር','ኖቬምበር','ዲሴምበር'];
 
   function toEthiopian(d) {
     var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
@@ -296,6 +313,23 @@
     return e;
   }
 
+  /* ---------------- icons ---------------- */
+
+  /* Three line icons, drawn here rather than fetched: the top bar has to
+     be up before anything has loaded, on a phone with one bar of signal. */
+  var ICON = {
+    chat: 'M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 17H10l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5z',
+    day: 'M3 12.5h4l2.5-6 5 12 2.5-6h4',
+    doc: 'M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10.5A.5.5 0 0 1 6.5 20V4a.5.5 0 0 1 .5-.5zM14 3.5V8h4M9.5 12h5M9.5 15.5h5'
+  };
+  function icon(name) {
+    var s = svg('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+                         'stroke-width': '1.7', 'stroke-linecap': 'round',
+                         'stroke-linejoin': 'round', 'aria-hidden': 'true' });
+    s.appendChild(svg('path', { d: ICON[name] }));
+    return s;
+  }
+
   function ring(mins, late) {
     /* the window is the last twelve hours before the deadline; beyond that
        the ring is simply full and the number does the talking */
@@ -380,30 +414,71 @@
     if (list.length < 2) return null;
 
     var wrap = el('div', 'tl');
-    list.forEach(function (r) {
-      var mins = minsUntil(r.dueTime);
-      var state = mins < 0 ? 'gone' : (mins <= 120 ? 'soon' : '');
-      var a = el('a', 'tlrow ' + state);
-      a.href = 'form.html?r=' + encodeURIComponent(r.id);
 
-      var led = el('span', 'tled');
-      led.appendChild(el('i'));
-      a.appendChild(led);
+    /* On the Chairman's board nineteen rows was a scroll, and thirteen of
+       them said the same thing: 5:30 PM. Three or more at one minute become
+       one row that opens onto the names. */
+    if (!pid) {
+      var byTime = {};
+      list.forEach(function (r) { (byTime[r.dueTime] = byTime[r.dueTime] || []).push(r); });
+      Object.keys(byTime).sort().forEach(function (tm) {
+        var rs = byTime[tm];
+        if (rs.length < 3) { rs.forEach(function (r) { wrap.appendChild(tlRow(r, pid)); }); return; }
+        var mins = minsUntil(tm);
+        var g = el('details', 'tlgroup ' + (mins < 0 ? 'gone' : (mins <= 120 ? 'soon' : '')));
+        var sm = el('summary');
+        var led = el('span', 'tled'); led.appendChild(el('i')); sm.appendChild(led);
+        var b = el('span', 'tlbody');
+        b.appendChild(el('span', 'tlt', hhmm(tm)));
+        b.appendChild(el('span', 'tlw', rs.length + ' ' + t('reportsDue')));
+        b.appendChild(el('span', 'tlp', rs.map(function (r) {
+          var w = personById(r.person); return w ? L(w).split(' ')[0] : r.person;
+        }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(', ')));
+        sm.appendChild(b);
+        sm.appendChild(el('span', 'tls',
+          mins < 0 ? t('passed') : countdown(mins).replace(t('inTime') + ' ', '')));
+        g.appendChild(sm);
+        var sub = el('div', 'tlsub');
+        rs.forEach(function (r) {
+          var a = el('a');
+          a.href = 'form.html?r=' + encodeURIComponent(r.id);
+          var w = personById(r.person);
+          a.appendChild(el('span', null, L(r)));
+          a.appendChild(el('span', null, w ? L(w) : r.person));
+          sub.appendChild(a);
+        });
+        g.appendChild(sub);
+        wrap.appendChild(g);
+      });
+      return wrap;
+    }
 
-      var b = el('span', 'tlbody');
-      b.appendChild(el('span', 'tlt', hhmm(r.dueTime)));
-      b.appendChild(el('span', 'tlw', L(r)));
-      if (!pid) {
-        var who = personById(r.person);
-        b.appendChild(el('span', 'tlp', who ? L(who) : r.person));
-      }
-      a.appendChild(b);
-
-      a.appendChild(el('span', 'tls',
-        mins < 0 ? t('passed') : countdown(mins).replace(t('inTime') + ' ', '')));
-      wrap.appendChild(a);
-    });
+    list.forEach(function (r) { wrap.appendChild(tlRow(r, pid)); });
     return wrap;
+  }
+
+  function tlRow(r, pid) {
+    var mins = minsUntil(r.dueTime);
+    var state = mins < 0 ? 'gone' : (mins <= 120 ? 'soon' : '');
+    var a = el('a', 'tlrow ' + state);
+    a.href = 'form.html?r=' + encodeURIComponent(r.id);
+
+    var led = el('span', 'tled');
+    led.appendChild(el('i'));
+    a.appendChild(led);
+
+    var b = el('span', 'tlbody');
+    b.appendChild(el('span', 'tlt', hhmm(r.dueTime)));
+    b.appendChild(el('span', 'tlw', L(r)));
+    if (!pid) {
+      var who = personById(r.person);
+      b.appendChild(el('span', 'tlp', who ? L(who) : r.person));
+    }
+    a.appendChild(b);
+
+    a.appendChild(el('span', 'tls',
+      mins < 0 ? t('passed') : countdown(mins).replace(t('inTime') + ' ', '')));
+    return a;
   }
 
   function letterhead(p) {
@@ -418,7 +493,8 @@
     var dt = el('div', 'lh-date');
     dt.appendChild(el('span', null,
       (lang === 'am' ? DAYS_AM : DAYS_EN)[d.getDay()] + ' ' +
-      d.getDate() + ' ' + MONTHS_EN[d.getMonth()] + ' ' + d.getFullYear()));
+      d.getDate() + ' ' + (lang === 'am' ? MONTHS_AM : MONTHS_EN)[d.getMonth()] + ' ' +
+      d.getFullYear()));
     dt.appendChild(el('span', null,
       ETH_MONTHS[e.m - 1] + ' ' + e.d + ' ቀን ' + e.y + ' ዓ.ም.'));
     head.appendChild(dt);
@@ -544,7 +620,7 @@
 
     var sel = document.createElement('select');
     sel.className = 'signfield';
-    var optC = el('option', null, lang === 'am' ? 'ሲቀመንበር' : 'Chairman');
+    var optC = el('option', null, lang === 'am' ? 'ሊቀመንበር' : 'Chairman');
     optC.value = AUTH.CHAIR_ID;
     sel.appendChild(optC);
     PEOPLE.forEach(function (p) {
@@ -622,7 +698,9 @@
 
     var a = el('a', 'chan chatcard');
     a.href = 'chat.html';
-    a.appendChild(el('span', 'chinit', '✉'));
+    var ci = el('span', 'chinit');
+    ci.appendChild(icon('chat'));
+    a.appendChild(ci);
     var who = el('span', 'who');
     who.appendChild(el('span', 'nm', t('chatOpen')));
     var line = el('span', 'rl', t('chatPickSub'));
@@ -639,7 +717,7 @@
         stopWatch = window.FB.watchLatest(ids, function (m) {
           var p = personById(m.who);
           var name = m.who === CHAIRMAN
-            ? (lang === 'am' ? 'ሰቀመንበር' : 'Chairman')
+            ? (lang === 'am' ? 'ሊቀመንበር' : 'Chairman')
             : (p ? L(p) : m.who);
           var said = m.text || (m.kind === 'voice' ? t('chatVoice') : t('chatPhoto'));
           line.textContent = name + ': ' + said;
@@ -780,7 +858,9 @@
     /* his own page: today's filed reports, and what the agents made of them */
     var ov = el('a', 'chan chatcard');
     ov.href = 'chairman.html';
-    ov.appendChild(el('span', 'chinit', '▣'));
+    var oi = el('span', 'chinit');
+    oi.appendChild(icon('day'));
+    ov.appendChild(oi);
     var ow = el('span', 'who');
     ow.appendChild(el('span', 'nm', t('chOverview')));
     ow.appendChild(el('span', 'rl', t('chAnalysis')));
@@ -841,7 +921,7 @@
       a.href = 'form.html?r=' + encodeURIComponent(r.id);
       a.appendChild(el('span', 'rt', L(r)));
       var meta = el('div', 'meta');
-      meta.appendChild(el('span', 'due', t('due') + ' · ' + (lang === 'am' ? r.dueAm : r.dueEn)));
+      meta.appendChild(el('span', 'due', lang === 'am' ? r.dueAm : r.dueEn));
       meta.appendChild(el('span', null, t('to') + ' · ' + (lang === 'am' ? r.toAm : r.toEn)));
       a.appendChild(meta);
       list.appendChild(a);
@@ -923,9 +1003,13 @@
     root.appendChild(prog);
 
     /* sections */
-    report.sections.forEach(function (sec) {
+    report.sections.forEach(function (sec, si) {
       var fs = el('fieldset');
-      var lg = el('legend', null, L(sec));
+      var lg = el('legend');
+      lg.appendChild(el('span', null, L(sec)));
+      var lc = el('span', 'lgc');
+      lc.id = 'lgc_' + si;
+      lg.appendChild(lc);
       fs.appendChild(lg);
       sec.fields.forEach(function (f) { fs.appendChild(fieldRow(f)); });
       root.appendChild(fs);
@@ -1374,6 +1458,21 @@
       }
     });
 
+    /* the same count, section by section */
+    report.sections.forEach(function (sec, si) {
+      var lc = document.getElementById('lgc_' + si);
+      if (!lc) return;
+      var sn = 0, sd = 0;
+      sec.fields.forEach(function (f) {
+        if (f.opt) return;
+        var u = (f.t === 'grid' && f.rows) ? f.rows.length : 1;
+        sn += u;
+        if (filled(f)) sd += u;
+      });
+      lc.textContent = sn ? sd + ' / ' + sn : '';
+      lc.className = 'lgc' + (sn && sd === sn ? ' full' : '');
+    });
+
     var missing = need - done;
     var c = document.getElementById('count');
     if (c) {
@@ -1589,6 +1688,9 @@
     raced.then(function (id) {
       AUTH._adopt(id);
       settledOnce = true;
+      /* the bar was drawn before Firebase answered, so it had no sign-out
+         button and no chat link; draw it again now that it knows who */
+      rebuildTop();
       var b = root.querySelector('.booting');
       if (b) b.parentNode.removeChild(b);
       if (!AUTH.who()) { renderSignIn(root); return; }

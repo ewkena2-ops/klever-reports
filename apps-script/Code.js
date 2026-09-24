@@ -2,6 +2,60 @@
    Receives one report and appends it as a row, on a tab named after the
    report. Unknown fields become new columns on the right. */
 
+/* Tabs this endpoint must never write to — they belong to the ledger and the
+   packs, and the figures in them come off people's pay. */
+var RESERVED_TABS_ = /^(Penalty Ledger|Daily Analysis|Deductions)/i;
+
+/* The few things in a report that should not wait for the morning brief.
+   Checked here, in code, against the figures as filed; each one puts ALERT at
+   the front of the email so it reads on a lock screen. The thresholds are the
+   letters' own — the 6,000,000 Birr reserve is Betelhem's duty 19 and the
+   Implementation Document's cash rule.
+
+   This is the anonymous endpoint, so a forged row could raise a false alert.
+   That costs an email, not a fine: nothing here is charged or recorded. */
+var ALERTS_ = [
+  { report: 'betty-forecast', test: function (v) { return has_(v.cf7_bank) && num_(v.cf7_bank) < 6000000; },
+    say: function (v) { return 'Bank balance ' + money_(v.cf7_bank) + ' Birr this morning — below the 6,000,000 reserve'; } },
+  { report: 'betty-forecast', test: function (v) { return yes__(v.cf7_short); },
+    say: function (v) { return 'Betelhem expects a cash shortfall in the next 7 days' +
+                               (has_(v.cf7_amount) ? ' — ' + money_(v.cf7_amount) + ' Birr short' : ''); } },
+  { report: 'betty-daily', test: function (v) { return has_(v.bank_total) && num_(v.bank_total) < 6000000; },
+    say: function (v) { return 'Bank total ' + money_(v.bank_total) + ' Birr — below the 6,000,000 reserve'; } },
+  { report: 'betty-daily', test: function (v) { return yes__(v.discrepancy); },
+    say: function () { return 'Betelhem reports a cash discrepancy'; } },
+  { report: 'betty-cashflow', test: function (v) { return yes__(v.cf_short); },
+    say: function () { return 'A cash shortfall is expected in the next 4 weeks'; } },
+  { report: 'yordanos-daily', test: function (v) { return yes__(v.sec_theft); },
+    say: function () { return 'Theft or unauthorized removal reported at the store'; } },
+  { report: 'yordanos-daily', test: function (v) { return num_(v.sh_stopped) > 0; },
+    say: function (v) { return 'Production stopped by a material shortage' +
+                               (has_(v.sh_what) ? ' — ' + v.sh_what : ''); } },
+  { report: 'amaha-daily', test: function (v) { return yes__(v.b_short); },
+    say: function (v) { return 'The factory stopped for missing board' +
+                               (has_(v.b_shortw) ? ' — ' + v.b_shortw : ''); } },
+  { report: 'wude-daily', test: function (v) { return yes__(v.pr_any); },
+    say: function () { return 'Wude reports being pressured to pass a defective product'; } },
+  { report: 'wude-daily', test: function (v) { return num_(v.d_released) > 0; },
+    say: function (v) { return num_(v.d_released) + ' defect(s) released to finished goods'; } },
+  { report: 'elyas-daily', test: function (v) { return yes__(v.cl_damage); },
+    say: function () { return 'Customer property damaged during installation'; } }
+];
+
+function has_(v) { return v != null && String(v).trim() !== ''; }
+function num_(v) { var x = Number(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')); return isNaN(x) ? 0 : x; }
+function yes__(v) { return String(v == null ? '' : v).toLowerCase().indexOf('y') === 0; }
+function money_(v) { return num_(v).toLocaleString('en-US'); }
+
+function alertsFor_(row) {
+  var v = row.values || {}, out = [];
+  ALERTS_.forEach(function (a) {
+    if (a.report !== row.report) return;
+    try { if (a.test(v)) out.push(a.say(v)); } catch (e) { /* a malformed value is not an alert */ }
+  });
+  return out;
+}
+
 /* Opening the URL in a browser should say something useful rather than throw.
    It is also how the owner grants a newly added permission: Google shows the
    consent screen before it will run this. */
@@ -35,6 +89,11 @@ function doPost(e) {
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var tab = String(row.reportName || 'Reports').substring(0, 90);
+  /* This endpoint takes anyone's POST, and it names the tab after whatever
+     the caller says the report is called. Without this line a caller could
+     append a row to the penalty ledger or to a month's deductions just by
+     calling their "report" that. */
+  if (RESERVED_TABS_.test(tab)) return ContentService.createTextOutput('refused');
   var sh = ss.getSheetByName(tab);
   if (!sh) {
     sh = ss.insertSheet(tab);
@@ -200,11 +259,15 @@ function notify_(row, sheetUrl) {
 
   var who = row.personName || row.person || 'Someone';
   var what = row.reportName || 'Report';
-  var subject = (row.late ? 'LATE - ' : '') + who + ' - ' + what;
+  var alerts = alertsFor_(row);
+  var subject = (alerts.length ? 'ALERT - ' + alerts[0] + ' - ' : '') +
+                (row.late ? 'LATE - ' : '') + who + ' - ' + what;
 
   var when = Utilities.formatDate(new Date(row.at || Date.now()),
                                   'Africa/Addis_Ababa', 'HH:mm, d MMM yyyy');
-  var lines = [
+  var lines = (alerts.length ? ['NEEDS YOU NOW'].concat(alerts.map(function (a) {
+    return '  - ' + a;
+  })).concat(['']) : []).concat([
     what,
     who + (row.byName && row.byName !== who ? '   (filed by ' + row.byName + ')' : ''),
     'Sent ' + when + '   ' + (row.late ? 'LATE' : 'on time'),
@@ -213,7 +276,7 @@ function notify_(row, sheetUrl) {
     row.text || '',
     '',
     'Sheet: ' + sheetUrl
-  ];
+  ]);
 
   try {
     MailApp.sendEmail({

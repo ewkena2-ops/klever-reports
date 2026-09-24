@@ -1282,3 +1282,104 @@ body[data-page="index"] .chan .nm{font-size:14px}
 
 body[data-page="index"] .eyebrow{margin:24px 0 8px;padding-bottom:6px}
 body[data-page="index"] .eyebrow:first-child{margin-top:16px}
+
+/* ================= what the Chairman asked for =================
+   On a person's home it sits above their reports, on a card, because it is
+   the one thing on the screen that came from him. On his own page it is a
+   short form and the list of what is open, over, and done. */
+.ins{
+  background:var(--card);border:1px solid var(--edge);border-left:3px solid var(--tealx);
+  border-radius:12px;padding:13px 15px;margin:0 0 10px;
+}
+.ins.over{border-left-color:var(--coral)}
+.inst{font-family:var(--serif);font-size:15.5px;line-height:1.5;color:var(--ink)}
+.insd{font-family:var(--mono);font-size:11px;color:var(--mut);margin:6px 0 10px;letter-spacing:.03em}
+.ins.over .insd{color:var(--coral)}
+.insgo,.chmini{
+  padding:8px 13px;cursor:pointer;border-radius:8px;
+  font-family:var(--sans);font-size:13px;font-weight:600;
+  background:transparent;color:var(--tealx);border:1px solid var(--edge2);
+}
+.insgo:disabled,.chmini:disabled{opacity:.45;cursor:not-allowed}
+.insbox{display:flex;flex-direction:column;gap:8px}
+.insbox textarea,.chinsform textarea,.chinsform select,.chinsform input,.chcancel input{
+  width:100%;box-sizing:border-box;padding:10px 11px;border-radius:8px;
+  background:var(--deep);color:var(--ink);border:1px solid var(--edge2);
+  font-family:var(--sans);font-size:14.5px;
+}
+.insbox textarea:focus,.chinsform textarea:focus,.chinsform select:focus,
+.chinsform input:focus,.chcancel input:focus{outline:2px solid var(--teal);outline-offset:-1px}
+.insbox .insgo{align-self:flex-start;background:var(--teal);color:#04211c;border-color:var(--teal)}
+
+.chinsform{display:flex;flex-direction:column;gap:9px;margin:0 0 16px}
+.chinsf{display:flex;align-items:center;gap:10px}
+.chinsf span{
+  font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim);width:44px;flex:none;
+}
+.chinsform .seed{align-self:flex-start;margin:2px 0 0}
+
+.chinsrow,.chchg{
+  border-bottom:1px solid var(--edge);padding:11px 2px 12px;
+}
+.chinsrow:first-child,.chchg:first-of-type{border-top:1px solid var(--edge)}
+.chinsh{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:4px}
+.chinsh .chrw{color:var(--ink)}
+.chinsh .chrr{color:var(--mut)}
+.chinsh .chrt{margin-left:auto;color:var(--mut)}
+.chinsh .chrt.bad{color:var(--coral)}
+.chinst{font-family:var(--serif);font-size:14.5px;line-height:1.5;color:var(--ink2);margin-bottom:8px}
+.chinsn{font-family:var(--sans);font-size:12.5px;color:var(--mut);margin:0 0 8px;line-height:1.45}
+.chinsrow.done .chinst{color:var(--mut)}
+.chinsrow.done .chinsh .chrt{color:var(--tealx)}
+.chinsrow .chmini,.chchg .chmini{padding:5px 10px;font-size:12px}
+.chchg.off .chinsh .chrt{text-decoration:line-through;color:var(--dim)}
+.chcancel{display:flex;gap:8px;flex-wrap:wrap}
+.chcancel input{flex:1;min-width:180px}
+.chmini.bad{color:var(--coral);border-color:rgba(226,118,92,.45)}
+
+.chmonth{margin:14px 0 0}
+.chmonth summary{
+  cursor:pointer;list-style:none;padding:10px 2px;
+  font-family:var(--sans);font-size:11.5px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--mut);border-top:1px solid var(--edge);
+}
+.chmonth summary::-webkit-details-marker{display:none}
+.chmonth .chf{border-bottom-color:var(--edge)}
+.chmonth .chfk{color:var(--ink2)}
+.chmonth .chfv{color:var(--ink)}
+
+body[data-page="chairman"] .chweek .chtiles,
+body[data-page="chairman"] .chtiles{gap:8px}
+body[data-page="chairman"] .chtile{background:var(--card);border-color:var(--edge);border-radius:10px}
+body[data-page="chairman"] .chtl{color:var(--dim)}
+body[data-page="chairman"] .chtv{color:var(--ink);font-size:16px}
+body[data-page="chairman"] .chweek .chfind{margin:10px 0 0}
+
+/* `hidden` has to win. A box that sets its own display — the note under
+   "It's done", the reason under "Cancel" — otherwise ignores it and shows
+   before anyone has pressed anything. */
+.insbox[hidden],.chcancel[hidden],.insgo[hidden],.chmini[hidden]{display:none}
+
+/* The raw day on the Chairman's page was still on paper colours inside the
+   dark theme: light text on a white card. Nobody saw it because the page never
+   drew (see chairman.js connect()). */
+body[data-page="chairman"] .chrow{
+  background:var(--card);border-color:var(--edge);border-left-color:var(--teal);border-radius:10px;
+}
+body[data-page="chairman"] .chrow.late{border-left-color:var(--coral)}
+body[data-page="chairman"] .chrw{color:var(--ink)}
+body[data-page="chairman"] .chrr,
+body[data-page="chairman"] .chrt{color:var(--mut)}
+body[data-page="chairman"] .chrow.late .chrt{color:var(--coral)}
+body[data-page="chairman"] .chrbody{border-top-color:var(--edge)}
+body[data-page="chairman"] .chsec{color:var(--tealx)}
+body[data-page="chairman"] .chf{border-bottom-color:var(--edge)}
+body[data-page="chairman"] .chfk{color:var(--mut)}
+body[data-page="chairman"] .chfv{color:var(--ink)}
+body[data-page="chairman"] .chflags,
+body[data-page="chairman"] .chmissing{
+  background:#1a1311;border-color:#3a2420;border-radius:10px;color:#e8b3a5;
+}
+body[data-page="chairman"] .chflags .chfl,
+body[data-page="chairman"] .chmissing .chfl{color:var(--coral)}

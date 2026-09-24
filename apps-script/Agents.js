@@ -18,15 +18,26 @@
    eventually cross it. The fifteenth reads the other fourteen and writes the
    Chairman his brief, so it has to run after them.
 
+   WHEN IT RUNS
+   Every morning at six, on yesterday. By then the day is closed: anything
+   filed before midnight is in, late or not, and the ledger has charged what
+   the letters say. The brief is in the Chairman's inbox by seven. The
+   “Analyse now” button on his page runs the same agents on today so far,
+   and says so — nothing is charged from that run.
+
+   A WEEK, NOT A DAY
+   Each agent also sees the six days before, worked out in code: the same
+   figure day by day, its average, and who has missed the same report more
+   than once. A model given only today cannot say “third day running”, and
+   that is most of what is worth saying.
+
    ADDING AN AGENT
    Add an entry to AGENTS. It needs an id, a title in both languages, a facts
    function that returns an object of already-computed numbers, and the
    question to ask about them. Nothing else in this file changes.
 
    SET UP: the same Script Properties as the ledger — GEMINI_KEY,
-   FIREBASE_WEB_KEY, LEDGER_PASSWORD. Then a daily trigger on runAgents,
-   after the last report is due (6:30pm or later; Betelhem's Customer Pulse
-   is due at 6:00pm).                                                        */
+   FIREBASE_WEB_KEY, LEDGER_PASSWORD — then setupTriggers() once (Agent.js). */
 
 /* ------------------------------------------------------------------ *
  *  Small helpers                                                      *
@@ -40,10 +51,12 @@ function n_(v) {
 function yes_(v) {
   return String(v == null ? '' : v).toLowerCase().indexOf('y') === 0;
 }
-/* the values map of one filed report, or null if it never arrived */
+/* one filed report, or null if it never arrived. If it was filed twice — a
+   correction — the later one holds the figures to believe. */
 function got_(filed, reportId) {
-  for (var i = 0; i < filed.length; i++) if (filed[i].report === reportId) return filed[i];
-  return null;
+  var hit = null;
+  for (var i = 0; i < filed.length; i++) if (filed[i].report === reportId) hit = filed[i];
+  return hit;
 }
 function vals_(filed, reportId) {
   var f = got_(filed, reportId);
@@ -73,6 +86,102 @@ function notFiled_(d) {
 }
 function pctOf_(part, whole) {
   return whole ? Math.round((part / whole) * 1000) / 10 : 0;
+}
+
+/* The same figure on each of the seven days ending today, oldest first.
+   null is a day it was owed and not reported, which is not a zero — the same
+   distinction as nOrNull_, carried across a week. 'not due' is a day nobody
+   owed it: a Sunday, or a day the letter excuses. The first live run read a
+   Sunday's null as a second missed store report; the two have to look
+   different. */
+function series_(d, reportId, field) {
+  var rep = null;
+  ((d.schedule && d.schedule.reports) || []).forEach(function (r) { if (r.id === reportId) rep = r; });
+  var out = [];
+  for (var i = 6; i >= 0; i--) {
+    var day = addDays_(d.day, -i), v = null;
+    (d.recent || []).forEach(function (f) {
+      if (f.report === reportId && f.day === day) v = n_((f.fields || {})[field]);
+    });
+    if (v === null && rep && !dueOn_({ reports: [rep] }, day).length) v = 'not due';
+    out.push(v);
+  }
+  return out;
+}
+function isNum_(x) { return typeof x === 'number'; }
+function avgKnown_(xs) {
+  var k = xs.filter(isNum_);
+  if (!k.length) return null;
+  return Math.round(k.reduce(function (a, x) { return a + x; }, 0) / k.length * 10) / 10;
+}
+/* today against the days before it, so the model is handed the comparison
+   rather than asked to make it */
+function trend_(xs) {
+  var prior = xs.slice(0, 6), today = xs[6], avg = avgKnown_(prior);
+  return {
+    last_7_days: xs,
+    days_reported_before_today: prior.filter(isNum_).length,
+    average_before_today: avg,
+    today_vs_average_pct: (isNum_(today) && avg) ? Math.round((today - avg) / avg * 1000) / 10 : null
+  };
+}
+
+/* Money in since Monday, from the daily reports themselves. The first live
+   run added the week up in the model's head — correctly, that time. */
+function sinceMonday_(d, reportId, field) {
+  var dow = dow_(d.day);
+  var monday = addDays_(d.day, -(dow === 0 ? 6 : dow - 1));
+  var by = {};
+  (d.recent || []).forEach(function (f) {
+    if (f.report === reportId && f.day >= monday && f.day <= d.day) by[f.day] = n_((f.fields || {})[field]);
+  });
+  var days = Object.keys(by);
+  return { since: monday, days_reported: days.length,
+           total: days.reduce(function (a, k) { return a + by[k]; }, 0) };
+}
+
+/* How many days until the bank falls below the reserve at this week's rate —
+   worked out here, only when there are enough days to mean anything, and
+   otherwise said to be unknown rather than guessed at. */
+function daysToFloor_(xs, floor) {
+  var pts = [];
+  xs.forEach(function (x, i) { if (isNum_(x)) pts.push({ i: i, v: x }); });
+  if (pts.length < 3) return { days: null, why: 'fewer than three days reported this week' };
+  var first = pts[0], last = pts[pts.length - 1];
+  if (last.v < floor) return { days: 0, why: 'already below' };
+  var perDay = (first.v - last.v) / (last.i - first.i);
+  if (perDay <= 0) return { days: null, why: 'not falling this week' };
+  return { days: Math.floor((last.v - floor) / perDay),
+           why: 'falling about ' + Math.round(perDay).toLocaleString('en-US') +
+                ' Birr a calendar day over ' + pts.length + ' reported days' };
+}
+
+/* Who has missed or been late with the same report more than once in the
+   week, from the ledger itself. A first miss is a bad day; the penalties
+   agent was asked to spot a third one and, until now, was only ever shown
+   one day. */
+function repeats_(d) {
+  var tally = {}, from = addDays_(d.day, -6);
+  /* the ledger reads a day further back than a week, for "second Friday
+     running"; a week here is today and the six days before it */
+  var days = (d.before || []).filter(function (doc) { return doc.day >= from; }).map(function (doc) {
+    return { day: doc.day, lines: (doc.lines || []).map(function (l) {
+      return { person: l.name || l.person, report: l.reportName || l.report, status: l.status };
+    }) };
+  });
+  days.push({ day: d.day, lines: d.ledger });
+  days.forEach(function (doc) {
+    doc.lines.forEach(function (l) {
+      if (l.status !== 'MISSING' && l.status !== 'LATE') return;
+      var k = l.person + '|' + l.report;
+      var t = tally[k] || (tally[k] = { person: l.person, report: l.report, missing: 0, late: 0, days: [] });
+      if (l.status === 'MISSING') t.missing++; else t.late++;
+      t.days.push(doc.day);
+    });
+  });
+  return Object.keys(tally).map(function (k) { return tally[k]; })
+    .filter(function (t) { return t.missing + t.late >= 2; })
+    .sort(function (a, b) { return (b.missing + b.late) - (a.missing + a.late); });
 }
 
 
@@ -110,7 +219,8 @@ var DECISIONS = [
   bites: function (d) {
     var hit = null;
     d.ledger.forEach(function (l) {
-      if (String(l.person).indexOf('Yordanos') === 0 && l.status !== 'On time') hit = l.status;
+      if (String(l.person).indexOf('Yordanos') === 0 &&
+          (l.status === 'LATE' || l.status === 'MISSING')) hit = l.status;
     });
     return hit ? 'Yordanos was ' + hit + ' today and was charged nothing, because his letter '+
                  'sets no figure. Everyone else in the same position paid.' : null;
@@ -118,11 +228,14 @@ var DECISIONS = [
 
 { id:'weekly-missing', what:'What a weekly report costs when it never arrives',
   yours:true,
-  detail:'Every letter sets 500 Birr for a weekly report filed late. Not one sets anything for '+
-         'a weekly report that never arrives — Ephrata’s marketing report is the only exception '+
-         'in the whole set. So filing an hour late costs 500 and not filing costs nothing, which '+
-         'is the wrong way round and is what the ledger currently charges, because it charges '+
-         'what the paper says.',
+  detail:'Every letter sets 500 Birr for a weekly report filed late. Most set nothing for one '+
+         'that never arrives. The exceptions are Ephrata’s weekly report (–500) and projection '+
+         '(–500, –1,000 the second time running) and Betelhem’s 4-week projection (–1,000) and '+
+         'job list (–500). Mahelet’s 15-day plan costs 5,000 late and nothing missing, unless it '+
+         'is missed two weeks running. So for most weekly reports filing an hour late costs 500 '+
+         'and not filing costs nothing, which is the wrong way round and is what the ledger '+
+         'charges, because it charges what the paper says. A weekly report still missing at '+
+         'midnight on its due day counts as missing.',
   blocks:'Every letter with a weekly report in it — Ephrata, Mahelet, Betelhem, Amaha, Wude, '+
          'Elyas, Getachew, Yordanos, both salespeople, all five designers',
   bites: function (d) {
@@ -303,7 +416,9 @@ var AGENTS = [
          is the first thing it sees and often not the reason */
       hours_lost_to_something_else: n_(amaha.w_lost),
       what_else_held_the_day_up: amaha.w_block || '',
-      stopped_for_missing_board: yes_(amaha.b_short)
+      stopped_for_missing_board: yes_(amaha.b_short),
+      factory_absent_last_7_days: series_(d, 'amaha-daily', 'mp_absent'),
+      site_assemblers_late_last_7_days: series_(d, 'elyas-daily', 'a_late')
     };
   },
   ask:'Who is missing, and how much of the day it actually explains. The attendance bonus '+
@@ -334,12 +449,17 @@ var AGENTS = [
       stage_holding_us_up: amaha.w_block || '',
       hours_lost: n_(amaha.w_lost),
       wip_by_stage: stage,
-      machines_all_reported_in_30min: yes_(amaha.m_reported)
+      machines_all_reported_in_30min: yes_(amaha.m_reported),
+      m2_this_week: trend_(series_(d, 'amaha-daily', 'p_total')),
+      waste_pct_this_week: trend_(series_(d, 'amaha-daily', 'w_pct')),
+      hours_lost_last_7_days: series_(d, 'amaha-daily', 'w_lost')
     };
   },
   ask:'Did the factory make its 40 m², and if not, what actually stopped it. '+
       'Yield below 2.2 m² a sheet means the cutting plan is wasting board — say so if it is. '+
-      'If one stage is holding work up, name it and say whether the queue behind it is growing.' },
+      'If one stage is holding work up, name it and say whether the queue behind it is growing. '+
+      'If today is more than 15% below the average of the days before it, say so first — '+
+      'that is the drop the Chairman wants to hear about the same day.' },
 
 { id:'quality', en:'Quality', am:'ጥራት',
   facts: function (d) {
@@ -356,7 +476,10 @@ var AGENTS = [
       same_stage_as_yesterday: yes_(wude.c_repeat),
       amaha_told_the_cause: yes_(wude.c_told),
       suppliers_fault_defects: n_(wude.c_sup),
-      pressured_to_pass: yes_(wude.pr_any)
+      pressured_to_pass: yes_(wude.pr_any),
+      pass_rate_this_week: trend_(series_(d, 'wude-daily', 'i_rate')),
+      rework_pct_this_week: trend_(series_(d, 'wude-daily', 'r_rate')),
+      defects_released_last_7_days: series_(d, 'wude-daily', 'd_released')
     };
   },
   ask:'Where are the defects actually coming from, and is it the same place as yesterday. '+
@@ -379,7 +502,9 @@ var AGENTS = [
       offcut_m2_reissued: n_(yord.k_offout),
       consumables_month_to_date: n_(yord.con_mtd),
       consumables_budget: 30000,
-      theft_or_unauthorized_removal: yes_(yord.sec_theft)
+      theft_or_unauthorized_removal: yes_(yord.sec_theft),
+      shortages_flagged_last_7_days: series_(d, 'yordanos-daily', 'sh_flagged'),
+      production_stops_last_7_days: series_(d, 'yordanos-daily', 'sh_stopped')
     };
   },
   ask:'What is about to run out, and will it stop production before it is replaced. '+
@@ -401,7 +526,9 @@ var AGENTS = [
       supplier_delays: n_(purch.sup_delay),
       supplier_quality_issues: n_(purch.sup_quality),
       cheque_value: n_(purch.chq_value),
-      margin_floor_birr_per_m2: 6000
+      margin_floor_birr_per_m2: 6000,
+      materials_up_10pct_last_7_days: series_(d, 'getachew-daily', 'p_up'),
+      supplier_delays_last_7_days: series_(d, 'getachew-daily', 'sup_delay')
     };
   },
   ask:'Is anything we buy getting more expensive in a way that will eat the 6,000 Birr/m² '+
@@ -423,13 +550,18 @@ var AGENTS = [
       zamzam_discrepancy: n_(fin.zz_disc),
       advance_received: n_(fin.adv_in), final_received: n_(fin.final_in),
       board_mismatch: n_(fin.board_mismatch),
-      documents_missing: n_(fin.doc_missing)
+      documents_missing: n_(fin.doc_missing),
+      bank_total_this_week: trend_(series_(d, 'betty-daily', 'bank_total')),
+      morning_bank_balance_last_7_days: series_(d, 'betty-forecast', 'cf7_bank'),
+      days_until_below_6m_at_this_rate: daysToFloor_(series_(d, 'betty-forecast', 'cf7_bank'), 6000000)
     };
   },
   ask:'Is the money where it should be. The reserve floor is 6,000,000 Birr and falling '+
       'below it has to be reported the same day. A discrepancy, an unconfirmed ZamZam '+
       'transfer, or a payment over 50,000 without Kidan is a same-day problem, not a '+
-      'month-end one.' },
+      'month-end one. If days_until_below_6m_at_this_rate gives a number, say it — that is '+
+      'the warning Betelhem’s letter fines her for not giving. If it gives none, do not '+
+      'estimate one.' },
 
 { id:'commercial', en:'Sales and commercial', am:'ሽያጭና ንግድ',
   facts: function (d) {
@@ -450,7 +582,16 @@ var AGENTS = [
       unanswered_whatsapp: n_(ephrata.wa_unanswered),
       complaints_in_groups: n_(ephrata.wa_complaints),
       tsega_filed: !!got_(d.filed, 'tsega-sales-daily'),
-      biruktayet_filed: !!got_(d.filed, 'biruktayet-sales-daily')
+      biruktayet_filed: !!got_(d.filed, 'biruktayet-sales-daily'),
+      collected_last_7_days: series_(d, 'ephrata-daily', 'collected_today'),
+      collected_since_monday_from_her_daily_reports: sinceMonday_(d, 'ephrata-daily', 'collected_today'),
+      left_to_reach_the_3m_floor: Math.max(0, 3000000 -
+        sinceMonday_(d, 'ephrata-daily', 'collected_today').total),
+      /* Monday to Saturday; the first live run said "tomorrow cannot close
+         the gap" on a Thursday, with Friday and Saturday both still to come */
+      working_days_left_this_week: Math.max(0, 6 - dow_(d.day)),
+      leads_last_7_days: series_(d, 'ephrata-daily', 'leads_total'),
+      contracts_last_7_days: series_(d, 'ephrata-daily', 'contracts')
     };
   },
   ask:'Is the week going to reach 3,000,000 Birr, and if not say it now rather than on '+
@@ -492,7 +633,9 @@ var AGENTS = [
       complaints: n_(elyas.ac_complaints),
       rework_at_site: n_(elyas.q_rework),
       customer_property_damaged: yes_(elyas.cl_damage),
-      ashenafi_filed: !!got_(d.filed, 'ashenafi-daily')
+      ashenafi_filed: !!got_(d.filed, 'ashenafi-daily'),
+      m2_installed_last_7_days: series_(d, 'elyas-daily', 'j_m2'),
+      hours_lost_to_site_last_7_days: series_(d, 'elyas-daily', 'r_lost')
     };
   },
   ask:'Did installation lose time to something that was not the installers’ fault. A site '+
@@ -512,7 +655,9 @@ var AGENTS = [
       acceptances_signed: n_(elyas.ac_signed),
       customers_called_before_arrival: yes_(elyas.ac_called),
       unanswered_messages: n_(ephrata.wa_unanswered),
-      pulse_filed: !!got_(d.filed, 'betty-pulse')
+      pulse_filed: !!got_(d.filed, 'betty-pulse'),
+      site_complaints_last_7_days: series_(d, 'elyas-daily', 'ac_complaints'),
+      whatsapp_complaints_last_7_days: series_(d, 'ephrata-daily', 'wa_complaints')
     };
   },
   ask:'What are customers actually saying, and is anyone waiting for an answer. A complaint '+
@@ -529,7 +674,8 @@ var AGENTS = [
       else ontime.push(row);
     });
     return { due_today: d.ledger.length, on_time: ontime.length,
-             late: late, missing: missing };
+             late: late, missing: missing,
+             more_than_once_this_week: repeats_(d) };
   },
   ask:'Who did not report. This is the list nobody was keeping before, so be exact and '+
       'be short: names and what is missing. If the same person is missing repeatedly that '+
@@ -545,7 +691,8 @@ var AGENTS = [
         return { person:l.person, report:l.report, status:l.status, birr:l.amount, under:l.why };
       }),
       note_yordanos: 'Yordanos files a daily store report but his letter sets no penalty ' +
-                     'for missing it — he is listed and charged nothing until the Chairman decides.'
+                     'for missing it — he is listed and charged nothing until the Chairman decides.',
+      more_than_once_this_week: repeats_(d)
     };
   },
   ask:'The amounts are already calculated and correct — do not restate the arithmetic and '+
@@ -569,7 +716,8 @@ var AGENTS = [
       material_over_bom_pct: n_(amaha.w_var),
       m2_per_sheet: n_(amaha.b_yield),
       materials_up_over_10pct: n_(purch.p_up),
-      savings_today: n_(amaha.sav_today)
+      savings_today: n_(amaha.sav_today),
+      m2_per_sheet_this_week: trend_(series_(d, 'amaha-daily', 'b_yield'))
     };
   },
   ask:'Is anything quietly eating the 6,000 Birr/m² floor. Board price rising, yield '+
@@ -637,30 +785,51 @@ var AGENTS = [
       'today, name the decision nearest to biting and stop.' },
 
 { id:'brief', en:'The Chairman’s brief', am:'የሊቀመንበሩ ማጠቃለያ', last:true,
-  facts: function (d) { return { date: d.dayLabel }; },
+  facts: function (d) { return { date: d.dayLabel, instructions: d.instructions }; },
   ask:'Below is what the other agents found today. Write the Chairman five lines at most. '+
       'Lead with the thing that costs the most money or will if nobody moves. Do not '+
       'summarise everything — leave out what is merely normal. If the day was ordinary, '+
-      'say so in one line and stop. Name people only where a person has to act.' }
+      'say so in one line and stop. Name people only where a person has to act. '+
+      'An instruction from the Chairman that is past its date and still open belongs in the '+
+      'brief — name who has it and how many days over it is.' }
 ];
 
 /* ------------------------------------------------------------------ *
  *  The run                                                            *
  * ------------------------------------------------------------------ */
 
+/* The morning trigger: close yesterday, have the agents read it, send one
+   email. On a Monday that is Sunday, when nobody owes anything, and it does
+   nothing at all. */
+function dailyRun() {
+  var day = addDays_(todayAddis_(), -1);
+  var c = closeDay_(day);
+  if (!c.due.length) return;
+  runOn_(c, false);
+}
+
+/* The Chairman's button: today so far. Nothing is written to the ledger —
+   a charge is only final once the day has closed — and everything it sends
+   says so. */
 function runAgents() {
-  var when = new Date();
-  var d = gather_(when);
+  var c = closeDay_(todayAddis_(), { write: false, asOf: new Date() });
+  runOn_(c, true);
+}
+
+function runOn_(c, provisional) {
+  var d = gather_(c, provisional);
   var results = askAll_(d);
-  writeAnalysis_(results, when);
-  publishAnalysis_(results, d, when);
-  mailAnalysis_(results, d, when);
+  writeAnalysis_(results, d);
+  publishAnalysis_(results, d);
+  mailAnalysis_(results, d);
 }
 
 /* Writes nothing, sends nothing, spends nothing on the model. Use this to see
-   the facts each agent would be given before letting any of it near Gemini. */
-function previewAgents() {
-  var d = gather_(new Date());
+   the facts each agent would be given before letting any of it near Gemini.
+   Pass a day ('2026-10-01') or leave it empty for yesterday. */
+function previewAgents(day) {
+  day = day || addDays_(todayAddis_(), -1);
+  var d = gather_(closeDay_(day, { write: false }), true);
   Logger.log('%s — %s reports filed, %s due', d.dayLabel, d.filed.length, d.ledger.length);
   AGENTS.forEach(function (a) {
     if (a.last) return;
@@ -669,28 +838,54 @@ function previewAgents() {
 }
 
 /* one read of the day, shared by all fifteen */
-function gather_(when) {
-  var schedule = loadSchedule_();
-  var due = dueToday_(schedule, when);
-  var filed = filedOn_(when);
-  var ledger = charge_(due, filed, when);
-
+function gather_(c, provisional) {
   /* The ledger carries the id the site uses — liu, abrham-g, betty. Those are
      handles, not names, and "Liu did not file" is not a sentence the Chairman
      should have to translate. Mahelet is called Liu nowhere except in this
      codebase. */
-  var name = {};
-  (schedule.people || []).forEach(function (p) { name[p.id] = p.en; });
-  ledger.forEach(function (l) { l.person = name[l.person] || l.person; });
-
+  var ledger = c.ledger.map(function (l) {
+    return { person: l.name, id: l.person, report: l.reportName, reportId: l.report,
+             due: l.due, status: l.status, amount: l.amount, why: l.why };
+  });
   return {
-    when: when,
-    dayLabel: Utilities.formatDate(when, tz_(), 'EEEE d MMMM yyyy'),
-    filed: filed,
-    due: due,
-    names: name,
-    ledger: ledger
+    day: c.day,
+    when: dayStart_(c.day),
+    dayLabel: dayLabel_(c.day),
+    provisional: !!provisional,
+    filed: c.filed,
+    recent: c.filings,
+    before: c.before,
+    schedule: c.schedule,
+    due: c.due,
+    names: c.names,
+    ledger: ledger,
+    instructions: instructionsOn_(c.day, c.names)
   };
+}
+
+/* What the Chairman asked of people, as it stands at the end of the day:
+   what is past its date and still open, and what was closed today. Read in
+   code, so the brief is told who is late with what rather than left to spot
+   it. If the collection cannot be read — the rules not yet published — the
+   run goes on without it rather than losing the day. */
+function instructionsOn_(day, names) {
+  var all;
+  try { all = fsQuery_('instructions', [], null); }
+  catch (e) { return { overdue: [], closed_today: [], note: 'instructions could not be read' }; }
+  var overdue = [], closed = [];
+  all.forEach(function (i) {
+    var who = (names && names[i.to]) || i.to;
+    if (i.status === 'open' && i.due <= day) {
+      overdue.push({ who: who, what: i.text, due: i.due,
+                     days_over: Math.round((dayStart_(day) - dayStart_(i.due)) / 86400000) });
+    }
+    if (i.status === 'done' && i.doneAt && dayOf_(i.doneAt) === day) {
+      closed.push({ who: who, what: i.text, due: i.due, note: i.note || '',
+                    on_time: dayOf_(i.doneAt) <= i.due });
+    }
+  });
+  overdue.sort(function (a, b) { return b.days_over - a.days_over; });
+  return { overdue: overdue, closed_today: closed };
 }
 
 function askAll_(d) {
@@ -772,10 +967,16 @@ function promptFor_(agent, facts, d) {
     'say so in one line rather than finding something to say. A missing report means the',
     'figure is absent, not zero — say "not reported" rather than treating it as nil.',
     '',
+    'A list of seven values runs oldest to newest and the last one is today. null in it is',
+    'a day that report was owed and not filed; "not due" is a day nobody owed it (a Sunday,',
+    'or a day the letter excuses) and is not a miss. Use the week only where it changes',
+    'what today means — a third day running, a slide that started on Monday.',
+    '',
     'YOUR QUESTION: ' + agent.ask,
     '',
-    '--- ' + d.dayLabel + ' ---',
-    'Reports that were due today and never arrived: ' +
+    '--- ' + d.dayLabel + (d.provisional ? ' — SO FAR TODAY, the day is not over' : '') + ' ---',
+    (d.provisional ? 'Reports not in yet (some are not due yet, and are not late): '
+                   : 'Reports that were due today and never arrived: ') +
       (notFiled_(d).join('; ') || 'none — everything was filed'),
     '',
     JSON.stringify(facts, null, 1)
@@ -800,7 +1001,7 @@ function readReply_(res) {
 
 var ANALYSIS_TAB_ = 'Daily Analysis';
 
-function writeAnalysis_(results, when) {
+function writeAnalysis_(results, d) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(ANALYSIS_TAB_);
   if (!sh) {
@@ -808,28 +1009,33 @@ function writeAnalysis_(results, when) {
     sh.appendRow(['Date', 'Agent', 'Finding']);
     sh.setFrozenRows(1);
   }
-  var day = Utilities.formatDate(when, tz_(), 'yyyy-MM-dd');
+  var day = d.day + (d.provisional ? ' (so far)' : '');
   var rows = results.map(function (r) { return [day, r.en, r.text]; });
   if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 3).setValues(rows);
 }
 
-function mailAnalysis_(results, d, when) {
+function mailAnalysis_(results, d) {
   var brief = results.filter(function (r) { return r.id === 'brief'; })[0];
   var decide = results.filter(function (r) { return r.decision; })[0];
   var rest = results.filter(function (r) { return !r.last && !r.decision; });
   var owed = d.ledger.reduce(function (a, l) { return a + l.amount; }, 0);
   var missing = d.ledger.filter(function (l) { return l.status === 'MISSING'; }).length;
+  var ins = d.instructions || { overdue: [] };
 
   var html =
     '<div style="font-family:Helvetica,Arial,sans-serif;max-width:680px;color:#141b1a">' +
-    '<h2 style="font-size:18px;margin:0 0 2px">Klever — the day</h2>' +
-    '<div style="color:#66716d;font-size:13px;margin-bottom:18px">' + esc_(d.dayLabel) + '</div>' +
+    '<h2 style="font-size:18px;margin:0 0 2px">Klever — ' +
+      (d.provisional ? 'today so far' : 'the day') + '</h2>' +
+    '<div style="color:#66716d;font-size:13px;margin-bottom:18px">' + esc_(d.dayLabel) +
+      (d.provisional ? ' · asked for from your page — nothing below is charged yet' : '') +
+    '</div>' +
 
-    '<div style="display:flex;gap:10px;margin-bottom:22px;font-family:monospace">' +
+    '<table width="100%" cellpadding="0" cellspacing="6" style="margin:0 -6px 18px;' +
+      'font-family:monospace"><tr>' +
       tile_('FILED', d.filed.length + ' / ' + d.ledger.length) +
-      tile_('NOT FILED', String(missing)) +
-      tile_('OWED', fmt_(owed) + ' Birr') +
-    '</div>';
+      tile_(d.provisional ? 'NOT IN YET' : 'NOT FILED', String(missing)) +
+      tile_(d.provisional ? 'OWED SO FAR' : 'OWED', fmt_(owed) + ' Birr') +
+    '</tr></table>';
 
   if (brief) {
     html += '<div style="background:#f3f4f1;border-left:3px solid #0f5c54;padding:14px 16px;' +
@@ -845,30 +1051,72 @@ function mailAnalysis_(results, d, when) {
             esc_(decide.text) + '</div>';
   }
 
+  /* what he asked for and has not had — listed in code, so it is complete */
+  if (ins.overdue.length) {
+    html += '<h3 style="font-size:14px;margin:0 0 6px;color:#8f3020">Your instructions, past their date</h3>' +
+            '<table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;margin-bottom:24px">';
+    ins.overdue.forEach(function (i) {
+      html += '<tr><td style="padding:6px 8px;border-bottom:1px solid #e4e7e3;width:30%"><b>' +
+              esc_(i.who) + '</b></td><td style="padding:6px 8px;border-bottom:1px solid #e4e7e3">' +
+              esc_(i.what) + '</td><td style="padding:6px 8px;border-bottom:1px solid #e4e7e3;' +
+              'white-space:nowrap;color:#8f3020;font-family:monospace">' +
+              (i.days_over ? i.days_over + (i.days_over === 1 ? ' day' : ' days') + ' over' : 'due today') +
+              '</td></tr>';
+    });
+    html += '</table>';
+  }
+
   rest.forEach(function (r) {
     html += '<h3 style="font-size:13.5px;margin:20px 0 4px;color:#0f5c54">' + esc_(r.en) + '</h3>' +
             '<div style="font-size:13.5px;line-height:1.6;white-space:pre-wrap;color:#3a4442">' +
             esc_(r.text) + '</div>';
   });
 
+  /* the ledger itself — every report that was not on time, and what it cost */
+  var off = d.ledger.filter(function (l) { return l.status === 'LATE' || l.status === 'MISSING'; });
+  if (off.length) {
+    html += '<h3 style="font-size:13.5px;margin:26px 0 6px;color:#0f5c54">' +
+            (d.provisional ? 'Not in yet, and late' : 'Late and missing') + '</h3>' +
+            '<table width="100%" cellpadding="0" cellspacing="0" style="font-size:12.5px">';
+    off.forEach(function (l) {
+      html += '<tr><td style="padding:5px 8px;border-bottom:1px solid #e4e7e3">' + esc_(l.person) +
+              '</td><td style="padding:5px 8px;border-bottom:1px solid #e4e7e3;color:#66716d">' +
+              esc_(l.report) + '</td><td style="padding:5px 8px;border-bottom:1px solid #e4e7e3;' +
+              'color:#8f3020">' + esc_(l.status) + '</td><td align="right" style="padding:5px 8px;' +
+              'border-bottom:1px solid #e4e7e3;font-family:monospace">' +
+              (l.amount ? fmt_(l.amount) : '—') + '</td></tr>';
+    });
+    html += '<tr><td colspan="3" style="padding:7px 8px;font-weight:bold">Total</td>' +
+            '<td align="right" style="padding:7px 8px;font-family:monospace;font-weight:bold">' +
+            fmt_(owed) + '</td></tr></table>';
+  }
+
   html += '<p style="color:#66716d;font-size:11.5px;margin-top:28px;line-height:1.6">' +
-          'Every figure these fifteen were given was calculated in code from the reports ' +
-          'filed today, not by the model. What the model wrote is the reading, not the ' +
-          'arithmetic. Penalty amounts come from each person’s signed letter.' +
+          'Every figure these agents were given was calculated in code from the reports ' +
+          'as filed, not by the model. What the model wrote is the reading, not the ' +
+          'arithmetic. Penalty amounts come from each person’s signed letter, and a charge ' +
+          'can be cancelled from your page with a reason.' +
+          (d.provisional ? ' This was a mid-day run: the day closes at midnight and the ' +
+                           'charges are settled in the morning.' : '') +
           '</p></div>';
 
   MailApp.sendEmail({
     to: Session.getEffectiveUser().getEmail(),
-    subject: 'Klever — ' + Utilities.formatDate(when, tz_(), 'EEE d MMM') +
-             (missing ? ' — ' + missing + ' not filed' : ' — all filed'),
+    subject: 'Klever — ' + Utilities.formatDate(d.when, tz_(), 'EEE d MMM') +
+             (d.provisional ? ' so far' : '') +
+             (missing ? ' — ' + missing + ' not ' + (d.provisional ? 'in yet' : 'filed')
+                      : ' — all filed') +
+             (ins.overdue.length ? ' — ' + ins.overdue.length + ' instruction' +
+                                   (ins.overdue.length > 1 ? 's' : '') + ' overdue' : ''),
     htmlBody: html
   });
 }
 
+/* a table cell, because mail clients drop flexbox */
 function tile_(label, value) {
-  return '<div style="flex:1;background:#f3f4f1;border:1px solid #e4e7e3;padding:10px 12px">' +
+  return '<td width="33%" style="background:#f3f4f1;border:1px solid #e4e7e3;padding:10px 12px">' +
          '<div style="font-size:10px;letter-spacing:.12em;color:#66716d">' + label + '</div>' +
-         '<div style="font-size:17px;margin-top:3px">' + esc_(value) + '</div></div>';
+         '<div style="font-size:17px;margin-top:3px">' + esc_(value) + '</div></td>';
 }
 
 /* ------------------------------------------------------------------ *
@@ -915,37 +1163,25 @@ function checkKeys() {
    factory. So a run also writes its findings to Firestore, where the
    Chairman's own page reads them — and only his: the rules let nobody else
    near this collection, because it names people and what they owe. */
-function publishAnalysis_(results, d, when) {
-  var day = Utilities.formatDate(when, tz_(), 'yyyy-MM-dd');
-  var fields = {
-    day:      { stringValue: day },
-    dayLabel: { stringValue: d.dayLabel },
-    ranAt:    { timestampValue: new Date().toISOString().replace(/\.\d+Z$/, 'Z') },
-    filed:    { integerValue: String(d.filed.length) },
-    due:      { integerValue: String(d.ledger.length) },
-    owed:     { integerValue: String(d.ledger.reduce(function (a, l) { return a + l.amount; }, 0)) },
-    findings: { arrayValue: { values: results.map(function (r) {
-      return { mapValue: { fields: {
-        id:   { stringValue: r.id },
-        en:   { stringValue: r.en },
-        am:   { stringValue: r.am },
-        text: { stringValue: String(r.text || '') },
-        kind: { stringValue: r.id === 'brief' ? 'brief'
-                           : (r.decision ? 'decision' : 'finding') }
-      } } };
-    }) } }
-  };
-
-  var res = UrlFetchApp.fetch(fsBase_() + '/documents/analysis/' + day, {
-    method: 'patch', contentType: 'application/json',
-    headers: { Authorization: 'Bearer ' + fsToken_() },
-    muteHttpExceptions: true,
-    payload: JSON.stringify({ fields: fields })
-  });
-  if (res.getResponseCode() !== 200) {
-    /* the email already went; a failed publish must not lose it */
-    Logger.log('Could not publish to Firestore: HTTP %s %s',
-               res.getResponseCode(), res.getContentText().substring(0, 200));
+function publishAnalysis_(results, d) {
+  try {
+    fsPut_('analysis/' + d.day, {
+      day: d.day,
+      dayLabel: d.dayLabel,
+      provisional: !!d.provisional,
+      ranAt: new Date(),
+      filed: d.filed.length,
+      due: d.ledger.length,
+      owed: d.ledger.reduce(function (a, l) { return a + l.amount; }, 0),
+      overdueInstructions: (d.instructions && d.instructions.overdue || []).length,
+      findings: results.map(function (r) {
+        return { id: r.id, en: r.en, am: r.am, text: String(r.text || ''),
+                 kind: r.id === 'brief' ? 'brief' : (r.decision ? 'decision' : 'finding') };
+      })
+    });
+  } catch (e) {
+    /* the email still goes; a failed publish must not lose it */
+    Logger.log('Could not publish to Firestore: %s', e.message);
   }
 }
 

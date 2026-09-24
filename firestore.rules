@@ -137,8 +137,103 @@ service cloud.firestore {
      *  so the Chairman can read it on his phone instead of only in an
      *  email. Nobody else can see it: it names people and what they owe. */
     match /analysis/{day} {
-      allow get, list: if isChairman();
+      /* the ledger reads a week of them back for the weekly pack */
+      allow get, list: if isChairman() || isLedger();
       allow create, update: if isLedger();
+      allow delete: if false;
+    }
+
+    /* ---------------------------------------------------------------- *
+     *  The closed day, and the week and month                            *
+     * ---------------------------------------------------------------- *
+     *  One ledger document per day: every report that was owed, what
+     *  happened to it, and what that person's letter charges for it. The
+     *  monthly deductions are added up from these and nowhere else, so
+     *  only the ledger account writes them. A re-run of the same day
+     *  replaces the document, which is why update is allowed and delete
+     *  is not.                                                           */
+    match /ledger/{day} {
+      allow get, list: if isChairman() || isLedger();
+      allow create, update: if isLedger();
+      allow delete: if false;
+    }
+    match /packs/{id} {
+      allow get, list: if isChairman() || isLedger();
+      allow create, update: if isLedger();
+      allow delete: if false;
+    }
+
+    /* ---------------------------------------------------------------- *
+     *  A charge the Chairman cancels                                     *
+     * ---------------------------------------------------------------- *
+     *  The ledger charges what the letter says. A person may have a good
+     *  reason — the site was down, he sent them to Adama — and only he
+     *  can accept it. A cancellation names the day and the report, says
+     *  why, and can never be edited or withdrawn: the deductions table
+     *  shows it beside the charge it cancelled. To undo one, the charge
+     *  would have to be raised again by hand, and that is deliberate.    */
+    match /waivers/{wid} {
+      allow get, list: if isChairman() || isLedger();
+      allow create: if isChairman()
+                    && request.resource.data.keys().hasOnly(
+                         ['day','report','person','reason','amount','by','at'])
+                    && request.resource.data.by == 'chairman'
+                    && request.resource.data.at == request.time
+                    && request.resource.data.day is string
+                    && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                    && request.resource.data.report is string
+                    && request.resource.data.person is string
+                    && request.resource.data.reason is string
+                    && request.resource.data.reason.size() >= 3
+                    && request.resource.data.reason.size() <= 500;
+      allow update, delete: if false;
+    }
+
+    /* ---------------------------------------------------------------- *
+     *  What the Chairman asked for                                       *
+     * ---------------------------------------------------------------- *
+     *  He gives an instruction to one person with a date. It appears on
+     *  that person's home screen; they close it, once, saying what they
+     *  did, at a time the server sets. He can reopen one that was not
+     *  really done, or cancel one that no longer matters. Nobody else
+     *  sees it, and nobody can delete it — an instruction nobody can
+     *  quietly remove is the point of writing it down.                   */
+    match /instructions/{iid} {
+      allow get, list: if isChairman() || isLedger()
+                       || (signedIn() && resource.data.to == me());
+
+      allow create: if isChairman()
+                    && request.resource.data.keys().hasOnly(
+                         ['to','text','due','by','at','status'])
+                    && request.resource.data.by == 'chairman'
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.at == request.time
+                    && request.resource.data.to is string
+                    && request.resource.data.to.size() > 0
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 1000
+                    && request.resource.data.due is string
+                    && request.resource.data.due.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+      /* the person it is for closes it, and says what was done */
+      allow update: if signedIn() && !isChairman()
+                    && resource.data.to == me()
+                    && resource.data.status == 'open'
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['status','note','doneAt'])
+                    && request.resource.data.status == 'done'
+                    && request.resource.data.doneAt == request.time
+                    && request.resource.data.note is string
+                    && request.resource.data.note.size() <= 1000;
+
+      /* he reopens it or cancels it */
+      allow update: if isChairman()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['status','closedAt'])
+                    && request.resource.data.status in ['open','cancelled']
+                    && request.resource.data.closedAt == request.time;
+
       allow delete: if false;
     }
 

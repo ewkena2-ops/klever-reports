@@ -32,7 +32,8 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, setDoc, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot
+  collection, doc, setDoc, addDoc, updateDoc, serverTimestamp, query, where, orderBy, limit,
+  onSnapshot
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 (function () {
@@ -152,6 +153,35 @@ import {
         }, function () { /* a channel we cannot read is simply skipped */ }));
       });
       return function () { stops.forEach(function (f) { try { f(); } catch (e) {} }); };
+    },
+
+    /* What the Chairman has asked of this person. The rules let a person
+       read only instructions addressed to them, and a query has to say so
+       for the server to answer it — hence the `to` filter rather than
+       reading the collection and filtering here. */
+    watchMyInstructions: function (cb) {
+      if (!db || !user) return function () {};
+      var q = query(collection(db, 'instructions'), where('to', '==', idOf(user)));
+      return onSnapshot(q, function (snap) {
+        var out = [];
+        snap.forEach(function (d) {
+          var x = d.data();
+          x.id = d.id;
+          out.push(x);
+        });
+        cb(out);
+      }, function () { cb([]); });
+    },
+
+    /* Close one, once, with what was done. The server sets the time and the
+       rules refuse anything else about the instruction being changed. */
+    closeInstruction: function (id, note) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      return updateDoc(doc(db, 'instructions', id), {
+        status: 'done',
+        note: String(note || '').slice(0, 1000),
+        doneAt: serverTimestamp()
+      });
     }
   };
 })();

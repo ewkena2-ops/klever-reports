@@ -1,19 +1,24 @@
-/* Klever penalty ledger — the daily agent.
+/* Klever penalty ledger — closing the day.
 
    WHAT IT DOES, IN ORDER
-   1. Works out who owed a report today, from the live schedule on the site.
-   2. Reads the archive to see who actually filed, and when.
+   1. Works out who owed a report on a given day, from the live schedule on
+      the site.
+   2. Reads the signed archive to see who actually filed, and when — by the
+      server's clock, never the phone's.
    3. Adds up the penalties. This part is arithmetic, and arithmetic is done
       here in code — never by the model. A model that is asked to count rows
       will eventually miscount one, and this number is money taken off a
       person's pay.
-   4. Asks Gemini for the one thing code cannot do: read the day's reports and
-      the day's chat and say what deserves the Chairman's attention.
-   5. Writes the ledger to its own tab and emails him.
+   4. Writes the day's ledger to Firestore, where the Chairman's page and the
+      monthly deductions read it, and to its own tab in the Sheet.
+
+   The agents (Agents.js) run straight after, on the same closed day, and send
+   the one email. The weekly and monthly packs (Packs.js) read what this file
+   wrote.
 
    WHY THE PENALTIES ARE IN THIS FILE AND NOT IN THE PROMPT
-   Every figure below is quoted from a signed letter, with the person it binds
-   named beside it. If a figure here is wrong, a person is charged the wrong
+   Every figure below is quoted from a signed letter, with the line it comes
+   from beside it. If a figure here is wrong, a person is charged the wrong
    amount, so each one must be traceable to the paper it came from. Change one
    here only when the letter changes.
 
@@ -21,110 +26,191 @@
      GEMINI_KEY       your key from aistudio.google.com     (required)
      FIREBASE_WEB_KEY the apiKey from js/firebase-config.js  (required)
      LEDGER_PASSWORD  the ledger@klever.local password       (required)
+     LEDGER_START     yyyy-mm-dd — nothing is charged before (recommended)
      GEMINI_MODEL     defaults to gemini-3.8-flash           (optional)
      FIREBASE_PROJECT defaults to klever-26ad1               (optional)
      SITE             defaults to the GitHub Pages URL       (optional)
-   Then Triggers -> Add trigger -> dailyLedger -> Time-driven -> Day timer
-   -> 6pm to 7pm. Run authorizeAgent() once from the editor first: a deployed
-   script's permissions are frozen at first approval, and adding UrlFetch will
-   otherwise fail silently at runtime.                                       */
+   Then, from the editor, run authorizeAgent() once and setupTriggers() once.
+   A deployed script's permissions are frozen at first approval, and adding
+   UrlFetch or a trigger will otherwise fail silently at runtime.            */
 
 var AGENT_DEFAULT_SITE = 'https://ewkena2-ops.github.io/klever-reports/';
 var AGENT_DEFAULT_MODEL = 'gemini-3.8-flash';
+
+/* Addis Ababa is UTC+3 all year — no daylight saving — so a fixed offset is
+   exact, and it keeps the date arithmetic below free of time-zone guessing. */
+var ADDIS_ = '+03:00';
 
 /* ------------------------------------------------------------------ *
  *  The penalties, quoted from the signed letters                      *
  * ------------------------------------------------------------------ */
 
-/* late  = filed after the deadline in the letter
-   miss  = not filed at all that day
-   Keyed by the person id the site uses. `src` is the letter it came from, so
-   anyone auditing a charge can go and read it. */
-var REPORT_PENALTY = {
-  ephrata:    { late: 500,  miss: 1000, src: 'Ephrata, Commercial Lead — daily commercial report' },
-  liu:        { late: 200,  miss: 500,  src: 'Mahelet, Operations Lead — daily operations report' },
-  betty:      { late: 200,  miss: 500,  src: 'Betelhem, Finance Officer — daily finance / customer pulse' },
-  getachew:   { late: 200,  miss: 500,  src: 'Getachew, Purchasing Officer — daily purchasing report' },
-  amaha:      { late: 200,  miss: 500,  src: 'Amaha, Production Supervisor — daily production report' },
-  wude:       { late: 200,  miss: 500,  src: 'Wude, Quality Control — daily QC report' },
-  elyas:      { late: 200,  miss: 500,  src: 'Elyas, Site Supervisor — daily site report' },
-  ashenafi:   { late: 100,  miss: 300,  src: 'Ashenafi, Site Helper — daily support report' },
-  tsega:      { late: 200,  miss: 500,  src: 'Salesperson letter — daily sales report' },
-  biruktayet: { late: 200,  miss: 500,  src: 'Salesperson letter — daily sales report' },
-  yohannis:   { late: 200,  miss: 500,  src: 'Designer letter — daily design report' },
-  yonas:      { late: 200,  miss: 500,  src: 'Designer letter — daily design report' },
-  'abrham-g': { late: 200,  miss: 500,  src: 'Designer letter — daily design report' },
-  teklweld:   { late: 200,  miss: 500,  src: 'Designer letter — daily design report' },
-  'abrham-w': { late: 200,  miss: 500,  src: 'Designer letter — daily design report' }
+/* Keyed by report, not by person. The first version keyed them by person,
+   which charged Mahelet the 500 of her weekly report when her 15-day plan
+   was late (her letter: 5,000), and let monthly reports fall through to the
+   daily figures.
 
-  /* YORDANOS IS ABSENT ON PURPOSE. He files a daily store report — the site
-     has the form — but his letter carries no penalty for filing it late or
-     not filing it. Every other daily reporter has one. Until the Chairman
-     says what it is, this agent will list him as missing and charge him
-     nothing, which is what the signed paper actually says. */
+   late      = filed after the deadline, on the day it was due
+   miss      = not filed by the end of the day it was due
+   missAgain = not filed, and the same report was not filed the time before
+   A figure left out is a figure the letter does not set, and is charged as 0.
+
+   The shared sales and design reports are keyed by their template id; the
+   person's own id in front of it is stripped when looking them up. */
+var PENALTY = {
+  'ephrata-daily':      { late: 500,  miss: 1000,
+                          src: 'Ephrata’s letter — “Daily commercial report late –500 / missing –1,000”' },
+  'ephrata-weekly':     { late: 500,  miss: 500,
+                          src: 'Ephrata’s letter — “Weekly commercial report late –500”; marketing is part of it: “No weekly marketing report –500”' },
+  'ephrata-projection': { late: 500,  miss: 500, missAgain: 1000,
+                          src: 'Ephrata’s letter — “4-week projection late –500”, “First miss –500”, “Second consecutive miss –1,000”' },
+
+  'liu-daily':          { late: 200,  miss: 500,
+                          src: 'Mahelet’s letter — “Daily operations report late –200 / missing –500”' },
+  'liu-weekly':         { late: 500,
+                          src: 'Mahelet’s letter — “Weekly report late –500”' },
+  'liu-plan':           { late: 5000, missAgain: 10000,
+                          src: 'Mahelet’s letter — “15-day production plan late –5,000”, “Two consecutive weeks without a plan –10,000”' },
+
+  'betty-daily':        { late: 200,  miss: 500,
+                          src: 'Betelhem’s letter — “Daily finance report late –200 / missing –500”' },
+  'betty-forecast':     { late: 200,  miss: 500,
+                          src: 'Betelhem’s letter — “Daily 7-day forecast late –200 / missing –500”' },
+  'betty-pulse':        { late: 200,  miss: 500,
+                          src: 'Betelhem’s letter — “Daily Customer Pulse Report late –200 / missing –500”' },
+  'betty-weekly':       { late: 500,
+                          src: 'Betelhem’s letter — “Weekly finance report late –500”' },
+  'betty-weekly-cx':    { late: 500,
+                          src: 'Betelhem’s letter — “Weekly Customer Experience Summary late –500”' },
+  'betty-cashflow':     { late: 500,  miss: 1000,
+                          src: 'Betelhem’s letter — “Weekly 4-week projection late –500 / missing –1,000”' },
+  'betty-joblist':      { late: 500,  miss: 500,
+                          src: 'Betelhem’s letter — “Payment-confirmed job list not sent to Mahelet by Friday 1:00 PM –500”' },
+
+  'getachew-daily':     { late: 200,  miss: 500,
+                          src: 'Getachew’s letter — “Daily purchasing report late –200 / missing –500”' },
+  'getachew-weekly':    { late: 500,
+                          src: 'Getachew’s letter — “Weekly purchasing summary late –500”' },
+
+  'amaha-daily':        { late: 200,  miss: 500,
+                          src: 'Amaha’s letter — “Daily production report late –200 / missing –500”' },
+  'amaha-weekly':       { late: 500,
+                          src: 'Amaha’s letter — “Weekly production summary late –500”' },
+  /* amaha-monthly: his letter sets nothing for it */
+
+  'wude-daily':         { late: 200,  miss: 500,
+                          src: 'Wude’s letter — “Daily QC report late –200 / missing –500”' },
+  'wude-weekly':        { late: 500,
+                          src: 'Wude’s letter — “Weekly QC summary late –500”' },
+  'wude-monthly':       { miss: 200,
+                          src: 'Wude’s letter — “Failed to report rework cost –200”; the monthly report is where it is reported' },
+
+  'elyas-daily':        { late: 200,  miss: 500,
+                          src: 'Elyas’s letter — “Daily site report late –200 / missing –500”' },
+  'elyas-weekly':       { late: 500,
+                          src: 'Elyas’s letter — “Weekly site summary late –500”' },
+
+  'ashenafi-daily':     { late: 100,  miss: 300,
+                          src: 'Ashenafi’s letter — “Daily support report late –100 / missing –300”' },
+
+  'sales-daily':        { late: 200,  miss: 500,
+                          src: 'Salesperson letter — “Daily sales report late –200 / missing –500”' },
+  'sales-weekly':       { late: 500,
+                          src: 'Salesperson letter — “Weekly sales summary late –500”' },
+  'design-daily':       { late: 200,  miss: 500,
+                          src: 'Designer letter — “Daily design report late –200 / missing –500”' },
+  'design-weekly':      { late: 500,
+                          src: 'Designer letter — “Weekly design summary late –500”' }
+
+  /* YORDANOS IS ABSENT ON PURPOSE. He files a daily and a weekly store report
+     — the site has both forms — but his letter carries no penalty for filing
+     either late or not at all. Every other reporter has one. Until the
+     Chairman says what it is, the ledger lists him and charges nothing, which
+     is what the signed paper actually says. */
 };
 
-/* Weekly reports are charged separately and only on their due day.
-
-   NOTE THE MISSING `miss`, AND THAT IT IS NOT AN OVERSIGHT HERE.
-   Every letter sets a figure for a weekly report filed LATE — 500 Birr, the
-   same in all of them — and not one sets a figure for a weekly report that
-   never arrives at all. Ephrata's is the single exception, and only for her
-   marketing report. So under the paper as signed, filing a weekly report an
-   hour late costs 500 Birr and not filing it costs nothing, which cannot be
-   what was meant.
-
-   This charges what the letters actually say, which is zero, and the decision
-   register raises it on the days it costs something. Adding a number here
-   before the Chairman sets one would be inventing a fine. */
-var WEEKLY_PENALTY = {
-  ephrata: { late: 500, src: 'Ephrata — weekly commercial report late' },
-  liu:     { late: 500, src: 'Mahelet — weekly report late' },
-  betty:   { late: 500, src: 'Betelhem — weekly finance report late' },
-  amaha:   { late: 500, src: 'Amaha — weekly production summary late' },
-  wude:    { late: 500, src: 'Wude — weekly QC summary late' }
-};
+function penaltyFor_(reportId) {
+  if (PENALTY[reportId]) return PENALTY[reportId];
+  var m = /-(sales|design)-(daily|weekly)$/.exec(reportId);
+  return m ? PENALTY[m[1] + '-' + m[2]] || null : null;
+}
 
 /* ------------------------------------------------------------------ *
  *  Entry points                                                       *
  * ------------------------------------------------------------------ */
 
-/* Run once from the editor after adding this file. Google only shows the
-   consent screen when a function is run from here — opening the web app URL
-   re-runs the old permission set and will not prompt. */
+/* Run once from the editor. Google only shows the consent screen when a
+   function is run from here — opening the web app URL re-runs the old
+   permission set and will not prompt. */
 function authorizeAgent() {
   UrlFetchApp.fetch(AGENT_DEFAULT_SITE + 'js/forms.js').getResponseCode();
-  fsToken_();   /* fail here, in the editor, rather than silently at 6pm */
+  fsToken_();   /* fail here, in the editor, rather than silently at 6am */
+  ScriptApp.getProjectTriggers();
   MailApp.sendEmail(Session.getEffectiveUser().getEmail(),
                     'Klever agent — permission granted',
-                    'The ledger can now read the schedule and call Gemini.');
+                    'The ledger can now read the schedule, the archive and call Gemini.');
 }
 
-/* The daily trigger. */
-function dailyLedger() {
-  var when = new Date();
-  var schedule = loadSchedule_();
-  var due = dueToday_(schedule, when);
-  var filed = filedOn_(when);
-  var ledger = charge_(due, filed, when);
-  var note = askGemini_(ledger, filed, when);
-  writeLedger_(ledger, when, note);
-  mailLedger_(ledger, when, note);
-}
+/* Every trigger the system needs, made in one run. Existing triggers for the
+   same functions are removed first, so running it twice leaves one of each
+   rather than two.
 
-/* Same thing, but writes nothing and sends nothing — for trying it out. */
-function previewLedger() {
-  var when = new Date();
-  var schedule = loadSchedule_();
-  var due = dueToday_(schedule, when);
-  var filed = filedOn_(when);
-  var ledger = charge_(due, filed, when);
-  Logger.log('due today: %s', due.length);
-  Logger.log('filed: %s', filed.length);
-  ledger.forEach(function (r) {
-    Logger.log('%s | %s | %s | %s Birr', r.person, r.report, r.status, r.amount);
+     dailyRun            every morning 6–7 — closes yesterday, the agents read
+                         it, one email. The brief is waiting at 7:00.
+     watchForRunRequest  every 10 minutes — the “Analyse now” button
+     weeklyPack          Sunday 8–9 — the week just ended
+     monthlyPack         the 2nd, 8–9 — the month just ended, with the
+                         deductions. The 2nd, because Amaha’s and Wude’s
+                         monthly reports are due at 5 PM on the 1st.        */
+function setupTriggers() {
+  var mine = ['dailyRun', 'dailyLedger', 'runAgents', 'watchForRunRequest',
+              'weeklyPack', 'monthlyPack'];
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (mine.indexOf(t.getHandlerFunction()) !== -1) ScriptApp.deleteTrigger(t);
   });
-  Logger.log('total: %s Birr', ledger.reduce(function (a, r) { return a + r.amount; }, 0));
+  ScriptApp.newTrigger('dailyRun').timeBased().everyDays(1).atHour(6).create();
+  ScriptApp.newTrigger('watchForRunRequest').timeBased().everyMinutes(10).create();
+  ScriptApp.newTrigger('weeklyPack').timeBased()
+           .onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(8).create();
+  ScriptApp.newTrigger('monthlyPack').timeBased().onMonthDay(2).atHour(8).create();
+  return ScriptApp.getProjectTriggers().map(function (t) {
+    return t.getHandlerFunction();
+  }).join(', ');
+}
+
+/* The old name, kept so a trigger made from the earlier instructions still
+   does the right thing. */
+function dailyLedger() { dailyRun(); }
+
+/* Writes nothing and sends nothing — for trying it out. Pass a day
+   ('2026-10-01') or leave it empty for yesterday. */
+function previewLedger(day) {
+  day = day || addDays_(todayAddis_(), -1);
+  var c = closeDay_(day, { write: false });
+  Logger.log('%s — due %s, filed %s', day, c.due.length, c.filed.length);
+  c.ledger.forEach(function (l) {
+    Logger.log('%s | %s | %s | %s Birr', l.name, l.reportName, l.status, l.amount);
+  });
+  Logger.log('total: %s Birr', c.ledger.reduce(function (a, l) { return a + l.amount; }, 0));
+}
+
+/* ------------------------------------------------------------------ *
+ *  Days                                                               *
+ * ------------------------------------------------------------------ */
+
+function dayStart_(day) { return new Date(day + 'T00:00:00' + ADDIS_); }
+function dayOf_(date)   { return Utilities.formatDate(date, tz_(), 'yyyy-MM-dd'); }
+function todayAddis_()  { return dayOf_(new Date()); }
+function addDays_(day, n) {
+  return dayOf_(new Date(dayStart_(day).getTime() + n * 86400000 + 3600000));
+}
+/* 0 Sunday .. 6 Saturday. Noon in Addis is still the same date in UTC. */
+function dow_(day) { return new Date(day + 'T12:00:00' + ADDIS_).getUTCDay(); }
+function deadline_(report, day) {
+  return new Date(day + 'T' + (report.dueTime || '17:30') + ':00' + ADDIS_);
+}
+function dayLabel_(day) {
+  return Utilities.formatDate(new Date(day + 'T12:00:00' + ADDIS_), tz_(), 'EEEE d MMMM yyyy');
 }
 
 /* ------------------------------------------------------------------ *
@@ -135,39 +221,34 @@ function previewLedger() {
    second copy here that would drift out of step within a month, the agent
    fetches that file and evaluates it. It is our own file on our own site;
    if that ever stops being true, this is the line to change. */
+var SCHEDULE_ = null;
 function loadSchedule_() {
+  if (SCHEDULE_) return SCHEDULE_;
   var site = prop_('SITE', AGENT_DEFAULT_SITE);
   var src = UrlFetchApp.fetch(site + 'js/forms.js', { muteHttpExceptions: true });
   if (src.getResponseCode() !== 200) {
     throw new Error('Could not read the schedule from ' + site + ' (HTTP ' +
                     src.getResponseCode() + ')');
   }
-  var sandbox = {};
   /* forms.js declares PEOPLE and REPORTS at the top level and nothing else */
   var read = new Function(src.getContentText() + '; return { people: PEOPLE, reports: REPORTS };');
-  sandbox = read();
-  if (!sandbox.reports || !sandbox.reports.length) throw new Error('Schedule came back empty');
-  return sandbox;
+  SCHEDULE_ = read();
+  if (!SCHEDULE_.reports || !SCHEDULE_.reports.length) throw new Error('Schedule came back empty');
+  return SCHEDULE_;
 }
 
-/* Everything that was owed today, by the rules in each report's own entry:
-   daily reports skip the days their letter excuses, weekly ones land on their
-   due day, monthly ones on the 1st. */
-function dueToday_(schedule, when) {
-  var dow = when.getDay();                 /* 0 Sun .. 6 Sat */
-  var out = [];
-  schedule.reports.forEach(function (r) {
-    if (dow === 0) return;                 /* Sunday is nobody's reporting day */
-    if (r.cadence === 'daily') {
-      if (r.skipDays && r.skipDays.indexOf(dow) !== -1) return;
-      out.push(r);
-    } else if (r.cadence === 'weekly') {
-      if (r.dueDay === dow) out.push(r);
-    } else if (r.cadence === 'monthly') {
-      if (when.getDate() === 1) out.push(r);
-    }
+/* Everything that was owed on a day, by the rules in each report's own
+   entry: daily reports skip the days their letter excuses, weekly ones land
+   on their due day, monthly ones on the 1st. Sunday is nobody's day. */
+function dueOn_(schedule, day) {
+  var dow = dow_(day), first = day.slice(8) === '01';
+  if (dow === 0) return [];
+  return schedule.reports.filter(function (r) {
+    if (r.cadence === 'daily') return !(r.skipDays && r.skipDays.indexOf(dow) !== -1);
+    if (r.cadence === 'weekly') return r.dueDay === dow;
+    if (r.cadence === 'monthly') return first;
+    return false;
   });
-  return out;
 }
 
 /* ------------------------------------------------------------------ *
@@ -183,22 +264,21 @@ function dueToday_(schedule, when) {
    because it looks rigorous and is not. Firestore's copy is signed in: you
    file as yourself, for yourself, at a time the server sets.
 
-   The second is that it keeps working. The Sheet version read every row of
-   every tab each evening to find the day's thirty — about 440,000 cells after
-   a year, 880,000 after two, against a six-minute execution limit. It would
-   have timed out silently somewhere in year two and simply stopped emailing.
-   A query asks for the day and gets the day: thirty reads whether the archive
-   holds a thousand reports or a million.                                    */
+   The second is that it keeps working. A query asks for the days it needs
+   and gets them, whether the archive holds a thousand reports or a million. */
 
 function fsBase_() {
   return 'https://firestore.googleapis.com/v1/projects/' +
          prop_('FIREBASE_PROJECT', 'klever-26ad1') + '/databases/(default)';
 }
 
-/* An hour-long token for the ledger's own account — a reader that cannot file
-   a report, touch chat, or alter anything. Set LEDGER_PASSWORD in Script
-   Properties; it is not the Chairman's password and must not be. */
+/* An hour-long token for the ledger's own account — a reader of reports that
+   cannot file one, touch chat, or alter anything a person wrote. Set
+   LEDGER_PASSWORD in Script Properties; it is not the Chairman's password and
+   must not be. Kept for the length of one run, not asked for on every read. */
+var FS_TOKEN_ = null;
 function fsToken_() {
+  if (FS_TOKEN_) return FS_TOKEN_;
   var key = prop_('FIREBASE_WEB_KEY', '');
   var pw = prop_('LEDGER_PASSWORD', '');
   if (!key || !pw) {
@@ -231,7 +311,8 @@ function fsToken_() {
                     '  Lengths now stored — key ' + key.length + ', password ' + pw.length +
                     '. They should be 39 and 21. A trailing space counts.');
   }
-  return JSON.parse(res.getContentText()).idToken;
+  FS_TOKEN_ = JSON.parse(res.getContentText()).idToken;
+  return FS_TOKEN_;
 }
 
 /* Firestore wraps every value in its type. Unwrap it back into ordinary
@@ -253,112 +334,187 @@ function fsValue_(v) {
   return null;
 }
 
-/* Every report filed today. One query, one page — it does not get slower as
-   the archive grows. */
-function filedOn_(when) {
-  var tz = tz_();
-  var day = Utilities.formatDate(when, tz, 'yyyy-MM-dd');
-  var midnight = new Date(when.getFullYear(), when.getMonth(), when.getDate(), 0, 0, 0);
-  var from = Utilities.formatDate(midnight, 'UTC', "yyyy-MM-dd'T'HH:mm:ss'Z'");
+/* ...and wrap it again on the way in */
+function fsEncode_(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (v instanceof Date) return { timestampValue: v.toISOString() };
+  if (Object.prototype.toString.call(v) === '[object Array]') {
+    return { arrayValue: { values: v.map(fsEncode_) } };
+  }
+  if (typeof v === 'number') {
+    return v % 1 === 0 ? { integerValue: String(v) } : { doubleValue: v };
+  }
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (typeof v === 'object') {
+    var f = {};
+    Object.keys(v).forEach(function (k) { f[k] = fsEncode_(v[k]); });
+    return { mapValue: { fields: f } };
+  }
+  return { stringValue: String(v) };
+}
+
+function fsDoc_(doc) {
+  var out = {}, f = doc.fields || {};
+  Object.keys(f).forEach(function (k) { out[k] = fsValue_(f[k]); });
+  out._id = String(doc.name || '').split('/').pop();
+  return out;
+}
+
+/* One structured query. `where` is a list of [field, op, value] and they
+   are ANDed; ops are Firestore's own (GREATER_THAN_OR_EQUAL, LESS_THAN,
+   EQUAL...). */
+function fsQuery_(collection, where, orderBy) {
+  var filters = (where || []).map(function (w) {
+    return { fieldFilter: { field: { fieldPath: w[0] }, op: w[1], value: fsEncode_(w[2]) } };
+  });
+  var q = { from: [{ collectionId: collection }] };
+  if (filters.length === 1) q.where = filters[0];
+  if (filters.length > 1) q.where = { compositeFilter: { op: 'AND', filters: filters } };
+  if (orderBy) q.orderBy = [{ field: { fieldPath: orderBy }, direction: 'ASCENDING' }];
 
   var res = UrlFetchApp.fetch(fsBase_() + '/documents:runQuery', {
-    method: 'post',
-    contentType: 'application/json',
+    method: 'post', contentType: 'application/json',
     headers: { Authorization: 'Bearer ' + fsToken_() },
     muteHttpExceptions: true,
-    payload: JSON.stringify({ structuredQuery: {
-      from: [{ collectionId: 'reports' }],
-      where: { fieldFilter: { field: { fieldPath: 'at' },
-                              op: 'GREATER_THAN_OR_EQUAL',
-                              value: { timestampValue: from } } },
-      orderBy: [{ field: { fieldPath: 'at' }, direction: 'ASCENDING' }]
-    } })
+    payload: JSON.stringify({ structuredQuery: q })
   });
-
   if (res.getResponseCode() !== 200) {
-    throw new Error('Could not read the archive (HTTP ' + res.getResponseCode() +
+    throw new Error('Could not read ' + collection + ' (HTTP ' + res.getResponseCode() +
                     '): ' + res.getContentText().substring(0, 300));
   }
-
   var out = [];
   JSON.parse(res.getContentText()).forEach(function (row) {
-    if (!row.document) return;        /* an empty result carries one blank entry */
-    var f = row.document.fields || {};
-    var at = fsValue_(f.at);
-    if (!at || Utilities.formatDate(at, tz, 'yyyy-MM-dd') !== day) return;
-    out.push({
-      person: fsValue_(f.person),
-      report: fsValue_(f.report),
-      by:     fsValue_(f.by),
-      late:   !!fsValue_(f.late),
-      at:     at,
-      fields: fsValue_(f.values) || {},
-      flags:  fsValue_(f.flags) || [],
-      text:   fsValue_(f.text) || ''
-    });
+    if (row.document) out.push(fsDoc_(row.document));   /* an empty result carries one blank entry */
   });
   return out;
+}
+
+/* Write one document whole. A second write to the same path replaces it,
+   which is what re-running a day should do. */
+function fsPut_(path, obj) {
+  var fields = {};
+  Object.keys(obj).forEach(function (k) { fields[k] = fsEncode_(obj[k]); });
+  var res = UrlFetchApp.fetch(fsBase_() + '/documents/' + path, {
+    method: 'patch', contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + fsToken_() },
+    muteHttpExceptions: true,
+    payload: JSON.stringify({ fields: fields })
+  });
+  if (res.getResponseCode() !== 200) {
+    throw new Error('Could not write ' + path + ' (HTTP ' + res.getResponseCode() + '): ' +
+                    res.getContentText().substring(0, 300));
+  }
+}
+
+/* Every report filed from the start of one day to the start of another,
+   oldest first. */
+function filedBetween_(fromDay, toDay) {
+  return fsQuery_('reports', [
+    ['at', 'GREATER_THAN_OR_EQUAL', dayStart_(fromDay)],
+    ['at', 'LESS_THAN', dayStart_(toDay)]
+  ], 'at').map(function (f) {
+    return {
+      person: f.person, report: f.report, by: f.by,
+      at: f.at, day: dayOf_(f.at),
+      fields: f.values || {}, flags: f.flags || [], text: f.text || ''
+    };
+  });
+}
+
+/* The ledger lines of the days before this one, for the charges that depend
+   on the last time (“second consecutive miss”) and for the agents' week. */
+function ledgersBetween_(fromDay, toDay) {
+  return fsQuery_('ledger', [
+    ['day', 'GREATER_THAN_OR_EQUAL', fromDay],
+    ['day', 'LESS_THAN', toDay]
+  ], 'day');
 }
 
 /* ------------------------------------------------------------------ *
  *  The arithmetic                                                     *
  * ------------------------------------------------------------------ */
 
+/* When a report counts, and whether it was on time.
+
+   A daily report belongs to the day it was filed on. A weekly one filed any
+   time in the six days before its due day counts — filing Thursday for
+   Friday is early, not missing — and so does a monthly one filed in the week
+   before the 1st. The deadline is the letter's; the time is the server's,
+   set by Firestore when the report arrived. The phone's own opinion of
+   whether it was late is not read at all: a phone's clock is whatever its
+   owner set it to.
+
+   Anything not in by the end of the due day is missing. `asOf` makes the
+   same rule answer mid-day, for the Chairman's “Analyse now”: a report whose
+   deadline has not come yet is not yet due, not missing. */
+function settle_(report, day, filings, asOf) {
+  var back = report.cadence === 'daily' ? 0 : (report.cadence === 'weekly' ? 6 : 7);
+  var from = dayStart_(addDays_(day, -back)).getTime();
+  var to = dayStart_(addDays_(day, 1)).getTime();
+  var due = deadline_(report, day);
+
+  var hit = null;
+  for (var i = 0; i < filings.length; i++) {
+    var f = filings[i], t = f.at.getTime();
+    if (f.report === report.id && t >= from && t < to) { hit = f; break; }
+  }
+  if (hit) return { status: hit.at.getTime() <= due.getTime() ? 'On time' : 'LATE', at: hit.at };
+  if (asOf && asOf.getTime() < due.getTime()) return { status: 'NOT DUE YET', at: null };
+  return { status: 'MISSING', at: null };
+}
+
 /* One line per report that was owed, saying what happened to it and what that
-   costs under that person's own letter. No model touches this. */
-function charge_(due, filed, when) {
-  var ledger = [];
+   costs under that person's own letter. No model touches this.
 
-  due.forEach(function (r) {
-    var hit = null;
-    for (var i = 0; i < filed.length; i++) {
-      /* a filed report carries the id of the report it answers, so this is an
-         exact match rather than the tab-name guess the Sheet version needed */
-      if (filed[i].report === r.id) { hit = filed[i]; break; }
+   `before` is the ledger of the days leading up to this one, needed only for
+   the two charges that depend on the previous occurrence. */
+function charge_(due, filings, day, before, asOf, names) {
+  var prev = {};
+  (before || []).forEach(function (doc) {
+    (doc.lines || []).forEach(function (l) { prev[doc.day + '|' + l.report] = l.status; });
+  });
+
+  var ledger = due.map(function (r) {
+    var s = settle_(r, day, filings, asOf);
+    var rule = penaltyFor_(r.id);
+    var amount = 0, why = rule ? rule.src : 'No penalty for this report in this person’s letter';
+
+    if (rule && s.status === 'LATE') amount = rule.late || 0;
+    if (rule && s.status === 'MISSING') {
+      amount = rule.miss || 0;
+      var lastTime = addDays_(day, r.cadence === 'weekly' ? -7 : -1);
+      if (rule.missAgain && prev[lastTime + '|' + r.id] === 'MISSING') {
+        amount = rule.missAgain;
+        why = 'Missed twice in a row. ' + why;
+      }
     }
-
-    var table = r.cadence === 'weekly' ? WEEKLY_PENALTY : REPORT_PENALTY;
-    var rule = table[r.person] || null;
-    var line = {
+    return {
       person: r.person,
-      report: r.en,
+      name: (names && names[r.person]) || r.person,
+      report: r.id,
+      reportName: r.en,
       due: r.dueEn || '',
-      status: '',
-      amount: 0,
-      why: rule ? rule.src : 'No penalty for this report in this person’s letter',
-      at: hit ? hit.at : null
+      status: s.status,
+      at: s.at,
+      amount: amount,
+      why: why
     };
-
-    if (!hit) {
-      line.status = 'MISSING';
-      line.amount = rule && rule.miss ? rule.miss : 0;
-    } else if (hit.late) {
-      line.status = 'LATE';
-      line.amount = rule && rule.late ? rule.late : 0;
-    } else {
-      line.status = 'On time';
-      line.amount = 0;
-    }
-    ledger.push(line);
   });
 
   /* Nothing is charged before the day the team was told this was running.
      Without this the ledger charges from the moment it is switched on, and the
-     first thing it would have done here is fine fifteen people 8,300 Birr for
-     a Friday on which nobody had been told the system existed. Set
-     LEDGER_START to that day (yyyy-mm-dd) and the figures are still calculated
-     and still emailed — they simply cost nobody anything until then. */
+     first thing it would do is fine fifteen people for a day on which nobody
+     had been told the system existed. Set LEDGER_START to that day
+     (yyyy-mm-dd) and the figures are still calculated and still emailed —
+     they simply cost nobody anything until then. */
   var start = prop_('LEDGER_START', '');
-  if (start) {
-    var today = Utilities.formatDate(when, tz_(), 'yyyy-MM-dd');
-    if (today < start) {
-      ledger.forEach(function (l) {
-        if (l.amount > 0) {
-          l.why = 'Not charged — before LEDGER_START (' + start + '). ' + l.why;
-          l.amount = 0;
-        }
-      });
-    }
+  if (start && day < start) {
+    ledger.forEach(function (l) {
+      if (l.amount > 0) {
+        l.why = 'Not charged — before LEDGER_START (' + start + '). ' + l.why;
+        l.amount = 0;
+      }
+    });
   }
 
   /* heaviest first — the Chairman reads the top of the list */
@@ -366,67 +522,44 @@ function charge_(due, filed, when) {
   return ledger;
 }
 
-/* ------------------------------------------------------------------ *
- *  The part that needs judgment                                       *
- * ------------------------------------------------------------------ */
+/* Close one day: who owed what, what arrived, what it costs. With
+   {write:false} it only calculates — that is how previewLedger and the
+   Chairman's mid-day “Analyse now” use it. */
+function closeDay_(day, opts) {
+  opts = opts || {};
+  var schedule = loadSchedule_();
+  var names = {};
+  (schedule.people || []).forEach(function (p) { names[p.id] = p.en; });
 
-function askGemini_(ledger, filed, when) {
-  var key = prop_('GEMINI_KEY', '');
-  if (!key) return '(No GEMINI_KEY set, so no analysis — the ledger above is still complete.)';
+  var due = dueOn_(schedule, day);
+  /* a week back, because a weekly report may have been filed early */
+  var filings = filedBetween_(addDays_(day, -7), addDays_(day, 1));
+  var before = ledgersBetween_(addDays_(day, -7), day);
+  var ledger = charge_(due, filings, day, before, opts.asOf || null, names);
 
-  var model = prop_('GEMINI_MODEL', AGENT_DEFAULT_MODEL);
-  var prompt = [
-    'You are reading one day of operating reports from Klever Kuche, a kitchen',
-    'manufacturer in Addis Ababa. Prices are in Birr.',
-    '',
-    'The penalty ledger below was already calculated in code and is correct.',
-    'Do not recalculate it, restate it, or comment on the arithmetic.',
-    '',
-    'Your job is the part arithmetic cannot do. Read the filed reports and say',
-    'what the Chairman should know. Look for:',
-    '  - a number moving in a bad direction over the day, not just a missed target',
-    '  - two reports that contradict each other',
-    '  - something a person wrote in a comment field that matters more than the figures',
-    '  - a problem the targets would not catch because no rule covers it',
-    '',
-    'Write at most 150 words, in plain English, as short bullet points. If the',
-    'day was ordinary, say so in one line — do not invent a concern to fill space.',
-    'Never name a penalty amount; that is handled elsewhere.',
-    '',
-    '--- TODAY: ' + Utilities.formatDate(when, tz_(), 'EEEE d MMMM yyyy') + ' ---',
-    '',
-    '--- REPORTS FILED ---',
-    JSON.stringify(filed.map(function (f) {
-      return { report: f.report, person: f.person, at: String(f.at), values: f.fields };
-    }), null, 1),
-    '',
-    '--- NOT FILED / LATE (for context only) ---',
-    ledger.filter(function (l) { return l.status !== 'On time'; })
-          .map(function (l) { return l.person + ' — ' + l.report + ' — ' + l.status; })
-          .join('\n') || '(everything arrived on time)'
-  ].join('\n');
-
-  var res = UrlFetchApp.fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/' + model +
-    ':generateContent?key=' + encodeURIComponent(key),
-    {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      muteHttpExceptions: true
+  if (opts.write !== false && due.length) {
+    fsPut_('ledger/' + day, {
+      day: day,
+      closedAt: new Date(),
+      total: ledger.reduce(function (a, l) { return a + l.amount; }, 0),
+      lines: ledger.map(function (l) {
+        return { person: l.person, name: l.name, report: l.report, reportName: l.reportName,
+                 due: l.due, status: l.status, at: l.at, amount: l.amount, why: l.why };
+      })
     });
+    writeLedgerTab_(ledger, day);
+  }
 
-  if (res.getResponseCode() !== 200) {
-    /* the ledger is the point; a failed analysis must never cost the ledger */
-    return '(Gemini returned HTTP ' + res.getResponseCode() + ' — ledger unaffected.)';
-  }
-  try {
-    var body = JSON.parse(res.getContentText());
-    var text = body.candidates[0].content.parts[0].text;
-    return String(text).trim();
-  } catch (e) {
-    return '(Could not read Gemini’s reply — ledger unaffected.)';
-  }
+  return {
+    day: day,
+    schedule: schedule,
+    names: names,
+    due: due,
+    filings: filings,
+    filed: filings.filter(function (f) { return f.day === day; }),
+    before: before,
+    ledger: ledger
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -435,7 +568,9 @@ function askGemini_(ledger, filed, when) {
 
 var LEDGER_TAB_ = 'Penalty Ledger';
 
-function writeLedger_(ledger, when, note) {
+/* The Sheet copy is the Chairman's window, not the record — the monthly
+   deductions are added up from Firestore, which nobody outside can write. */
+function writeLedgerTab_(ledger, day) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(LEDGER_TAB_);
   if (!sh) {
@@ -443,65 +578,10 @@ function writeLedger_(ledger, when, note) {
     sh.appendRow(['Date', 'Person', 'Report', 'Due', 'Status', 'Birr', 'Under which letter']);
     sh.setFrozenRows(1);
   }
-  var day = Utilities.formatDate(when, tz_(), 'yyyy-MM-dd');
   var rows = ledger.map(function (l) {
-    return [day, l.person, l.report, l.due, l.status, l.amount, l.why];
+    return [day, l.name, l.reportName, l.due, l.status, l.amount, l.why];
   });
-  if (rows.length) {
-    sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
-  }
-}
-
-function mailLedger_(ledger, when, note) {
-  var owed = ledger.filter(function (l) { return l.amount > 0; });
-  var total = ledger.reduce(function (a, l) { return a + l.amount; }, 0);
-  var day = Utilities.formatDate(when, tz_(), 'EEEE d MMMM yyyy');
-
-  var subject = total > 0
-    ? 'Klever ledger ' + day + ' — ' + fmt_(total) + ' Birr across ' + owed.length
-    : 'Klever ledger ' + day + ' — nothing owed';
-
-  var rowsHtml = ledger.map(function (l) {
-    var colour = l.status === 'On time' ? '#41631a'
-               : l.status === 'LATE' ? '#8f3020' : '#8f3020';
-    return '<tr>' +
-      '<td style="padding:6px 10px;border-bottom:1px solid #e4e7e3">' + esc_(l.person) + '</td>' +
-      '<td style="padding:6px 10px;border-bottom:1px solid #e4e7e3">' + esc_(l.report) + '</td>' +
-      '<td style="padding:6px 10px;border-bottom:1px solid #e4e7e3;color:' + colour + '">' + esc_(l.status) + '</td>' +
-      '<td style="padding:6px 10px;border-bottom:1px solid #e4e7e3;text-align:right;' +
-          'font-family:monospace">' + (l.amount ? fmt_(l.amount) : '—') + '</td>' +
-      '</tr>';
-  }).join('');
-
-  var html =
-    '<div style="font-family:Helvetica,Arial,sans-serif;max-width:640px;color:#141b1a">' +
-    '<h2 style="font-size:17px;margin:0 0 2px">Penalty ledger</h2>' +
-    '<div style="color:#66716d;font-size:13px;margin-bottom:16px">' + esc_(day) + '</div>' +
-    '<table style="border-collapse:collapse;width:100%;font-size:13.5px">' +
-      '<tr style="text-align:left;color:#66716d;font-size:11px;letter-spacing:.1em">' +
-        '<th style="padding:0 10px 6px">PERSON</th><th style="padding:0 10px 6px">REPORT</th>' +
-        '<th style="padding:0 10px 6px">STATUS</th>' +
-        '<th style="padding:0 10px 6px;text-align:right">BIRR</th></tr>' +
-      rowsHtml +
-      '<tr><td colspan="3" style="padding:10px;font-weight:bold">Total</td>' +
-      '<td style="padding:10px;text-align:right;font-family:monospace;font-weight:bold">' +
-        fmt_(total) + '</td></tr>' +
-    '</table>' +
-    '<h3 style="font-size:14px;margin:26px 0 6px">What stood out today</h3>' +
-    '<div style="font-size:13.5px;line-height:1.6;white-space:pre-wrap;color:#3a4442">' +
-      esc_(note) + '</div>' +
-    '<p style="color:#66716d;font-size:11.5px;margin-top:26px;line-height:1.6">' +
-      'Amounts come from each person’s signed letter and are calculated in code, not by ' +
-      'the model. The note above is written by Gemini and is not a charge. ' +
-      'Yordanos files a daily store report but his letter sets no penalty for missing it — ' +
-      'he is listed and charged nothing until the Chairman decides.' +
-    '</p></div>';
-
-  MailApp.sendEmail({
-    to: Session.getEffectiveUser().getEmail(),
-    subject: subject,
-    htmlBody: html
-  });
+  if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
 }
 
 /* ------------------------------------------------------------------ *

@@ -160,7 +160,12 @@ by email until somebody decides Storage is worth the card.
 
 ### The fifteen agents
 
-`apps-script/Agents.js` — once a day, fifteen analysts read the day.
+`apps-script/Agents.js` — every morning at six, fifteen analysts read yesterday.
+
+The day is closed first (see the ledger below), so anything filed before midnight is in. The
+brief is in the Chairman's inbox by seven. Each agent sees the six days before as well —
+the same figure day by day, its average, and who missed the same report more than once —
+all worked out in code, so it can say "third day running" instead of only "today".
 
 Attendance · production · quality · store and stock · purchasing and prices ·
 finance · sales and commercial · design · installation and site · customers ·
@@ -215,18 +220,60 @@ plainly.
 `previewAgents()` shows what each agent would be given without spending
 anything on the model. Run that first.
 
+## The week and the month
+
+`apps-script/Packs.js`. **Sunday at eight**, the week just ended: who filed on time, the week's
+production, quality, money and sales, whether last week's forecasts came true (Ephrata's
+projection against what was collected, Betelhem's 4-week projection against what came in —
+within 10% or not), which of the Chairman's instructions were done, and the thirteen weekly
+reports, which no agent read before. **On the 2nd**, the month just ended, with the
+**deductions**: every person's penalties for the month less any the Chairman cancelled, as an
+email table and a Sheet tab, `Deductions yyyy-mm`, that payroll can work from. The 2nd,
+because Amaha's and Wude's monthly reports are due on the 1st.
+
+Every figure is code; the model writes only the reading on top. `previewWeekly()` and
+`previewMonthly()` log the figures and write nothing.
+
+## The Chairman's instructions
+
+On his page: what, to whom, by when. It appears on that person's home screen above their
+reports until they press **It's done** and say what they did. The server sets the time. He
+can reopen one that was not really done, or cancel it. Nobody can delete one. Anything past
+its date and still open goes into the morning brief and the email subject.
+
+## Instant alerts
+
+A few things should not wait for the morning. When a report arrives saying the bank is under
+the 6,000,000 reserve, a shortfall is coming, cash does not reconcile, there was theft, the
+factory stopped for board or a shortage, Wude was pressured to pass a defect, a defect was
+released, or a customer's property was damaged — the email subject starts with **ALERT** and
+says which. The checks are in `ALERTS_` in `apps-script/Code.js`.
+
 ## The penalty ledger
 
-`apps-script/Agent.js` — runs once a day and answers a question nobody was
+`apps-script/Agent.js` — closes each day and answers a question nobody was
 answering: **what does each person actually owe this month?**
 
 Twenty signed letters each carry a penalty table. Until now nothing added them
 up, which meant a –200 Birr charge for a late report cost exactly nothing.
 
-Each evening it works out who owed a report, reads the archive to see who
-filed and when, and charges what that person's own letter says. Every figure in
-`REPORT_PENALTY` is quoted from a signed letter with the source named beside
-it, so any charge can be traced back to the paper it came from.
+Each morning it closes yesterday: who owed a report, what arrived and when, and what that
+person's own letter charges. Every figure in `PENALTY` is quoted from a letter, line and all,
+**keyed by report** — Mahelet's 15-day plan late is her letter's 5,000, not a weekly 500 — and
+the charges that depend on last time ("second consecutive miss") look at last time.
+
+**Late is the server's clock, never the phone's.** A report is on time if it arrived by the
+letter's deadline, late if it arrived after it that same day, missing if it had not arrived
+by midnight. A weekly report filed any day in the week before its due day counts, and so
+does a monthly one filed in the week before the 1st.
+
+The closed day goes to Firestore (`/ledger/{day}`, written only by the ledger account) and to
+the Sheet tab. The monthly deductions are added up from Firestore, never from the Sheet —
+the Sheet's endpoint is open to anyone, and it now refuses to write to any tab named like
+the ledger or the deductions.
+
+**The Chairman can cancel a charge** from his page, with a reason. The reason is kept beside
+the charge for good, and the deductions show both.
 
 **The arithmetic is done in code, never by the model.** A model asked to count
 rows will eventually miscount one, and this number comes off someone's pay.
@@ -234,9 +281,16 @@ Gemini is asked only for the part code cannot do — reading the day's reports
 and saying what deserves the Chairman's attention. If that call fails, the
 ledger is unaffected.
 
-Set `GEMINI_KEY` in Script Properties, run `authorizeAgent()` once from the
-editor, then add a daily time trigger on `dailyLedger`. `previewLedger()`
-writes nothing and sends nothing — use it first.
+**Switching it on** — in the Apps Script editor, once:
+
+1. Run `setKeys` with the Gemini key, the Firebase web key and the ledger password (or paste
+   them into Project Settings → Script Properties). Add `LEDGER_START` = the day the team is
+   told, so nothing before it is charged.
+2. Run `authorizeAgent()` and approve.
+3. Run `setupTriggers()`. It makes all four: `dailyRun` 6–7 AM, `watchForRunRequest` every
+   ten minutes, `weeklyPack` Sunday 8–9 AM, `monthlyPack` on the 2nd, 8–9 AM.
+
+`previewLedger()` writes nothing and sends nothing — use it first.
 
 **Yordanos is deliberately absent from the penalty table.** He files a daily
 store report but his letter sets no penalty for filing it late or not at all —

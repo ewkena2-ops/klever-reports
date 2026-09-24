@@ -650,6 +650,69 @@
     return wrap;
   }
 
+  /* ---------------- what the Chairman asked for ---------------- */
+
+  /* An instruction given in passing is forgotten by both people by Friday.
+     Written down, with a date, it sits here — above the reports, because it
+     came from him — until the person it is for says it is done. The morning
+     brief tells him about any that pass their date first. */
+  var stopIns = null;
+  function instructionsCard() {
+    if (stopIns) { try { stopIns(); } catch (e) {} stopIns = null; }
+    var wrap = el('div', 'inswrap');
+    if (!window.FB || !window.FB.live() || AUTH.isChairman()) return wrap;
+    stopIns = window.FB.watchMyInstructions(function (all) {
+      wrap.innerHTML = '';
+      var open = all.filter(function (i) { return i.status === 'open'; })
+                    .sort(function (a, b) { return a.due < b.due ? -1 : (a.due > b.due ? 1 : 0); });
+      if (!open.length) return;
+      wrap.appendChild(el('p', 'eyebrow', t('insTitle')));
+      open.forEach(function (i) { wrap.appendChild(insRow(i)); });
+    });
+    return wrap;
+  }
+
+  function daysFrom(a, b) {
+    return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000);
+  }
+
+  function insRow(i) {
+    var row = el('div', 'ins');
+    var over = daysFrom(i.due, stamp());
+    if (over > 0) row.className += ' over';
+    row.appendChild(el('div', 'inst', i.text));
+    row.appendChild(el('div', 'insd',
+      over > 1 ? t('insOver').replace('{n}', over) : over === 1 ? t('insOver1')
+               : (over === 0 ? t('insToday') : t('insBy') + ' ' + i.due)));
+
+    var go = el('button', 'insgo', t('insDone'));
+    go.type = 'button';
+    var box = el('div', 'insbox');
+    box.hidden = true;
+    var note = el('textarea');
+    note.rows = 2;
+    note.maxLength = 1000;
+    note.placeholder = t('insNote');
+    var send = el('button', 'insgo', t('insSend'));
+    send.type = 'button';
+    box.appendChild(note);
+    box.appendChild(send);
+
+    go.onclick = function () { go.hidden = true; box.hidden = false; note.focus(); };
+    send.onclick = function () {
+      send.disabled = true;
+      window.FB.closeInstruction(i.id, note.value).then(function () {
+        toast(t('insClosed'));
+      })['catch'](function () {
+        send.disabled = false;
+        toast(t('insFailed'));
+      });
+    };
+    row.appendChild(go);
+    row.appendChild(box);
+    return row;
+  }
+
   function renderIndex(root) {
     if (!AUTH.who()) return renderSignIn(root);
     /* everyone but the Chairman lands straight on their own reports —
@@ -756,6 +819,7 @@
 
     var st = standing(p.id);
     root.appendChild(deck(p, st));
+    root.appendChild(instructionsCard());
 
     var tl = timeline(p.id);
     if (tl) {

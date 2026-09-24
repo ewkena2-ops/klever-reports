@@ -21,9 +21,9 @@ import { initializeApp, getApps }
 import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
-  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, getDoc, setDoc, query, where, orderBy, onSnapshot,
-  serverTimestamp
+  initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
+  collection, doc, getDoc, setDoc, addDoc, updateDoc, query, where, orderBy, limit,
+  onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 (function () {
@@ -63,11 +63,17 @@ import {
   function hhmm(d) {
     return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
   }
-  function today() {
-    var d = new Date();
+  function ymd(d) {
     return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) +
            '-' + ('0' + d.getDate()).slice(-2);
   }
+  function today() { return ymd(new Date()); }
+  function plusDays(n) { var d = new Date(); d.setDate(d.getDate() + n); return ymd(d); }
+  function daysFrom(a, b) {
+    return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000);
+  }
+  function birr(n) { return Number(n || 0).toLocaleString('en-US'); }
+  function prettyDay(day) { return new Date(day + 'T12:00:00').toDateString(); }
 
   var app, auth, db, me = null, root = null;
 
@@ -75,13 +81,18 @@ import {
     if (app) return;
     app = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
     auth = getAuth(app);
+    /* fb.js loads first on this page and has already set Firestore up with
+       its offline cache. Asking again throws — Firebase compares the options
+       and a second cache object is never "the same" — and the old fallback
+       asked a third time, with different options still, which threw out of
+       the module and left his page blank from the day it shipped. The
+       instance fb.js made is the one to use. */
     try {
       db = initializeFirestore(app, {
         localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
       });
     } catch (e) {
-      /* fb.js may have initialised it already with the same settings */
-      db = initializeFirestore(app, {});
+      db = getFirestore(app);
     }
   }
 
@@ -95,7 +106,7 @@ import {
     var tiles = el('div', 'chtiles');
     var tFiled = tile(t('chFiled'), '—');
     var tMissing = tile(t('chMissing'), '—');
-    var tOwed = tile(t('chOwed'), '—');
+    var tOwed = tile(t('chOwedMonth'), '—');
     tiles.appendChild(tFiled.box); tiles.appendChild(tMissing.box); tiles.appendChild(tOwed.box);
     root.appendChild(tiles);
 
@@ -110,6 +121,23 @@ import {
     analysis.appendChild(el('p', 'codenote', t('chNoAnalysis')));
     root.appendChild(analysis);
 
+    /* --- what he asked for, and whether it happened --- */
+    root.appendChild(el('p', 'eyebrow', t('chIns')));
+    var ins = el('div', 'chins');
+    root.appendChild(ins);
+
+    /* --- what the letters charged, and his say over it --- */
+    root.appendChild(el('p', 'eyebrow', t('chCharges')));
+    var charges = el('div', 'chcharges');
+    charges.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(charges);
+
+    /* --- the week --- */
+    root.appendChild(el('p', 'eyebrow', t('chWeek')));
+    var week = el('div', 'chweek');
+    week.appendChild(el('p', 'codenote', t('chNoWeek')));
+    root.appendChild(week);
+
     /* --- and the day it was made of --- */
     root.appendChild(el('p', 'eyebrow', t('chRaw')));
     var raw = el('div', 'chraw');
@@ -117,7 +145,10 @@ import {
     root.appendChild(raw);
 
     watchAnalysis(analysis);
-    watchReports(raw, tFiled, tMissing, tOwed);
+    watchInstructions(ins);
+    watchCharges(charges, tOwed);
+    watchWeek(week);
+    watchReports(raw, tFiled, tMissing);
   }
 
   function tile(label, value) {
@@ -255,14 +286,20 @@ import {
 
   /* ---------------- the analysis ---------------- */
 
+  /* The newest reading, whichever day it is about. The agents run in the
+     morning on yesterday, so on most mornings the latest is yesterday's; after
+     he presses the button it is today's, marked as so far. */
   function watchAnalysis(into) {
-    onSnapshot(doc(db, 'analysis', today()), function (snap) {
+    var q = query(collection(db, 'analysis'), orderBy('day', 'desc'), limit(1));
+    onSnapshot(q, function (qs) {
       into.innerHTML = '';
-      if (!snap.exists()) {
+      if (qs.empty) {
         into.appendChild(el('p', 'codenote', t('chNoAnalysis')));
         return;
       }
-      var d = snap.data();
+      var d = qs.docs[0].data();
+      into.appendChild(el('p', 'skysub', (d.dayLabel || d.day) +
+        (d.provisional ? ' · ' + t('chSoFar') : '')));
       var when = d.ranAt && d.ranAt.toDate ? d.ranAt.toDate() : null;
       var finds = d.findings || [];
 
@@ -318,7 +355,7 @@ import {
 
   /* ---------------- the raw day ---------------- */
 
-  function watchReports(into, tFiled, tMissing, tOwed) {
+  function watchReports(into, tFiled, tMissing) {
     var start = new Date();
     start.setHours(0, 0, 0, 0);
 
@@ -345,7 +382,6 @@ import {
       filed.forEach(function (f) { got[f.report] = true; });
       var missing = due.filter(function (r) { return !got[r.id]; });
       tMissing.set(String(missing.length));
-      tOwed.set(t('chSeeEmail'));
 
       if (!filed.length) {
         into.appendChild(el('p', 'codenote', t('chNothingFiled')));
@@ -434,6 +470,248 @@ import {
       return Object.keys(r).map(function (k) { return r[k]; })
                     .filter(function (x) { return x !== '' && x != null; }).join(' · ');
     }).filter(Boolean).join('   |   ');
+  }
+
+  /* ---------------- his instructions ---------------- */
+
+  /* What he asks of people, with a date, until they close it. Three fields,
+     because anything longer would not get used standing up. */
+  function watchInstructions(into) {
+    var form = el('div', 'chinsform');
+
+    var what = el('textarea');
+    what.rows = 2;
+    what.maxLength = 1000;
+    what.placeholder = t('chInsWhat');
+    var to = el('select');
+    (typeof CHAT_ACCOUNTS !== 'undefined' ? CHAT_ACCOUNTS : []).forEach(function (id) {
+      var o = el('option', null, nameOf(id));
+      o.value = id;
+      to.appendChild(o);
+    });
+    var due = el('input');
+    due.type = 'date';
+    due.value = plusDays(2);
+    var give = el('button', 'seed', t('chInsGive'));
+    give.type = 'button';
+
+    var r1 = el('label', 'chinsf');
+    r1.appendChild(el('span', null, t('chInsTo')));
+    r1.appendChild(to);
+    var r2 = el('label', 'chinsf');
+    r2.appendChild(el('span', null, t('chInsDue')));
+    r2.appendChild(due);
+    form.appendChild(what);
+    form.appendChild(r1);
+    form.appendChild(r2);
+    form.appendChild(give);
+    into.appendChild(form);
+
+    give.onclick = function () {
+      var text = what.value.trim();
+      if (!text || !due.value) { what.focus(); return; }
+      give.disabled = true;
+      addDoc(collection(db, 'instructions'), {
+        to: to.value, text: text, due: due.value,
+        by: 'chairman', status: 'open', at: serverTimestamp()
+      }).then(function () {
+        what.value = '';
+        give.disabled = false;
+      })['catch'](function () {
+        give.disabled = false;
+        toast(t('chSaveFailed'));
+      });
+    };
+
+    var list = el('div', 'chinslist');
+    into.appendChild(list);
+
+    var q = query(collection(db, 'instructions'), orderBy('at', 'desc'), limit(100));
+    onSnapshot(q, function (qs) {
+      list.innerHTML = '';
+      var all = [];
+      qs.forEach(function (d) { var x = d.data(); x.id = d.id; all.push(x); });
+      var open = all.filter(function (i) { return i.status === 'open'; })
+                    .sort(function (a, b) { return a.due < b.due ? -1 : (a.due > b.due ? 1 : 0); });
+      /* done in the last fortnight — long enough to check, short enough to read */
+      var cutoff = plusDays(-14);
+      var done = all.filter(function (i) {
+        return i.status === 'done' && i.doneAt && i.doneAt.toDate && ymd(i.doneAt.toDate()) >= cutoff;
+      });
+      if (!open.length && !done.length) {
+        list.appendChild(el('p', 'codenote', t('chInsNone')));
+        return;
+      }
+      open.forEach(function (i) { list.appendChild(insRow(i)); });
+      done.forEach(function (i) { list.appendChild(insRow(i)); });
+    }, function () {
+      list.innerHTML = '';
+      list.appendChild(el('p', 'codeerr', t('chOnlyChairman')));
+    });
+  }
+
+  function insRow(i) {
+    var row = el('div', 'chinsrow ' + i.status);
+    var head = el('div', 'chinsh');
+    head.appendChild(el('span', 'chrw', nameOf(i.to)));
+    var over = daysFrom(i.due, today());
+    var late = i.status === 'open' && over > 0;
+    var state = i.status === 'done'
+      ? t('chInsDone') + ' ' + (i.doneAt && i.doneAt.toDate ? ymd(i.doneAt.toDate()) : '')
+      : (late ? over + ' ' + t('chInsOver') : t('chInsDue') + ' ' + i.due);
+    head.appendChild(el('span', 'chrt' + (late ? ' bad' : ''), state));
+    row.appendChild(head);
+    row.appendChild(el('div', 'chinst', i.text));
+    if (i.status === 'done' && i.note) {
+      row.appendChild(el('div', 'chinsn', t('chInsSaid') + ': ' + i.note));
+    }
+    var act = el('button', 'chmini', i.status === 'done' ? t('chInsReopen') : t('chInsCancel'));
+    act.type = 'button';
+    act.onclick = function () {
+      act.disabled = true;
+      updateDoc(doc(db, 'instructions', i.id), {
+        status: i.status === 'done' ? 'open' : 'cancelled',
+        closedAt: serverTimestamp()
+      })['catch'](function () { act.disabled = false; toast(t('chSaveFailed')); });
+    };
+    row.appendChild(act);
+    return row;
+  }
+
+  /* ---------------- the ledger ---------------- */
+
+  /* The last closed day's charges, each with a way to cancel it — with a
+     reason, kept for good beside the charge — and the month so far by
+     person, which is the figure that comes off pay. The charges were worked
+     out by the ledger from each person's letter; the only arithmetic here is
+     taking away what he cancelled, the same subtraction the monthly pack
+     does. */
+  function watchCharges(into, tOwed) {
+    var month = today().slice(0, 8) + '01';
+    var ledgers = [], waivers = {}, gotL = false, gotW = false;
+
+    function draw() {
+      if (!gotL || !gotW) return;
+      into.innerHTML = '';
+      if (!ledgers.length) {
+        into.appendChild(el('p', 'codenote', t('chNoLedger')));
+        tOwed.set('0');
+        return;
+      }
+
+      var per = {}, total = 0;
+      ledgers.forEach(function (day) {
+        (day.lines || []).forEach(function (l) {
+          if (!l.amount) return;
+          var p = per[l.person] || (per[l.person] = { name: l.name || nameOf(l.person), owed: 0 });
+          if (!waivers[day.day + '|' + l.report]) { p.owed += l.amount; total += l.amount; }
+        });
+      });
+      tOwed.set(birr(total));
+
+      var last = ledgers[ledgers.length - 1];
+      into.appendChild(el('p', 'skysub', t('chChargesDay') + ' · ' + prettyDay(last.day)));
+      var lines = (last.lines || []).filter(function (l) { return l.amount > 0; });
+      if (!lines.length) into.appendChild(el('p', 'codenote', t('chNoCharges')));
+      lines.forEach(function (l) {
+        into.appendChild(chargeRow(last.day, l, waivers[last.day + '|' + l.report]));
+      });
+
+      var ids = Object.keys(per).sort(function (a, b) { return per[b].owed - per[a].owed; });
+      if (ids.length) {
+        var box = el('details', 'chmonth');
+        box.appendChild(el('summary', null, t('chByPerson') + ' · ' + birr(total) + ' Birr'));
+        ids.forEach(function (k) {
+          var r = el('div', 'chf');
+          r.appendChild(el('span', 'chfk', per[k].name));
+          r.appendChild(el('span', 'chfv', birr(per[k].owed)));
+          box.appendChild(r);
+        });
+        into.appendChild(box);
+      }
+    }
+
+    onSnapshot(query(collection(db, 'ledger'), where('day', '>=', month), orderBy('day', 'asc')),
+      function (qs) {
+        ledgers = [];
+        qs.forEach(function (d) { ledgers.push(d.data()); });
+        gotL = true;
+        draw();
+      }, function () {
+        into.innerHTML = '';
+        into.appendChild(el('p', 'codeerr', t('chOnlyChairman')));
+      });
+    onSnapshot(query(collection(db, 'waivers'), where('day', '>=', month)),
+      function (qs) {
+        waivers = {};
+        qs.forEach(function (d) { var w = d.data(); waivers[w.day + '|' + w.report] = w; });
+        gotW = true;
+        draw();
+      }, function () { gotW = true; draw(); });
+  }
+
+  function chargeRow(day, l, waiver) {
+    var row = el('div', 'chchg' + (waiver ? ' off' : ''));
+    var head = el('div', 'chinsh');
+    head.appendChild(el('span', 'chrw', l.name || nameOf(l.person)));
+    head.appendChild(el('span', 'chrr', (l.reportName || l.report) + ' · ' + l.status));
+    head.appendChild(el('span', 'chrt', birr(l.amount)));
+    row.appendChild(head);
+
+    if (waiver) {
+      row.appendChild(el('div', 'chinsn', t('chCancelled') + ': ' + waiver.reason));
+      return row;
+    }
+    var open = el('button', 'chmini', t('chCancel'));
+    open.type = 'button';
+    var box = el('div', 'chcancel');
+    box.hidden = true;
+    var why = el('input');
+    why.type = 'text';
+    why.maxLength = 500;
+    why.placeholder = t('chCancelWhy');
+    var go = el('button', 'chmini bad', t('chCancelGo'));
+    go.type = 'button';
+    box.appendChild(why);
+    box.appendChild(go);
+    open.onclick = function () { open.hidden = true; box.hidden = false; why.focus(); };
+    go.onclick = function () {
+      var reason = why.value.trim();
+      if (reason.length < 3) { why.focus(); return; }
+      go.disabled = true;
+      addDoc(collection(db, 'waivers'), {
+        day: day, report: l.report, person: l.person, reason: reason,
+        amount: l.amount, by: 'chairman', at: serverTimestamp()
+      })['catch'](function () { go.disabled = false; toast(t('chSaveFailed')); });
+    };
+    row.appendChild(open);
+    row.appendChild(box);
+    return row;
+  }
+
+  /* ---------------- the week ---------------- */
+
+  function watchWeek(into) {
+    onSnapshot(query(collection(db, 'packs'), orderBy('end', 'desc'), limit(4)), function (qs) {
+      var packs = [];
+      qs.forEach(function (d) { packs.push(d.data()); });
+      var w = packs.filter(function (p) { return p.kind === 'week'; })[0];
+      into.innerHTML = '';
+      if (!w) { into.appendChild(el('p', 'codenote', t('chNoWeek'))); return; }
+
+      into.appendChild(el('p', 'skysub', prettyDay(w.start) + ' – ' + prettyDay(w.end)));
+      var tiles = el('div', 'chtiles');
+      tiles.appendChild(tile(t('chOnTime'), w.onTimePct == null ? '—' : w.onTimePct + '%').box);
+      tiles.appendChild(tile(t('chMade'), birr(w.m2) + ' / ' + birr(w.m2Target)).box);
+      tiles.appendChild(tile(t('chCollected'), birr(w.collected)).box);
+      into.appendChild(tiles);
+      var f = el('div', 'chfind brief');
+      f.appendChild(el('div', 'chft', w.text || ''));
+      into.appendChild(f);
+    }, function () {
+      into.innerHTML = '';
+      into.appendChild(el('p', 'codeerr', t('chOnlyChairman')));
+    });
   }
 
   function toast(msg) {

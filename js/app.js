@@ -1573,6 +1573,8 @@
 
   function reportFlags() {
     var out = [];
+    var gaps = unanswered();
+    if (gaps.length) out.push(unansweredLine(gaps));
     allFields().forEach(function (fl) {
       if (targetMiss(fl)) out.push(L(fl) + ': ' + fmt(fl) + ' — ' + (lang === 'am' ? fl.tgt.am : fl.tgt.en));
     });
@@ -1613,6 +1615,11 @@
     st.textContent = statusWord(pdn) + (pdn.day ? ' · ' + statusLine(report, pdn) : '');
     meta.appendChild(el('dt', null, ''));
     meta.appendChild(st);
+    var gapsP = unanswered();
+    if (gapsP.length) {
+      meta.appendChild(el('dt', null, ''));
+      meta.appendChild(el('dd', 'pd-status late', unansweredLine(gapsP)));
+    }
     doc.appendChild(meta);
 
     reportDoc().forEach(function (s) {
@@ -1693,6 +1700,20 @@
 
     send.onclick = function () {
       if (sending) return;
+      /* not everything answered: ask once, show which, then send on the
+         second tap within a few seconds */
+      if (missingNow > 0 && !sendArmed) {
+        sendArmed = true;
+        marking = true;
+        refresh();
+        send.textContent = t('sendAnyway').replace('{n}', missingNow);
+        toast(t('sendPartialWarn').replace('{n}', missingNow));
+        clearTimeout(sendDisarm);
+        sendDisarm = setTimeout(function () { sendArmed = false; if (!sending) send.textContent = t('send'); }, 6000);
+        return;
+      }
+      clearTimeout(sendDisarm);
+      sendArmed = false;
       sending = true;
       send.disabled = true;
       send.textContent = t('sending');
@@ -1778,6 +1799,9 @@
 
   /* a sent report is not sent twice by accident */
   var sending = false, sentThisVisit = false;
+  /* how many required questions are empty right now, and whether Send has
+     asked "send it anyway?" and is waiting for the second tap */
+  var missingNow = 0, sendArmed = false, sendDisarm = null;
 
   /* a message longer than chat holds, cut at line ends into numbered parts */
   function splitForChat(txt, max) {
@@ -1793,6 +1817,14 @@
   }
 
   /* ---------------- live state ---------------- */
+
+  /* the required questions still unanswered, by name */
+  function unanswered() {
+    return allFields().filter(function (f) { return !f.opt && !filled(f); }).map(function (f) { return L(f); });
+  }
+  function unansweredLine(list) {
+    return t('notAnsweredCount').replace('{n}', list.length);
+  }
 
   function allFields() {
     var out = [];
@@ -1931,8 +1963,15 @@
       }
     }
     var send = document.getElementById('send');
-    /* typing while a report is on its way must not re-arm Send */
-    if (send && !sending && !sentThisVisit) send.disabled = missing > 0;
+    /* Send is always there — a report can go before every question is
+       answered, after one "are you sure" (see buildBar). Typing while a
+       report is on its way must not re-arm it, nor while it asks. */
+    missingNow = missing;
+    if (send && !sending && !sentThisVisit) {
+      send.disabled = false;
+      send.classList.toggle('partial', missing > 0);
+      if (!sendArmed) send.textContent = t('send');
+    }
 
     var bar = document.querySelector('.progress i');
     if (bar) bar.style.width = (need ? Math.round(done / need * 100) : 0) + '%';
@@ -2012,6 +2051,8 @@
     var pdm = periodNow(report);
     out.push(today() + ' · ' + clock() + ' · ' + statusWord(pdm) +
       (pdm.day && pdm.day !== stamp() ? ' · ' + statusLine(report, pdm) : ''));
+    var gaps = unanswered();
+    if (gaps.length) out.push('⚠ ' + unansweredLine(gaps));
 
     report.sections.forEach(function (sec) {
       var lines = [];
@@ -2046,6 +2087,12 @@
       out.push('');
       out.push('*' + t('flags') + '*');
       out = out.concat(flags);
+    }
+    if (gaps.length) {
+      out.push('');
+      out.push('*' + t('notAnswered').toUpperCase() + '*');
+      gaps.slice(0, 25).forEach(function (g) { out.push('• ' + g); });
+      if (gaps.length > 25) out.push('• … +' + (gaps.length - 25));
     }
     return out.join('\n');
   }

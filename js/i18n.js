@@ -296,7 +296,11 @@ const T = {
     colleaguesNote:'To read only: what each person reports, by when, and to whom. Only they, or the Chairman, can fill theirs in.',
     previewTag:'Preview',
     previewOf:'Preview of {who}’s report. You can read the questions; only {who} or the Chairman can fill it in and send it.',
-    pickDate:'Pick a date'
+    pickDate:'Pick a date',
+    sendAnyway:'Send with {n} empty?',
+    sendPartialWarn:'{n} questions are still empty (marked in red). Tap Send again to send it as it is.',
+    notAnswered:'Not answered',
+    notAnsweredCount:'{n} not answered'
   },
   am:{
     siteTitle:'የክሌቨር ሪፖርቶች',
@@ -590,6 +594,10 @@ const T = {
     colleaguesNote:'ለማንበብ ብቻ፦ እያንዳንዱ ሰው ምን እንደሚያቀርብ፣ እስከ መቼና ለማን። የራሳቸውን የሚሞሉት እነሱ ወይም ሊቀመንበሩ ብቻ ናቸው።',
     previewTag:'ቅድመ እይታ',
     previewOf:'የ{who} ሪፖርት ቅድመ እይታ። ጥያቄዎቹን ማንበብ ይችላሉ፤ መሙላትና መላክ የሚችሉት {who} ወይም ሊቀመንበሩ ብቻ ናቸው።',
-    pickDate:'ቀን ይምረጡ'
+    pickDate:'ቀን ይምረጡ',
+    sendAnyway:'{n} ባዶ ሆነው ይላክ?',
+    sendPartialWarn:'{n} ጥያቄዎች ገና ባዶ ናቸው (በቀይ ተመልክተዋል)። እንዳለ ለመላክ «ላክ»ን እንደገና ይንኩ።',
+    notAnswered:'ያልተመለሱ',
+    notAnsweredCount:'{n} ያልተመለሱ'
   }
 };

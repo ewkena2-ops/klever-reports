@@ -1307,3 +1307,7 @@ svg.sky .node text{font-size:11px}
 .datebox:has(input.miss){border-color:var(--coral);box-shadow:0 0 0 3px var(--coral-bg)}
 .datebox:has(input:disabled){opacity:.7}
 .datebox:has(input:disabled) input.dnative{cursor:not-allowed}
+
+/* Send on a report with questions still empty: available, but not the bright "ready" button */
+#send.partial{background:var(--card-2);color:var(--ink-2);border:1px solid var(--line-2);box-shadow:none}
+#send.partial:hover{border-color:var(--gold);color:var(--ink)}

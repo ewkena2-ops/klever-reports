@@ -125,6 +125,20 @@ import {
     analysis.appendChild(el('p', 'codenote', t('chNoAnalysis')));
     root.appendChild(analysis);
 
+    /* the full sky, on its own page */
+    var open = el('a', 'obs-open');
+    open.href = 'agents.html';
+    var NS = 'http://www.w3.org/2000/svg';
+    var ic = document.createElementNS(NS, 'svg');
+    [['viewBox', '0 0 24 24'], ['fill', 'none'], ['stroke', 'currentColor'], ['stroke-width', '1.7'],
+     ['stroke-linecap', 'round'], ['aria-hidden', 'true']].forEach(function (a) { ic.setAttribute(a[0], a[1]); });
+    var pth = document.createElementNS(NS, 'path');
+    pth.setAttribute('d', 'M12 9.6a2.4 2.4 0 1 1 0 4.8a2.4 2.4 0 0 1 0-4.8zM2.8 12c0-2.3 4.1-4.2 9.2-4.2s9.2 1.9 9.2 4.2-4.1 4.2-9.2 4.2-9.2-1.9-9.2-4.2z');
+    ic.appendChild(pth);
+    open.appendChild(ic);
+    open.appendChild(document.createTextNode(t('obOpen')));
+    root.appendChild(open);
+
     /* --- what he asked for, and whether it happened --- */
     root.appendChild(el('p', 'eyebrow', t('chIns')));
     var ins = el('div', 'chins');

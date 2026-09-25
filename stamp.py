@@ -13,8 +13,8 @@ import io, hashlib, re, os
 
 ASSETS = ['css/style.css', 'js/app.js', 'js/i18n.js', 'js/forms.js', 'js/auth.js',
           'js/save.js', 'js/channels.js', 'js/firebase-config.js', 'js/chat.js',
-          'js/chairman.js', 'js/fb.js', 'js/media.js']
-PAGES = ['index.html', 'form.html', 'chat.html', 'chairman.html']
+          'js/chairman.js', 'js/fb.js', 'js/media.js', 'js/orbit.js', 'js/agents.js', 'js/orbit3d.js']
+PAGES = ['index.html', 'form.html', 'chat.html', 'chairman.html', 'agents.html']
 
 v = {a: hashlib.sha1(io.open(a, 'rb').read()).hexdigest()[:8]
      for a in ASSETS if os.path.exists(a)}

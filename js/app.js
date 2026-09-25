@@ -114,7 +114,10 @@
     if (AUTH.who()) {
       var here = document.body.dataset.page;
       var navs = [['chat.html', 'chat', t('chatOpen'), here === 'chat']];
-      if (AUTH.isChairman()) navs.unshift(['chairman.html', 'day', t('chOverview'), here === 'chairman']);
+      if (AUTH.isChairman()) {
+        navs.unshift(['agents.html', 'orbit', t('obKicker'), here === 'agents']);
+        navs.unshift(['chairman.html', 'day', t('chOverview'), here === 'chairman']);
+      }
       navs.forEach(function (n) {
         var a2 = el('a', 'navbtn' + (n[3] ? ' on' : ''));
         a2.href = n[0];
@@ -320,6 +323,7 @@
   var ICON = {
     chat: 'M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 17H10l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5z',
     day: 'M3 12.5h4l2.5-6 5 12 2.5-6h4',
+    orbit: 'M12 9.6a2.4 2.4 0 1 1 0 4.8a2.4 2.4 0 0 1 0-4.8zM2.8 12c0-2.3 4.1-4.2 9.2-4.2s9.2 1.9 9.2 4.2-4.1 4.2-9.2 4.2-9.2-1.9-9.2-4.2zM19.2 5.6a1.1 1.1 0 1 1 0 .01',
     doc: 'M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10.5A.5.5 0 0 1 6.5 20V4a.5.5 0 0 1 .5-.5zM14 3.5V8h4M9.5 12h5M9.5 15.5h5'
   };
   function icon(name) {
@@ -659,7 +663,8 @@
         rebuildTop();
         /* on the Chairman's page the next screen belongs to chairman.js, and
            only a reload hands it over cleanly */
-        if (document.body.dataset.page === 'chairman') { location.reload(); return; }
+        if (document.body.dataset.page === 'chairman' ||
+            document.body.dataset.page === 'agents') { location.reload(); return; }
         renderIndex(root);
       })['catch'](function (e) {
         /* never say which half was wrong */
@@ -1697,7 +1702,7 @@
       /* chairman.js owns #app on its own page. app.js is still loaded there
          for buildTop, renderSignIn and the shared helpers, and must draw
          nothing itself or the two race each other for the same node. */
-      if (document.body.dataset.page === 'chairman') return;
+      if (document.body.dataset.page === 'chairman' || document.body.dataset.page === 'agents') return;
       if (document.body.dataset.page === 'form') renderForm(root);
       else renderIndex(root);
     });

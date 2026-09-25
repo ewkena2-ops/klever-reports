@@ -24,8 +24,7 @@ const T = {
 
     staySignedIn:'You stay signed in on this phone. Use Sign out to hand it to someone else.',
     signInOffline:'No connection. Signing in for the first time needs one; after that this phone stays signed in.',
-    signOut:'Sign out',
-    notYours:'That report belongs to someone else.',
+    signOut:'Sign out',
     dueForYou:'Due from you today',
     nothingForYou:'Nothing due from you today.',
     whoReports:'Owed to you today',
@@ -291,7 +290,11 @@ const T = {
     chatVoiceEmpty:'Nothing was recorded. Please try again.',
     chatFileHuge:'That file is too large to open (over 25 MB). Try a smaller picture.',
     chatCantRead:'This picture can\'t be read — try a JPEG.',
-    timeline:'Time of day'
+    timeline:'Time of day',
+    colleaguesReports:'Colleagues’ reports',
+    colleaguesNote:'To read only: what each person reports, by when, and to whom. Only they, or the Chairman, can fill theirs in.',
+    previewTag:'Preview',
+    previewOf:'Preview of {who}’s report. You can read the questions; only {who} or the Chairman can fill it in and send it.'
   },
   am:{
     siteTitle:'የክሌቨር ሪፖርቶች',
@@ -316,8 +319,7 @@ const T = {
 
     staySignedIn:'በዚህ ስልክ ላይ ገብተው ይቆያሉ። ለሌላ ሰው ሲሰጡ «ውጣ» ይጫኑ።',
     signInOffline:'ኔትወርክ የለም። ለመጀመሪያ ጊዜ ለመግባት ኔትወርክ ያስፈልጋል፤ ከዚያ በኋላ ይህ ስልክ ገብቶ ይቆያል።',
-    signOut:'ውጣ',
-    notYours:'ይህ ሪፖርት የሌላ ሰው ነው።',
+    signOut:'ውጣ',
     dueForYou:'ዛሬ ከእርስዎ የሚጠበቁ',
     nothingForYou:'ዛሬ ከእርስዎ የሚጠበቅ ሪፖርት የለም።',
     whoReports:'ዛሬ ለእርስዎ የሚገቡ',
@@ -580,6 +582,10 @@ const T = {
     chatVoiceEmpty:'ምንም አልተቀዳም። እባክዎ እንደገና ይሞክሩ።',
     chatFileHuge:'ይህ ፋይል ለመክፈት በጣም ትልቅ ነው (ከ25 MB በላይ)። ትንሽ ፎቶ ይሞክሩ።',
     chatCantRead:'ይህን ፎቶ ማንበብ አልተቻለም — JPEG ፎቶ ይሞክሩ።',
-    timeline:'የቀኑ ሰዓት'
+    timeline:'የቀኑ ሰዓት',
+    colleaguesReports:'የሥራ ባልደረቦች ሪፖርቶች',
+    colleaguesNote:'ለማንበብ ብቻ፦ እያንዳንዱ ሰው ምን እንደሚያቀርብ፣ እስከ መቼና ለማን። የራሳቸውን የሚሞሉት እነሱ ወይም ሊቀመንበሩ ብቻ ናቸው።',
+    previewTag:'ቅድመ እይታ',
+    previewOf:'የ{who} ሪፖርት ቅድመ እይታ። ጥያቄዎቹን ማንበብ ይችላሉ፤ መሙላትና መላክ የሚችሉት {who} ወይም ሊቀመንበሩ ብቻ ናቸው።'
   }
 };

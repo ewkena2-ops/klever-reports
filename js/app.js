@@ -1026,7 +1026,9 @@
     }
 
     var rs = reportsFor(p.id);
+    var mine = !AUTH.isChairman() && p.id === AUTH.who();
     if (!rs.length) {
+      if (mine) root.appendChild(colleaguesCard(p.id));
       root.appendChild(chatCard());
       root.appendChild(foot());
       return;
@@ -1050,8 +1052,45 @@
       list.appendChild(a);
     });
     root.appendChild(list);
+    if (mine) root.appendChild(colleaguesCard(p.id));
     root.appendChild(chatCard());
     root.appendChild(foot());
+  }
+
+  /* Everyone else's reports, to read: what each colleague is asked for, by
+     when and for whom. Each opens as a preview (see renderForm). Folded
+     away, so a person's own day stays at the top of their page. */
+  function colleaguesCard(myId) {
+    var wrap = el('details', 'colleagues');
+    var sum = el('summary');
+    sum.appendChild(el('span', null, t('colleaguesReports')));
+    wrap.appendChild(sum);
+    wrap.appendChild(el('p', 'cnote', t('colleaguesNote')));
+    PEOPLE.forEach(function (p) {
+      if (p.id === myId) return;
+      var rs = reportsFor(p.id);
+      if (!rs.length) return;
+      var g = el('details', 'colleague');
+      var s = el('summary');
+      s.appendChild(el('span', 'cn', L(p)));
+      s.appendChild(el('span', 'cr', (lang === 'am' ? p.roleAm : p.roleEn) + ' · ' + rs.length));
+      g.appendChild(s);
+      var list = el('div', 'reports');
+      rs.forEach(function (r) {
+        var a = el('a', 'report');
+        a.href = 'form.html?r=' + encodeURIComponent(r.id);
+        a.appendChild(el('span', 'rt', L(r)));
+        var meta = el('div', 'meta');
+        meta.appendChild(el('span', 'pvtag', t('previewTag')));
+        meta.appendChild(el('span', 'due', lang === 'am' ? r.dueAm : r.dueEn));
+        meta.appendChild(el('span', null, t('to') + ' · ' + (lang === 'am' ? r.toAm : r.toEn)));
+        a.appendChild(meta);
+        list.appendChild(a);
+      });
+      g.appendChild(list);
+      wrap.appendChild(g);
+    });
+    return wrap;
   }
 
   function foot() {
@@ -1069,20 +1108,20 @@
     var id = new URLSearchParams(location.search).get('r');
     report = reportById(id);
     if (!report) { location.href = 'index.html'; return; }
-    /* a link to someone else's form is a dead end, however it was shared */
-    if (!AUTH.mayOpen(report)) {
-      root.innerHTML = '';
-      var b = el('a', 'backlink', t('back'));
-      b.href = 'index.html';
-      root.appendChild(b);
-      root.appendChild(el('p', 'sub', t('notYours')));
-      root.appendChild(foot());
-      return;
-    }
+    /* Someone else's report opens as a preview: its questions, its deadline
+       and who it goes to, greyed out, so everyone can see what a colleague is
+       asked for. No one's answers are shown (the database would not give
+       them anyway), and nothing can be filled in, saved or sent — only the
+       owner, or the Chairman, does that. */
+    var previewOnly = !AUTH.mayOpen(report);
     var person = personById(report.person);
     document.title = L(report) + ' · ' + L(person);
 
     setView(null);
+    clearInterval(renderForm.tick);
+    var restoredFrom = null;
+    if (previewOnly) { values = {}; draftKey = ''; }
+    else {
     /* A draft belongs to the due day it is for, not the calendar day it was
        typed on: a weekly report started on Thursday for Friday is still
        there on Friday. If there is none for this period, the newest unsent
@@ -1090,13 +1129,13 @@
        report typed at 23:50 is not lost at 00:05. */
     var pd0 = periodNow(report);
     draftKey = 'klever.draft.' + report.id + '.' + (pd0.day || stamp());
-    var restoredFrom = null;
     try { values = JSON.parse(store.get(draftKey) || 'null'); } catch (e) { values = null; }
     /* an empty draft (the form was only opened) does not hide a real one */
     if (!values || typeof values !== 'object' || !Object.keys(values).length) {
       values = {};
       var older = latestDraft(report.id, draftKey);
       if (older) { values = older.values; restoredFrom = older.day; }
+    }
     }
 
     root.innerHTML = '';
@@ -1112,6 +1151,9 @@
 
     var head = el('div', 'formhead');
     head.appendChild(el('h1', null, L(report)));
+    if (previewOnly) {
+      head.appendChild(el('div', 'penalty soft previewnote', t('previewOf').split('{who}').join(L(person))));
+    }
 
     var meta = el('dl', 'fmeta');
     function metaRow(k, v, cls) {
@@ -1125,6 +1167,7 @@
     metaRow(t('due'), lang === 'am' ? report.dueAm : report.dueEn);
     head.appendChild(meta);
 
+    if (!previewOnly) {
     var stat = el('div', 'fstat');
     stat.id = 'fstat';
     head.appendChild(stat);
@@ -1134,6 +1177,7 @@
     already.id = 'sentnote';
     already.hidden = true;
     head.appendChild(already);
+    }
     if (restoredFrom) {
       head.appendChild(el('div', 'penalty soft', t('draftRestored').replace('{day}', dayLabel(restoredFrom))));
     }
@@ -1143,8 +1187,10 @@
     if (report.derived) head.appendChild(el('div', 'penalty soft', t('derived')));
     root.appendChild(head);
 
-    var prog = el('div', 'progress'); prog.appendChild(el('i'));
-    root.appendChild(prog);
+    if (!previewOnly) {
+      var prog = el('div', 'progress'); prog.appendChild(el('i'));
+      root.appendChild(prog);
+    }
 
     /* sections */
     report.sections.forEach(function (sec, si) {
@@ -1159,6 +1205,16 @@
       root.appendChild(fs);
     });
 
+    if (previewOnly) {
+      root.classList.add('previewing');
+      Array.prototype.forEach.call(root.querySelectorAll('fieldset input, fieldset textarea, fieldset select, fieldset button'),
+        function (x) { x.disabled = true; });
+      Array.prototype.forEach.call(root.querySelectorAll('.addrow, .rm'), function (x) { x.hidden = true; });
+      root.appendChild(foot());
+      return;
+    }
+    root.classList.remove('previewing');
+
     var pv = el('div', 'preview'); pv.id = 'preview';
     root.appendChild(el('p', 'eyebrow', t('preview')));
     root.appendChild(pv);
@@ -1167,7 +1223,6 @@
     buildBar();
     refresh();
     /* the status line keeps time while the form is open */
-    clearInterval(renderForm.tick);
     renderForm.tick = setInterval(drawStatus, 30000);
   }
 

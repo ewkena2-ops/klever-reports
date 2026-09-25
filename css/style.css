@@ -1271,3 +1271,22 @@ svg.sky .node text{font-size:11px}
 .chat-sheet p{margin:0 0 12px;font-size:14.5px;line-height:1.45;color:var(--ink)}
 .chat-sheet .chat-warn{color:var(--coral);background:var(--coral-bg);padding:9px 11px;border-radius:var(--r-s)}
 .chat-sheet-row{display:flex;gap:8px;justify-content:flex-end}
+
+/* ---------- colleagues' reports, and a report opened as a preview ---------- */
+.colleagues{margin-top:30px}
+.colleagues > summary,.colleague > summary{list-style:none;cursor:pointer}
+.colleagues > summary::-webkit-details-marker,.colleague > summary::-webkit-details-marker{display:none}
+.colleagues > summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:0 16px;
+  border-radius:var(--r);background:var(--card);border:1px solid var(--line);font-weight:600;color:var(--ink-2)}
+.colleagues > summary::after{content:'+';font-size:20px;font-weight:400;color:var(--dim)}
+.colleagues[open] > summary::after{content:'\2212'}
+.colleagues .cnote{font-size:13px;color:var(--mut);margin:12px 4px 4px;line-height:1.45}
+.colleague{border-bottom:1px solid var(--line)}
+.colleague > summary{display:flex;align-items:baseline;justify-content:space-between;gap:12px;min-height:44px;padding:12px 4px}
+.colleague .cn{font-weight:600;color:var(--ink)}
+.colleague .cr{font-size:12.5px;color:var(--mut);text-align:right}
+.colleague .reports{margin:0 0 14px}
+.pvtag{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}
+.penalty.previewnote{color:var(--gold);background:var(--gold-bg);border-color:rgba(227,181,71,.35)}
+.previewing fieldset{opacity:.7}
+.previewing fieldset input,.previewing fieldset textarea,.previewing fieldset select,.previewing fieldset button{cursor:not-allowed}

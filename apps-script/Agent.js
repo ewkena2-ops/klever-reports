@@ -457,7 +457,9 @@ function settle_(report, day, filings, asOf) {
   var hit = null;
   for (var i = 0; i < filings.length; i++) {
     var f = filings[i], t = f.at.getTime();
-    if (f.report === report.id && t >= from && t < to) { hit = f; break; }
+    /* the person too: the rules now refuse a report filed by anyone else, and
+       this makes sure an older one filed that way can never count */
+    if (f.report === report.id && f.person === report.person && t >= from && t < to) { hit = f; break; }
   }
   if (hit) return { status: hit.at.getTime() <= due.getTime() ? 'On time' : 'LATE', at: hit.at };
   if (asOf && asOf.getTime() < due.getTime()) return { status: 'NOT DUE YET', at: null };

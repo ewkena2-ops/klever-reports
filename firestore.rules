@@ -20,10 +20,25 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /* Who may be anyone at all. Identity is the part of the email before
+       the @ — so the part after it must be ours, and the name must be one of
+       ours. Without this, anybody who could register chairman@anywhere.com
+       would be the Chairman here. Adding a person means adding their id to
+       this list, to CHAT_ACCOUNTS in js/channels.js, and creating their
+       account in the Firebase console. */
+    function known(id) {
+      return id in ['chairman', 'ledger',
+                    'ephrata', 'liu', 'betty', 'seble', 'getachew', 'yordanos',
+                    'amaha', 'wude', 'elyas', 'ashenafi', 'tsega', 'biruktayet',
+                    'yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w'];
+    }
+
     function signedIn() {
       return request.auth != null
           && request.auth.token.email != null
-          && request.auth.token.email is string;
+          && request.auth.token.email is string
+          && request.auth.token.email.lower().matches('^[a-z0-9-]+@klever[.]local$')
+          && known(request.auth.token.email.lower().split('@')[0]);
     }
 
     /* the Klever id behind the account doing the asking */
@@ -76,20 +91,36 @@ service cloud.firestore {
                       && request.resource.data.at == request.time
                       && request.resource.data.keys().hasOnly(
                            ['who','text','lang','at','kind','media','mime','dur','w','h'])
+                      /* the small fields are what they claim to be */
+                      && (!('lang' in request.resource.data)
+                          || (request.resource.data.lang is string && request.resource.data.lang.size() <= 8))
+                      && (!('mime' in request.resource.data)
+                          || (request.resource.data.mime is string && request.resource.data.mime.size() <= 80))
+                      && (!('dur' in request.resource.data) || request.resource.data.dur is number)
+                      && (!('w' in request.resource.data) || request.resource.data.w is number)
+                      && (!('h' in request.resource.data) || request.resource.data.h is number)
                       /* either it says something, or it carries something */
                       && (
                            (!('kind' in request.resource.data)
+                             && !('media' in request.resource.data)
                              && request.resource.data.text.size() > 0)
                            ||
                            (request.resource.data.kind in ['image','voice']
                              && request.resource.data.media is string
-                             && request.resource.data.media.size() > 0
                              /* a Firestore document caps at 1 MiB and base64
                                 inflates by a third, so the client shrinks a
                                 photo until it fits. This is the backstop —
                                 without it one oversized send makes a channel
                                 expensive for every phone that opens it. */
-                             && request.resource.data.media.size() < 700000)
+                             && request.resource.data.media.size() <= 700000
+                             /* and it is carried in the message itself. An
+                                address to somebody's server would make every
+                                reader's phone call it — telling that server
+                                who read the channel, and when — and the
+                                picture could be changed after it was sent. */
+                             && (request.resource.data.kind == 'image'
+                                 ? request.resource.data.media.matches('^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$')
+                                 : request.resource.data.media.matches('^data:audio/[a-z0-9.+-]+(;codecs=[a-z0-9.]+)?;base64,[A-Za-z0-9+/=]+$')))
                          );
 
         /* append-only, for everyone, forever */
@@ -124,7 +155,18 @@ service cloud.firestore {
                        filed as though it arrived before the deadline */
                     && request.resource.data.at == request.time
                     && request.resource.data.report is string
-                    && request.resource.data.person is string;
+                    && request.resource.data.person is string
+                    && known(request.resource.data.person)
+                    /* and the report must be that person's own. Every report
+                       id begins with its owner's id (betty-daily, abrham-g-
+                       design-daily); without this, anyone could file a
+                       colleague's report under their own name and the ledger
+                       would count the colleague's report as in. */
+                    && request.resource.data.report.matches('^' + request.resource.data.person + '-[a-z0-9-]+$')
+                    && request.resource.data.keys().hasOnly(
+                         ['person','report','by','late','due','values','flags','text','lang','at'])
+                    && (!('text' in request.resource.data)
+                        || (request.resource.data.text is string && request.resource.data.text.size() <= 60000));
 
       /* a filed report is filed. A correction is a new filing. */
       allow update, delete: if false;

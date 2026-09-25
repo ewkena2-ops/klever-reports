@@ -32,16 +32,18 @@ var AUTH = {
      password and the site works out whose it is.
 
      Each account is known here only by a tag — the first three hex
-     characters of SHA-256('klever-who:' + password). Twelve bits: enough
-     that eighteen people almost never share one (when two do, both
-     accounts are tried), and far too few to help anyone guess a password,
-     because every guess must still be tried against Firebase, which limits
-     attempts. The passwords themselves are not in this file and never will
-     be; this file is in a public repository.
+     characters of PBKDF2-SHA256(password, 'klever-who:v2', 100,000 rounds).
+     Twelve bits: enough that eighteen people almost never share one (when
+     two do, both accounts are tried). The tags are public, so someone could
+     use them to sort guesses offline before trying them against Firebase;
+     the 100,000 rounds are there to make that as slow for them as a sign-in
+     is for a phone (a fraction of a second each), which turns an offline
+     short-cut into years of work. The passwords themselves are not in this
+     file and never will be; this file is in a public repository.
 
      A password changed, or a person added? Re-make this map from the
      private list with who_tags.py (kept outside the repository). */
-  WHO: /* WHO-TAGS */ { '115': ['seble'], '28f': ['abrham-g'], '59b': ['teklweld'], '745': ['amaha'], '7b0': ['yonas'], '868': ['yohannis'], '8b3': ['abrham-w'], '925': ['wude'], '9c7': ['ashenafi'], 'b0d': ['elyas'], 'b9d': ['biruktayet'], 'be8': ['getachew'], 'bf8': ['betty'], 'e5b': ['tsega'], 'e91': ['ephrata'], 'f79': ['chairman'], 'f92': ['yordanos'], 'fc2': ['liu'] },
+  WHO: /* WHO-TAGS */ { '196': ['liu'], '1cf': ['chairman'], '326': ['ashenafi'], '32f': ['teklweld'], '33f': ['tsega'], '3c3': ['amaha'], '43f': ['yohannis'], '4c4': ['wude'], '599': ['yonas'], '821': ['biruktayet'], '825': ['yordanos'], '827': ['ephrata'], '896': ['abrham-g'], '8fb': ['abrham-w'], '963': ['seble'], 'a4f': ['betty'], 'b60': ['elyas'], 'f2a': ['getachew'] },
 
   /* the ids a password could belong to, most likely first */
   whoIs: function (password) {
@@ -51,8 +53,13 @@ var AUTH = {
     /* a phone may capitalise the first letter; the passwords are lower case */
     var tries = [pw];
     if (pw.toLowerCase() !== pw) tries.push(pw.toLowerCase());
+    var enc = new TextEncoder();
     return Promise.all(tries.map(function (p) {
-      return window.crypto.subtle.digest('SHA-256', new TextEncoder().encode('klever-who:' + p))
+      return window.crypto.subtle.importKey('raw', enc.encode(p), 'PBKDF2', false, ['deriveBits'])
+        .then(function (key) {
+          return window.crypto.subtle.deriveBits(
+            { name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('klever-who:v2'), iterations: 100000 }, key, 16);
+        })
         .then(function (buf) {
           var b = new Uint8Array(buf);
           var tag = ('0' + b[0].toString(16)).slice(-2) + ('0' + b[1].toString(16)).slice(-2).charAt(0);

@@ -69,14 +69,10 @@ function authorize() {
   SpreadsheetApp.getActiveSpreadsheet().getName();
 }
 
+/* This address is public (it is in js/save.js), so the answer says only that
+   it is up — not where the emails go or what the Sheet holds. */
 function doGet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var tabs = ss.getSheets().length;
-  return ContentService.createTextOutput(
-    'Klever report archive is running. ' +
-    tabs + ' report tab(s) in the sheet. ' +
-    'Notifications go to ' + Session.getEffectiveUser().getEmail() + '.'
-  );
+  return ContentService.createTextOutput('Klever report archive is running.');
 }
 
 function doPost(e) {

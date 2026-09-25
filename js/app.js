@@ -2004,6 +2004,8 @@
        who a report goes to, and what is owed today */
     recipientsOf: recipientsOf,
     dueToday: dueToday,
+    /* the sign-in card, for the Chairman's page when nobody is signed in */
+    signIn: function () { var r = document.getElementById('app'); if (r) renderSignIn(r); },
     /* Addis time, and the ledger's rule for what is owed when */
     today: stamp,
     dayStart: dayStartMs,

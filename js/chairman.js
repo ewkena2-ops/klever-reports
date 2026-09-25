@@ -1154,10 +1154,17 @@ import {
     connect();
     onAuthStateChanged(auth, function (u) {
       me = u && u.email ? u.email.split('@')[0].toLowerCase() : null;
+      /* signed out (a new password signs every phone out): the ordinary
+         sign-in card, rather than a message with no way forward. Signing in
+         reloads this page, which then opens as his. */
+      if (!me && window.KLEVER && window.KLEVER.signIn) { window.KLEVER.signIn(); return; }
       if (me !== 'chairman') {
         root.innerHTML = '';
         root.appendChild(el('h1', null, t('chOverview')));
         root.appendChild(el('p', 'codeerr', t('chOnlyChairman')));
+        var home = el('a', 'backlink', t('back'));
+        home.href = 'index.html';
+        root.appendChild(home);
         return;
       }
       render();

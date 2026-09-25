@@ -702,6 +702,9 @@
   function renderSignIn(root) {
     document.title = t('siteTitle');
     root.innerHTML = '';
+    /* the universe and the observatory run edge to edge; their sign-in card
+       keeps the ordinary column (see .wrap.signing) */
+    root.classList.add('signing');
     rebuildTop();
     setView(null);
     root.appendChild(letterhead(null));
@@ -744,6 +747,7 @@
       go.textContent = t('chatSigningIn');
       AUTH.signInByPassword(input.value).then(function () {
         LINK_KEY = null;
+        root.classList.remove('signing');
         try { localStorage.setItem('klever.lastUser', AUTH.who() || ''); } catch (e) {}
         rebuildTop();
         watchFilings();
@@ -2154,6 +2158,7 @@
 
     function route() {
       if (!AUTH.who()) { renderSignIn(root); return; }
+      root.classList.remove('signing');
       try { localStorage.setItem('klever.lastUser', AUTH.who()); } catch (e) {}
       watchFilings();
       /* chairman.js owns #app on its own page. app.js is still loaded there

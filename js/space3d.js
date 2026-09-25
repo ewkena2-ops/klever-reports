@@ -516,3 +516,168 @@ export function ringTexture() {
   GLOWS[key] = t;
   return t;
 }
+
+/* ---------------------------------------------------------------- *
+ *  Asteroids                                                        *
+ * ---------------------------------------------------------------- */
+
+/* rough rocks: a subdivided icosahedron pushed in and out by a smooth
+   function of position, so shared corners stay shared and nothing cracks;
+   flat normals give the faceted look of real boulders */
+let ROCK = null;
+function rockGeo() {
+  if (ROCK) return ROCK;
+  const g = new THREE.IcosahedronGeometry(1, 1);
+  const p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const f = 1 + 0.32 * Math.sin(v.x * 3.1 + 1.7) * Math.sin(v.y * 2.3 + 0.4) * Math.sin(v.z * 2.9 + 2.2)
+                + 0.14 * Math.sin(v.x * 7.3 - v.z * 5.1 + 0.9);
+    v.multiplyScalar(f);
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  ROCK = g;
+  return g;
+}
+const ROCK_VERT = /* glsl */`
+attribute float aShade;
+varying vec3 vN;
+varying vec3 vW;
+varying float vShade;
+void main(){
+  mat4 m = modelMatrix * instanceMatrix;
+  vec4 w = m * vec4(position, 1.0);
+  vW = w.xyz;
+  vN = normalize(mat3(m) * normal);
+  vShade = aShade;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}
+`;
+const ROCK_FRAG = /* glsl */`
+uniform vec3 uSun;
+uniform vec3 uColor;
+uniform float uFade;
+varying vec3 vN;
+varying vec3 vW;
+varying float vShade;
+void main(){
+  vec3 N = normalize(vN);
+  vec3 L = normalize(uSun - vW);
+  float d = max(dot(N, L), 0.0);
+  vec3 col = uColor * (0.5 + 0.5 * vShade) * (0.05 + 1.15 * d);
+  gl_FragColor = vec4(col * uFade, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}
+`;
+
+/* A belt of asteroids round a star at `center`, between two radii, lit
+   from the star, with a haze of dust among them. It turns as one, at the
+   speed its middle would orbit. */
+export function makeBelt(o) {
+  const center = o.center || new THREE.Vector3();
+  const n = o.count, inner = o.inner, outer = o.outer, thick = o.thick || 1.2, k = o.size || 1;
+  const mesh = new THREE.InstancedMesh(rockGeo(), new THREE.ShaderMaterial({
+    vertexShader: ROCK_VERT, fragmentShader: ROCK_FRAG,
+    uniforms: { uSun: { value: center }, uColor: { value: new THREE.Color(o.color || '#8f8272') }, uFade: { value: 1 } }
+  }), n);
+  const shade = new Float32Array(n), dummy = new THREE.Object3D();
+  for (let i = 0; i < n; i++) {
+    const t = Math.random(), r = inner + (outer - inner) * (0.5 + 0.5 * Math.sin((t - 0.5) * Math.PI)) + (Math.random() - 0.5) * 1.5;
+    const a = Math.random() * Math.PI * 2;
+    dummy.position.set(Math.cos(a) * r, (Math.random() + Math.random() + Math.random() - 1.5) * thick, Math.sin(a) * r);
+    const big = Math.random() < 0.035;
+    const sc = k * (big ? 0.9 + Math.random() * 0.8 : 0.12 + Math.pow(Math.random(), 2.2) * 0.55);
+    dummy.scale.set(sc * (0.7 + Math.random() * 0.6), sc * (0.6 + Math.random() * 0.5), sc * (0.7 + Math.random() * 0.6));
+    dummy.rotation.set(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+    shade[i] = Math.random();
+  }
+  mesh.geometry = mesh.geometry.clone();
+  mesh.geometry.setAttribute('aShade', new THREE.InstancedBufferAttribute(shade, 1));
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.position.copy(center);
+  mesh.frustumCulled = false;
+
+  const dn = o.dust || n * 2, dp = new Float32Array(dn * 3);
+  for (let i = 0; i < dn; i++) {
+    const r = inner - 1 + Math.random() * (outer - inner + 2), a = Math.random() * Math.PI * 2;
+    dp.set([Math.cos(a) * r, (Math.random() - 0.5) * thick * 1.6, Math.sin(a) * r], i * 3);
+  }
+  const dg = new THREE.BufferGeometry();
+  dg.setAttribute('position', new THREE.BufferAttribute(dp, 3));
+  const dustMat = new THREE.PointsMaterial({ color: new THREE.Color(o.dustColor || '#b8a58a'), size: 0.35 * k,
+    map: glowTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0.25)'), transparent: true, opacity: 0.5,
+    blending: THREE.AdditiveBlending, depthWrite: false });
+  const dust = new THREE.Points(dg, dustMat);
+  dust.position.copy(center);
+  dust.frustumCulled = false;
+
+  const om = (o.speed || 6.5) / Math.pow((inner + outer) / 2, 1.5);
+  return {
+    mesh, dust,
+    update(dt, fade) {
+      mesh.rotation.y += dt * om;
+      dust.rotation.y += dt * om;
+      mesh.material.uniforms.uFade.value = fade;
+      dustMat.opacity = 0.5 * fade;
+    }
+  };
+}
+
+/* ---------------------------------------------------------------- *
+ *  Bright stars                                                     *
+ * ---------------------------------------------------------------- */
+
+/* a star bright enough to catch the lens: a hot core, a soft halo and
+   four thin spikes */
+function spikeTexture() {
+  const key = 'spike|';
+  if (GLOWS[key]) return GLOWS[key];
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gr.addColorStop(0, 'rgba(255,255,255,1)');
+  gr.addColorStop(0.06, 'rgba(255,255,255,0.85)');
+  gr.addColorStop(0.2, 'rgba(255,255,255,0.18)');
+  gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 256, 256);
+  [[1, 0], [0, 1]].forEach(([x, y]) => {
+    const lg = g.createLinearGradient(128 - x * 128, 128 - y * 128, 128 + x * 128, 128 + y * 128);
+    lg.addColorStop(0, 'rgba(255,255,255,0)');
+    lg.addColorStop(0.5, 'rgba(255,255,255,0.75)');
+    lg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = lg;
+    if (x) g.fillRect(0, 127, 256, 2); else g.fillRect(127, 0, 2, 256);
+  });
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  GLOWS[key] = t;
+  return t;
+}
+/* a scattering of bright stars on the sky, a third of them along the band
+   of the galaxy; the group is meant to travel with the camera */
+export function makeBrightStars(n, radius) {
+  const group = new THREE.Group();
+  const tints = ['#cfe0ff', '#ffffff', '#fff2d6', '#ffd9b0', '#b9d0ff'];
+  const bandN = new THREE.Vector3(0.28, 1.0, 0.36).normalize();
+  for (let i = 0; i < n; i++) {
+    const v = new THREE.Vector3().randomDirection();
+    if (i < n * 0.35) v.addScaledVector(bandN, -v.dot(bandN) * 0.85).normalize();
+    const spike = i % 5 === 0;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: spike ? spikeTexture() : glowTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0.22)'),
+      color: new THREE.Color(tints[i % tints.length]), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      opacity: 0.55 + Math.random() * 0.45
+    }));
+    const size = radius * (spike ? 0.03 + Math.random() * 0.025 : 0.01 + Math.random() * 0.016);
+    sp.scale.set(size, size, 1);
+    sp.position.copy(v.multiplyScalar(radius));
+    group.add(sp);
+  }
+  return group;
+}

@@ -45,7 +45,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TAU, ease, webglOk, makeRenderer, makeComposer, paintSky, makeStars, glowSprite, glowTexture,
-         makeWorld, makeSun, ringTexture } from './space3d.js?v=31b053b3';
+         makeWorld, makeSun, ringTexture, makeBelt, makeBrightStars } from './space3d.js?v=e7b39a62';
 
 /* ---------------------------------------------------------------- *
  *  The shape of the company                                          *
@@ -299,10 +299,42 @@ void main(){
 }
 `;
 
+/* A beam is one shared tube, bent on the graphics chip between three
+   points it is handed each frame — so it stays attached to worlds that move. */
 const BEAM_VERT = /* glsl */`
+attribute vec2 aTA;
+uniform vec3 uA;
+uniform vec3 uM;
+uniform vec3 uB;
+uniform float uR;
 varying vec2 vUv;
-void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+void main(){
+  float t = aTA.x, s = 1.0 - t;
+  vec3 p = s * s * uA + 2.0 * s * t * uM + t * t * uB;
+  vec3 T = normalize(2.0 * s * (uM - uA) + 2.0 * t * (uB - uM) + vec3(1e-5));
+  vec3 up = abs(T.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+  vec3 N = normalize(cross(T, up));
+  vec3 Bn = cross(T, N);
+  vec3 pos = p + (N * cos(aTA.y) + Bn * sin(aTA.y)) * uR;
+  vUv = vec2(t, 0.0);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+}
 `;
+let TUBE = null;
+function tubeGeo() {
+  if (TUBE) return TUBE;
+  const SEG = 56, RAD = 6, ta = [], idx = [];
+  for (let i = 0; i <= SEG; i++) for (let j = 0; j <= RAD; j++) ta.push(i / SEG, j / RAD * Math.PI * 2);
+  for (let i = 0; i < SEG; i++) for (let j = 0; j < RAD; j++) {
+    const a = i * (RAD + 1) + j, b = a + RAD + 1;
+    idx.push(a, b, a + 1, b, b + 1, a + 1);
+  }
+  TUBE = new THREE.BufferGeometry();
+  TUBE.setAttribute('aTA', new THREE.Float32BufferAttribute(ta, 2));
+  TUBE.setAttribute('position', new THREE.Float32BufferAttribute(new Array((SEG + 1) * (RAD + 1) * 3).fill(0), 3));
+  TUBE.setIndex(idx);
+  return TUBE;
+}
 const BEAM_FRAG = /* glsl */`
 uniform vec3 uColor;
 uniform int uState;
@@ -435,7 +467,11 @@ export function mount(root, opts) {
   controls.autoRotateSpeed = 0.18;
   const { composer, bloom } = makeComposer(renderer, scene, camera, 0.8, 0.55, 0.82);
   const skyRT = paintSky(renderer, scene, 0.5);
-  const starMat = makeStars(scene, 4200, 30000, pr);
+  const starMat = makeStars(scene, small ? 5000 : 7500, 30000, pr);
+  /* a few stars bright enough to catch the lens; like the rest they are
+     at infinity, so they travel with the camera */
+  const bright = makeBrightStars(small ? 50 : 80, 24000);
+  scene.add(bright);
 
   /* ---------- the five galaxies ---------- */
   const galU = { uScale: { value: 400 }, uFade: { value: 1 }, uMax: { value: 3.6 }, uNear: { value: new THREE.Vector2(60, 520) } };
@@ -478,7 +514,7 @@ export function mount(root, opts) {
   scene.add(klever);
   const sunPos = new THREE.Vector3();
   const worlds = [];
-  const lineMats = [];
+  const lineMats = [], drawn = [];
   function circle(R, color, op, center, euler, parent, mats) {
     const pts = [];
     for (let i = 0; i <= 180; i++) {
@@ -491,8 +527,16 @@ export function mount(root, opts) {
     const m = new THREE.LineBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0, depthWrite: false });
     m.userData.base = op;
     (mats || lineMats).push(m);
-    (parent || klever).add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), m));
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), m);
+    (parent || klever).add(line);
+    drawn.push(line.geometry);
+    return line;
   }
+
+  /* the asteroid belt, beyond the outermost department */
+  const belt = makeBelt({ count: small ? 1000 : 2200, inner: 75, outer: 80.5, thick: 1.3, size: BS * 0.5, dust: small ? 2500 : 5000, center: sunPos });
+  klever.add(belt.mesh);
+  klever.add(belt.dust);
 
   /* the Chairman */
   const SUN_R = small ? 9.5 : 8;
@@ -527,6 +571,10 @@ export function mount(root, opts) {
     klever.add(w.group);
     worlds.push(w);
     circle(d.orbit, d.color, 0.17);
+    /* the moons' orbits travel with their planet */
+    const shell = new THREE.Group();
+    shell.position.copy(pos);
+    klever.add(shell);
     const lab = el('button', 'obs3d-label uni-planet');
     lab.type = 'button';
     const dot = el('i');
@@ -535,7 +583,9 @@ export function mount(root, opts) {
     lab.style.color = d.color;
     lab.onclick = () => pick({ kind: 'dept', id: d.key });
     labels.appendChild(lab);
-    planets[d.key] = { d, pos, r, w, lab, dot, state: null };
+    /* inner worlds go round faster, as they do round a real star */
+    planets[d.key] = { d, pos, r, w, lab, dot, shell, state: null,
+                       a0: d.angle + TURN, om: 6.5 / Math.pow(d.orbit, 1.5) };
   });
 
   /* the people, as moons of their department */
@@ -556,7 +606,7 @@ export function mount(root, opts) {
     shells.forEach(([grp, R, tx, ph]) => {
       if (!grp.length) return;
       const e = new THREE.Euler(tx, 0, 0.12);
-      circle(R, d.color, 0.09, P.pos, e);
+      circle(R, d.color, 0.09, null, e, P.shell);
       grp.forEach((p, i) => {
         const a = ph + i / grp.length * TAU;
         const pos = new THREE.Vector3(Math.cos(a) * R, 0, Math.sin(a) * R).applyEuler(e).add(P.pos);
@@ -581,7 +631,8 @@ export function mount(root, opts) {
           lab.onclick = () => pick({ kind: 'person', id: p.id });
           labels.appendChild(lab);
         }
-        nodes[p.id] = { id: p.id, pos, r, w, pick: w.surf, marker, lab, person: p, dept: d, state: null };
+        nodes[p.id] = { id: p.id, pos, r, w, pick: w.surf, marker, lab, person: p, dept: d, state: null,
+                        P, R, e, a0: a, om: (tx > 0 ? 0.11 : 0.07) * (1 + (h % 7) * 0.03) };
       });
     });
   });
@@ -641,26 +692,24 @@ export function mount(root, opts) {
     to.forEach(t => {
       const A = where(r.person), B = where(t);
       if (!A || !B || A === B) return;
-      const mid = A.clone().add(B).multiplyScalar(0.5);
-      mid.y += A.distanceTo(B) * 0.25 + 3;
-      const curve = new THREE.QuadraticBezierCurve3(A.clone(), mid, B.clone());
       const u = { uColor: { value: new THREE.Color(STATUS.pending.color) }, uState: { value: 0 },
-                  uTime: { value: 0 }, uArrive: { value: 1 }, uFade: { value: 0 }, uDim: { value: 1 } };
-      const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.055 * BS, 5, false), new THREE.ShaderMaterial({
+                  uTime: { value: 0 }, uArrive: { value: 1 }, uFade: { value: 0 }, uDim: { value: 1 },
+                  uA: { value: new THREE.Vector3() }, uM: { value: new THREE.Vector3() }, uB: { value: new THREE.Vector3() },
+                  uR: { value: 0.055 * BS } };
+      const mesh = new THREE.Mesh(tubeGeo(), new THREE.ShaderMaterial({
         vertexShader: BEAM_VERT, fragmentShader: BEAM_FRAG, uniforms: u,
         transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
       }));
+      mesh.frustumCulled = false;
       klever.add(mesh);
-      beams.push({ r, to: t, mesh, u, state: 'pending', litAt: -1e9 });
+      beams.push({ r, to: t, A, B, mesh, u, state: 'pending', litAt: -1e9, pulseAt: 0 });
     });
   });
 
   /* the day's money */
   const flows = FLOWS.map(f => {
     const A = where(f.from), B = where(f.to);
-    const mid = A.clone().add(B).multiplyScalar(0.5);
-    mid.y += A.distanceTo(B) * 0.28 + 6;
-    const curve = new THREE.QuadraticBezierCurve3(A.clone(), mid, B.clone());
+    const curve = new THREE.QuadraticBezierCurve3(A.clone(), A.clone(), B.clone());
     const n = 36;
     const pg = new THREE.BufferGeometry();
     pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
@@ -672,7 +721,7 @@ export function mount(root, opts) {
     klever.add(pts);
     const lab = el('div', 'uni-amt');
     labels.appendChild(lab);
-    return { f, curve, pts, pm, n, lab, amount: 0, show: 0 };
+    return { f, A, B, curve, pts, pm, n, lab, amount: 0, show: 0 };
   });
 
   /* the agents: small ice worlds on the outermost orbit */
@@ -730,7 +779,7 @@ export function mount(root, opts) {
       lab.type = 'button';
       lab.onclick = () => pick({ kind: 'crew', id: co.id + ':' + i });
       labels.appendChild(lab);
-      return { p, pos, r, w, lab };
+      return { p, pos, r, w, lab, orbit, a0: a, om: 6.5 / Math.pow(orbit, 1.5) };
     });
     const headLab = el('button', 'obs3d-label uni-person uni-sun', co.head ? L(co.head) : s('noOne', 'No one on file yet'));
     headLab.type = 'button';
@@ -757,7 +806,11 @@ export function mount(root, opts) {
       labels.appendChild(lab);
       feed = { curve, pts, pm, n, lab, count: 0 };
     }
-    minors[co.id] = { co, g, c0, sR, star, crew, ws, mats, feed, headLab, f: 0 };
+    const inner = (co.crew || []).length ? 33 : 17;
+    const mbelt = makeBelt({ count: small ? 300 : 650, inner, outer: inner + 5, thick: 0.9, size: BS * 0.45, dust: small ? 700 : 1400, center: c0 });
+    g.add(mbelt.mesh);
+    g.add(mbelt.dust);
+    minors[co.id] = { co, g, c0, sR, star, crew, ws, mats, feed, headLab, belt: mbelt, f: 0 };
   });
 
   /* the same figures between the galaxies, seen from the group */
@@ -780,6 +833,23 @@ export function mount(root, opts) {
     labels.appendChild(lab);
     return { id, curve, pts, pm, n, lab };
   });
+
+  /* a ring of light where a report has just been filed */
+  const pulses = [];
+  for (let i = 0; i < 14; i++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTexture(), transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending, opacity: 0 }));
+    sp.visible = false;
+    klever.add(sp);
+    pulses.push({ sp, t0: -1, r: 1, at: null });
+  }
+  let pulseI = 0;
+  function flash(at, r, color, now) {
+    const pu = pulses[pulseI++ % pulses.length];
+    pu.at = at; pu.r = r; pu.t0 = now;
+    pu.sp.material.color.set(color);
+    pu.sp.visible = true;
+  }
 
   /* ---------- the day ---------- */
   const clock = opts.clock || (() => new Date());
@@ -840,7 +910,10 @@ export function mount(root, opts) {
     beams.forEach(b => {
       const st = stateOf(b.r, T);
       if (st !== b.state) {
-        if ((st === 'on' || st === 'late') && b.state !== 'on' && b.state !== 'late') b.litAt = (mode === 'live' && !b.seen) ? -1e9 : now;
+        if ((st === 'on' || st === 'late') && b.state !== 'on' && b.state !== 'late') {
+          if (mode === 'live' && !b.seen) b.litAt = -1e9;
+          else { b.litAt = now; b.pulseAt = now; }
+        }
         b.state = st;
       }
       b.seen = true;
@@ -1169,15 +1242,26 @@ export function mount(root, opts) {
     const [y0, y1] = band();
     offGoal = H / 2 - (y0 + y1) / 2;
   }
+  /* A flight. Distance falls (or rises) exponentially and the heading turns
+     smoothly; a long one also swings round as it goes and widens the lens
+     at its fastest, and a jump between companies climbs out into the
+     group and comes back down rather than skimming between galaxies. */
   function flyTo(v, ms, lead) {
     const o0 = camera.position.clone().sub(controls.target), o1 = v.pos.clone().sub(v.target);
-    tween = { t0: controls.target.clone(), t1: v.target.clone(), lead: lead || 1,
+    const travel = controls.target.distanceTo(v.target), reach = Math.max(o0.length(), o1.length());
+    const long = ms > 3000;
+    follow = v.live || null;
+    tween = { t0: controls.target.clone(), t1: v.live || v.target.clone(), lead: lead || 1,
+              hop: travel > reach * 8 && travel > 2000 ? travel * 0.9 : 0,
+              swing: long ? 0.55 : 0, kick: long ? 11 : 0,
               d0: Math.log(o0.length()), d1: Math.log(o1.length()),
               n0: o0.clone().normalize(), q: new THREE.Quaternion().setFromUnitVectors(o0.clone().normalize(), o1.clone().normalize()),
               start: performance.now(), ms: reduce ? 1 : ms };
     controls.enabled = false;
   }
   const qI = new THREE.Quaternion(), qK = new THREE.Quaternion();
+  const Y_AXIS = new THREE.Vector3(0, 1, 0), lastF = new THREE.Vector3(), tmpF = new THREE.Vector3();
+  let follow = null;
   function minorText(id) {
     const bits = [s('coOff', 'not connected yet')];
     if (id === 'groupfinance') {
@@ -1223,6 +1307,7 @@ export function mount(root, opts) {
     drawSheet();
     computeViews();
     if (!p) {
+      follow = null;
       if (level === 'company') { computeViews(); flyTo(views.company, 1600); }
       return;
     }
@@ -1232,19 +1317,20 @@ export function mount(root, opts) {
       level = 'company'; cur = home; controls.minDistance = 3;
       wrap.classList.add('at-company'); wrap.classList.remove('at-group'); heading();
     }
-    let P, dist, sunAt = sunPos;
+    let P, dist, sunAt = sunPos, live = null;
     if (p.kind === 'head') { const m = minors[p.id]; P = m.c0.clone(); dist = m.sR * 6.5; sunAt = m.c0; }
-    else if (p.kind === 'crew') { const [cid, i] = p.id.split(':'); const m = minors[cid], c = m.crew[+i]; P = c.pos.clone(); dist = c.r * 7 + 10; sunAt = m.c0; }
-    else if (p.kind === 'person') { const n = nodes[p.id]; P = n.pos.clone(); dist = p.id === 'chairman' ? SUN_R * 6.5 : Math.max(8, n.r * 13); }
-    else if (p.kind === 'dept') { const pl = planets[p.id]; P = pl.pos.clone(); dist = pl.r * 6 + 16 * BS; }
+    else if (p.kind === 'crew') { const [cid, i] = p.id.split(':'); const m = minors[cid], c = m.crew[+i]; live = c.pos; dist = c.r * 7 + 10; sunAt = m.c0; }
+    else if (p.kind === 'person') { const n = nodes[p.id]; if (p.id === 'chairman') P = n.pos.clone(); else live = n.pos; dist = p.id === 'chairman' ? SUN_R * 6.5 : Math.max(8, n.r * 13); }
+    else if (p.kind === 'dept') { const pl = planets[p.id]; live = pl.pos; dist = pl.r * 6 + 16 * BS; }
     else if (p.kind === 'inst') { const i = insts[p.id]; P = i.pos.clone(); dist = i.r * 6 + 8; }
-    else { P = satPos(sats.find(x => x.id === p.id)).clone(); dist = 9 * BS; }
+    else { live = satPos(sats.find(x => x.id === p.id)); dist = 9 * BS; }
+    if (live) P = live.clone();
     /* come at it from between the camera and the sun, so its lit face shows */
     const toCam = camera.position.clone().sub(P).setY(0).normalize();
     const toSun = P.distanceToSquared(sunAt) > 4 ? sunAt.clone().sub(P).setY(0).normalize() : toCam.clone();
     const dir = toSun.multiplyScalar(0.55).add(toCam.multiplyScalar(0.45)).normalize()
       .multiplyScalar(0.84).add(new THREE.Vector3(0, 0.5, 0)).normalize();
-    flyTo({ pos: P.clone().addScaledVector(dir, dist * (H > W ? 1.35 : 1)), target: P }, 1700);
+    flyTo({ pos: P.clone().addScaledVector(dir, dist * (H > W ? 1.35 : 1)), target: P, live }, 1700);
   }
 
   /* tapping */
@@ -1386,7 +1472,7 @@ export function mount(root, opts) {
     composer.setSize(W, H);
     camera.aspect = W / H;
     camera.updateProjectionMatrix();
-    galU.uScale.value = H * pr / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+    galU.uScale.value = H * pr / (2 * Math.tan(THREE.MathUtils.degToRad(45 / 2)));
     starMat.uniforms.uPR.value = pr;
     computeViews();
     if (!tween) {
@@ -1397,10 +1483,12 @@ export function mount(root, opts) {
 
   const watchTarget = key => key === 'chairman' ? sunPos : planets[key].pos;
   let last = 0, raf = 0, alive = true, time = 0, frames = 0, slow = 0, bloomOn = true;
+  let revealed = false, revealAt = 0, drawnDone = false, orbitT = 0;
   function frame(now) {
     if (!alive) return;
     const dt = last ? Math.min(0.064, (now - last) / 1000) : 0.016;
     last = now; time += dt;
+    if (!reduce) orbitT += dt;
 
     frames++;
     if (frames > 30 && frames < 260) {
@@ -1429,11 +1517,26 @@ export function mount(root, opts) {
       const u = Math.min(1, (now - tween.start) / tween.ms), k = ease(u);
       controls.target.lerpVectors(tween.t0, tween.t1, ease(Math.min(1, u * tween.lead)));
       qK.slerpQuaternions(qI, tween.q, k);
+      const bump = Math.sin(Math.PI * k);
       camera.position.copy(tween.n0).applyQuaternion(qK)
-        .multiplyScalar(Math.exp(tween.d0 + (tween.d1 - tween.d0) * k)).add(controls.target);
-      if (u >= 1) { tween = null; controls.enabled = true; }
+        .multiplyScalar(Math.exp(tween.d0 + (tween.d1 - tween.d0) * k) + tween.hop * Math.pow(bump, 0.8))
+        .applyAxisAngle(Y_AXIS, tween.swing * bump).add(controls.target);
+      const fov = 45 + tween.kick * bump;
+      if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+      if (u >= 1) {
+        tween = null; controls.enabled = true;
+        if (camera.fov !== 45) { camera.fov = 45; camera.updateProjectionMatrix(); }
+        if (follow) lastF.copy(follow);
+      }
+    } else if (follow) {
+      /* the camera keeps station on a world that moves */
+      tmpF.copy(follow).sub(lastF);
+      controls.target.add(tmpF);
+      camera.position.add(tmpF);
+      lastF.copy(follow);
     }
     starMat.userData.points.position.copy(camera.position);
+    bright.position.copy(camera.position);
     starMat.uniforms.uTime.value = time;
 
     /* how far into Klever the camera is: 0 out among the galaxies, 1 in the system */
@@ -1451,6 +1554,12 @@ export function mount(root, opts) {
       m.star.corona.material.opacity = m.f;
       m.star.haze.material.opacity = m.f;
       m.ws.forEach(w => w.update(dt, time));
+      m.belt.update(reduce ? 0 : dt, m.f);
+      m.crew.forEach(c => {
+        const a = c.a0 + c.om * orbitT;
+        c.pos.set(Math.cos(a) * c.orbit, 0, Math.sin(a) * c.orbit).add(m.c0);
+        c.w.group.position.copy(c.pos);
+      });
       m.mats.forEach(mm => { mm.opacity = m.f * mm.userData.base; });
       if (m.feed) {
         const has = m.co.id === 'groupfinance' ? kidan.reps.length > 0 : rove.m2 != null && rove.m2 > 0;
@@ -1487,7 +1596,64 @@ export function mount(root, opts) {
     });
 
     klever.visible = kf > 0.01;
+    /* the first arrival: orbits draw themselves, and the day's reports go
+       out one after another */
+    if (!revealed && kf > 0.6) {
+      revealed = true;
+      revealAt = now;
+      if (!reduce) {
+        let i = 0;
+        beams.forEach(b => {
+          if (b.state === 'on' || b.state === 'late') { b.litAt = now + 700 + i * 90; b.pulseAt = b.litAt; i++; }
+        });
+      }
+    }
+    const rv = reduce || !revealed ? (revealed ? 1 : 0) : THREE.MathUtils.clamp((now - revealAt) / 2200, 0, 1);
+    if (rv < 1 || !drawnDone) {
+      const cnt = Math.max(2, Math.ceil(181 * ease(rv)));
+      drawn.forEach(g => g.setDrawRange(0, cnt));
+      drawnDone = rv >= 1;
+    }
     if (klever.visible) {
+      belt.update(reduce ? 0 : dt, kf);
+      /* the worlds move: planets round the sun, moons round their planets */
+      Object.values(planets).forEach(P => {
+        const a = P.a0 + P.om * orbitT;
+        P.pos.set(Math.cos(a) * P.d.orbit, 0, Math.sin(a) * P.d.orbit);
+        P.w.group.position.copy(P.pos);
+        P.shell.position.copy(P.pos);
+      });
+      Object.values(nodes).forEach(n => {
+        if (!n.P) return;
+        const a = n.a0 + n.om * orbitT;
+        n.pos.set(Math.cos(a) * n.R, 0, Math.sin(a) * n.R).applyEuler(n.e).add(n.P.pos);
+        n.w.group.position.copy(n.pos);
+        if (n.marker) n.marker.position.copy(n.pos);
+      });
+      beams.forEach(b => {
+        b.u.uA.value.copy(b.A);
+        b.u.uB.value.copy(b.B);
+        b.u.uM.value.copy(b.A).add(b.B).multiplyScalar(0.5).y += b.A.distanceTo(b.B) * 0.25 + 3;
+        if (b.pulseAt && now >= b.pulseAt) {
+          const n = nodes[b.r.person];
+          flash(n ? n.pos : b.A, n ? n.r : 1, STATUS[b.state === 'late' ? 'late' : 'on'].color, now);
+          b.pulseAt = 0;
+        }
+      });
+      flows.forEach(fl => {
+        fl.curve.v0.copy(fl.A);
+        fl.curve.v2.copy(fl.B);
+        fl.curve.v1.copy(fl.A).add(fl.B).multiplyScalar(0.5).y += fl.A.distanceTo(fl.B) * 0.28 + 6;
+      });
+      pulses.forEach(pu => {
+        if (pu.t0 < 0) return;
+        const u = (now - pu.t0) / 1100;
+        if (u >= 1) { pu.t0 = -1; pu.sp.visible = false; return; }
+        pu.sp.position.copy(pu.at);
+        const sc = pu.r * (2.4 + 9 * ease(u));
+        pu.sp.scale.set(sc, sc, 1);
+        pu.sp.material.opacity = kf * Math.pow(1 - u, 1.6);
+      });
       sun.u.uTime.value = time;
       sun.corona.material.opacity = kf;
       sun.haze.material.opacity = kf;
@@ -1539,21 +1705,19 @@ export function mount(root, opts) {
         st.line.computeLineDistances();
         st.lm.opacity = kf * (st.heat === 'loud' ? 0.3 : 0.03);
       });
-      if (!tween && picked && picked.kind === 'agent') {
-        /* an agent keeps moving; the camera goes with it */
-        const st = sats.find(x => x.id === picked.id);
-        const dv = satPos(st).clone().sub(controls.target).multiplyScalar(Math.min(1, dt * 4));
-        controls.target.add(dv);
-        camera.position.add(dv);
-      }
+
     }
 
     offY += (offGoal - offY) * Math.min(1, dt * 5);
     camera.setViewOffset(W, H, 0, offY, W, H);
     controls.autoRotate = !reduce && !picked;
-    controls.update();
+    /* in flight the flight alone steers: the controls would clamp the
+       distance to the destination's limits and pull the camera down into
+       whatever lies between */
+    if (tween) camera.lookAt(controls.target); else controls.update();
     camUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
     placeLabels(kf, near);
+    if (opts.debug) window.__uni = { p: camera.position.toArray().map(Math.round), t: controls.target.toArray().map(Math.round), fov: camera.fov, kf, near };
     composer.render();
     raf = requestAnimationFrame(frame);
   }

@@ -1292,3 +1292,18 @@ svg.sky .node text{font-size:11px}
 .penalty.previewnote{color:var(--gold);background:var(--gold-bg);border-color:rgba(227,181,71,.35)}
 .previewing fieldset{opacity:.7}
 .previewing fieldset input,.previewing fieldset textarea,.previewing fieldset select,.previewing fieldset button{cursor:not-allowed}
+
+/* ---------- a date box that shows "Wed 9 Sep 2026", not the computer's 09/09/2026 ---------- */
+.datebox{position:relative;display:flex;align-items:center;gap:10px;min-height:46px;width:100%;min-width:0;
+  padding:0 12px;border-radius:var(--r-s);background:var(--field);border:1px solid var(--line-2);color:var(--ink);
+  font-family:var(--sans);font-size:15px;transition:border-color .15s ease, box-shadow .15s ease}
+.datebox .dshow{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.datebox.empty .dshow{color:var(--dim)}
+.datebox svg{flex:none;width:18px;height:18px;color:var(--mut)}
+/* the real input, invisible, over the whole box: taps and the keyboard reach it */
+.datebox input.dnative{position:absolute;inset:0;width:100%;height:100%;min-height:0;margin:0;padding:0;
+  opacity:0;border:0;cursor:pointer;color-scheme:dark}
+.datebox:focus-within{border-color:var(--teal-hi);box-shadow:0 0 0 3px rgba(95,224,198,.16)}
+.datebox:has(input.miss){border-color:var(--coral);box-shadow:0 0 0 3px var(--coral-bg)}
+.datebox:has(input:disabled){opacity:.7}
+.datebox:has(input:disabled) input.dnative{cursor:not-allowed}

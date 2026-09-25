@@ -826,7 +826,8 @@ import {
     r1.appendChild(to);
     var r2 = el('label', 'chinsf');
     r2.appendChild(el('span', null, t('chInsDue')));
-    r2.appendChild(due);
+    /* "Sun 28 Sep 2026", not the computer's "28/09/2026" */
+    r2.appendChild(window.KLEVER && window.KLEVER.dressDate ? window.KLEVER.dressDate(due) : due);
     form.appendChild(what);
     form.appendChild(r1);
     form.appendChild(r2);

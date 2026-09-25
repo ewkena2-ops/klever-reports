@@ -86,7 +86,7 @@
       en: 'Finance', am: 'ፋይናንስ',
       watchEn: 'Whether the money is where it should be: the 6,000,000 reserve, ZamZam, payments over 50,000 without Kidan.',
       watchAm: 'ገንዘቡ ባለበት ቦታ መሆኑን፦ የ6,000,000 ክምችት፣ ዘምዘም፣ ያለ ኪዳን ከ50,000 በላይ ክፍያዎች።',
-      reads: [['Betelhem’s daily finance report', 'የቤተልሔም ዕለታዊ የፋይናንስ ሪፖርት'],
+      reads: [['The daily finance report', 'ዕለታዊ የፋይናንስ ሪፖርት'],
               ['Her 7-day forecast', 'የ7 ቀን ትንበያዋ']]
     },
     commercial: {
@@ -100,7 +100,7 @@
       en: 'Customers', am: 'ደንበኞች',
       watchEn: 'What customers are saying, and who is still waiting for an answer.',
       watchAm: 'ደንበኞች የሚሉትን፣ እና ማን ገና መልስ እየጠበቀ እንደሆነ።',
-      reads: [['Betelhem’s customer pulse', 'የቤተልሔም የደንበኛ ሪፖርት'], ['Elyas', 'ኤልያስ'], ['Ephrata', 'ኤፍራታ']]
+      reads: [['The customer pulse report', 'የደንበኛ ሪፖርት (ፋይናንስ)'], ['Elyas', 'ኤልያስ'], ['Ephrata', 'ኤፍራታ']]
     },
     design: {
       en: 'Design', am: 'ዲዛይን',

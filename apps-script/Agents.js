@@ -230,13 +230,13 @@ var DECISIONS = [
   yours:true,
   detail:'Every letter sets 500 Birr for a weekly report filed late. Most set nothing for one '+
          'that never arrives. The exceptions are Ephrata’s weekly report (–500) and projection '+
-         '(–500, –1,000 the second time running) and Betelhem’s 4-week projection (–1,000) and '+
+         '(–500, –1,000 the second time running) and Finance’s 4-week projection (–1,000) and '+
          'job list (–500). Mahelet’s 15-day plan costs 5,000 late and nothing missing, unless it '+
          'is missed two weeks running. So for most weekly reports filing an hour late costs 500 '+
          'and not filing costs nothing, which is the wrong way round and is what the ledger '+
          'charges, because it charges what the paper says. A weekly report still missing at '+
          'midnight on its due day counts as missing.',
-  blocks:'Every letter with a weekly report in it — Ephrata, Mahelet, Betelhem, Amaha, Wude, '+
+  blocks:'Every letter with a weekly report in it — Ephrata, Mahelet, Finance, Amaha, Wude, '+
          'Elyas, Getachew, Yordanos, both salespeople, all five designers',
   bites: function (d) {
     var n = 0;
@@ -335,7 +335,7 @@ var DECISIONS = [
   bites: function () { return null; } },
 
 { id:'rovestone', what:'Rovestone, before anyone signs it',
-  detail:'The 50% advance contradicts Mahelet’s and Betelhem’s letters, which both forbid '+
+  detail:'The 50% advance contradicts Mahelet’s and Finance’s letters, which both forbid '+
          'starting production before final payment. Only Amaha’s letter mentions Rovestone at '+
          'all, so the policy binds him and nobody else. And the authorization log has no column '+
          'for the Chairman’s approval, which is the policy’s central rule.',
@@ -560,7 +560,7 @@ var AGENTS = [
       'below it has to be reported the same day. A discrepancy, an unconfirmed ZamZam '+
       'transfer, or a payment over 50,000 without Kidan is a same-day problem, not a '+
       'month-end one. If days_until_below_6m_at_this_rate gives a number, say it — that is '+
-      'the warning Betelhem’s letter fines her for not giving. If it gives none, do not '+
+      'the warning Finance’s letter fines for not giving. If it gives none, do not '+
       'estimate one.' },
 
 { id:'commercial', en:'Sales and commercial', am:'ሽያጭና ንግድ',

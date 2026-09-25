@@ -288,7 +288,7 @@ function forecasts_(P) {
   }
   return [
     judge(projWk1, ops.sales.collected, 'Ephrata’s projected collections against what was collected'),
-    judge(cashWk1, ops.money.cash_in, 'Betelhem’s expected money in against what came in')
+    judge(cashWk1, ops.money.cash_in, 'Finance’s expected money in against what came in')
   ];
 }
 

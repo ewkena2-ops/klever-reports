@@ -24,7 +24,8 @@ const T = {
 
     staySignedIn:'You stay signed in on this phone. Use Sign out to hand it to someone else.',
     signInOffline:'No connection. Signing in for the first time needs one; after that this phone stays signed in.',
-    signOut:'Sign out',
+    signOut:'Sign out',
+
     dueForYou:'Due from you today',
     nothingForYou:'Nothing due from you today.',
     whoReports:'Owed to you today',
@@ -231,7 +232,7 @@ const T = {
     unNoOneSub:'No one from this company is on file yet. Send their names and roles and they can be added the way Klever’s people were.',
     unFromKlever:'From Klever today',
     unToKidan:'Klever’s reports to Kidan',
-    unPayKidan:'Payments over 50,000 sent to Kidan — Betelhem’s report',
+    unPayKidan:'Payments over 50,000 sent to Kidan — Finance’s report',
     unPayKidanShort:'payments over 50,000',
     unRoveM2:'m² made for Rovestone — Amaha’s report',
     unForRove:'made for Rovestone today',
@@ -294,7 +295,8 @@ const T = {
     colleaguesReports:'Colleagues’ reports',
     colleaguesNote:'To read only: what each person reports, by when, and to whom. Only they, or the Chairman, can fill theirs in.',
     previewTag:'Preview',
-    previewOf:'Preview of {who}’s report. You can read the questions; only {who} or the Chairman can fill it in and send it.'
+    previewOf:'Preview of {who}’s report. You can read the questions; only {who} or the Chairman can fill it in and send it.',
+    pickDate:'Pick a date'
   },
   am:{
     siteTitle:'የክሌቨር ሪፖርቶች',
@@ -319,7 +321,8 @@ const T = {
 
     staySignedIn:'በዚህ ስልክ ላይ ገብተው ይቆያሉ። ለሌላ ሰው ሲሰጡ «ውጣ» ይጫኑ።',
     signInOffline:'ኔትወርክ የለም። ለመጀመሪያ ጊዜ ለመግባት ኔትወርክ ያስፈልጋል፤ ከዚያ በኋላ ይህ ስልክ ገብቶ ይቆያል።',
-    signOut:'ውጣ',
+    signOut:'ውጣ',
+
     dueForYou:'ዛሬ ከእርስዎ የሚጠበቁ',
     nothingForYou:'ዛሬ ከእርስዎ የሚጠበቅ ሪፖርት የለም።',
     whoReports:'ዛሬ ለእርስዎ የሚገቡ',
@@ -523,7 +526,7 @@ const T = {
     unNoOneSub:'ከዚህ ኩባንያ እስካሁን የተመዘገበ ሰው የለም። ስማቸውንና ሥራቸውን ይላኩ፤ እንደ ክሌቨር ሠራተኞች ይጨመራሉ።',
     unFromKlever:'ዛሬ ከክሌቨር',
     unToKidan:'የክሌቨር ሪፖርቶች ለኪዳን',
-    unPayKidan:'ከ50,000 በላይ ለኪዳን የተላኩ ክፍያዎች — የቤተልሔም ሪፖርት',
+    unPayKidan:'ከ50,000 በላይ ለኪዳን የተላኩ ክፍያዎች — የፋይናንስ ሪፖርት',
     unPayKidanShort:'ከ50,000 በላይ ክፍያዎች',
     unRoveM2:'ለሮቭስቶን የተመረተ ካሬ ሜትር — የአማሃ ሪፖርት',
     unForRove:'ዛሬ ለሮቭስቶን የተመረተ',
@@ -586,6 +589,7 @@ const T = {
     colleaguesReports:'የሥራ ባልደረቦች ሪፖርቶች',
     colleaguesNote:'ለማንበብ ብቻ፦ እያንዳንዱ ሰው ምን እንደሚያቀርብ፣ እስከ መቼና ለማን። የራሳቸውን የሚሞሉት እነሱ ወይም ሊቀመንበሩ ብቻ ናቸው።',
     previewTag:'ቅድመ እይታ',
-    previewOf:'የ{who} ሪፖርት ቅድመ እይታ። ጥያቄዎቹን ማንበብ ይችላሉ፤ መሙላትና መላክ የሚችሉት {who} ወይም ሊቀመንበሩ ብቻ ናቸው።'
+    previewOf:'የ{who} ሪፖርት ቅድመ እይታ። ጥያቄዎቹን ማንበብ ይችላሉ፤ መሙላትና መላክ የሚችሉት {who} ወይም ሊቀመንበሩ ብቻ ናቸው።',
+    pickDate:'ቀን ይምረጡ'
   }
 };

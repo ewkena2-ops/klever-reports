@@ -358,6 +358,50 @@
     };
   }
 
+  /* A date nobody can read two ways: "Wed 9 Sep 2026", in the reader's
+     language, and — as the letters carry both calendars — the Ethiopian date
+     after it when asked. yyyy-mm-dd in; noon UTC keeps it the same day in
+     every time zone. */
+  function prettyDate(ymd, withEth) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd || '')) return ymd ? String(ymd) : '';
+    var d = new Date(ymd + 'T12:00:00Z');
+    var wd = (lang === 'am' ? DAYS_AM : DAYS_EN)[d.getUTCDay()];
+    var s = (lang === 'am' ? wd : wd.slice(0, 3)) + ' ' + d.getUTCDate() + ' ' +
+            monShort(d.getUTCMonth()) + ' ' + d.getUTCFullYear();
+    if (withEth) {
+      var e = toEthiopian(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+      s += ' · ' + ETH_MONTHS[e.m - 1] + ' ' + e.d + ' ቀን ' + e.y;
+    }
+    return s;
+  }
+
+  /* The browser draws a date box in the computer's own regional style —
+     "09/09/2026", day first or month first — and no page can restyle it.
+     So the box shows prettyDate, and the real date input lies invisibly on
+     top of it: a tap still lands on it and opens the same calendar. */
+  function dressDate(inp) {
+    var box = el('div', 'datebox');
+    var show = el('span', 'dshow');
+    box.appendChild(show);
+    box.appendChild(icon('cal'));
+    inp.classList.add('dnative');
+    box.appendChild(inp);
+    function paint() {
+      show.textContent = inp.value ? prettyDate(inp.value, true) : t('pickDate');
+      box.classList.toggle('empty', !inp.value);
+    }
+    function pick() { try { if (inp.showPicker && !inp.disabled) inp.showPicker(); } catch (e) { /* the browser opens its own */ } }
+    inp.addEventListener('click', pick);
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); }
+    });
+    inp.addEventListener('input', paint);
+    inp.addEventListener('change', paint);
+    box.paint = paint;
+    paint();
+    return box;
+  }
+
   /* Klever runs a six-day week — 240 m² a week at 40 m² a day. */
   function dueToday() {
     var d = stamp();
@@ -424,6 +468,7 @@
     'Ephrata': ['ephrata'],
     'Betty': ['betty'],
     'Betelhem': ['betty'],
+    'Finance': ['betty'],   /* her name on the site for now */
     'Elyas': ['elyas'],
     'Kidan': []          /* Kidan has no account — he has no letter either */
   };
@@ -506,6 +551,7 @@
     orbit: 'M12 9.6a2.4 2.4 0 1 1 0 4.8a2.4 2.4 0 0 1 0-4.8zM2.8 12c0-2.3 4.1-4.2 9.2-4.2s9.2 1.9 9.2 4.2-4.1 4.2-9.2 4.2-9.2-1.9-9.2-4.2zM19.2 5.6a1.1 1.1 0 1 1 0 .01',
     doc: 'M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10.5A.5.5 0 0 1 6.5 20V4a.5.5 0 0 1 .5-.5zM14 3.5V8h4M9.5 12h5M9.5 15.5h5',
     galaxy: 'M12 10.4a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 0 1 0-3.2zM12 4.5c4.4 0 7.5 3.2 7.5 7 0 3-2.4 5-5.2 5M12 19.5c-4.4 0-7.5-3.2-7.5-7 0-3 2.4-5 5.2-5',
+    cal: 'M5 6.5h14a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1zM4 10.5h16M8.5 4.5v4M15.5 4.5v4',
     more: 'M5.5 12h.01M12 12h.01M18.5 12h.01'
   };
   function icon(name) {
@@ -1135,7 +1181,7 @@
     draftKey = 'klever.draft.' + report.id + '.' + (pd0.day || stamp());
     try { values = JSON.parse(store.get(draftKey) || 'null'); } catch (e) { values = null; }
     /* an empty draft (the form was only opened) does not hide a real one */
-    if (!values || typeof values !== 'object' || !Object.keys(values).length) {
+    if (!values || typeof values !== 'object' || !hasContent(values)) {
       values = {};
       var older = latestDraft(report.id, draftKey);
       if (older) { values = older.values; restoredFrom = older.day; }
@@ -1249,6 +1295,17 @@
     }
   }
 
+  /* Was anything actually typed? A form with a table saves one empty row
+     the moment it opens, so "has keys" is not the same as "has content". */
+  function hasContent(v) {
+    return Object.keys(v || {}).some(function (k) {
+      var x = v[k];
+      if (Array.isArray(x)) return x.some(function (row) { return row && typeof row === 'object' && hasContent(row); });
+      if (x && typeof x === 'object') return hasContent(x);
+      return x != null && String(x).trim() !== '';
+    });
+  }
+
   /* the newest unsent draft of a report from the past week, other than `except` */
   function latestDraft(reportId, except) {
     var best = null, prefix = 'klever.draft.' + reportId + '.';
@@ -1259,7 +1316,7 @@
         var day = k.slice(prefix.length);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < addDays(stamp(), -7)) continue;
         var v = JSON.parse(localStorage.getItem(k) || 'null');
-        if (v && Object.keys(v).length && (!best || day > best.day)) best = { day: day, values: v };
+        if (v && hasContent(v) && (!best || day > best.day)) best = { day: day, values: v };
       }
     } catch (e) { /* a blocked store just means no draft */ }
     return best;
@@ -1379,6 +1436,8 @@
                  /* a choice and a yes/no both hold words, and words do not fit
                     the narrow control column once they are in Amharic */
                  + (f.t === 'choice' ? ' wide' : '')
+                 /* and a date reads "Wed 9 Sep 2026 · ጳጉሜን 4 ቀን 2018" */
+                 + (f.t === 'date' ? ' wide' : '')
                  + (f.t === 'yesno' ? ' yn' : ''));
     var lab = el('label', null, L(f));
     lab.id = 'l_' + f.id;
@@ -1435,7 +1494,7 @@
       di.type = 'date'; di.id = 'f_' + f.id;
       di.value = values[f.id] || '';
       di.onchange = di.oninput = function () { values[f.id] = di.value; redrawGrids(); refresh(); };
-      row.appendChild(di);
+      row.appendChild(dressDate(di));
     } else if (f.t === 'choice') {
       var sel = document.createElement('select');
       sel.id = 'f_' + f.id;
@@ -1939,10 +1998,7 @@
       }
       return String(v);
     }
-    if (f.t === 'date') {
-      var dd = new Date(v);
-      return isNaN(dd.getTime()) ? String(v) : shortDate(dd) + ' ' + dd.getFullYear();
-    }
+    if (f.t === 'date') return prettyDate(String(v));
     if (f.t === 'money') return money(v) + ' ' + t('birr');
     if (f.t === 'pct') return String(v).replace(/%/g, '').trim() + '%';
     return String(v).trim();
@@ -2006,6 +2062,9 @@
     dueToday: dueToday,
     /* the sign-in card, for the Chairman's page when nobody is signed in */
     signIn: function () { var r = document.getElementById('app'); if (r) renderSignIn(r); },
+    /* the same clear dates, for the Chairman's page */
+    prettyDate: prettyDate,
+    dressDate: dressDate,
     /* Addis time, and the ledger's rule for what is owed when */
     today: stamp,
     dayStart: dayStartMs,

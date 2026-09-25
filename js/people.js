@@ -2,7 +2,7 @@
 const PEOPLE = [
   { id:'ephrata',  en:'Ephrata Assfa',   am:'ኤፍራታ አስፋ',   roleEn:'Commercial Lead',   roleAm:'የንግድ ኃላፊ', grp:'commercial' },
   { id:'liu',      en:'Mahelet Teshome', am:'ማህሌት ተሾመ',   roleEn:'Operations Lead',   roleAm:'የኦፕሬሽን ኃላፊ', grp:'lead' },
-  { id:'betty',    en:'Betelhem Aklog',  am:'ቤተልሔም አክሎግ', roleEn:'Finance Officer',   roleAm:'የፋይናንስ ኃላፊ', grp:'finance' },
+  { id:'betty',    en:'Finance',  am:'ፋይናንስ', roleEn:'Finance Officer',   roleAm:'የፋይናንስ ኃላፊ', grp:'finance' },
   { id:'getachew', en:'Getachew Negash', am:'ጌታቸው ነጋሽ',   roleEn:'Purchasing Officer', roleAm:'የግዥ ኃላፊ', grp:'finance' },
   { id:'yordanos', en:'Yordanos Fikadu', am:'ዮርዳኖስ ፍቃዱ',  roleEn:'Storekeeper',       roleAm:'የመጋዘን ኃላፊ', grp:'finance' },
   { id:'amaha',      en:'Amaha Temechew',       am:'አማሃ ተመቸው',      roleEn:'Production Supervisor', roleAm:'የምርት ተቆጣጣሪ', grp:'production' },

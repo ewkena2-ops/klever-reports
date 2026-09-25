@@ -18,12 +18,12 @@ var ALERTS_ = [
   { report: 'betty-forecast', test: function (v) { return has_(v.cf7_bank) && num_(v.cf7_bank) < 6000000; },
     say: function (v) { return 'Bank balance ' + money_(v.cf7_bank) + ' Birr this morning — below the 6,000,000 reserve'; } },
   { report: 'betty-forecast', test: function (v) { return yes__(v.cf7_short); },
-    say: function (v) { return 'Betelhem expects a cash shortfall in the next 7 days' +
+    say: function (v) { return 'Finance expects a cash shortfall in the next 7 days' +
                                (has_(v.cf7_amount) ? ' — ' + money_(v.cf7_amount) + ' Birr short' : ''); } },
   { report: 'betty-daily', test: function (v) { return has_(v.bank_total) && num_(v.bank_total) < 6000000; },
     say: function (v) { return 'Bank total ' + money_(v.bank_total) + ' Birr — below the 6,000,000 reserve'; } },
   { report: 'betty-daily', test: function (v) { return yes__(v.discrepancy); },
-    say: function () { return 'Betelhem reports a cash discrepancy'; } },
+    say: function () { return 'Finance reports a cash discrepancy'; } },
   { report: 'betty-cashflow', test: function (v) { return yes__(v.cf_short); },
     say: function () { return 'A cash shortfall is expected in the next 4 weeks'; } },
   { report: 'yordanos-daily', test: function (v) { return yes__(v.sec_theft); },

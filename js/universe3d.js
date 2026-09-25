@@ -110,11 +110,11 @@ const FLOWS = [
   { from: 'customers', to: 'ephrata', report: 'ephrata-daily', field: 'collected_today', sum: null,
     en: 'Collected from customers — Ephrata’s report', am: 'ከደንበኞች የተሰበሰበ — የኤፍራታ ሪፖርት' },
   { from: 'customers', to: 'bank', report: 'betty-daily', field: 'cash_in', sum: 'in',
-    en: 'Cash received — Betelhem’s report', am: 'የገባ ጥሬ ገንዘብ — የቤተልሔም ሪፖርት' },
+    en: 'Cash received — Finance’s report', am: 'የገባ ጥሬ ገንዘብ — የፋይናንስ ሪፖርት' },
   { from: 'bank', to: 'suppliers', report: 'betty-daily', field: 'pay_value', sum: 'out',
-    en: 'Payments approved — Betelhem’s report', am: 'የጸደቁ ክፍያዎች — የቤተልሔም ሪፖርት' },
+    en: 'Payments approved — Finance’s report', am: 'የጸደቁ ክፍያዎች — የፋይናንስ ሪፖርት' },
   { from: 'bank', to: 'zamzam', report: 'betty-daily', field: 'zz_transfer', sum: null,
-    en: 'Moved to ZamZam — Betelhem’s report', am: 'ወደ ዘምዘም የተላለፈ — የቤተልሔም ሪፖርት' }
+    en: 'Moved to ZamZam — Finance’s report', am: 'ወደ ዘምዘም የተላለፈ — የፋይናንስ ሪፖርት' }
 ];
 
 /* which department each agent watches */
@@ -1146,7 +1146,7 @@ export function mount(root, opts) {
       const row = el('div', 'uni-rep');
       const dot = el('i'); dot.style.background = '#ffc75e';
       row.appendChild(dot);
-      row.appendChild(el('span', 'uni-rep-n', s('payKidan', 'Payments over 50,000 sent to Kidan — Betelhem’s report')));
+      row.appendChild(el('span', 'uni-rep-n', s('payKidan', 'Payments over 50,000 sent to Kidan — Finance’s report')));
       row.appendChild(el('span', 'uni-rep-t', kidan.pay != null ? money(kidan.pay) : s('notReported', 'not reported')));
       list.appendChild(row);
       sheet.appendChild(list);

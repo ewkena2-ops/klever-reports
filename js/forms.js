@@ -8,7 +8,7 @@
 const PEOPLE = [
   { id:'ephrata',  en:'Ephrata Assfa',   am:'ኤፍራታ አስፋ',   roleEn:'Commercial Lead',   roleAm:'የንግድ ኃላፊ', grp:'commercial' },
   { id:'liu',      en:'Mahelet Teshome', am:'ማህሌት ተሾመ',   roleEn:'Operations Lead',   roleAm:'የኦፕሬሽን ኃላፊ', grp:'lead' },
-  { id:'betty',    en:'Betelhem Aklog',  am:'ቤተልሔም አክሎግ', roleEn:'Finance Officer',   roleAm:'የፋይናንስ ኃላፊ', grp:'finance' },
+  { id:'betty',    en:'Finance',  am:'ፋይናንስ', roleEn:'Finance Officer',   roleAm:'የፋይናንስ ኃላፊ', grp:'finance' },
   { id:'getachew', en:'Getachew Negash', am:'ጌታቸው ነጋሽ',   roleEn:'Purchasing Officer', roleAm:'የግዥ ኃላፊ', grp:'finance' },
   { id:'yordanos', en:'Yordanos Fikadu', am:'ዮርዳኖስ ፍቃዱ',  roleEn:'Storekeeper',       roleAm:'የመጋዘን ኃላፊ', grp:'finance' },
   { id:'amaha',      en:'Amaha Temechew',       am:'አማሃ ተመቸው',      roleEn:'Production Supervisor', roleAm:'የምርት ተቆጣጣሪ', grp:'production' },
@@ -275,22 +275,22 @@ const REPORTS = [
 {
   id:'getachew-daily', person:'getachew', cadence:'daily', dueTime:'17:30',
   en:'Daily Purchasing Report', am:'ዕለታዊ የግዥ ሪፖርት',
-  toEn:'Chairman, copied to Mahelet and Betty', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለቤቲ',
+  toEn:'Chairman, copied to Mahelet and Finance', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለፋይናንስ',
   dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   derived:1,
   sections:[
     { en:'1 · Purchase requests', am:'1 · የግዥ ጥያቄዎች', fields:[
       {id:'pr_prep', en:'Purchase requests prepared', am:'የተዘጋጁ የግዥ ጥያቄዎች', t:'num'},
-      {id:'pr_sub', en:'Submitted to Betty', am:'ለቤቲ የቀረቡ', t:'num'},
-      {id:'pr_app', en:'Approved by Betty', am:'በቤቲ የጸደቁ', t:'num'},
+      {id:'pr_sub', en:'Submitted to Finance', am:'ለፋይናንስ የቀረቡ', t:'num'},
+      {id:'pr_app', en:'Approved by Finance', am:'በፋይናንስ የጸደቁ', t:'num'},
       {id:'pr_ret', en:'Returned or rejected', am:'የተመለሱ ወይም ያልጸደቁ', t:'num'},
       {id:'pr_quotes', en:'Requests with 3 or more quotes', am:'3 እና ከዚያ በላይ ፕሮፎርማ ያላቸው ጥያቄዎች', t:'ratio'}
     ]},
     { en:'2 · ZamZam Bank cheques', am:'2 · የዘምዘም ባንክ ቼኮች', fields:[
       {id:'chq_issued', en:'Cheques issued today', am:'ዛሬ የተሰጡ ቼኮች', t:'num'},
       {id:'chq_value', en:'Total cheque value', am:'ጠቅላላ የቼክ ዋጋ', t:'money'},
-      {id:'chq_confirmed', en:'Betty confirmed funds before every cheque', am:'ከእያንዳንዱ ቼክ በፊት ቤቲ አረጋግጣለች', t:'yesno'},
+      {id:'chq_confirmed', en:'Finance confirmed funds before every cheque', am:'ከእያንዳንዱ ቼክ በፊት ፋይናንስ አረጋግጧል', t:'yesno'},
       {id:'chq_secure', en:'Cheque book secured at close', am:'የቼክ ደብተር በመዝጊያ ሰዓት ተቆልፏል', t:'yesno'}
     ]},
     { en:'3 · Orders placed', am:'3 · የተሰጡ ትዕዛዞች', fields:[
@@ -303,7 +303,7 @@ const REPORTS = [
       {id:'del_rej', en:'Materials rejected by store', am:'በመጋዘን ያልተቀበሉ ዕቃዎች', t:'num'},
       {id:'del_repl', en:'Replacement or refund requested', am:'ምትክ ወይም ተመላሽ ተጠይቋል', t:'yesno', opt:1}
     ]},
-    { en:'5 · Documents to Betty', am:'5 · ለቤቲ የተላኩ ሰነዶች', fields:[
+    { en:'5 · Documents to Finance', am:'5 · ለፋይናንስ የተላኩ ሰነዶች', fields:[
       {id:'doc_24', en:'Documents submitted within 24 hours', am:'በ24 ሰዓት ውስጥ የቀረቡ ሰነዶች', t:'ratio'},
       {id:'doc_missing', en:'Documents still outstanding', am:'እስካሁን ያልቀረቡ ሰነዶች', t:'num',
         tgt:{op:'lte', v:0, en:'–200 Birr per document', am:'በሰነድ –200 ብር'}}
@@ -312,7 +312,7 @@ const REPORTS = [
       {id:'sup_delay', en:'Supplier delays', am:'የአቅራቢ መዘግየቶች', t:'num'},
       {id:'sup_price', en:'Price changes', am:'የዋጋ ለውጦች', t:'num'},
       {id:'sup_quality', en:'Quality issues', am:'የጥራት ችግሮች', t:'num'},
-      {id:'sup_reported', en:'Reported to Mahelet and Betty', am:'ለማህሌትና ለቤቲ ተነግሯል', t:'yesno'}
+      {id:'sup_reported', en:'Reported to Mahelet and Finance', am:'ለማህሌትና ለፋይናንስ ተነግሯል', t:'yesno'}
     ]},
     { en:'7 · What we paid, against last time', am:'7 · ካለፈው ጋር ሲነጻጸር የከፈልነው', fields:[
       {id:'p_rows', en:'Price per material bought today', am:'ዛሬ የተገዛው ዕቃ ዋጋ',
@@ -328,7 +328,7 @@ const REPORTS = [
       {id:'p_up', en:'Materials that went up more than 10%', am:'ከ10% በላይ የጨመሩ ዕቃዎች', t:'num',
         tgt:{op:'lte', v:0, en:'The margin floor is 6,000 Birr/m² — a 10% rise must reach Ephrata before the next quote',
              am:'የትርፍ ወለሉ 6,000 ብር/ካሬ ሜትር ነው — የ10% ጭማሪ ከቀጣዩ ዋጋ በፊት ኤፍራታ ጋር መድረስ አለበት'}},
-      {id:'p_told', en:'If any, Ephrata and Betty told today', am:'ካሉ ለኤፍራታና ለቤተልሔም ዛሬ ተነግሯል', t:'yesno', opt:1, i:1},
+      {id:'p_told', en:'If any, Ephrata and Finance told today', am:'ካሉ ለኤፍራታና ለፋይናንስ ዛሬ ተነግሯል', t:'yesno', opt:1, i:1},
       {id:'p_sub', en:'Any material substituted for a cheaper one', am:'በርካሽ የተተካ ዕቃ አለ', t:'yesno'},
       {id:'p_subok', en:'If yes, Wude approved it before it was bought', am:'አዎ ከሆነ ውዱ ከመገዛቱ በፊት አጽድቃለች', t:'yesno', opt:1, i:1}
     ]},
@@ -344,7 +344,7 @@ const REPORTS = [
 {
   id:'yordanos-daily', person:'yordanos', cadence:'daily', dueTime:'17:30',
   en:'Daily Store Report', am:'ዕለታዊ የመጋዘን ሪፖርት',
-  toEn:'Chairman, copied to Mahelet and Betty', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለቤቲ',
+  toEn:'Chairman, copied to Mahelet and Finance', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለፋይናንስ',
   dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Reports are mandatory daily', penAm:'ሪፖርት በየቀኑ ግዴታ ነው',
   derived:1,
@@ -359,7 +359,7 @@ const REPORTS = [
     { en:'2 · Rejections', am:'2 · ያልተቀበልኳቸው ዕቃዎች', fields:[
       {id:'rej_reason', en:'Reason for rejection', am:'ያልተቀበልኩበት ምክንያት', t:'area', opt:1},
       {id:'rej_photo', en:'Documented with photos', am:'በፎቶ ተመዝግቧል', t:'yesno', opt:1},
-      {id:'rej_reported', en:'Reported to Getachew and Betty', am:'ለጌታቸውና ለቤቲ ተነግሯል', t:'yesno', opt:1}
+      {id:'rej_reported', en:'Reported to Getachew and Finance', am:'ለጌታቸውና ለፋይናንስ ተነግሯል', t:'yesno', opt:1}
     ]},
     { en:'3 · Stock record', am:'3 · የክምችት መዝገብ', fields:[
       {id:'st_open', en:'Opening stock items', am:'የጠዋት (የመክፈቻ) ክምችት', t:'num'},
@@ -577,8 +577,8 @@ const REPORTS = [
       {id:'pl_onsched', en:'Jobs completed on schedule', am:'በዕቅዱ መሠረት የተጠናቀቁ ሥራዎች', t:'ratio'},
       {id:'pl_delayed', en:'Jobs delayed', am:'የዘገዩ ሥራዎች', t:'num'},
       {id:'pl_reason', en:'Reason for delays', am:'የመዘግየት ምክንያት', t:'area', opt:1},
-      {id:'pl_unpaid', en:"Jobs included without Betty's payment confirmation",
-        am:'ያለ ቤቲ የክፍያ ማረጋገጫ የገቡ ሥራዎች', t:'num',
+      {id:'pl_unpaid', en:"Jobs included without Finance's payment confirmation",
+        am:'ያለ ፋይናንስ የክፍያ ማረጋገጫ የገቡ ሥራዎች', t:'num',
         tgt:{op:'lte', v:0, en:'–5,000 Birr per job', am:'በሥራ –5,000 ብር'}}
     ]},
     { en:'9 · Problems and solutions', am:'9 · ችግሮችና መፍትሔዎች', fields:[
@@ -697,14 +697,14 @@ const REPORTS = [
 {
   id:'getachew-weekly', person:'getachew', cadence:'weekly', dueTime:'17:00', dueDay:5,
   en:'Weekly Purchasing Summary', am:'ሳምንታዊ የግዥ ሪፖርት',
-  toEn:'Chairman, copied to Mahelet and Betty', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለቤቲ',
+  toEn:'Chairman, copied to Mahelet and Finance', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለፋይናንስ',
   dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
   derived:1,
   sections:[
     { en:'1 · Purchase requests', am:'1 · የግዥ ጥያቄዎች', fields:[
       {id:'g_prep', en:'Requests prepared this week', am:'በዚህ ሳምንት የተዘጋጁ ጥያቄዎች', t:'num'},
-      {id:'g_app', en:'Approved by Betty', am:'በቤቲ የጸደቁ', t:'num'},
+      {id:'g_app', en:'Approved by Finance', am:'በፋይናንስ የጸደቁ', t:'num'},
       {id:'g_ret', en:'Returned or rejected', am:'የተመለሱ', t:'num'},
       {id:'g_quotes', en:'Requests with 3 or more quotes', am:'3 እና ከዚያ በላይ ፕሮፎርማ ያላቸው', t:'ratio'},
       {id:'g_acc', en:'Purchase accuracy', am:'የግዥ ትክክለኛነት', t:'pct',
@@ -725,7 +725,7 @@ const REPORTS = [
       {id:'g_quality', en:'Quality issues', am:'የጥራት ችግሮች', t:'num'},
       {id:'g_saving', en:'Purchased below budget by', am:'ከበጀት በታች የተገዛበት መጠን', t:'money', opt:1}
     ]},
-    { en:'4 · Documents to Betty', am:'4 · ለቤቲ የተላኩ ሰነዶች', fields:[
+    { en:'4 · Documents to Finance', am:'4 · ለፋይናንስ የተላኩ ሰነዶች', fields:[
       {id:'g_doc24', en:'Documents submitted within 24 hours', am:'በ24 ሰዓት ውስጥ የቀረቡ', t:'ratio'},
       {id:'g_doc_missing', en:'Documents still outstanding', am:'እስካሁን ያልቀረቡ ሰነዶች', t:'num',
         tgt:{op:'lte', v:0, en:'–200 Birr per document', am:'በሰነድ –200 ብር'}}
@@ -742,7 +742,7 @@ const REPORTS = [
 {
   id:'yordanos-weekly', person:'yordanos', cadence:'weekly', dueTime:'17:00', dueDay:5,
   en:'Weekly Store Summary', am:'ሳምንታዊ የመጋዘን ሪፖርት',
-  toEn:'Chairman, copied to Mahelet and Betty', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለቤቲ',
+  toEn:'Chairman, copied to Mahelet and Finance', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለፋይናንስ',
   dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'Reports are mandatory weekly', penAm:'ሳምንታዊ ሪፖርት ግዴታ ነው',
   derived:1,
@@ -855,14 +855,14 @@ const REPORTS = [
       {id:'plan_start', en:'Plan starts on', am:'ዕቅዱ የሚጀምርበት ቀን', t:'date'},
       {id:'plan_prep', en:'Prepared by', am:'ያዘጋጀው', t:'text'}
     ]},
-    { en:'2 · Payment-confirmed jobs from Betty', am:'2 · ከቤቲ የክፍያ ማረጋገጫ ያላቸው ሥራዎች', fields:[
-      {id:'plan_paid', en:'Jobs Betty confirmed as fully paid', am:'ቤቲ ሙሉ ክፍያ ያረጋገጠችላቸው ሥራዎች',
+    { en:'2 · Payment-confirmed jobs from Finance', am:'2 · ከፋይናንስ የክፍያ ማረጋገጫ ያላቸው ሥራዎች', fields:[
+      {id:'plan_paid', en:'Jobs Finance confirmed as fully paid', am:'ፋይናንስ ሙሉ ክፍያ ያረጋገጠላቸው ሥራዎች',
        t:'table', addEn:'Add job', addAm:'ሥራ ጨምር', cols:[
         {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
         {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
         {id:'m2',   en:'m²', am:'ካሬ ሜትር', t:'num'},
         {id:'ok',   en:'Final payment confirmed', am:'የመጨረሻ ክፍያ ተረጋግጧል', t:'yesno'},
-        {id:'date', en:"Betty's confirmation date", am:'ቤቲ ያረጋገጠችበት ቀን', t:'text'}
+        {id:'date', en:"Finance's confirmation date", am:'ፋይናንስ ያረጋገጠበት ቀን', t:'text'}
       ]}
     ]},
     { en:'3 · Production queue', am:'3 · የምርት ተራ', fields:[
@@ -895,8 +895,8 @@ const REPORTS = [
       {id:'plan_block', en:'Bottlenecks or support needed', am:'እንቅፋቶች ወይም የሚያስፈልግ ድጋፍ', t:'area', opt:1}
     ]},
     { en:'6 · Confirmation', am:'6 · ማረጋገጫ', fields:[
-      {id:'plan_rule', en:'No job in this plan lacks Betty’s written payment confirmation',
-       am:'በዚህ ዕቅድ ውስጥ ያለ ቤቲ የጽሑፍ ማረጋገጫ የገባ ሥራ የለም', t:'yesno'},
+      {id:'plan_rule', en:'No job in this plan lacks Finance’s written payment confirmation',
+       am:'በዚህ ዕቅድ ውስጥ ያለ ፋይናንስ የጽሑፍ ማረጋገጫ የገባ ሥራ የለም', t:'yesno'},
       {id:'plan_capacity', en:'Plan fits machine capacity and material availability',
        am:'ዕቅዱ ከማሽን አቅምና ከዕቃ አቅርቦት ጋር ይጣጣማል', t:'yesno'}
     ]}
@@ -1353,7 +1353,7 @@ const REPORTS = [
 {
   id:'amaha-monthly', person:'amaha', cadence:'monthly', dueTime:'17:00',
   en:'Monthly Material Savings Report', am:'ወርሃዊ የቁሳቁስ ቁጠባ ሪፖርት',
-  toEn:'Mahelet + Betty', toAm:'ማህሌት + ቤቲ',
+  toEn:'Mahelet + Finance', toAm:'ማህሌት + ፋይናንስ',
   dueEn:'1st of the following month', dueAm:'በሚቀጥለው ወር 1ኛ ቀን',
   penEn:'Your savings share is 10% – 25% of the total', penAm:'ከጠቅላላው ቁጠባ ድርሻዎ ከ10% – 25% ነው',
   sections:[
@@ -1551,7 +1551,7 @@ const REPORTS = [
 {
   id:'wude-monthly', person:'wude', cadence:'monthly', dueTime:'17:00',
   en:'Monthly Rework Report', am:'ወርሃዊ የዳግም ሥራ ሪፖርት',
-  toEn:'Mahelet + Betty', toAm:'ማህሌት + ቤቲ',
+  toEn:'Mahelet + Finance', toAm:'ማህሌት + ፋይናንስ',
   dueEn:'1st of the following month', dueAm:'በሚቀጥለው ወር 1ኛ ቀን',
   penEn:'Failure to report rework cost –200 Birr', penAm:'የዳግም ሥራ ወጪ ካልተነገረ –200 ብር',
   sections:[

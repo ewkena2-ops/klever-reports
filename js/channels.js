@@ -43,8 +43,8 @@ const CHANNEL_DEFS = [
     grp:'*' },
 
   { id:'leads',      kind:'team', en:'Leads',        am:'ኃላፊዎች',
-    descEn:'Ephrata, Mahelet, Betelhem, Amaha, Wude, Elyas.',
-    descAm:'ኤፍራታ፣ ማህሌት፣ ቤተልሔም፣ አማሃ፣ ውዱ፣ ኤልያስ።',
+    descEn:'Ephrata, Mahelet, Finance, Amaha, Wude, Elyas.',
+    descAm:'ኤፍራታ፣ ማህሌት፣ ፋይናንስ፣ አማሃ፣ ውዱ፣ ኤልያስ።',
     ids:['ephrata','liu','betty','amaha','wude','elyas'] },
 
   { id:'production', kind:'team', en:'Production',   am:'ምርት',
@@ -63,8 +63,8 @@ const CHANNEL_DEFS = [
     grp:'commercial' },
 
   { id:'finance',    kind:'team', en:'Finance',      am:'ፋይናንስ',
-    descEn:'Betelhem, Seble, Getachew, Yordanos — and Mahelet, who is copied on their reports.',
-    descAm:'ቤተልሔም፣ ሰብለ፣ ጌታቸው፣ ዮርዳኖስ — እና ሪፖርቶቻቸው የሚደርሳት ማህሌት።',
+    descEn:'Finance, Seble, Getachew, Yordanos — and Mahelet, who is copied on their reports.',
+    descAm:'ፋይናንስ፣ ሰብለ፣ ጌታቸው፣ ዮርዳኖስ — እና ሪፖርቶቻቸው የሚደርሳት ማህሌት።',
     grp:'finance',
     /* Mahelet is Operations, not Finance, but Getachew's and Yordanos's
        letters both address their reports to "Chairman, copied to Mahelet and

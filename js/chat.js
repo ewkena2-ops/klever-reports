@@ -186,34 +186,15 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
 
     var form = el('form', 'signin');
 
-    /* if they are already signed in to the reports side, start from that name
-       — nobody should have to say who they are twice */
-    var known = (typeof AUTH !== 'undefined' && AUTH.who()) || null;
-    if (known === '*') known = CHAIRMAN;
-
-    var wrapWho = el('label', 'chatfield');
-    wrapWho.appendChild(el('span', 'codelab', t('chatWho')));
-    var sel = el('select');
-    var optC = el('option', null, lang === 'am' ? 'ሊቀመንበር' : 'Chairman');
-    optC.value = CHAIRMAN;
-    sel.appendChild(optC);
-    /* only offer names that have an account — otherwise picking one gives a
-       password error that looks like the person's own mistake */
-    PEOPLE.forEach(function (p) {
-      if (CHAT_ACCOUNTS.indexOf(p.id) === -1) return;
-      var o = el('option', null, L(p) + ' · ' + (lang === 'am' ? p.roleAm : p.roleEn));
-      o.value = p.id;
-      sel.appendChild(o);
-    });
-    if (known) sel.value = known;
-    wrapWho.appendChild(sel);
-    form.appendChild(wrapWho);
-
+    /* the password alone — the site works out whose it is (AUTH.whoIs) */
     var wrapPw = el('label', 'chatfield');
     wrapPw.appendChild(el('span', 'codelab', t('chatPassword')));
     var pw = el('input');
     pw.type = 'password';
     pw.autocomplete = 'current-password';
+    pw.setAttribute('autocapitalize', 'none');
+    pw.setAttribute('autocorrect', 'off');
+    pw.spellcheck = false;
     wrapPw.appendChild(pw);
     form.appendChild(wrapPw);
 
@@ -230,7 +211,15 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
       err.hidden = true;
       go.disabled = true;
       go.textContent = t('chatSigningIn');
-      signInWithEmailAndPassword(auth, sel.value + '@' + KLEVER_DOMAIN, pw.value)
+      AUTH.whoIs(pw.value).then(function (cands) {
+        if (!cands.length) throw new Error('unknown');
+        var i = 0;
+        function next() {
+          return signInWithEmailAndPassword(auth, cands[i].id + '@' + KLEVER_DOMAIN, cands[i].pw)
+            ['catch'](function (e) { i++; if (i < cands.length) return next(); throw e; });
+        }
+        return next();
+      })
         ['catch'](function () {
           /* never say which half was wrong */
           err.textContent = t('chatBadSignIn');

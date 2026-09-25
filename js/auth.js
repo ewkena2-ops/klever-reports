@@ -28,6 +28,60 @@ var AUTH = {
 
   _id: null,     /* set from Firebase before the first render */
 
+  /* WHOSE PASSWORD IS THIS. Nobody picks their name: they type their
+     password and the site works out whose it is.
+
+     Each account is known here only by a tag — the first three hex
+     characters of SHA-256('klever-who:' + password). Twelve bits: enough
+     that eighteen people almost never share one (when two do, both
+     accounts are tried), and far too few to help anyone guess a password,
+     because every guess must still be tried against Firebase, which limits
+     attempts. The passwords themselves are not in this file and never will
+     be; this file is in a public repository.
+
+     A password changed, or a person added? Re-make this map from the
+     private list with who_tags.py (kept outside the repository). */
+  WHO: /* WHO-TAGS */ { '115': ['seble'], '28f': ['abrham-g'], '59b': ['teklweld'], '745': ['amaha'], '7b0': ['yonas'], '868': ['yohannis'], '8b3': ['abrham-w'], '925': ['wude'], '9c7': ['ashenafi'], 'b0d': ['elyas'], 'b9d': ['biruktayet'], 'be8': ['getachew'], 'bf8': ['betty'], 'e5b': ['tsega'], 'e91': ['ephrata'], 'f79': ['chairman'], 'f92': ['yordanos'], 'fc2': ['liu'] },
+
+  /* the ids a password could belong to, most likely first */
+  whoIs: function (password) {
+    var self = this;
+    var pw = String(password || '').trim();
+    if (!pw || !window.crypto || !window.crypto.subtle || !window.TextEncoder) return Promise.resolve([]);
+    /* a phone may capitalise the first letter; the passwords are lower case */
+    var tries = [pw];
+    if (pw.toLowerCase() !== pw) tries.push(pw.toLowerCase());
+    return Promise.all(tries.map(function (p) {
+      return window.crypto.subtle.digest('SHA-256', new TextEncoder().encode('klever-who:' + p))
+        .then(function (buf) {
+          var b = new Uint8Array(buf);
+          var tag = ('0' + b[0].toString(16)).slice(-2) + ('0' + b[1].toString(16)).slice(-2).charAt(0);
+          return (self.WHO[tag] || []).map(function (id) { return { id: id, pw: p }; });
+        });
+    })).then(function (lists) { return [].concat.apply([], lists); });
+  },
+
+  /* Sign in with the password alone. Resolves to the person's id, or
+     rejects — and, as before, never says what was wrong beyond "no". */
+  signInByPassword: function (password) {
+    var self = this;
+    if (!window.FB || !window.FB.live()) return Promise.reject(new Error('offline'));
+    return this.whoIs(password).then(function (cands) {
+      if (!cands.length) throw new Error('unknown');
+      var i = 0;
+      function next() {
+        return window.FB.signIn(cands[i].id, cands[i].pw).then(function (id) {
+          return self._adopt(id);
+        }, function (e) {
+          i++;
+          if (i < cands.length) return next();
+          throw e;
+        });
+      }
+      return next();
+    });
+  },
+
   _fromFb: function (id) {
     return id === this.CHAIR_ID ? '*' : id;
   },

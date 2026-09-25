@@ -21,6 +21,15 @@
 
   function t(k) { return T[lang][k]; }
   function L(o) { return (lang === 'am' && o.am) ? o.am : o.en; }
+
+  /* A personal sign-in link, #key=<password>, signs its owner in with one
+     tap. The fragment never reaches a server; it is read here and wiped from
+     the address bar and history at once, so it is not left on the screen. */
+  var LINK_KEY = null;
+  if (/^#key=/.test(location.hash)) {
+    try { LINK_KEY = decodeURIComponent(location.hash.slice(5)); } catch (e) { LINK_KEY = null; }
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ }
+  }
   function el(tag, cls, txt) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -623,25 +632,10 @@
     card.appendChild(el('h1', null, t('signIn')));
     card.appendChild(el('p', 'sub', t('signInSub')));
 
-    /* Name first, then password. Picking your own name from a list is
-       easier on a phone than typing an address, and it means nobody has to
-       remember that the account is really betty@klever.local. */
-    var lab = el('label', 'codelab', t('chatWho'));
-    card.appendChild(lab);
-
-    var sel = document.createElement('select');
-    sel.className = 'signfield';
-    var optC = el('option', null, lang === 'am' ? 'ሊቀመንበር' : 'Chairman');
-    optC.value = AUTH.CHAIR_ID;
-    sel.appendChild(optC);
-    PEOPLE.forEach(function (p) {
-      if (typeof CHAT_ACCOUNTS !== 'undefined' && CHAT_ACCOUNTS.indexOf(p.id) === -1) return;
-      var o = el('option', null, L(p) + ' · ' + (lang === 'am' ? p.roleAm : p.roleEn));
-      o.value = p.id;
-      sel.appendChild(o);
-    });
-    card.appendChild(sel);
-
+    /* The password alone. Nobody picks their name from a list: the site
+       works out whose password it is (AUTH.whoIs), so a person cannot choose
+       to be someone else, and nobody has to know their account is really
+       betty@klever.local. */
     var lab2 = el('label', 'codelab', t('chatPassword'));
     card.appendChild(lab2);
 
@@ -650,6 +644,9 @@
     input.id = 'code';
     input.className = 'signfield';
     input.autocomplete = 'current-password';
+    input.setAttribute('autocapitalize', 'none');
+    input.setAttribute('autocorrect', 'off');
+    input.spellcheck = false;
     card.appendChild(input);
 
     var err = el('p', 'codeerr');
@@ -666,7 +663,7 @@
       err.hidden = true;
       go.disabled = true;
       go.textContent = t('chatSigningIn');
-      AUTH.signIn(sel.value, input.value).then(function () {
+      AUTH.signInByPassword(input.value).then(function () {
         rebuildTop();
         /* on the Chairman's page the next screen belongs to chairman.js, and
            only a reload hands it over cleanly */
@@ -690,6 +687,8 @@
     root.appendChild(card);
     root.appendChild(foot());
     input.focus();
+    /* opened from a personal link: sign straight in */
+    if (LINK_KEY) { input.value = LINK_KEY; LINK_KEY = null; attempt(); }
   }
 
 

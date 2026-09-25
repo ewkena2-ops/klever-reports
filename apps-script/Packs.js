@@ -392,9 +392,7 @@ var MONTH_ASK_ =
   'carried out and which were not. Read the monthly reports for anything the figures miss.';
 
 function askPack_(ask, facts, P) {
-  var key = prop_('GEMINI_KEY', '');
-  if (!key) return '(No GEMINI_KEY set — the figures above are still complete.)';
-  var model = prop_('GEMINI_MODEL', AGENT_DEFAULT_MODEL);
+  if (!brain_().key) return '(No model key set — CLAUDE_KEY or GEMINI_KEY. The figures above are still complete.)';
   var prompt = [
     'You are reading a period at Klever Küche, a kitchen cabinet manufacturer in Addis',
     'Ababa. Prices are in Birr; the production target is 40 m² a day, waste may not pass',
@@ -409,12 +407,7 @@ function askPack_(ask, facts, P) {
     '--- ' + P.start + ' to ' + P.end + ' ---',
     JSON.stringify(facts, null, 1)
   ].join('\n');
-  var res = UrlFetchApp.fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/' + model +
-    ':generateContent?key=' + encodeURIComponent(key),
-    { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-      payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-  return readReply_(res);
+  return aiAsk_(prompt, 2000);
 }
 
 /* ------------------------------------------------------------------ *
@@ -536,7 +529,8 @@ function mailPack_(kind, P, facts, text) {
   html += '<p style="color:#66716d;font-size:11.5px;margin-top:28px;line-height:1.6">' +
           'Every figure here was calculated in code from the closed daily ledgers and the ' +
           'reports as filed. The model wrote only the reading at the top. Penalties are each ' +
-          'person’s own letter; cancelled charges are shown, with the reason you gave.</p></div>';
+          'person’s own letter; cancelled charges are shown, with the reason you gave. ' +
+          esc_(brainLine_()) + '</p></div>';
 
   MailApp.sendEmail({
     to: Session.getEffectiveUser().getEmail(),

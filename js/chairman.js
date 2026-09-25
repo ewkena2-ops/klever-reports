@@ -121,6 +121,26 @@ import {
     runBtn.onclick = function () { askForRun(runBtn); };
     root.appendChild(runBtn);
 
+    /* --- who reads the day: Claude or Gemini, his to choose --- */
+    var brain = el('div', 'chbrain');
+    brain.appendChild(el('span', 'chbrain-k', t('chBrain')));
+    var seg = el('div', 'chbrain-seg');
+    seg.setAttribute('role', 'group');
+    seg.setAttribute('aria-label', t('chBrain'));
+    var brainBtns = {};
+    [['claude', 'Claude'], ['gemini', 'Gemini']].forEach(function (o) {
+      var b = el('button', null, o[1]);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', 'false');
+      b.onclick = function () { chooseBrain(o[0], brainBtns); };
+      brainBtns[o[0]] = b;
+      seg.appendChild(b);
+    });
+    brain.appendChild(seg);
+    root.appendChild(brain);
+    root.appendChild(el('p', 'chbrain-n', t('chBrainNote')));
+    watchBrain(brainBtns);
+
     var analysis = el('div', 'chanalysis');
     analysis.appendChild(el('p', 'codenote', t('chNoAnalysis')));
     root.appendChild(analysis);
@@ -353,11 +373,32 @@ import {
       }
       into.appendChild(panel);
 
-      if (when) into.appendChild(el('p', 'codenote', t('chRanAt') + ' ' + hhmm(when)));
+      if (when) into.appendChild(el('p', 'codenote', t('chRanAt') + ' ' + hhmm(when) +
+        (d.model ? ' · ' + t('chReadBy') + ' ' + d.model : '')));
+      if (d.modelNote) into.appendChild(el('p', 'codenote', d.modelNote));
     }, function () {
       into.innerHTML = '';
       into.appendChild(el('p', 'codeerr', t('chOnlyChairman')));
     });
+  }
+
+  /* The choice lives in one document the morning run reads first. With no
+     document, Claude is the default — the same default the script has. */
+  function showBrain(btns, p) {
+    Object.keys(btns).forEach(function (k) { btns[k].setAttribute('aria-pressed', k === p ? 'true' : 'false'); });
+  }
+  function watchBrain(btns) {
+    showBrain(btns, 'claude');
+    onSnapshot(doc(db, 'control', 'ai'), function (d) {
+      var p = d.exists() ? String(d.data().provider || '') : '';
+      showBrain(btns, p === 'gemini' ? 'gemini' : 'claude');
+    }, function () {});
+  }
+  function chooseBrain(p, btns) {
+    showBrain(btns, p);
+    setDoc(doc(db, 'control', 'ai'), { provider: p, at: serverTimestamp(), by: me })
+      .then(function () { toast(t('chBrainSaved')); })
+      ['catch'](function () { toast(t('chSaveFailed')); });
   }
 
   function askForRun(btn) {

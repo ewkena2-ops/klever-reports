@@ -36,7 +36,7 @@
    function that returns an object of already-computed numbers, and the
    question to ask about them. Nothing else in this file changes.
 
-   SET UP: the same Script Properties as the ledger — GEMINI_KEY,
+   SET UP: the same Script Properties as the ledger — CLAUDE_KEY and/or GEMINI_KEY (see Brain.js),
    FIREBASE_WEB_KEY, LEDGER_PASSWORD — then setupTriggers() once (Agent.js). */
 
 /* ------------------------------------------------------------------ *
@@ -888,61 +888,39 @@ function instructionsOn_(day, names) {
   return { overdue: overdue, closed_today: closed };
 }
 
+/* Claude or Gemini — whichever the Chairman chose; see Brain.js */
 function askAll_(d) {
-  var key = prop_('GEMINI_KEY', '');
-  var model = prop_('GEMINI_MODEL', AGENT_DEFAULT_MODEL);
-  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model +
-            ':generateContent?key=' + encodeURIComponent(key);
-
   var first = AGENTS.filter(function (a) { return !a.last; });
   var out = [];
 
-  if (!key) {
+  if (!brain_().key) {
     return AGENTS.map(function (a) {
       return { id:a.id, en:a.en, am:a.am,
-               text:'(No GEMINI_KEY set — the facts below were still calculated.)',
+               text:'(No model key set — CLAUDE_KEY or GEMINI_KEY. The facts below were still calculated.)',
                facts:a.last ? {} : a.facts(d) };
     });
   }
 
   /* fourteen at once. One after another would sit near the six-minute limit. */
-  var reqs = first.map(function (a) {
-    var facts = a.facts(d);
-    return {
-      url: url, method: 'post', contentType: 'application/json',
-      muteHttpExceptions: true,
-      payload: JSON.stringify({ contents: [{ parts: [{ text: promptFor_(a, facts, d) }] }] })
-    };
-  });
-
-  var res = UrlFetchApp.fetchAll(reqs);
+  var texts = aiAskAll_(first.map(function (a) { return promptFor_(a, a.facts(d), d); }));
   first.forEach(function (a, i) {
-    out.push({ id:a.id, en:a.en, am:a.am, facts:a.facts(d), text:readReply_(res[i]) });
+    out.push({ id:a.id, en:a.en, am:a.am, facts:a.facts(d), text:texts[i] });
   });
 
   /* the decision agent reads the day; the brief reads everything, so they run
      in that order and not at the same time */
   var decide = AGENTS.filter(function (a) { return a.id === 'decide'; })[0];
   if (decide) {
-    var dr = UrlFetchApp.fetch(url, {
-      method:'post', contentType:'application/json', muteHttpExceptions:true,
-      payload: JSON.stringify({ contents: [{ parts: [{
-        text: promptFor_(decide, decide.facts(d), d) }] }] })
-    });
     out.push({ id:decide.id, en:decide.en, am:decide.am, facts:{},
-               text:readReply_(dr), decision:true });
+               text:aiAsk_(promptFor_(decide, decide.facts(d), d)), decision:true });
   }
 
   /* the brief reads everything above it */
   var brief = AGENTS.filter(function (a) { return a.id === 'brief'; })[0];
   if (brief) {
     var digest = out.map(function (r) { return '## ' + r.en + '\n' + r.text; }).join('\n\n');
-    var r = UrlFetchApp.fetch(url, {
-      method:'post', contentType:'application/json', muteHttpExceptions:true,
-      payload: JSON.stringify({ contents: [{ parts: [{
-        text: promptFor_(brief, { date: d.dayLabel }, d) + '\n\n' + digest }] }] })
-    });
-    out.push({ id:brief.id, en:brief.en, am:brief.am, facts:{}, text:readReply_(r), last:true });
+    out.push({ id:brief.id, en:brief.en, am:brief.am, facts:{}, last:true,
+               text:aiAsk_(promptFor_(brief, { date: d.dayLabel }, d) + '\n\n' + digest, 2000) });
   }
   return out;
 }
@@ -1095,7 +1073,7 @@ function mailAnalysis_(results, d) {
           'Every figure these agents were given was calculated in code from the reports ' +
           'as filed, not by the model. What the model wrote is the reading, not the ' +
           'arithmetic. Penalty amounts come from each person’s signed letter, and a charge ' +
-          'can be cancelled from your page with a reason.' +
+          'can be cancelled from your page with a reason. ' + esc_(brainLine_()) +
           (d.provisional ? ' This was a mid-day run: the day closes at midnight and the ' +
                            'charges are settled in the morning.' : '') +
           '</p></div>';
@@ -1174,6 +1152,8 @@ function publishAnalysis_(results, d) {
       due: d.ledger.length,
       owed: d.ledger.reduce(function (a, l) { return a + l.amount; }, 0),
       overdueInstructions: (d.instructions && d.instructions.overdue || []).length,
+      model: brain_().label,
+      modelNote: brain_().note,
       findings: results.map(function (r) {
         return { id: r.id, en: r.en, am: r.am, text: String(r.text || ''),
                  kind: r.id === 'brief' ? 'brief' : (r.decision ? 'decision' : 'finding') };

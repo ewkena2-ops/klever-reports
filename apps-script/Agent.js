@@ -23,7 +23,8 @@
    here only when the letter changes.
 
    SET UP: Project Settings -> Script Properties
-     GEMINI_KEY       your key from aistudio.google.com     (required)
+     CLAUDE_KEY       your key from console.anthropic.com   (Claude — the default)
+     GEMINI_KEY       your key from aistudio.google.com     (Gemini — the other choice)
      FIREBASE_WEB_KEY the apiKey from js/firebase-config.js  (required)
      LEDGER_PASSWORD  the ledger@klever.local password       (required)
      LEDGER_START     yyyy-mm-dd — nothing is charged before (recommended)

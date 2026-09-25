@@ -163,7 +163,8 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
     var old = document.querySelector('.top');
     if (old) old.parentNode.removeChild(old);
 
-    var top = el('div', 'top'), inner = el('div', 'top-in');
+    var top = el('header', 'top'), inner = el('nav', 'top-in');
+    inner.setAttribute('aria-label', 'Klever');
     var a = el('a'); a.href = 'index.html';
     var img = new Image(); img.src = 'assets/logo.png';
     img.alt = 'Klever Küche'; a.appendChild(img);

@@ -208,7 +208,8 @@
   }
 
   function buildTop() {
-    var top = el('div', 'top'), inner = el('div', 'top-in');
+    var top = el('header', 'top'), inner = el('nav', 'top-in');
+    inner.setAttribute('aria-label', 'Klever');
     var a = el('a'); a.href = 'index.html';
     var img = new Image(); img.src = 'assets/logo.png';
     img.alt = 'Klever Küche'; a.appendChild(img);
@@ -1112,7 +1113,7 @@
     var head = el('div', 'formhead');
     head.appendChild(el('h1', null, L(report)));
 
-    var meta = el('div', 'fmeta');
+    var meta = el('dl', 'fmeta');
     function metaRow(k, v, cls) {
       var r = el('div', 'fmrow' + (cls ? ' ' + cls : ''));
       r.appendChild(el('dt', null, k));
@@ -1966,6 +1967,46 @@
     } catch (e) { /* a full or blocked store is not worth taking the page down for */ }
   }
 
+  /* Has anyone signed in on this phone before? Firebase keeps a signed-in
+     session in the browser's IndexedDB under "firebase:authUser:…". Looking
+     takes milliseconds and no network, where Firebase itself is 600 KB away
+     on a slow line. The database is never created here — only read if it is
+     already there — and anything unexpected counts as "yes, wait for
+     Firebase", which is how it behaved before. */
+  function savedSignIn() {
+    try { if (localStorage.getItem('klever.lastUser')) return Promise.resolve(true); } catch (e) {}
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        if (String(localStorage.key(i)).indexOf('firebase:authUser:') === 0) return Promise.resolve(true);
+      }
+    } catch (e) {}
+    if (!window.indexedDB || !indexedDB.databases) return Promise.resolve(true);
+    return new Promise(function (resolve) {
+      var done = false;
+      function answer(v) { if (!done) { done = true; resolve(v); } }
+      setTimeout(function () { answer(true); }, 1500);
+      indexedDB.databases().then(function (list) {
+        var there = (list || []).some(function (d) { return d && d.name === 'firebaseLocalStorageDb'; });
+        if (!there) { answer(false); return; }
+        var rq = indexedDB.open('firebaseLocalStorageDb');
+        rq.onerror = function () { answer(true); };
+        rq.onupgradeneeded = function () { answer(true); };
+        rq.onsuccess = function () {
+          var db = rq.result;
+          try {
+            if (!db.objectStoreNames.contains('firebaseLocalStorage')) { db.close(); answer(false); return; }
+            var g = db.transaction('firebaseLocalStorage', 'readonly').objectStore('firebaseLocalStorage').getAllKeys();
+            g.onsuccess = function () {
+              db.close();
+              answer((g.result || []).some(function (k) { return String(k).indexOf('firebase:authUser:') === 0; }));
+            };
+            g.onerror = function () { db.close(); answer(true); };
+          } catch (e) { try { db.close(); } catch (e2) {} answer(true); }
+        };
+      })['catch'](function () { answer(true); });
+    });
+  }
+
   /* This person's filings of the last week (all of them, for the Chairman),
      so the home screen knows what has been sent. Started once signed in. */
   var stopFilings = null;
@@ -2019,17 +2060,19 @@
        word about the slow line) rather than a sign-in card they don't need;
        anyone else sees the sign-in card after four seconds. */
     var settled = window.FB ? window.FB.ready : Promise.resolve(null);
-    var knownHere = false;
-    try { knownHere = !!localStorage.getItem('klever.lastUser'); } catch (e) {}
     var raced = Promise.race([
       settled,
-      new Promise(function (resolve) {
-        if (knownHere) {
-          setTimeout(function () { booting.textContent = t('connectingSlow'); }, 5000);
-          setTimeout(function () { resolve(null); }, 30000);
-        } else {
-          setTimeout(function () { resolve(null); }, 4000);
-        }
+      savedSignIn().then(function (known) {
+        return new Promise(function (resolve) {
+          if (known) {
+            setTimeout(function () { booting.textContent = t('connectingSlow'); }, 5000);
+            setTimeout(function () { resolve(null); }, 30000);
+          } else {
+            /* nobody has ever signed in on this phone: nothing for Firebase
+               to restore, so the sign-in box need not wait for it */
+            resolve(null);
+          }
+        });
       })
     ]);
 

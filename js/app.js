@@ -83,6 +83,11 @@
 
   /* ---------------- shared chrome ---------------- */
 
+  /* the Chairman's pages draw themselves; app.js only lends them the bar */
+  function ownPage() {
+    return ['chairman', 'agents', 'universe'].indexOf(document.body.dataset.page) !== -1;
+  }
+
   function rebuildTop() {
     var old = document.querySelector('.top');
     if (old) old.parentNode.removeChild(old);
@@ -116,6 +121,7 @@
       var navs = [['chat.html', 'chat', t('chatOpen'), here === 'chat']];
       if (AUTH.isChairman()) {
         navs.unshift(['agents.html', 'orbit', t('obKicker'), here === 'agents']);
+        navs.unshift(['universe.html', 'galaxy', t('unKicker'), here === 'universe']);
         navs.unshift(['chairman.html', 'day', t('chOverview'), here === 'chairman']);
       }
       navs.forEach(function (n) {
@@ -318,13 +324,14 @@
 
   /* ---------------- icons ---------------- */
 
-  /* Three line icons, drawn here rather than fetched: the top bar has to
+  /* The line icons, drawn here rather than fetched: the top bar has to
      be up before anything has loaded, on a phone with one bar of signal. */
   var ICON = {
     chat: 'M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 17H10l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5z',
     day: 'M3 12.5h4l2.5-6 5 12 2.5-6h4',
     orbit: 'M12 9.6a2.4 2.4 0 1 1 0 4.8a2.4 2.4 0 0 1 0-4.8zM2.8 12c0-2.3 4.1-4.2 9.2-4.2s9.2 1.9 9.2 4.2-4.1 4.2-9.2 4.2-9.2-1.9-9.2-4.2zM19.2 5.6a1.1 1.1 0 1 1 0 .01',
-    doc: 'M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10.5A.5.5 0 0 1 6.5 20V4a.5.5 0 0 1 .5-.5zM14 3.5V8h4M9.5 12h5M9.5 15.5h5'
+    doc: 'M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10.5A.5.5 0 0 1 6.5 20V4a.5.5 0 0 1 .5-.5zM14 3.5V8h4M9.5 12h5M9.5 15.5h5',
+    galaxy: 'M12 10.4a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 0 1 0-3.2zM12 4.5c4.4 0 7.5 3.2 7.5 7 0 3-2.4 5-5.2 5M12 19.5c-4.4 0-7.5-3.2-7.5-7 0-3 2.4-5 5.2-5'
   };
   function icon(name) {
     var s = svg('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
@@ -663,8 +670,7 @@
         rebuildTop();
         /* on the Chairman's page the next screen belongs to chairman.js, and
            only a reload hands it over cleanly */
-        if (document.body.dataset.page === 'chairman' ||
-            document.body.dataset.page === 'agents') { location.reload(); return; }
+        if (ownPage()) { location.reload(); return; }
         renderIndex(root);
       })['catch'](function (e) {
         /* never say which half was wrong */
@@ -1630,7 +1636,11 @@
   /* handle for testing and for future edits from the console */
   window.KLEVER = {
     message: function () { return buildMessage(); },
-    fill: function (v) { Object.keys(v).forEach(function (k) { values[k] = v[k]; }); refresh(); }
+    fill: function (v) { Object.keys(v).forEach(function (k) { values[k] = v[k]; }); refresh(); },
+    /* the same answers the forms use, for the pages that draw the company:
+       who a report goes to, and what is owed today */
+    recipientsOf: recipientsOf,
+    dueToday: dueToday
   };
 
   /* Yesterday's drafts, swept once a day. Without this a phone accumulates one
@@ -1702,7 +1712,7 @@
       /* chairman.js owns #app on its own page. app.js is still loaded there
          for buildTop, renderSignIn and the shared helpers, and must draw
          nothing itself or the two race each other for the same node. */
-      if (document.body.dataset.page === 'chairman' || document.body.dataset.page === 'agents') return;
+      if (ownPage()) return;
       if (document.body.dataset.page === 'form') renderForm(root);
       else renderIndex(root);
     });

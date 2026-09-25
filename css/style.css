@@ -947,7 +947,130 @@ body[data-page="agents"] .wrap{max-width:none;padding:0}
   border:1px solid var(--teal-line);box-shadow:0 0 30px rgba(95,224,198,.12);
 }
 .obs-open svg{width:20px;height:20px;color:var(--teal-hi)}
-@media (max-width:420px){ .navbtn{width:36px} .obs-title{font-size:24px} }
+/* four icons, the language and the way out, on a 390px phone */
+@media (max-width:420px){
+  .top-in{padding:0 12px;gap:4px}
+  .navbtn{width:34px}
+  .langtoggle button{padding:6px 7px}
+  .top img{height:27px;padding:3px 5px}
+  .obs-title{font-size:24px}
+}
+
+/* ================================================================
+   11  THE UNIVERSE — the group as a galaxy, Klever as a living map
+   ================================================================
+   The same glass as the observatory, over a bigger sky. The page does
+   not scroll; the timeline sits at the foot, the reading at the head,
+   and everything in between is the world.                            */
+body[data-page="universe"]{padding-bottom:0;overflow:hidden;height:100%;background:#020506}
+body[data-page="universe"] .top{background:rgba(2,5,6,.35);border-bottom-color:rgba(255,255,255,.05)}
+body[data-page="universe"] .wrap{max-width:none;padding:0}
+
+.uni-wait{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;margin:0;
+  font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal-hi);
+  text-shadow:0 0 18px rgba(95,224,198,.5);animation:uniPulse 1.6s ease-in-out infinite alternate;
+}
+@keyframes uniPulse{from{opacity:.45}to{opacity:1}}
+.uni-nogl{max-width:520px;margin:48px auto;padding:0 18px;color:var(--ink-2);font-size:15.5px;line-height:1.55}
+.uni-nogl-links{display:flex;flex-direction:column;gap:4px;margin-top:10px}
+
+.uni-hud{max-width:760px}
+.uni-crumbs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.uni-crumbs button{
+  padding:3px 0;border:0;background:none;cursor:pointer;
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+}
+.uni-crumbs button:hover{color:var(--ink)}
+.uni-sep{font-family:var(--mono);font-size:12px;color:var(--dim)}
+.uni.at-group .uni-crumbs button:first-child,
+.uni.at-company .uni-crumbs button:last-child{color:var(--teal-hi);text-shadow:0 0 18px rgba(95,224,198,.5)}
+.uni.at-group .uni-sep,.uni.at-group .uni-crumbs button:last-child{opacity:.5}
+.uni-stats{
+  margin:0;font-family:var(--mono);font-size:12px;color:var(--ink-2);line-height:1.5;
+  text-shadow:0 1px 8px #000;font-variant-numeric:tabular-nums;
+}
+
+.uni-legend{bottom:calc(78px + env(safe-area-inset-bottom));flex-wrap:wrap;gap:8px 16px;padding:0 16px}
+.uni.at-group .uni-legend{opacity:0}
+
+/* the day, as a line you can drag */
+.uni-time{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));z-index:6;
+  width:min(760px,calc(100% - 24px));display:flex;align-items:center;gap:12px;padding:8px 12px 8px 8px;
+  border-radius:18px;background:rgba(8,16,15,.62);border:1px solid rgba(255,255,255,.09);
+  -webkit-backdrop-filter:blur(16px) saturate(1.3);backdrop-filter:blur(16px) saturate(1.3);
+  box-shadow:0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
+  transition:opacity .3s ease;
+}
+.uni.picked .uni-time{opacity:0;pointer-events:none}
+.uni-play{
+  flex:none;width:40px;height:40px;border-radius:50%;cursor:pointer;
+  font-size:13px;line-height:1;color:var(--teal-ink);
+  background:linear-gradient(180deg,var(--teal-hi),var(--teal));border:0;
+  box-shadow:0 0 22px rgba(95,224,198,.35);
+}
+.uni-clock{flex:none;min-width:44px;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.uni-track{position:relative;flex:1;min-width:0;height:34px;cursor:pointer;touch-action:none}
+.uni-track::before{content:'';position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;border-radius:2px;background:rgba(255,255,255,.1)}
+.uni-fill{position:absolute;left:0;top:50%;height:2px;margin-top:-1px;border-radius:2px;background:linear-gradient(90deg,rgba(95,224,198,.2),var(--teal-hi))}
+.uni-head{
+  position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;
+  background:#eafffa;box-shadow:0 0 0 3px rgba(95,224,198,.3),0 0 16px rgba(95,224,198,.8);
+}
+.uni-tick{position:absolute;top:7px;bottom:7px;width:1px;background:rgba(255,255,255,.22)}
+.uni-dot{position:absolute;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;opacity:.9}
+.uni-live{
+  flex:none;min-height:30px;padding:0 11px;border-radius:999px;cursor:pointer;
+  font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--mut);background:rgba(255,255,255,.04);border:1px solid var(--line-2);
+}
+.uni-live.on{color:var(--teal-hi);border-color:var(--teal-line);background:var(--teal-bg)}
+.uni-live.on::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:7px;vertical-align:1px;background:var(--teal-hi);box-shadow:0 0 8px var(--teal-hi);animation:uniPulse 1.2s ease-in-out infinite alternate}
+
+/* names in the world */
+.uni-co{
+  display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 12px 6px;border-radius:14px;pointer-events:auto;
+  background:rgba(8,14,13,.55);border:1px solid rgba(255,214,150,.22);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+}
+.uni-co b{font-size:13px;font-weight:700;color:#fff1dc}
+.uni-co span{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#a39a8a}
+.uni-co.live{border-color:var(--teal-line);box-shadow:0 0 26px rgba(95,224,198,.22)}
+.uni-co.live b{color:#eafffa}
+.uni-co.live span{color:var(--teal-hi)}
+.uni-person{font-size:12px;color:#e3efeb}
+.uni-sun{font-size:12.5px;font-weight:700;color:#ffe6bd;letter-spacing:.02em}
+.uni-planet{
+  display:flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+}
+.uni-planet i{flex:none;width:7px;height:7px;border-radius:50%}
+.uni-dept,.uni-amt{
+  position:absolute;left:0;top:0;white-space:nowrap;pointer-events:none;transition:opacity .25s ease;will-change:transform;
+}
+.uni-dept{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;opacity:.8;text-shadow:0 1px 6px #000}
+.uni-inst{font-size:11.5px;color:#ffd892;letter-spacing:.02em}
+.uni-agent{font-size:11px}
+.uni-amt{
+  padding:2px 8px;border-radius:8px;font-family:var(--mono);font-size:11.5px;font-weight:600;color:#ffe2a6;
+  background:rgba(40,28,6,.55);border:1px solid rgba(255,199,94,.3);font-variant-numeric:tabular-nums;
+}
+
+/* the sheet's rows: a report, its state, its time */
+.uni-reps{display:flex;flex-direction:column;margin:0 0 16px}
+.uni-rep{display:flex;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.uni-rep i{flex:none;width:8px;height:8px;border-radius:50%;transform:translateY(-1px)}
+.uni-rep-n{flex:1;min-width:0;font-size:14px;color:var(--ink)}
+.uni-rep-t{flex:none;font-family:var(--mono);font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums}
+.uni-rep-t.over{color:var(--coral)}
+.uni-ins .uni-rep-n{font-family:var(--serif);font-size:15px;line-height:1.45}
+.uni .obs-sheet .obs-open{margin-top:6px;width:100%;cursor:pointer;font-family:var(--sans)}
+@media (max-width:520px){
+  .uni-time{gap:8px;padding:6px 8px 6px 6px}
+  .uni-clock{min-width:40px;font-size:13px}
+  .uni-legend{font-size:11px;bottom:calc(70px + env(safe-area-inset-bottom))}
+}
 
 /* ================================================================
    9  PRINT — the report as a document on letterhead. Unchanged.

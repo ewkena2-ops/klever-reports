@@ -125,19 +125,23 @@ import {
     analysis.appendChild(el('p', 'codenote', t('chNoAnalysis')));
     root.appendChild(analysis);
 
-    /* the full sky, on its own page */
-    var open = el('a', 'obs-open');
-    open.href = 'agents.html';
+    /* the full sky, and the whole company, each on its own page */
     var NS = 'http://www.w3.org/2000/svg';
-    var ic = document.createElementNS(NS, 'svg');
-    [['viewBox', '0 0 24 24'], ['fill', 'none'], ['stroke', 'currentColor'], ['stroke-width', '1.7'],
-     ['stroke-linecap', 'round'], ['aria-hidden', 'true']].forEach(function (a) { ic.setAttribute(a[0], a[1]); });
-    var pth = document.createElementNS(NS, 'path');
-    pth.setAttribute('d', 'M12 9.6a2.4 2.4 0 1 1 0 4.8a2.4 2.4 0 0 1 0-4.8zM2.8 12c0-2.3 4.1-4.2 9.2-4.2s9.2 1.9 9.2 4.2-4.1 4.2-9.2 4.2-9.2-1.9-9.2-4.2z');
-    ic.appendChild(pth);
-    open.appendChild(ic);
-    open.appendChild(document.createTextNode(t('obOpen')));
-    root.appendChild(open);
+    function wayIn(href, d, label) {
+      var a = el('a', 'obs-open');
+      a.href = href;
+      var ic = document.createElementNS(NS, 'svg');
+      [['viewBox', '0 0 24 24'], ['fill', 'none'], ['stroke', 'currentColor'], ['stroke-width', '1.7'],
+       ['stroke-linecap', 'round'], ['aria-hidden', 'true']].forEach(function (x) { ic.setAttribute(x[0], x[1]); });
+      var pth = document.createElementNS(NS, 'path');
+      pth.setAttribute('d', d);
+      ic.appendChild(pth);
+      a.appendChild(ic);
+      a.appendChild(document.createTextNode(label));
+      root.appendChild(a);
+    }
+    wayIn('agents.html', 'M12 9.6a2.4 2.4 0 1 1 0 4.8a2.4 2.4 0 0 1 0-4.8zM2.8 12c0-2.3 4.1-4.2 9.2-4.2s9.2 1.9 9.2 4.2-4.1 4.2-9.2 4.2-9.2-1.9-9.2-4.2z', t('obOpen'));
+    wayIn('universe.html', 'M12 10.4a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 0 1 0-3.2zM12 4.5c4.4 0 7.5 3.2 7.5 7 0 3-2.4 5-5.2 5M12 19.5c-4.4 0-7.5-3.2-7.5-7 0-3 2.4-5 5.2-5', t('unOpen'));
 
     /* --- what he asked for, and whether it happened --- */
     root.appendChild(el('p', 'eyebrow', t('chIns')));

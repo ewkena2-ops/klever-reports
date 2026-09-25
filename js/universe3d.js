@@ -26,6 +26,15 @@
    agents are small ice worlds on the outermost orbit, lit by what they
    last found.
 
+   THE OTHER FOUR. Each galaxy holds its company's own star, and each can
+   be flown into. Its head is the sun and the people on file are planets —
+   Kalkidan and Frewoyni at Rovestone, Kidan at Group Finance; Meri Block
+   Board and Real Estate have no one on file yet and say so. None of them
+   files on this site, so what shows there is what Klever's own reports
+   say reaches them: the reports addressed to Kidan, the payments over
+   50,000 sent to him, the square metres Amaha made for Rovestone. At the
+   group scale the same two figures run as light between the galaxies.
+
    And a timeline: drag it, or press play, and watch the day happen.
 
    Everything here is drawn from what the page is handed — who exists, what
@@ -142,21 +151,31 @@ const COMPANIES = [
   { id: 'klever', en: 'Klever Küche', am: 'ክሌቨር ኩሽ', live: true,
     kind: 'spiral', n: 64000, radius: 3960, arms: 4, wind: WIND, rot: [0, 0, 0], boost: 1,
     inner: '#ffd9a3', outer: '#bcd4ff', dust: 1500, core: 2600, off: [-12000, 900, 6800] },
-  { id: 'rovestone', en: 'Rovestone', am: 'ሮቭስቶን',
+  { id: 'rovestone', en: 'Rovestone', am: 'ሮቭስቶን', sys: 0.42,
+    head: { en: 'Kalkidan', am: 'ቃልኪዳን', roleEn: 'General Manager', roleAm: 'ዋና ሥራ አስኪያጅ' },
+    crew: [{ en: 'Frewoyni', am: 'ፍሬወይኒ', roleEn: 'Operations Lead', roleAm: 'የኦፕሬሽን ኃላፊ' }],
     kind: 'barred', n: 18000, radius: 3400, arms: 2, wind: 2.2, rot: [0.55, 0.4, 0.25], boost: 1.5,
     inner: '#ffe0b0', outer: '#a8c8ff', dust: 520, core: 2100, off: [11200, -1600, 6000] },
-  { id: 'meri', en: 'Meri Block Board', am: 'መሪ ብሎክ ቦርድ',
+  { id: 'meri', en: 'Meri Block Board', am: 'መሪ ብሎክ ቦርድ', sys: 0.22,
     kind: 'elliptical', n: 16000, radius: 3000, rot: [0.3, 0, 0.5], boost: 1.5,
     inner: '#ffd49a', outer: '#e0a878', dust: 0, core: 2600, off: [7900, 2000, -10100] },
-  { id: 'realestate', en: 'Real Estate & Construction', am: 'ሪል እስቴትና ግንባታ',
+  { id: 'realestate', en: 'Real Estate & Construction', am: 'ሪል እስቴትና ግንባታ', sys: 0.42,
     kind: 'spiral', n: 18000, radius: 3600, arms: 3, wind: 1.35, rot: [1.2, 0.6, 0.1], boost: 1.5,
     inner: '#fff0d8', outer: '#9fbcff', dust: 520, core: 1800, off: [-10100, -1400, -8200] },
-  { id: 'groupfinance', en: 'Group Finance', am: 'የቡድኑ ፋይናንስ',
+  { id: 'groupfinance', en: 'Group Finance', am: 'የቡድኑ ፋይናንስ', sys: 0.36,
+    head: { en: 'Kidan', am: 'ኪዳን', roleEn: 'Group Finance Controller', roleAm: 'የቡድኑ ፋይናንስ ተቆጣጣሪ' },
     kind: 'lenticular', n: 26000, radius: 5200, rot: [0.35, 0.2, -0.15], boost: 1.5,
     inner: '#ffe2b0', outer: '#efe4d4', dust: 0, core: 4600, off: [0, 0, 0] }
 ];
 const HUB = KC.clone().sub(new THREE.Vector3(...COMPANIES[0].off));
-COMPANIES.forEach(c => { c.center = HUB.clone().add(new THREE.Vector3(...c.off)); });
+COMPANIES.forEach(c => {
+  c.center = HUB.clone().add(new THREE.Vector3(...c.off));
+  /* each company's own star: Klever's at the origin, the others out on
+     their galaxy's disc */
+  c.sysPos = c.live ? new THREE.Vector3()
+    : new THREE.Vector3(c.radius * c.sys, 0, 0).applyEuler(new THREE.Euler(c.rot[0], c.rot[1], c.rot[2])).add(c.center);
+});
+const coById = id => COMPANIES.find(c => c.id === id);
 
 function gauss() {
   let u = 0, v = 0;
@@ -218,7 +237,7 @@ function galaxyPoints(g, small) {
       size = 6 + Math.random() * 12;
     }
     v.applyMatrix4(m).add(g.center);
-    if (g.live && v.lengthSq() < 420 * 420) continue;        /* a clear bubble round Klever's star */
+    if (v.distanceToSquared(g.sysPos) < 420 * 420) continue;   /* a clear bubble round the company's star */
     P.push(v.x, v.y, v.z); C.push(c.r, c.g, c.b); S.push(size * g.boost);
   }
   const D = [], DC = [], DS = [];
@@ -415,7 +434,7 @@ export function mount(root, opts) {
   controls.autoRotate = !reduce;
   controls.autoRotateSpeed = 0.18;
   const { composer, bloom } = makeComposer(renderer, scene, camera, 0.8, 0.55, 0.82);
-  const skyRT = paintSky(renderer, scene, 0.75);
+  const skyRT = paintSky(renderer, scene, 0.5);
   const starMat = makeStars(scene, 4200, 30000, pr);
 
   /* ---------- the five galaxies ---------- */
@@ -460,7 +479,7 @@ export function mount(root, opts) {
   const sunPos = new THREE.Vector3();
   const worlds = [];
   const lineMats = [];
-  function circle(R, color, op, center, euler) {
+  function circle(R, color, op, center, euler, parent, mats) {
     const pts = [];
     for (let i = 0; i <= 180; i++) {
       const a = i / 180 * TAU;
@@ -471,8 +490,8 @@ export function mount(root, opts) {
     }
     const m = new THREE.LineBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0, depthWrite: false });
     m.userData.base = op;
-    lineMats.push(m);
-    klever.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), m));
+    (mats || lineMats).push(m);
+    (parent || klever).add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), m));
   }
 
   /* the Chairman */
@@ -680,6 +699,88 @@ export function mount(root, opts) {
     return { id, w, glow, line, lm: lmat, lab, a0: i / arr.length * TAU, heat: 'none' };
   });
 
+  /* ---------- the other four companies ---------- */
+  const CREW_LOOK = [
+    { type: 1, pal: ['#1d6a8a', '#7b8f52', '#b39468', '#ece4d2'], rim: '#7fd8ff', clouds: true },
+    { type: 0, pal: ['#e6ecff', '#a9b8f0', '#4a58a0', '#ffffff'], rim: '#9fb4ff' }
+  ];
+  const minors = {};
+  COMPANIES.filter(co => !co.live).forEach((co, ci) => {
+    const g = new THREE.Group();
+    g.visible = false;
+    scene.add(g);
+    const c0 = co.sysPos, mats = [];
+    const sR = (co.head ? 6 : 4.2) * (small ? 1.2 : 1);
+    const star = makeSun(sR);
+    [star.mesh, star.corona, star.haze].forEach(o => { o.position.copy(c0); g.add(o); });
+    star.mesh.userData.pick = { kind: 'head', id: co.id };
+    const ws = [];
+    const crew = (co.crew || []).map((p, i) => {
+      const orbit = 22 + i * 12, a = 0.9 + i * 2.2;
+      const pos = c0.clone().add(new THREE.Vector3(Math.cos(a) * orbit, 0, Math.sin(a) * orbit));
+      const look = CREW_LOOK[i % CREW_LOOK.length];
+      const r = 2.4 * BS;
+      const w = makeWorld(Object.assign({ r, seed: 70 + ci * 9 + i, rimI: 0.7, tilt: 0.35, spin: 0.05, segs: 64, sun: c0 }, look));
+      w.group.position.copy(pos);
+      w.surf.userData.pick = { kind: 'crew', id: co.id + ':' + i };
+      g.add(w.group);
+      ws.push(w);
+      circle(orbit, '#9fd0ff', 0.14, c0, null, g, mats);
+      const lab = el('button', 'obs3d-label uni-person', L(p));
+      lab.type = 'button';
+      lab.onclick = () => pick({ kind: 'crew', id: co.id + ':' + i });
+      labels.appendChild(lab);
+      return { p, pos, r, w, lab };
+    });
+    const headLab = el('button', 'obs3d-label uni-person uni-sun', co.head ? L(co.head) : s('noOne', 'No one on file yet'));
+    headLab.type = 'button';
+    headLab.onclick = () => pick({ kind: 'head', id: co.id });
+    labels.appendChild(headLab);
+
+    /* what reaches it from Klever today, arriving from Klever's side of the sky */
+    let feed = null;
+    if (co.id === 'groupfinance' || co.id === 'rovestone') {
+      const toK = new THREE.Vector3().sub(c0).setY(0).normalize();
+      const A = c0.clone().addScaledVector(toK, 64 * (small ? 1.2 : 1)).add(new THREE.Vector3(0, 14, 0));
+      const mid = A.clone().add(c0).multiplyScalar(0.5).add(new THREE.Vector3(0, 12, 0));
+      const curve = new THREE.QuadraticBezierCurve3(A, mid, c0.clone());
+      const n = 30;
+      const pg = new THREE.BufferGeometry();
+      pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+      const pm = new THREE.PointsMaterial({ color: new THREE.Color(co.id === 'rovestone' ? '#9be7a0' : '#5fe0c6'), size: 1.4 * BS,
+        map: glowTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0.35)'), transparent: true, opacity: 0,
+        blending: THREE.AdditiveBlending, depthWrite: false });
+      const pts = new THREE.Points(pg, pm);
+      pts.frustumCulled = false;
+      g.add(pts);
+      const lab = el('div', 'uni-amt uni-feed');
+      labels.appendChild(lab);
+      feed = { curve, pts, pm, n, lab, count: 0 };
+    }
+    minors[co.id] = { co, g, c0, sR, star, crew, ws, mats, feed, headLab, f: 0 };
+  });
+
+  /* the same figures between the galaxies, seen from the group */
+  const links = ['groupfinance', 'rovestone'].map(id => {
+    const co = coById(id);
+    const A = COMPANIES[0].center.clone(), B = co.center.clone();
+    const mid = A.clone().add(B).multiplyScalar(0.5);
+    mid.y += A.distanceTo(B) * 0.22;
+    const curve = new THREE.QuadraticBezierCurve3(A, mid, B);
+    const n = 48;
+    const pg = new THREE.BufferGeometry();
+    pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+    const pm = new THREE.PointsMaterial({ color: new THREE.Color(id === 'rovestone' ? '#9be7a0' : '#5fe0c6'), size: 4,
+      sizeAttenuation: false, map: glowTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0.35)'), transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false });
+    const pts = new THREE.Points(pg, pm);
+    pts.frustumCulled = false;
+    scene.add(pts);
+    const lab = el('div', 'uni-amt uni-feed');
+    labels.appendChild(lab);
+    return { id, curve, pts, pm, n, lab };
+  });
+
   /* ---------- the day ---------- */
   const clock = opts.clock || (() => new Date());
   const today0 = () => { const d = clock(); d.setHours(0, 0, 0, 0); return d; };
@@ -725,6 +826,7 @@ export function mount(root, opts) {
   };
   const ymdOf = d => d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
   let dayText = '';
+  const kidan = { reps: [], filed: 0, pay: null }, rove = { m2: null };
 
   function applyDay(now) {
     let on = 0, late = 0, missing = 0;
@@ -757,6 +859,26 @@ export function mount(root, opts) {
       P.state = worstOf(due.filter(r => ids.indexOf(r.person) !== -1));
       P.dot.style.background = P.state ? STATUS[P.state].color : 'transparent';
       P.dot.style.boxShadow = P.state ? '0 0 8px ' + STATUS[P.state].color : 'none';
+    });
+    /* what reaches the other companies, from Klever's own reports */
+    kidan.reps = due.filter(r => /Kidan/.test(r.toEn || ''));
+    kidan.filed = kidan.reps.filter(r => filingOf(r, T)).length;
+    const bv = lastValues('betty-daily', T), av = lastValues('amaha-daily', T);
+    kidan.pay = bv && bv.pay_kidan !== '' && bv.pay_kidan != null ? num(bv.pay_kidan) : null;
+    rove.m2 = av && av.p_rove !== '' && av.p_rove != null ? num(av.p_rove) : null;
+    if (minors.groupfinance) minors.groupfinance.feed.lab.textContent = kidan.reps.length
+      ? s('toKidan', 'Klever’s reports to Kidan') + ' · ' + kidan.filed + ' / ' + kidan.reps.length : '';
+    if (minors.rovestone) minors.rovestone.feed.lab.textContent = rove.m2 != null
+      ? money(rove.m2) + ' m² · ' + s('forRove', 'made for Rovestone today') : '';
+    /* the stream to Kidan takes the colour of the worst of his reports */
+    const kw = kidan.reps.length ? worstOf(kidan.reps) : 'pending';
+    const kc = STATUS[kw === 'pending' ? 'pending' : kw].color;
+    if (minors.groupfinance) minors.groupfinance.feed.pm.color.set(kw === 'on' ? '#5fe0c6' : kc);
+    links.forEach(lk => { if (lk.id === 'groupfinance') lk.pm.color.set(kw === 'on' ? '#5fe0c6' : kc); });
+    links.forEach(lk => {
+      lk.lab.textContent = lk.id === 'groupfinance'
+        ? (kidan.reps.length ? s('toKidan', 'Klever’s reports to Kidan') + ' · ' + kidan.filed + ' / ' + kidan.reps.length : '')
+        : (rove.m2 != null ? money(rove.m2) + ' m² · ' + s('forRove', 'made for Rovestone today') : '');
     });
     let inn = 0, out = 0;
     flows.forEach(fl => {
@@ -819,7 +941,7 @@ export function mount(root, opts) {
     mode = 'play';
     playFrom = D.dayStart.getTime() + 6 * 3600e3;
     playT0 = performance.now();
-    if (level !== 'company') goCompany();
+    if (level !== 'company') goCompany(cur);
   };
   live.onclick = () => { mode = 'live'; D.now = clock(); T = D.now.getTime(); applyDay(performance.now()); };
 
@@ -861,6 +983,37 @@ export function mount(root, opts) {
     row.appendChild(el('span', 'uni-rep-n', name));
     row.appendChild(el('span', 'uni-rep-t', time));
     list.appendChild(row);
+  }
+  /* what Klever's reports say reaches another company today */
+  function feedRows(cid) {
+    if (cid === 'groupfinance') {
+      if (!kidan.reps.length && kidan.pay == null) return;
+      sheet.appendChild(el('div', 'obs-said-k', s('fromKlever', 'From Klever today') +
+        (kidan.reps.length ? ' · ' + kidan.filed + ' / ' + kidan.reps.length : '')));
+      const list = el('div', 'uni-reps');
+      kidan.reps.forEach(r => {
+        const st = stateOf(r, T), f = filingOf(r, T);
+        const who = people.find(x => x.id === r.person);
+        repRow(list, st, (who ? short(who) + ' · ' : '') + L(r), f ? hhmm(f.at) : L(STATUS[st]));
+      });
+      const row = el('div', 'uni-rep');
+      const dot = el('i'); dot.style.background = '#ffc75e';
+      row.appendChild(dot);
+      row.appendChild(el('span', 'uni-rep-n', s('payKidan', 'Payments over 50,000 sent to Kidan — Betelhem’s report')));
+      row.appendChild(el('span', 'uni-rep-t', kidan.pay != null ? money(kidan.pay) : s('notReported', 'not reported')));
+      list.appendChild(row);
+      sheet.appendChild(list);
+    } else if (cid === 'rovestone') {
+      sheet.appendChild(el('div', 'obs-said-k', s('fromKlever', 'From Klever today')));
+      const list = el('div', 'uni-reps');
+      const row = el('div', 'uni-rep');
+      const dot = el('i'); dot.style.background = '#9be7a0';
+      row.appendChild(dot);
+      row.appendChild(el('span', 'uni-rep-n', s('roveM2', 'm² made for Rovestone — Amaha’s report')));
+      row.appendChild(el('span', 'uni-rep-t', rove.m2 != null ? money(rove.m2) + ' m²' : s('notReported', 'not reported')));
+      list.appendChild(row);
+      sheet.appendChild(list);
+    }
   }
   function drawSheet() {
     if (!picked) { sheet.hidden = true; wrap.classList.remove('picked'); return; }
@@ -957,16 +1110,25 @@ export function mount(root, opts) {
         row.appendChild(el('span', 'uni-rep-t', fl.amount ? money(fl.amount) + ' ' + s('birr', 'Birr') : s('notReported', 'not reported')));
         sheet.appendChild(row);
       });
+    } else if (k === 'head' || k === 'crew') {
+      const [cid, idx] = String(id).split(':');
+      const m = minors[cid], co = m.co;
+      const who = k === 'head' ? co.head : co.crew[+idx];
+      sheetHead(L(co), 'none', s('coOff', 'not connected yet'), who ? L(who) : L(co),
+                who ? (lang === 'am' ? who.roleAm : who.roleEn) : s('noOneSub', 'No one from this company is on file yet.'));
+      feedRows(cid);
+      sheet.appendChild(el('p', 'obs-said empty', s('coOffSub', 'No reports come from here yet.')));
     } else if (k === 'company') {
       const co = COMPANIES.find(c => c.id === id);
       sheetHead(s('group', 'Amare Holdings'), co.live ? 'quiet' : 'none',
                 co.live ? s('coLive', 'live') : s('coOff', 'not connected yet'), L(co),
                 co.live ? s('coLiveSub', 'Every person, every report and the day’s money, drawn from what was filed today.')
                         : s('coOffSub', 'No reports come from here yet. When its people file on the site, it lights up the way Klever does.'));
-      if (co.live) {
+      if (!co.live) feedRows(co.id);
+      {
         const go = el('button', 'obs-open', s('flyIn', 'Fly in'));
         go.type = 'button';
-        go.onclick = () => { pick(null); goCompany(); };
+        go.onclick = () => { pick(null); goCompany(co.id); };
         sheet.appendChild(go);
       }
     }
@@ -975,7 +1137,7 @@ export function mount(root, opts) {
   }
 
   /* ---------- camera ---------- */
-  let W = 0, H = 0, level = 'group', tween = null, offY = 0, offGoal = 0;
+  let W = 0, H = 0, level = 'group', cur = 'klever', tween = null, offY = 0, offGoal = 0;
   const views = {};
   function band() {
     const top = (document.querySelector('.top') || hud).getBoundingClientRect().bottom;
@@ -998,7 +1160,12 @@ export function mount(root, opts) {
   function computeViews() {
     const portrait = W / H < 0.8;
     views.group = fitDisc(17000, portrait ? 1.2 : 0.62, HUB.clone(), 4500);
-    views.company = fitDisc(portrait ? 84 : 90, portrait ? 1.0 : 0.56, new THREE.Vector3(0, 2, 0), 14);
+    views.klever = fitDisc(portrait ? 84 : 90, portrait ? 1.0 : 0.56, new THREE.Vector3(0, 2, 0), 14);
+    Object.values(minors).forEach(m => {
+      views[m.co.id] = fitDisc((m.crew.length ? 44 : 30) * (portrait ? 1.1 : 1), portrait ? 1.0 : 0.5,
+                               m.c0.clone().add(new THREE.Vector3(0, 2, 0)), 10);
+    });
+    views.company = views[cur];
     const [y0, y1] = band();
     offGoal = H / 2 - (y0 + y1) / 2;
   }
@@ -1011,9 +1178,21 @@ export function mount(root, opts) {
     controls.enabled = false;
   }
   const qI = new THREE.Quaternion(), qK = new THREE.Quaternion();
+  function minorText(id) {
+    const bits = [s('coOff', 'not connected yet')];
+    if (id === 'groupfinance') {
+      if (kidan.reps.length) bits.push(s('toKidan', 'Klever’s reports to Kidan') + ' ' + kidan.filed + ' / ' + kidan.reps.length);
+      if (kidan.pay != null) bits.push(s('payKidanShort', 'payments over 50,000') + ' ' + money(kidan.pay));
+    } else if (id === 'rovestone') {
+      if (rove.m2 != null) bits.push(money(rove.m2) + ' m² ' + s('forRove', 'made for Rovestone today'));
+    } else bits.push(s('noOne', 'No one on file yet'));
+    return dayName(D.dayStart) + '  ·  ' + bits.join('  ·  ');
+  }
   function heading() {
-    title.textContent = level === 'group' ? s('group', 'Amare Holdings') : s('title', 'Klever, today');
-    stats.textContent = level === 'group' ? s('groupStats', 'Five companies · one reporting live') : dayText;
+    const co = coById(cur);
+    cCo.textContent = L(co);
+    title.textContent = level === 'group' ? s('group', 'Amare Holdings') : cur === 'klever' ? s('title', 'Klever, today') : L(co);
+    stats.textContent = level === 'group' ? s('groupStats', 'Five companies · one reporting live') : cur === 'klever' ? dayText : minorText(cur);
   }
   function goGroup() {
     level = 'group';
@@ -1024,17 +1203,19 @@ export function mount(root, opts) {
     wrap.classList.add('at-group'); wrap.classList.remove('at-company');
     heading();
   }
-  function goCompany() {
+  function goCompany(id) {
+    if (id) cur = id;
     level = 'company';
     computeViews();
-    flyTo(views.company, 5600, level === 'group' || camera.position.length() > 5000 ? 2.2 : 1);
+    const far = camera.position.distanceTo(views.company.target) > 5000;
+    flyTo(views.company, far ? 5600 : 2200, far ? 2.2 : 1);
     controls.minDistance = 3; controls.maxDistance = views.company.d * 2.5;
     controls.autoRotateSpeed = 0.18;
     wrap.classList.add('at-company'); wrap.classList.remove('at-group');
     heading();
   }
   cGroup.onclick = () => { pick(null); goGroup(); };
-  cCo.onclick = () => { pick(null); goCompany(); };
+  cCo.onclick = () => { pick(null); goCompany(cur); };
 
   const satPos = st => st.w.group.position;
   function pick(p) {
@@ -1042,22 +1223,25 @@ export function mount(root, opts) {
     drawSheet();
     computeViews();
     if (!p) {
-      if (level === 'company') flyTo(views.company, 1600);
+      if (level === 'company') { computeViews(); flyTo(views.company, 1600); }
       return;
     }
     if (p.kind === 'company') return;
-    if (level !== 'company') {
-      level = 'company'; controls.minDistance = 3;
+    const home = p.kind === 'head' || p.kind === 'crew' ? String(p.id).split(':')[0] : 'klever';
+    if (level !== 'company' || cur !== home) {
+      level = 'company'; cur = home; controls.minDistance = 3;
       wrap.classList.add('at-company'); wrap.classList.remove('at-group'); heading();
     }
-    let P, dist;
-    if (p.kind === 'person') { const n = nodes[p.id]; P = n.pos.clone(); dist = p.id === 'chairman' ? SUN_R * 6.5 : Math.max(8, n.r * 13); }
+    let P, dist, sunAt = sunPos;
+    if (p.kind === 'head') { const m = minors[p.id]; P = m.c0.clone(); dist = m.sR * 6.5; sunAt = m.c0; }
+    else if (p.kind === 'crew') { const [cid, i] = p.id.split(':'); const m = minors[cid], c = m.crew[+i]; P = c.pos.clone(); dist = c.r * 7 + 10; sunAt = m.c0; }
+    else if (p.kind === 'person') { const n = nodes[p.id]; P = n.pos.clone(); dist = p.id === 'chairman' ? SUN_R * 6.5 : Math.max(8, n.r * 13); }
     else if (p.kind === 'dept') { const pl = planets[p.id]; P = pl.pos.clone(); dist = pl.r * 6 + 16 * BS; }
     else if (p.kind === 'inst') { const i = insts[p.id]; P = i.pos.clone(); dist = i.r * 6 + 8; }
     else { P = satPos(sats.find(x => x.id === p.id)).clone(); dist = 9 * BS; }
     /* come at it from between the camera and the sun, so its lit face shows */
     const toCam = camera.position.clone().sub(P).setY(0).normalize();
-    const toSun = P.lengthSq() > 4 ? P.clone().negate().setY(0).normalize() : toCam.clone();
+    const toSun = P.distanceToSquared(sunAt) > 4 ? sunAt.clone().sub(P).setY(0).normalize() : toCam.clone();
     const dir = toSun.multiplyScalar(0.55).add(toCam.multiplyScalar(0.45)).normalize()
       .multiplyScalar(0.84).add(new THREE.Vector3(0, 0.5, 0)).normalize();
     flyTo({ pos: P.clone().addScaledVector(dir, dist * (H > W ? 1.35 : 1)), target: P }, 1700);
@@ -1075,6 +1259,7 @@ export function mount(root, opts) {
     if (level === 'company') {
       const objs = Object.values(nodes).map(n => n.pick)
         .concat(Object.values(planets).map(pl => pl.w.surf), Object.values(insts).map(i => i.pick), sats.map(x => x.w.surf));
+      Object.values(minors).forEach(m => { if (m.g.visible) { objs.push(m.star.mesh); m.crew.forEach(c => objs.push(c.w.surf)); } });
       const hits = ray.intersectObjects(objs, false);
       if (hits.length) { pick(hits[0].object.userData.pick); return; }
     } else {
@@ -1084,7 +1269,7 @@ export function mount(root, opts) {
         const d = Math.hypot((v.x + 1) / 2 * W - e.clientX, (1 - v.y) / 2 * H - e.clientY);
         if (d < bd) { bd = d; best = c; }
       });
-      if (best) { if (best.co.live && !picked) goCompany(); else pick({ kind: 'company', id: best.co.id }); return; }
+      if (best) { if (!picked) goCompany(best.co.id); else pick({ kind: 'company', id: best.co.id }); return; }
     }
     if (picked) pick(null);
   });
@@ -1121,9 +1306,30 @@ export function mount(root, opts) {
   }
   function hide(lab) { lab.style.opacity = '0'; lab.style.pointerEvents = 'none'; }
   const placeNode = (n, taken, prio) => place(n.lab, below(n.pos, n.r), 3, taken, prio);
-  function placeLabels(kFade) {
+  function placeLabels(kFade, near) {
     const taken = [];
-    const showCo = kFade < 0.3;
+    const showCo = near < 0.3;
+    /* the other companies' systems, when the camera is in one */
+    Object.values(minors).forEach(m => {
+      const on = m.f > 0.5;
+      const pk = picked && (picked.kind === 'head' || picked.kind === 'crew') ? picked : null;
+      if (on) {
+        place(m.headLab, below(m.c0, m.sR), 3, taken, true);
+        m.crew.forEach(c => place(c.lab, below(c.pos, c.r), 3, taken, true));
+        if (m.feed && m.feed.lab.textContent && !pk) {
+          if (![0.5, 0.35, 0.65].some(u => place(m.feed.lab, m.feed.curve.getPoint(u), -8, taken, false, true))) hide(m.feed.lab);
+        } else if (m.feed) hide(m.feed.lab);
+      } else {
+        hide(m.headLab);
+        m.crew.forEach(c => hide(c.lab));
+        if (m.feed) hide(m.feed.lab);
+      }
+    });
+    links.forEach(lk => {
+      if (showCo && !picked && lk.lab.textContent) {
+        if (![0.5, 0.4, 0.6].some(u => place(lk.lab, lk.curve.getPoint(u), -8, taken, false, true))) hide(lk.lab);
+      } else hide(lk.lab);
+    });
     coMarks.forEach(c => {
       if (showCo && !picked) place(c.lab, anchorV.copy(c.pos).addScaledVector(camUp, -c.co.radius * 0.6), 0, taken, true);
       else hide(c.lab);
@@ -1233,7 +1439,43 @@ export function mount(root, opts) {
     /* how far into Klever the camera is: 0 out among the galaxies, 1 in the system */
     const dK = camera.position.length();
     const kf = THREE.MathUtils.clamp(1 - (dK - 400) / 1400, 0, 1);
-    galU.uFade.value = 1 - 0.62 * kf;
+    /* how far into each other company's system the camera is */
+    let near = kf;
+    Object.values(minors).forEach(m => {
+      const dm = camera.position.distanceTo(m.c0);
+      m.f = THREE.MathUtils.clamp(1 - (dm - 300) / 1100, 0, 1);
+      near = Math.max(near, m.f);
+      m.g.visible = m.f > 0.01;
+      if (!m.g.visible) return;
+      m.star.u.uTime.value = time;
+      m.star.corona.material.opacity = m.f;
+      m.star.haze.material.opacity = m.f;
+      m.ws.forEach(w => w.update(dt, time));
+      m.mats.forEach(mm => { mm.opacity = m.f * mm.userData.base; });
+      if (m.feed) {
+        const has = m.co.id === 'groupfinance' ? kidan.reps.length > 0 : rove.m2 != null && rove.m2 > 0;
+        m.feed.pm.opacity = m.f * (has ? 0.9 : 0);
+        const pos = m.feed.pts.geometry.attributes.position;
+        for (let i = 0; i < m.feed.n; i++) {
+          const p = m.feed.curve.getPoint(((time * 0.1) + i / m.feed.n) % 1);
+          pos.setXYZ(i, p.x, p.y, p.z);
+        }
+        pos.needsUpdate = true;
+      }
+    });
+    links.forEach(lk => {
+      const has = lk.id === 'groupfinance' ? kidan.reps.length > 0 : rove.m2 != null && rove.m2 > 0;
+      lk.pm.opacity = has ? 0.85 * (1 - THREE.MathUtils.smoothstep(near, 0.05, 0.3)) : 0;
+      lk.pts.visible = lk.pm.opacity > 0.01;
+      if (!lk.pts.visible) return;
+      const pos = lk.pts.geometry.attributes.position;
+      for (let i = 0; i < lk.n; i++) {
+        const p = lk.curve.getPoint(((time * 0.05) + i / lk.n) % 1);
+        pos.setXYZ(i, p.x, p.y, p.z);
+      }
+      pos.needsUpdate = true;
+    });
+    galU.uFade.value = 1 - 0.62 * near;
     /* a glow that would fill the screen is not a glow any more but a fog:
        each fades out as it grows past a fraction of the frame */
     const frac = (size, dist) => size / (2 * Math.max(dist, 1) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
@@ -1311,7 +1553,7 @@ export function mount(root, opts) {
     controls.autoRotate = !reduce && !picked;
     controls.update();
     camUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
-    placeLabels(kf);
+    placeLabels(kf, near);
     composer.render();
     raf = requestAnimationFrame(frame);
   }
@@ -1336,7 +1578,7 @@ export function mount(root, opts) {
   requestAnimationFrame(() => canvas.classList.add('in'));
   /* the opening shot: the group for a breath, then down through Klever's
      galaxy to its star */
-  let introTimer = setTimeout(() => { if (level === 'group' && !picked) goCompany(); }, reduce ? 0 : 2600);
+  let introTimer = setTimeout(() => { if (level === 'group' && !picked) goCompany('klever'); }, reduce ? 0 : 2600);
 
   return {
     update(data) {

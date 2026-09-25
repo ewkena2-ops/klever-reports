@@ -49,7 +49,8 @@ import {
     var out = {};
     ['group', 'groupStats', 'klever', 'title', 'money', 'replay', 'live', 'coLive', 'coOff', 'coLiveSub', 'coOffSub',
      'flyIn', 'chairman', 'filed', 'late', 'missing', 'in', 'out', 'centre', 'files', 'receives',
-     'instructions', 'nothing', 'agent', 'openObs', 'outside', 'notReported', 'birr', 'dept', 'people'].forEach(function (k) {
+     'instructions', 'nothing', 'agent', 'openObs', 'outside', 'notReported', 'birr', 'dept', 'people', 'noOne', 'noOneSub', 'fromKlever', 'toKidan', 'payKidan',
+     'payKidanShort', 'roveM2', 'forRove'].forEach(function (k) {
       out[k] = t('un' + k.charAt(0).toUpperCase() + k.slice(1));
     });
     /* the words the observatory already uses for the same things */

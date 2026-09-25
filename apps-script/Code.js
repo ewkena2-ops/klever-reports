@@ -87,6 +87,44 @@ function doPost(e) {
     return ContentService.createTextOutput('bad json');
   }
 
+  /* WHO IS POSTING. This address is public, so a row is believed only as far
+     as can be checked: who sent it comes from their Firebase sign-in token,
+     looked up with Google; the report's name and owner come from the
+     schedule; the time and whether it is late come from this server's clock.
+     What the phone says about any of those is not read. */
+  var poster = posterOf_(row.idToken);
+  delete row.idToken;
+  if (!poster || poster === 'ledger') return ContentService.createTextOutput('refused');
+  var sched;
+  try { sched = loadSchedule_(); } catch (err) { return ContentService.createTextOutput('no schedule'); }
+  var rep = sched.reports.filter(function (r) { return r.id === row.report; })[0];
+  if (!rep) return ContentService.createTextOutput('refused');
+  /* your own reports only — the Chairman may file on anyone's behalf */
+  if (poster !== 'chairman' && poster !== rep.person) return ContentService.createTextOutput('refused');
+  /* the same row, posted twice by a phone that lost signal mid-post */
+  var cache = CacheService.getScriptCache();
+  if (row.k) {
+    if (cache.get('row:' + row.k)) return ContentService.createTextOutput('ok');
+    cache.put('row:' + row.k, '1', 21600);
+  }
+  var nameOf = function (id) {
+    var p = sched.people.filter(function (x) { return x.id === id; })[0];
+    return p ? p.en : id;
+  };
+  var owner = sched.people.filter(function (x) { return x.id === rep.person; })[0] || {};
+  row.person = rep.person;
+  row.personName = owner.en || rep.person;
+  row.roleName = owner.roleEn || '';
+  row.reportName = rep.en;
+  row.to = rep.toEn || row.to || '';
+  row.due = rep.dueEn || '';
+  row.by = poster;
+  row.byName = poster === 'chairman' ? 'Chairman' : nameOf(poster);
+  row.at = new Date().toISOString();
+  var st = standingNow_(sched, rep);
+  row.late = st.late;
+  row.statusText = st.text;
+
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var tab = String(row.reportName || 'Reports').substring(0, 90);
   /* This endpoint takes anyone's POST, and it names the tab after whatever
@@ -123,7 +161,7 @@ function doPost(e) {
   var out = new Array(head.length).fill('');
   out[0] = new Date(row.at || Date.now());
   out[1] = row.personName || row.person || '';
-  out[2] = row.late ? 'LATE' : 'On time';
+  out[2] = row.statusText || (row.late ? 'LATE' : 'On time');
   out[3] = row.due || '';
   Object.keys(values).forEach(function (k) {
     var v = values[k];
@@ -135,6 +173,41 @@ function doPost(e) {
   sh.appendRow(out);
   notify_(row, ss.getUrl());
   return ContentService.createTextOutput('ok');
+}
+
+/* Who a Firebase sign-in token belongs to — 'betty' for betty@klever.local —
+   or null if Google does not vouch for it (forged, expired, another
+   project's). One call to Google per row. */
+function posterOf_(token) {
+  if (!token || typeof token !== 'string') return null;
+  var key = prop_('FIREBASE_WEB_KEY', '');
+  if (!key) return null;
+  var r = UrlFetchApp.fetch('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + key, {
+    method: 'post', contentType: 'application/json',
+    payload: JSON.stringify({ idToken: token }), muteHttpExceptions: true
+  });
+  if (r.getResponseCode() !== 200) return null;
+  var u = (JSON.parse(r.getContentText()).users || [])[0];
+  var m = u && u.email && /^([a-z0-9-]+)@klever\.local$/.exec(String(u.email).toLowerCase());
+  return m ? m[1] : null;
+}
+
+/* How a report sent now stands — the same rule the ledger closes the day
+   with, and the phone shows: late only on its due day after its deadline;
+   a weekly or monthly one sent ahead counts for its coming due day. */
+function standingNow_(sched, rep) {
+  var today = todayAddis_(), now = new Date().getTime();
+  var back = rep.cadence === 'daily' ? 0 : (rep.cadence === 'weekly' ? 6 : 7);
+  for (var k = 0; k <= back; k++) {
+    var d = addDays_(today, k);
+    if (dueOn_(sched, d).indexOf(rep) === -1) continue;
+    if (k === 0) {
+      var late = now > deadline_(rep, d).getTime();
+      return { late: late, text: late ? 'LATE' : 'On time' };
+    }
+    return { late: false, text: 'Early, for ' + Utilities.formatDate(new Date(d + 'T12:00:00' + ADDIS_), tz_(), 'EEE d MMM') };
+  }
+  return { late: false, text: 'Not due today' };
 }
 
 /* The Chairman should not have to open a spreadsheet to find out a report
@@ -179,7 +252,7 @@ function reportHtml_(row) {
                                            'HH:mm, d MMM yyyy') : '';
   h.push('<table width="100%" cellpadding="0" cellspacing="0" style="background:' +
     (row.late ? BADSOFT : SOFT) + ';margin-bottom:20px"><tr>');
-  [['SENT', sent], ['DUE', row.due], ['STATUS', row.late ? 'LATE' : 'ON TIME'],
+  [['SENT', sent], ['DUE', row.due], ['STATUS', row.statusText ? row.statusText.toUpperCase() : (row.late ? 'LATE' : 'ON TIME')],
    ['TO', row.to]].forEach(function (c) {
     if (!c[1]) return;
     h.push('<td width="25%" style="padding:9px 12px;vertical-align:top">' +
@@ -270,7 +343,7 @@ function notify_(row, sheetUrl) {
   })).concat(['']) : []).concat([
     what,
     who + (row.byName && row.byName !== who ? '   (filed by ' + row.byName + ')' : ''),
-    'Sent ' + when + '   ' + (row.late ? 'LATE' : 'on time'),
+    'Sent ' + when + '   ' + (row.statusText || (row.late ? 'LATE' : 'on time')),
     'Due  ' + (row.due || ''),
     '',
     row.text || '',

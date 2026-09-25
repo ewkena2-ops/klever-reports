@@ -39,7 +39,9 @@ import {
   var lang = (urlLang === 'am' || urlLang === 'en' ? urlLang
               : store.get(LANG_KEY)) === 'am' ? 'am' : 'en';
 
-  function t(k) { return T[lang][k]; }
+  /* A word not yet translated shows in English rather than as a blank
+     button — i18n.js and this file are published separately. */
+  function t(k) { var s = T[lang][k]; return s != null ? s : T.en[k]; }
   function L(o) { return (lang === 'am' && o && o.am) ? o.am : (o ? o.en : ''); }
   function el(tag, cls, txt) {
     var e = document.createElement(tag);
@@ -49,7 +51,7 @@ import {
   }
   /* the model writes its bullets as "* "; on his page they read as bullets */
   function bullets(s) {
-    return String(s).replace(/^[ \t]*[*-][ \t]+/gm, '\u2022 ');
+    return String(s).replace(/^[ \t]*[*-][ \t]+/gm, '• ');
   }
   function personById(id) {
     for (var i = 0; i < PEOPLE.length; i++) if (PEOPLE[i].id === id) return PEOPLE[i];
@@ -64,20 +66,151 @@ import {
     var p = personById(id);
     return p ? L(p) : id;
   }
-  function hhmm(d) {
-    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-  }
-  function ymd(d) {
-    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) +
-           '-' + ('0' + d.getDate()).slice(-2);
-  }
-  function today() { return ymd(new Date()); }
-  function plusDays(n) { var d = new Date(); d.setDate(d.getDate() + n); return ymd(d); }
-  function daysFrom(a, b) {
-    return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000);
-  }
   function birr(n) { return Number(n || 0).toLocaleString('en-US'); }
-  function prettyDay(day) { return new Date(day + 'T12:00:00').toDateString(); }
+
+  /* A tile is a third of a phone wide. Six digits and their commas do not
+     fit, and a figure cut to "5,0…" is worse than no figure: it reads as
+     five thousand. From a hundred thousand up it is shown short — 125k,
+     1.25M — and the exact number is in the tile's tooltip. */
+  function short(n) {
+    n = Number(n || 0);
+    var a = Math.abs(n), sign = n < 0 ? '-' : '';
+    if (a < 100000) return birr(n);
+    if (Math.round(a / 1000) < 1000) return sign + Math.round(a / 1000) + 'k';
+    var m = a / 1e6;
+    var s = m < 10 ? m.toFixed(2) : (m < 100 ? m.toFixed(1) : m.toFixed(0));
+    if (s.indexOf('.') !== -1) s = s.replace(/\.?0+$/, '');
+    return sign + s + 'M';
+  }
+  /* the exact figure, for the tooltip — only when the tile shows it short */
+  function exact(n) {
+    return Math.abs(Number(n || 0)) >= 100000 ? birr(n) + ' ' + t('unBirr') : null;
+  }
+
+  /* ---------------- Addis time ---------------- */
+
+  /* Addis Ababa is three hours ahead of UTC all year — it keeps no summer
+     time — so the date there is the UTC date of the moment three hours on.
+     Every "which day", "which weekday" and "when was it due" on this page is
+     asked in Addis, the way the ledger asks it, and never of the phone: his
+     phone may be set to any zone, or be abroad with him, and a page that
+     closed the day at a different midnight from the ledger's would disagree
+     with it about who was late. */
+  var ADDIS = '+03:00';
+  var DAYS = {
+    en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    am: ['እሑድ', 'ሰኞ', 'ማክሰኞ', 'ረቡዕ', 'ሐሙስ', 'ዓርብ', 'ቅዳሜ']
+  };
+  var MONTHS = {
+    en: ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+         'August', 'September', 'October', 'November', 'December'],
+    am: ['ጃንዩወሪ', 'ፌብሩወሪ', 'ማርች', 'ኤፕሪል', 'ሜይ', 'ጁን', 'ጁላይ',
+         'ኦገስት', 'ሴፕቴምበር', 'ኦክቶበር', 'ኖቬምበር', 'ዲሴምበር']
+  };
+  function utcYmd(d) {
+    return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) +
+           '-' + ('0' + d.getUTCDate()).slice(-2);
+  }
+  /* the Addis date of a moment — of now, when no moment is given */
+  function addisYmd(d) { return utcYmd(new Date((d ? d.getTime() : Date.now()) + 3 * 3600e3)); }
+  function today() { return addisYmd(); }
+  /* the moment an Addis day begins */
+  function dayStart(day) { return new Date(day + 'T00:00:00' + ADDIS); }
+  /* a date moved by whole days, worked at noon UTC so no step lands on an edge */
+  function addDays(day, n) {
+    var d = new Date(day + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + n);
+    return utcYmd(d);
+  }
+  /* 0 Sunday .. 6 Saturday, of the date itself */
+  function dow(day) { return new Date(day + 'T12:00:00Z').getUTCDay(); }
+  function deadline(r, day) { return new Date(day + 'T' + (r.dueTime || '17:30') + ':00' + ADDIS); }
+  /* a time on the Addis clock */
+  function hhmm(d) {
+    var a = new Date(d.getTime() + 3 * 3600e3);
+    return ('0' + a.getUTCHours()).slice(-2) + ':' + ('0' + a.getUTCMinutes()).slice(-2);
+  }
+  function daysFrom(a, b) {
+    return Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 86400000);
+  }
+  /* "Friday 25 September 2026", in his language */
+  function prettyDay(day) {
+    var d = new Date(String(day) + 'T12:00:00Z');
+    if (isNaN(d.getTime())) return String(day || '');
+    return DAYS[lang][d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' +
+           MONTHS[lang][d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+  }
+  function monthName(day) {
+    return MONTHS[lang][Number(day.slice(5, 7)) - 1] + ' ' + day.slice(0, 4);
+  }
+
+  /* ---------------- the schedule, by the ledger's rules ---------------- */
+
+  /* These ask what the ledger asks (apps-script/Agent.js — dueOn_ and
+     settle_), in the same way, so that this page and the charges never
+     disagree about whether a report was owed, in, or late. */
+
+  /* The 1st — or Monday the 2nd when the 1st is a Sunday, since nothing is
+     ever due on a Sunday. */
+  function monthlyDueOn(day) {
+    var dd = day.slice(8);
+    return (dd === '01' && dow(day) !== 0) || (dd === '02' && dow(day) === 1);
+  }
+  function dueOn(day) {
+    var d = dow(day);
+    if (d === 0) return [];
+    return REPORTS.filter(function (r) {
+      if (r.cadence === 'daily') return !(r.skipDays && r.skipDays.indexOf(d) !== -1);
+      if (r.cadence === 'weekly') return r.dueDay === d;
+      if (r.cadence === 'monthly') return monthlyDueOn(day);
+      return false;
+    });
+  }
+  /* How many days before its due day a report may be handed in and still
+     count: a daily one only on the day, a weekly one from six days before
+     (Thursday for Friday is early, not missing), a monthly one from seven. */
+  function reach(r) { return r.cadence === 'weekly' ? 6 : (r.cadence === 'monthly' ? 7 : 0); }
+  /* The due day a report filed on `day` answers to — the first one within
+     its reach. A monthly one filed after its day answers to the day just
+     gone, and is late for it. */
+  function dueDayFor(r, day) {
+    var i, d;
+    if (r.cadence === 'weekly') {
+      for (i = 0; i <= 6; i++) { d = addDays(day, i); if (dow(d) === r.dueDay) return d; }
+    } else if (r.cadence === 'monthly') {
+      for (i = 0; i <= 7; i++) { d = addDays(day, i); if (monthlyDueOn(d)) return d; }
+      for (i = 1; i <= 31; i++) { d = addDays(day, -i); if (monthlyDueOn(d)) return d; }
+    }
+    return day;
+  }
+  /* Late by the server's time against the letter's deadline. The flag the
+     phone sent is not read: a phone's clock is whatever its owner set it
+     to, and the ledger does not trust it either. */
+  function isLate(f) {
+    var r = reportById(f.report);
+    if (!r || !f.when) return false;
+    return f.when.getTime() > deadline(r, dueDayFor(r, addisYmd(f.when))).getTime();
+  }
+  function byDueTime(list) {
+    return list.sort(function (a, b) { return (a.dueTime || '').localeCompare(b.dueTime || ''); });
+  }
+
+  /* What went wrong, in words he can act on. Every listener used to say
+     "this page is the Chairman's", which is true only of a refusal — the
+     free plan's daily limit, or no signal, looked the same and sent him to
+     sign in again for nothing. */
+  function errText(e) {
+    var c = String((e && e.code) || '').replace(/^firestore\//, '');
+    if (c === 'permission-denied') return t('chOnlyChairman');
+    if (c === 'resource-exhausted') return t('chQuota');
+    return t('chLoadFailed');
+  }
+  function failInto(into) {
+    return function (e) {
+      into.innerHTML = '';
+      into.appendChild(el('p', 'codeerr', errText(e)));
+    };
+  }
 
   var app, auth, db, me = null, root = null;
 
@@ -100,12 +233,56 @@ import {
     }
   }
 
+  /* ---------------- a new day ---------------- */
+
+  /* The page is about one day, fixed when it is drawn. Left open overnight —
+     on his desk, or in a tab on his phone — it went on showing yesterday
+     under a heading he reads as today, and mixed the two as new reports
+     came in. So when Addis passes midnight, or when the page comes back into
+     view on a later date than it was drawn for, it starts again. A reload
+     rather than a redraw: every listener was opened for one day, and
+     starting clean is the one sure way to leave none of them behind. The
+     only thing a reload would lose is something he is in the middle of
+     typing, so it waits for him to finish. */
+  var DAY = null, dayWatched = false, dayRetry = null;
+
+  function typing() {
+    var a = document.activeElement;
+    if (!a || !root || !root.contains(a)) return false;
+    var text = a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && a.type === 'text');
+    return text && String(a.value || '').trim() !== '';
+  }
+  function newDay() {
+    if (!DAY || today() === DAY) return false;
+    if (typing()) {
+      if (!dayRetry) dayRetry = setTimeout(function () { dayRetry = null; newDay(); }, 60000);
+      return true;
+    }
+    location.reload();
+    return true;
+  }
+  function watchDay() {
+    if (dayWatched) return;
+    dayWatched = true;
+    (function arm() {
+      var wait = dayStart(addDays(DAY, 1)).getTime() + 5000 - Date.now();
+      setTimeout(function () { if (!newDay()) arm(); }, Math.max(wait, 1000));
+    })();
+    /* a phone asleep in a pocket runs no timers; this catches it waking */
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') newDay();
+    });
+  }
+
   /* ---------------- the page ---------------- */
 
   function render() {
+    DAY = today();
+    watchDay();
+
     root.innerHTML = '';
     root.appendChild(el('h1', null, t('chOverview')));
-    root.appendChild(el('p', 'sub', new Date().toDateString()));
+    root.appendChild(el('p', 'sub', prettyDay(DAY)));
 
     var tiles = el('div', 'chtiles');
     var tFiled = tile(t('chFiled'), '—');
@@ -127,19 +304,22 @@ import {
     var seg = el('div', 'chbrain-seg');
     seg.setAttribute('role', 'group');
     seg.setAttribute('aria-label', t('chBrain'));
+    var brainNote = el('span', 'chbrain-d', t('chBrainDefault'));
+    brainNote.hidden = true;
     var brainBtns = {};
     [['claude', 'Claude'], ['gemini', 'Gemini']].forEach(function (o) {
       var b = el('button', null, o[1]);
       b.type = 'button';
       b.setAttribute('aria-pressed', 'false');
-      b.onclick = function () { chooseBrain(o[0], brainBtns); };
+      b.onclick = function () { chooseBrain(o[0], brainBtns, brainNote); };
       brainBtns[o[0]] = b;
       seg.appendChild(b);
     });
     brain.appendChild(seg);
+    brain.appendChild(brainNote);
     root.appendChild(brain);
     root.appendChild(el('p', 'chbrain-n', t('chBrainNote')));
-    watchBrain(brainBtns);
+    watchBrain(brainBtns, brainNote);
 
     var analysis = el('div', 'chanalysis');
     analysis.appendChild(el('p', 'codenote', t('chNoAnalysis')));
@@ -193,12 +373,17 @@ import {
     watchReports(raw, tFiled, tMissing);
   }
 
-  function tile(label, value) {
+  function tile(label, value, full) {
     var box = el('div', 'chtile');
     box.appendChild(el('div', 'chtl', label));
-    var v = el('div', 'chtv', value);
+    var v = el('div', 'chtv');
     box.appendChild(v);
-    return { box: box, set: function (x) { v.textContent = x; } };
+    function set(x, whole) {
+      v.textContent = x;
+      if (whole) v.title = whole; else v.removeAttribute('title');
+    }
+    set(value, full);
+    return { box: box, set: set };
   }
 
 
@@ -253,6 +438,26 @@ import {
     { ring: '#e0b33c', dot: '#1d1a10', glow: 'g-gold' },
     { ring: '#e2765c', dot: '#1d1211', glow: 'g-red' }
   ];
+
+  /* A star's name is 11 units tall — the stylesheet's 7.6 came out about
+     five pixels on a phone, too small to read. At that size a long name
+     would run into its neighbour's, so a name wider than about twelve
+     letters goes on two lines, split at the space nearest its middle.
+     Ethiopic letters are counted half as wide again as Latin ones. */
+  function twoLines(s) {
+    s = String(s || '');
+    var w = 0;
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i);
+      w += c >= 0x1200 && c <= 0x139f ? 1.5 : 1;
+    }
+    if (w <= 12) return [s];
+    var mid = s.length / 2, best = -1;
+    for (var j = 0; j < s.length; j++) {
+      if (s.charAt(j) === ' ' && (best < 0 || Math.abs(j - mid) < Math.abs(best - mid))) best = j;
+    }
+    return best < 0 ? [s] : [s.slice(0, best), s.slice(best + 1)];
+  }
 
   function buildSky(findings, onPick) {
     var by = {};
@@ -316,14 +521,47 @@ import {
       if (h === 2) g.appendChild(sv('circle', { cx: x, cy: y, r: 3.2, fill: style.ring }));
       g.appendChild(sv('circle', { 'class': 'hit', cx: x, cy: y, r: 24 }));
 
-      var tx = sv('text', { x: x, y: y < 200 ? y - 19 : y + 23 });
-      tx.textContent = f ? (lang === 'am' && f.am ? f.am : f.en) : id;
+      /* the size is set inline: the stylesheet's rule for these labels
+         would override a font-size attribute */
+      var lines = twoLines(f ? (lang === 'am' && f.am ? f.am : f.en) : id);
+      var tx = sv('text', { x: x, y: y < 200 ? y - 19 - (lines.length - 1) * 12 : y + 23,
+                            'font-size': 11, style: 'font-size:11px' });
+      lines.forEach(function (s, k) {
+        var ts = sv('tspan', { x: x, dy: k ? 12 : 0 });
+        ts.textContent = s;
+        tx.appendChild(ts);
+      });
       g.appendChild(tx);
 
       if (f) g.addEventListener('click', function () { onPick(f, h); });
       svg.appendChild(g);
     });
     return svg;
+  }
+
+  /* The sky is a picture: a finger can pick a star, but a keyboard or a
+     screen reader cannot, and the stars sit inside an image. The same
+     findings as a row of real buttons — the brief first, then loudest
+     first — open the same panel for everyone. */
+  function skyList(findings, onPick) {
+    var said = [t('obLegendQuiet'), t('obLegendWarm'), t('obLegendLoud')];
+    var box = el('div', 'chchips');
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-label', t('chSkyList'));
+    (findings || []).map(function (f, i) {
+      var brief = f.kind === 'brief';
+      return { f: f, h: brief ? 0 : heat(f.text), rank: brief ? 3 : heat(f.text), i: i };
+    }).sort(function (a, b) {
+      return (b.rank - a.rank) || (a.i - b.i);
+    }).forEach(function (o) {
+      var b = el('button', 'chchip h' + o.h + (o.f.kind === 'brief' ? ' brief' : ''));
+      b.type = 'button';
+      b.appendChild(el('span', 'chchip-n', lang === 'am' && o.f.am ? o.f.am : o.f.en));
+      if (o.f.kind !== 'brief') b.appendChild(el('span', 'chchip-h', said[o.h]));
+      b.onclick = function () { onPick(o.f, o.h); };
+      box.appendChild(b);
+    });
+    return box;
   }
 
   /* ---------------- the analysis ---------------- */
@@ -340,7 +578,8 @@ import {
         return;
       }
       var d = qs.docs[0].data();
-      into.appendChild(el('p', 'skysub', (d.dayLabel || d.day) +
+      var dayText = /^\d{4}-\d{2}-\d{2}$/.test(d.day || '') ? prettyDay(d.day) : (d.dayLabel || d.day);
+      into.appendChild(el('p', 'skysub', dayText +
         (d.provisional ? ' · ' + t('chSoFar') : '')));
       var when = d.ranAt && d.ranAt.toDate ? d.ranAt.toDate() : null;
       var finds = d.findings || [];
@@ -351,8 +590,10 @@ import {
         (loud ? loud + ' ' + t('chWantYou') : t('chAllQuiet'))));
 
       var panel = el('div', 'chfind');
+      /* read out when a button below changes it */
+      panel.setAttribute('aria-live', 'polite');
 
-      into.appendChild(buildSky(finds, function (f, h) {
+      function pick(f, h) {
         panel.className = 'chfind ' + (f.kind === 'brief' ? 'brief'
                           : (f.kind === 'decision' ? 'decision' : 'finding'))
                           + (h === 2 ? ' loud' : '');
@@ -360,7 +601,9 @@ import {
         panel.appendChild(el('div', 'chfh', lang === 'am' && f.am ? f.am : f.en));
         panel.appendChild(el('div', 'chft', f.text || ''));
         panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }));
+      }
+      into.appendChild(buildSky(finds, pick));
+      if (finds.length) into.appendChild(skyList(finds, pick));
 
       /* the brief is the reading of the whole day, so it is open already */
       var brief = finds.filter(function (f) { return f.kind === 'brief'; })[0];
@@ -376,26 +619,26 @@ import {
       if (when) into.appendChild(el('p', 'codenote', t('chRanAt') + ' ' + hhmm(when) +
         (d.model ? ' · ' + t('chReadBy') + ' ' + d.model : '')));
       if (d.modelNote) into.appendChild(el('p', 'codenote', d.modelNote));
-    }, function () {
-      into.innerHTML = '';
-      into.appendChild(el('p', 'codeerr', t('chOnlyChairman')));
-    });
+    }, failInto(into));
   }
 
   /* The choice lives in one document the morning run reads first. With no
-     document, Claude is the default — the same default the script has. */
-  function showBrain(btns, p) {
+     document the script falls back to its own AI_PROVIDER setting, which
+     this page cannot see — so neither button is lit, and it says so, rather
+     than naming one that may not be the one in use. */
+  function showBrain(btns, p, note) {
     Object.keys(btns).forEach(function (k) { btns[k].setAttribute('aria-pressed', k === p ? 'true' : 'false'); });
+    note.hidden = !!p;
   }
-  function watchBrain(btns) {
-    showBrain(btns, 'claude');
+  function watchBrain(btns, note) {
+    Object.keys(btns).forEach(function (k) { btns[k].setAttribute('aria-pressed', 'false'); });
     onSnapshot(doc(db, 'control', 'ai'), function (d) {
       var p = d.exists() ? String(d.data().provider || '') : '';
-      showBrain(btns, p === 'gemini' ? 'gemini' : 'claude');
+      showBrain(btns, p === 'gemini' || p === 'claude' ? p : null, note);
     }, function () {});
   }
-  function chooseBrain(p, btns) {
-    showBrain(btns, p);
+  function chooseBrain(p, btns, note) {
+    showBrain(btns, p, note);
     setDoc(doc(db, 'control', 'ai'), { provider: p, at: serverTimestamp(), by: me })
       .then(function () { toast(t('chBrainSaved')); })
       ['catch'](function () { toast(t('chSaveFailed')); });
@@ -418,77 +661,97 @@ import {
 
   /* ---------------- the raw day ---------------- */
 
+  /* Today's reports as they were typed, and who still owes one. The
+     listener reads a week back, not only today: a weekly report handed in
+     on Thursday for Friday, or a monthly one in the last days of the month,
+     is in — the ledger counts it, so this page must not call it owed. Only
+     today's filings are listed. */
   function watchReports(into, tFiled, tMissing) {
-    var start = new Date();
-    start.setHours(0, 0, 0, 0);
-
+    var start = dayStart(DAY).getTime();
+    var end = dayStart(addDays(DAY, 1)).getTime();
     var q = query(collection(db, 'reports'),
-                  where('at', '>=', start), orderBy('at', 'asc'));
+                  where('at', '>=', dayStart(addDays(DAY, -7))), orderBy('at', 'asc'));
+
+    var all = null;
+    var owedBox = el('div');
+
+    /* Who owed one today and has not handed it in, by the ledger's rules. A
+       report whose deadline is still ahead is not owed yet — it is listed
+       apart, and not counted. Drawn again every minute, because a deadline
+       passing changes the answer without any new report arriving. */
+    function drawOwed() {
+      var now = Date.now(), missing = [], later = [];
+      dueOn(DAY).forEach(function (r) {
+        var from = dayStart(addDays(DAY, -reach(r))).getTime();
+        var hit = all.some(function (f) {
+          var tm = f.when.getTime();
+          return f.report === r.id && f.person === r.person && tm >= from && tm < end;
+        });
+        if (hit) return;
+        (now < deadline(r, DAY).getTime() ? later : missing).push(r);
+      });
+      tMissing.set(String(missing.length));
+      owedBox.innerHTML = '';
+      if (missing.length) owedBox.appendChild(owedList('chmissing', t('chMissingList'), byDueTime(missing)));
+      if (later.length) owedBox.appendChild(owedList('chlater', t('chNotDueYet'), byDueTime(later)));
+    }
 
     onSnapshot(q, function (snap) {
-      into.innerHTML = '';
-      var filed = [];
-      snap.forEach(function (docu) { filed.push(docu.data()); });
+      all = [];
+      snap.forEach(function (docu) {
+        var x = docu.data({ serverTimestamps: 'estimate' });
+        x.when = x.at && x.at.toDate ? x.at.toDate() : new Date();
+        all.push(x);
+      });
+      var filed = all.filter(function (f) { return f.when.getTime() >= start; });
 
       tFiled.set(String(filed.length));
-
-      /* who owed one today, straight from the same schedule the forms use */
-      var due = REPORTS.filter(function (r) {
-        var dow = new Date().getDay();
-        if (dow === 0) return false;
-        if (r.cadence === 'daily') return !(r.skipDays && r.skipDays.indexOf(dow) !== -1);
-        if (r.cadence === 'weekly') return r.dueDay === dow;
-        if (r.cadence === 'monthly') return new Date().getDate() === 1;
-        return false;
-      });
-      var got = {};
-      filed.forEach(function (f) { got[f.report] = true; });
-      var missing = due.filter(function (r) { return !got[r.id]; });
-      tMissing.set(String(missing.length));
-
+      into.innerHTML = '';
       if (!filed.length) {
         into.appendChild(el('p', 'codenote', t('chNothingFiled')));
       }
+      filed.forEach(function (f) { into.appendChild(rawCard(f)); });
+      into.appendChild(owedBox);
+      drawOwed();
+    }, failInto(into));
 
-      filed.forEach(function (f) {
-        var rep = reportById(f.report);
-        var when = f.at && f.at.toDate ? f.at.toDate() : new Date();
+    setInterval(function () { if (all) drawOwed(); }, 60000);
+  }
 
-        var card = el('details', 'chrow' + (f.late ? ' late' : ''));
-        var head = el('summary');
-        head.appendChild(el('span', 'chrw', nameOf(f.person)));
-        head.appendChild(el('span', 'chrr', rep ? L(rep) : f.report));
-        head.appendChild(el('span', 'chrt', hhmm(when) + (f.late ? ' · ' + t('late') : '')));
-        card.appendChild(head);
-
-        var body = el('div', 'chrbody');
-        if (f.by && f.by !== f.person) {
-          body.appendChild(el('p', 'codenote', t('chFiledBy') + ' ' + nameOf(f.by)));
-        }
-        body.appendChild(fieldTable(rep, f.values || {}));
-        if ((f.flags || []).length) {
-          var fl = el('div', 'chflags');
-          fl.appendChild(el('div', 'chfl', t('flags')));
-          f.flags.forEach(function (x) { fl.appendChild(el('div', null, x)); });
-          body.appendChild(fl);
-        }
-        card.appendChild(body);
-        into.appendChild(card);
-      });
-
-      if (missing.length) {
-        var m = el('div', 'chmissing');
-        m.appendChild(el('div', 'chfl', t('chMissingList')));
-        missing.forEach(function (r) {
-          var p = personById(r.person);
-          m.appendChild(el('div', null, (p ? L(p) : r.person) + ' — ' + L(r)));
-        });
-        into.appendChild(m);
-      }
-    }, function () {
-      into.innerHTML = '';
-      into.appendChild(el('p', 'codeerr', t('chOnlyChairman')));
+  function owedList(cls, title, reports) {
+    var m = el('div', cls);
+    m.appendChild(el('div', 'chfl', title));
+    reports.forEach(function (r) {
+      var p = personById(r.person);
+      m.appendChild(el('div', null, (p ? L(p) : r.person) + ' — ' + L(r) + ' · ' + (r.dueTime || '17:30')));
     });
+    return m;
+  }
+
+  function rawCard(f) {
+    var rep = reportById(f.report);
+    var late = isLate(f);
+
+    var card = el('details', 'chrow' + (late ? ' late' : ''));
+    var head = el('summary');
+    head.appendChild(el('span', 'chrw', nameOf(f.person)));
+    head.appendChild(el('span', 'chrr', rep ? L(rep) : f.report));
+    head.appendChild(el('span', 'chrt', hhmm(f.when) + (late ? ' · ' + t('late') : '')));
+    card.appendChild(head);
+
+    var body = el('div', 'chrbody');
+    if (f.by && f.by !== f.person) {
+      body.appendChild(el('p', 'codenote', t('chFiledBy') + ' ' + nameOf(f.by)));
+    }
+    body.appendChild(fieldTable(rep, f.values || {}));
+    if ((f.flags || []).length) {
+      var fl = el('div', 'chflags');
+      fl.appendChild(el('div', 'chfl', t('flags')));
+      f.flags.forEach(function (x) { fl.appendChild(el('div', null, x)); });
+      body.appendChild(fl);
+    }
+    card.appendChild(body);
+    return card;
   }
 
   /* every value the person typed, under the label they saw */
@@ -554,7 +817,7 @@ import {
     });
     var due = el('input');
     due.type = 'date';
-    due.value = plusDays(2);
+    due.value = addDays(DAY, 2);
     var give = el('button', 'seed', t('chInsGive'));
     give.type = 'button';
 
@@ -589,54 +852,110 @@ import {
     var list = el('div', 'chinslist');
     into.appendChild(list);
 
-    var q = query(collection(db, 'instructions'), orderBy('at', 'desc'), limit(100));
-    onSnapshot(q, function (qs) {
-      list.innerHTML = '';
-      var all = [];
-      qs.forEach(function (d) { var x = d.data(); x.id = d.id; all.push(x); });
-      var open = all.filter(function (i) { return i.status === 'open'; })
-                    .sort(function (a, b) { return a.due < b.due ? -1 : (a.due > b.due ? 1 : 0); });
-      /* done in the last fortnight — long enough to check, short enough to read */
-      var cutoff = plusDays(-14);
-      var done = all.filter(function (i) {
-        return i.status === 'done' && i.doneAt && i.doneAt.toDate && ymd(i.doneAt.toDate()) >= cutoff;
+    /* Three questions rather than "the newest hundred": every open one,
+       however old — an instruction given in March and never closed is the
+       one he most needs to see, and it used to fall off the end — and those
+       done or cancelled in the last fortnight, long enough to check and
+       short enough to read. Each asks of one field only, which is all the
+       indexes allow. A reopened one keeps its old doneAt or closedAt, so
+       the last two keep only what is still done or still cancelled. */
+    var since = dayStart(addDays(DAY, -14));
+    var open = [], done = [], gone = [], got = {}, err = null;
+
+    function rows(qs, status) {
+      var out = [];
+      qs.forEach(function (d) {
+        var x = d.data({ serverTimestamps: 'estimate' });
+        x.id = d.id;
+        if (x.status === status) out.push(x);
       });
-      if (!open.length && !done.length) {
-        list.appendChild(el('p', 'codenote', t('chInsNone')));
+      return out;
+    }
+    function ms(ts) { return ts && ts.toMillis ? ts.toMillis() : 0; }
+
+    function draw() {
+      if (!got.open || !got.done || !got.gone) return;
+      list.innerHTML = '';
+      if (err) list.appendChild(el('p', 'codeerr', errText(err)));
+      if (!open.length && !done.length && !gone.length) {
+        if (!err) list.appendChild(el('p', 'codenote', t('chInsNone')));
         return;
       }
-      open.forEach(function (i) { list.appendChild(insRow(i)); });
-      done.forEach(function (i) { list.appendChild(insRow(i)); });
-    }, function () {
-      list.innerHTML = '';
-      list.appendChild(el('p', 'codeerr', t('chOnlyChairman')));
-    });
+      open.sort(function (a, b) { return a.due < b.due ? -1 : (a.due > b.due ? 1 : 0); });
+      done.sort(function (a, b) { return ms(b.doneAt) - ms(a.doneAt); });
+      gone.sort(function (a, b) { return ms(b.closedAt) - ms(a.closedAt); });
+      open.concat(done, gone).forEach(function (i) { list.appendChild(insRow(i)); });
+    }
+    function listen(key, q, status) {
+      onSnapshot(q, function (qs) {
+        var x = rows(qs, status);
+        if (key === 'open') open = x; else if (key === 'done') done = x; else gone = x;
+        got[key] = true;
+        draw();
+      }, function (e) {
+        err = e;
+        got[key] = true;
+        draw();
+      });
+    }
+    var col = collection(db, 'instructions');
+    listen('open', query(col, where('status', '==', 'open')), 'open');
+    listen('done', query(col, where('doneAt', '>=', since)), 'done');
+    listen('gone', query(col, where('closedAt', '>=', since)), 'cancelled');
   }
 
   function insRow(i) {
     var row = el('div', 'chinsrow ' + i.status);
     var head = el('div', 'chinsh');
     head.appendChild(el('span', 'chrw', nameOf(i.to)));
-    var over = daysFrom(i.due, today());
+    var over = daysFrom(i.due, DAY);
     var late = i.status === 'open' && over > 0;
-    var state = i.status === 'done'
-      ? t('chInsDone') + ' ' + (i.doneAt && i.doneAt.toDate ? ymd(i.doneAt.toDate()) : '')
-      : (late ? over + ' ' + t('chInsOver') : t('chInsDue') + ' ' + i.due);
+    var state;
+    if (i.status === 'done') {
+      state = t('chInsDone') + ' ' + (i.doneAt && i.doneAt.toDate ? addisYmd(i.doneAt.toDate()) : '');
+    } else if (i.status === 'cancelled') {
+      state = t('chCancelled') + ' ' + (i.closedAt && i.closedAt.toDate ? addisYmd(i.closedAt.toDate()) : '');
+    } else {
+      state = late ? over + ' ' + t('chInsOver') : t('chInsDue') + ' ' + i.due;
+    }
     head.appendChild(el('span', 'chrt' + (late ? ' bad' : ''), state));
     row.appendChild(head);
     row.appendChild(el('div', 'chinst', i.text));
     if (i.status === 'done' && i.note) {
       row.appendChild(el('div', 'chinsn', t('chInsSaid') + ': ' + i.note));
     }
-    var act = el('button', 'chmini', i.status === 'done' ? t('chInsReopen') : t('chInsCancel'));
+
+    var act = el('button', 'chmini', i.status === 'open' ? t('chInsCancel') : t('chInsReopen'));
     act.type = 'button';
-    act.onclick = function () {
+    function set(status) {
       act.disabled = true;
-      updateDoc(doc(db, 'instructions', i.id), {
-        status: i.status === 'done' ? 'open' : 'cancelled',
-        closedAt: serverTimestamp()
-      })['catch'](function () { act.disabled = false; toast(t('chSaveFailed')); });
-    };
+      updateDoc(doc(db, 'instructions', i.id), { status: status, closedAt: serverTimestamp() })
+        ['catch'](function () { act.disabled = false; toast(t('chSaveFailed')); });
+    }
+    if (i.status === 'open') {
+      /* Cancelling takes two taps. One tap, beside a thumb scrolling past,
+         used to take an instruction off someone's phone without his
+         meaning to; the first tap now only asks, and forgets after four
+         seconds. A cancelled one stays listed for a fortnight, with Reopen. */
+      var armed = null;
+      act.onclick = function () {
+        if (!armed) {
+          act.textContent = t('chInsCancelSure');
+          act.className = 'chmini bad';
+          armed = setTimeout(function () {
+            armed = null;
+            act.textContent = t('chInsCancel');
+            act.className = 'chmini';
+          }, 4000);
+          return;
+        }
+        clearTimeout(armed);
+        armed = null;
+        set('cancelled');
+      };
+    } else {
+      act.onclick = function () { set('open'); };
+    }
     row.appendChild(act);
     return row;
   }
@@ -649,28 +968,50 @@ import {
      out by the ledger from each person's letter; the only arithmetic here is
      taking away what he cancelled, the same subtraction the monthly pack
      does. */
+  var STATUS = { 'On time': 'onTime', 'LATE': 'late', 'MISSING': 'chNotFiled', 'NOT DUE YET': 'chNotDueYet' };
+  function statusText(s) { return STATUS[s] ? t(STATUS[s]) : s; }
+  function lineWho(l) { var p = personById(l.person); return p ? L(p) : (l.name || l.person); }
+  function lineReport(l) { var r = reportById(l.report); return r ? L(r) : (l.reportName || l.report); }
+
   function watchCharges(into, tOwed) {
-    var month = today().slice(0, 8) + '01';
-    var ledgers = [], waivers = {}, gotL = false, gotW = false;
+    var month = DAY.slice(0, 8) + '01';
+    /* Last month comes off pay when the monthly pack runs, at 8:00 on the
+       2nd, and its last day is only closed on the morning of the 1st.
+       Reading from this month's 1st alone hid that day on the 1st — the one
+       day it could still be cancelled. So on the 1st and the 2nd the window
+       opens a month earlier, and last month is listed on its own, apart
+       from this month's total, until the pack has taken it. */
+    var early = DAY.slice(8) === '01' || DAY.slice(8) === '02';
+    var from = early ? addDays(month, -1).slice(0, 8) + '01' : month;
+    var ledgers = [], waivers = {}, gotL = false, gotW = false, wErr = null;
 
     function draw() {
       if (!gotL || !gotW) return;
       into.innerHTML = '';
       if (!ledgers.length) {
         into.appendChild(el('p', 'codenote', t('chNoLedger')));
+        if (wErr) into.appendChild(el('p', 'codeerr', errText(wErr)));
         tOwed.set('0');
         return;
       }
 
-      var per = {}, total = 0;
+      var per = {}, total = 0, prev = [], prevTotal = 0, prevAny = false;
       ledgers.forEach(function (day) {
+        var before = day.day < month;
+        if (before) prev.push(day);
         (day.lines || []).forEach(function (l) {
           if (!l.amount) return;
-          var p = per[l.person] || (per[l.person] = { name: l.name || nameOf(l.person), owed: 0 });
-          if (!waivers[day.day + '|' + l.report]) { p.owed += l.amount; total += l.amount; }
+          var off = waivers[day.day + '|' + l.report];
+          if (before) {
+            prevAny = true;
+            if (!off) prevTotal += l.amount;
+            return;
+          }
+          var p = per[l.person] || (per[l.person] = { name: lineWho(l), owed: 0 });
+          if (!off) { p.owed += l.amount; total += l.amount; }
         });
       });
-      tOwed.set(birr(total));
+      tOwed.set(short(total), exact(total));
 
       var last = ledgers[ledgers.length - 1];
       into.appendChild(el('p', 'skysub', t('chChargesDay') + ' · ' + prettyDay(last.day)));
@@ -680,10 +1021,12 @@ import {
         into.appendChild(chargeRow(last.day, l, waivers[last.day + '|' + l.report]));
       });
 
+      if (prevAny) into.appendChild(lastMonth(prev, prevTotal, last.day));
+
       var ids = Object.keys(per).sort(function (a, b) { return per[b].owed - per[a].owed; });
       if (ids.length) {
         var box = el('details', 'chmonth');
-        box.appendChild(el('summary', null, t('chByPerson') + ' · ' + birr(total) + ' Birr'));
+        box.appendChild(el('summary', null, t('chByPerson') + ' · ' + birr(total) + ' ' + t('unBirr')));
         ids.forEach(function (k) {
           var r = el('div', 'chf');
           r.appendChild(el('span', 'chfk', per[k].name));
@@ -692,32 +1035,52 @@ import {
         });
         into.appendChild(box);
       }
+      /* without the cancellations the figures above would be too high */
+      if (wErr) into.appendChild(el('p', 'codeerr', errText(wErr)));
     }
 
-    onSnapshot(query(collection(db, 'ledger'), where('day', '>=', month), orderBy('day', 'asc')),
+    /* Last month's charges, every day of it, each still cancellable until
+       the pack deducts them — newest day first. The day already shown above
+       as the last closed day is not repeated. */
+    function lastMonth(prev, sum, shown) {
+      var box = el('details', 'chmonth chprev');
+      box.appendChild(el('summary', null, t('chPrevMonth') + ' · ' + monthName(prev[0].day) +
+        ' · ' + birr(sum) + ' ' + t('unBirr')));
+      box.appendChild(el('p', 'codenote', t('chPrevMonthNote')));
+      prev.slice().reverse().forEach(function (day) {
+        if (day.day === shown) return;
+        var lines = (day.lines || []).filter(function (l) { return l.amount > 0; });
+        if (!lines.length) return;
+        box.appendChild(el('div', 'chsec', prettyDay(day.day)));
+        lines.forEach(function (l) {
+          box.appendChild(chargeRow(day.day, l, waivers[day.day + '|' + l.report]));
+        });
+      });
+      return box;
+    }
+
+    onSnapshot(query(collection(db, 'ledger'), where('day', '>=', from), orderBy('day', 'asc')),
       function (qs) {
         ledgers = [];
         qs.forEach(function (d) { ledgers.push(d.data()); });
         gotL = true;
         draw();
-      }, function () {
-        into.innerHTML = '';
-        into.appendChild(el('p', 'codeerr', t('chOnlyChairman')));
-      });
-    onSnapshot(query(collection(db, 'waivers'), where('day', '>=', month)),
+      }, failInto(into));
+    onSnapshot(query(collection(db, 'waivers'), where('day', '>=', from)),
       function (qs) {
         waivers = {};
         qs.forEach(function (d) { var w = d.data(); waivers[w.day + '|' + w.report] = w; });
         gotW = true;
+        wErr = null;
         draw();
-      }, function () { gotW = true; draw(); });
+      }, function (e) { gotW = true; wErr = e; draw(); });
   }
 
   function chargeRow(day, l, waiver) {
     var row = el('div', 'chchg' + (waiver ? ' off' : ''));
     var head = el('div', 'chinsh');
-    head.appendChild(el('span', 'chrw', l.name || nameOf(l.person)));
-    head.appendChild(el('span', 'chrr', (l.reportName || l.report) + ' · ' + l.status));
+    head.appendChild(el('span', 'chrw', lineWho(l)));
+    head.appendChild(el('span', 'chrr', lineReport(l) + ' · ' + statusText(l.status)));
     head.appendChild(el('span', 'chrt', birr(l.amount)));
     row.appendChild(head);
 
@@ -765,16 +1128,13 @@ import {
       into.appendChild(el('p', 'skysub', prettyDay(w.start) + ' – ' + prettyDay(w.end)));
       var tiles = el('div', 'chtiles');
       tiles.appendChild(tile(t('chOnTime'), w.onTimePct == null ? '—' : w.onTimePct + '%').box);
-      tiles.appendChild(tile(t('chMade'), birr(w.m2) + ' / ' + birr(w.m2Target)).box);
-      tiles.appendChild(tile(t('chCollected'), birr(w.collected)).box);
+      tiles.appendChild(tile(t('chMade'), short(w.m2) + ' / ' + short(w.m2Target)).box);
+      tiles.appendChild(tile(t('chCollected'), short(w.collected), exact(w.collected)).box);
       into.appendChild(tiles);
       var f = el('div', 'chfind brief');
       f.appendChild(el('div', 'chft', w.text || ''));
       into.appendChild(f);
-    }, function () {
-      into.innerHTML = '';
-      into.appendChild(el('p', 'codeerr', t('chOnlyChairman')));
-    });
+    }, failInto(into));
   }
 
   function toast(msg) {

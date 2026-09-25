@@ -26,7 +26,54 @@ import {
   function stored() { try { return localStorage.getItem(LANG_KEY); } catch (e) { return null; } }
   var urlLang = new URLSearchParams(location.search).get('lang');
   var lang = (urlLang === 'am' || urlLang === 'en' ? urlLang : stored()) === 'am' ? 'am' : 'en';
-  function t(k) { return T[lang][k]; }
+  /* a word not yet translated falls back to its English; one missing from
+     both stays undefined, so universe3d's own default is used */
+  function t(k) { var s = T[lang][k]; return s != null ? s : T.en[k]; }
+
+  /* Addis Ababa is three hours ahead of UTC all year — no summer time — so
+     the date there is the UTC date of the moment three hours on. The day
+     this page draws begins at Addis midnight, the ledger's midnight, not
+     at whatever midnight the phone happens to be set to. */
+  var ADDIS = '+03:00';
+  function utcYmd(d) {
+    return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) +
+           '-' + ('0' + d.getUTCDate()).slice(-2);
+  }
+  function addisYmd(d) { return utcYmd(new Date((d ? d.getTime() : Date.now()) + 3 * 3600e3)); }
+  function dayStart(day) { return new Date(day + 'T00:00:00' + ADDIS); }
+  function addDays(day, n) {
+    var d = new Date(day + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + n);
+    return utcYmd(d);
+  }
+  function dow(day) { return new Date(day + 'T12:00:00Z').getUTCDay(); }
+  function deadline(r, day) { return new Date(day + 'T' + (r.dueTime || '17:30') + ':00' + ADDIS); }
+
+  /* Late the way the ledger judges it (apps-script/Agent.js, settle_): the
+     server's time against the letter's deadline on the due day the report
+     answers to — for a weekly one the next due day within six days, for a
+     monthly one the 1st (the 2nd when the 1st is a Sunday) within seven,
+     or the one just gone. The phone's own "late" flag is not read. */
+  function monthlyDueOn(day) {
+    var dd = day.slice(8);
+    return (dd === '01' && dow(day) !== 0) || (dd === '02' && dow(day) === 1);
+  }
+  function dueDayFor(r, day) {
+    var i, d;
+    if (r.cadence === 'weekly') {
+      for (i = 0; i <= 6; i++) { d = addDays(day, i); if (dow(d) === r.dueDay) return d; }
+    } else if (r.cadence === 'monthly') {
+      for (i = 0; i <= 7; i++) { d = addDays(day, i); if (monthlyDueOn(d)) return d; }
+      for (i = 1; i <= 31; i++) { d = addDays(day, -i); if (monthlyDueOn(d)) return d; }
+    }
+    return day;
+  }
+  function lateFiling(reportId, at) {
+    var r = null;
+    for (var i = 0; i < REPORTS.length; i++) if (REPORTS[i].id === reportId) { r = REPORTS[i]; break; }
+    if (!r) return false;
+    return at.getTime() > deadline(r, dueDayFor(r, addisYmd(at))).getTime();
+  }
 
   var app, auth, db;
 
@@ -69,6 +116,24 @@ import {
     if (cls) e.className = cls;
     if (txt != null) e.textContent = txt;
     return e;
+  }
+
+  /* A listener that fails used to fail in silence, leaving an empty
+     company that looked like a quiet day. One line says why instead —
+     refused, the free plan's daily limit, or no connection. It lives on the
+     body, not in the page's root, because the 3D engine clears the root
+     when it mounts. */
+  var errLine = null;
+  function failed(e) {
+    var c = String((e && e.code) || '').replace(/^firestore\//, '');
+    var msg = c === 'permission-denied' ? t('chOnlyChairman')
+            : (c === 'resource-exhausted' ? t('chQuota') : t('chLoadFailed'));
+    if (!errLine) {
+      errLine = el('p', 'codeerr unerr');
+      errLine.setAttribute('role', 'alert');
+      document.body.appendChild(errLine);
+    }
+    errLine.textContent = msg;
   }
 
   var data = { filings: [], findings: [], instructions: [] };
@@ -119,18 +184,21 @@ import {
     /* the engine comes from the CDN; if it never arrives, say so */
     setTimeout(function () { if (!world && waiting) flatOnly(); }, 20000);
 
-    var start0 = new Date();
-    start0.setHours(0, 0, 0, 0);
-    onSnapshot(query(collection(db, 'reports'), where('at', '>=', start0), orderBy('at', 'asc')), function (qs) {
+    var DAY = addisYmd();
+    /* the past week too: a weekly report filed on Wednesday for Friday is
+       Friday's, and a monthly one may come in the week before the 1st */
+    onSnapshot(query(collection(db, 'reports'), where('at', '>=', dayStart(addDays(DAY, -7))), orderBy('at', 'asc')), function (qs) {
       var out = [];
       qs.forEach(function (d) {
         var x = d.data({ serverTimestamps: 'estimate' });
         if (!x.at || !x.at.toDate) return;
-        out.push({ report: x.report, person: x.person, at: x.at.toDate(), values: x.values || {}, late: !!x.late });
+        var at = x.at.toDate();
+        out.push({ report: x.report, person: x.person, at: at, values: x.values || {},
+                   late: lateFiling(x.report, at) });
       });
       data.filings = out;
       push();
-    }, function () {});
+    }, failed);
 
     onSnapshot(query(collection(db, 'analysis'), orderBy('day', 'desc'), limit(1)), function (qs) {
       if (qs.empty) { data.findings = []; data.analysisDay = null; }
@@ -140,19 +208,31 @@ import {
         data.analysisDay = d.dayLabel || d.day || null;
       }
       push();
-    }, function () {});
+    }, failed);
 
-    onSnapshot(query(collection(db, 'instructions'), orderBy('at', 'desc'), limit(100)), function (qs) {
+    /* Every open instruction, however old. The newest hundred used to be
+       read and the open ones picked out, so an old one never closed fell
+       off the end — the very one worth seeing. The universe draws only the
+       open ones, so only they are read. */
+    onSnapshot(query(collection(db, 'instructions'), where('status', '==', 'open')), function (qs) {
       var out = [];
       qs.forEach(function (d) { out.push(d.data()); });
       data.instructions = out;
       push();
-    }, function () {});
+    }, failed);
 
-    /* a new day is a new company: at midnight, start again */
-    var mid = new Date();
-    mid.setHours(24, 0, 5, 0);
-    setTimeout(function () { location.reload(); }, mid - new Date());
+    /* A new day is a new company: at Addis midnight, start again — and when
+       the page comes back into view on a later day than it was drawn for,
+       since a phone asleep in a pocket runs no timers. */
+    (function arm() {
+      var wait = dayStart(addDays(DAY, 1)).getTime() + 5000 - Date.now();
+      setTimeout(function () {
+        if (addisYmd() !== DAY) location.reload(); else arm();
+      }, Math.max(wait, 1000));
+    })();
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && addisYmd() !== DAY) location.reload();
+    });
   }
 
   document.addEventListener('DOMContentLoaded', function () {

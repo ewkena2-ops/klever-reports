@@ -240,9 +240,12 @@ function loadSchedule_() {
 
 /* Everything that was owed on a day, by the rules in each report's own
    entry: daily reports skip the days their letter excuses, weekly ones land
-   on their due day, monthly ones on the 1st. Sunday is nobody's day. */
+   on their due day, monthly ones on the 1st — or on the 2nd when the 1st is
+   a Sunday, which is nobody's day. The site (js/app.js dueOn) and the
+   Chairman's page use this same rule. */
 function dueOn_(schedule, day) {
-  var dow = dow_(day), first = day.slice(8) === '01';
+  var dow = dow_(day);
+  var first = day.slice(8) === '01' || (day.slice(8) === '02' && dow_(addDays_(day, -1)) === 0);
   if (dow === 0) return [];
   return schedule.reports.filter(function (r) {
     if (r.cadence === 'daily') return !(r.skipDays && r.skipDays.indexOf(dow) !== -1);

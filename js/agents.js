@@ -41,12 +41,13 @@ import {
     }
   }
 
-  /* the agents run at six every morning; the next one is the next six */
+  /* the agents run at six every morning, Addis time (UTC+3, whatever the
+     phone's own zone); the next one is the next six */
   function nextSix() {
-    var n = new Date(), d = new Date(n);
-    d.setHours(6, 0, 0, 0);
-    if (d <= n) d.setDate(d.getDate() + 1);
-    return d;
+    var n = Date.now(), a = new Date(n + 3 * 3600e3);
+    var six = Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate(), 6) - 3 * 3600e3;
+    if (six <= n) six += 864e5;
+    return new Date(six);
   }
 
   function strings() {

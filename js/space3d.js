@@ -66,23 +66,43 @@ float fbm(vec3 p){
 }
 `;
 
+/* Can this device draw in 3D at all? The context made to ask is handed
+   straight back: a browser allows only a handful at once, and a phone's
+   graphics chip would otherwise keep this one for the life of the page. */
 export function webglOk() {
   try {
     const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+    const gl = c.getContext('webgl2') || c.getContext('webgl');
+    const lose = gl && gl.getExtension('WEBGL_lose_context');
+    if (lose) lose.loseContext();
+    return !!gl;
   } catch (e) { return false; }
 }
 
+/* No antialiasing on the canvas itself: every picture is drawn into the
+   composer's targets first and only copied to the canvas at the end, so a
+   multisampled canvas smoothed nothing and cost memory. The composer's
+   own target is multisampled instead, where it can be (makeComposer). */
 export function makeRenderer() {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   return renderer;
 }
 
+/* The scene is drawn into a half-float target, bloomed, then tone-mapped
+   onto the canvas. On a screen of ordinary density — where jagged edges
+   show, and the graphics chip is usually a computer's — that target is
+   multisampled (WebGL2 only). A phone's dense screen hides the jaggies and
+   could not spare the memory, so there it is not. The size given here is
+   only a placeholder: the page sets the real one before the first frame. */
 export function makeComposer(renderer, scene, camera, strength, radius, threshold) {
-  const composer = new EffectComposer(renderer);
+  const size = renderer.getSize(new THREE.Vector2());
+  const samples = renderer.capabilities.isWebGL2 && renderer.getPixelRatio() < 1.5 ? 4 : 0;
+  const target = new THREE.WebGLRenderTarget(Math.max(1, size.x), Math.max(1, size.y),
+                                             { type: THREE.HalfFloatType, samples });
+  const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), strength, radius, threshold);
   composer.addPass(bloom);
@@ -90,14 +110,29 @@ export function makeComposer(renderer, scene, camera, strength, radius, threshol
   return { composer, bloom };
 }
 
-/* the sky — a nebula and a band of galaxy, rendered once into a panorama */
+/* The sky — a nebula and a band of galaxy — painted once, straight onto the
+   six faces of a cube, and afterwards only looked at. It used to be
+   painted into a 2048×1024 panorama with a depth buffer, which three.js
+   then copied onto a cube of its own: two copies and a buffer nobody used,
+   some 38 MB on a phone. Painting the cube directly keeps the same 512
+   pixels a face that copy had, so the sky is as sharp as it was, in a
+   third of the memory. It stays half-float: the nebula lives in values so
+   dark that eight bits would draw it in bands.
+
+   The direction is read with its axes in the order the panorama used
+   (longitude measured from +z towards +x), so every cloud is where it was. */
+const SKY_VERT = /* glsl */`
+varying vec3 vDir;
+void main(){
+  vDir = (modelMatrix * vec4(position, 0.0)).xyz;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
 const SKY_FRAG = /* glsl */`
-varying vec2 vUv;
+varying vec3 vDir;
 ${NOISE}
 void main(){
-  float lon = (vUv.x - 0.5) * 6.2831853;
-  float lat = (vUv.y - 0.5) * 3.14159265;
-  vec3 d = vec3(cos(lat) * sin(lon), sin(lat), cos(lat) * cos(lon));
+  vec3 d = normalize(vDir).zyx;
   vec3 bandN = normalize(vec3(0.28, 1.0, 0.36));
   float band = exp(-pow(dot(d, bandN) / 0.2, 2.0));
   float n1 = fbm(d * 2.1 + 3.1);
@@ -114,19 +149,16 @@ void main(){
 }
 `;
 export function paintSky(renderer, scene, dim) {
-  const rt = new THREE.WebGLRenderTarget(2048, 1024, { type: THREE.HalfFloatType });
-  const qs = new THREE.Scene();
-  const qc = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  const qm = new THREE.ShaderMaterial({
-    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-    fragmentShader: SKY_FRAG
-  });
-  qs.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), qm));
-  renderer.setRenderTarget(rt);
-  renderer.render(qs, qc);
-  renderer.setRenderTarget(null);
-  qm.dispose();
-  rt.texture.mapping = THREE.EquirectangularReflectionMapping;
+  const rt = new THREE.WebGLCubeRenderTarget(512, { type: THREE.HalfFloatType, depthBuffer: false });
+  /* the same box and cube camera three.js itself uses to turn a panorama
+     into a cube, so the faces come out the same way round */
+  const box = new THREE.Mesh(new THREE.BoxGeometry(5, 5, 5), new THREE.ShaderMaterial({
+    vertexShader: SKY_VERT, fragmentShader: SKY_FRAG,
+    side: THREE.BackSide, blending: THREE.NoBlending, depthTest: false, depthWrite: false
+  }));
+  new THREE.CubeCamera(1, 10, rt).update(renderer, box);
+  box.geometry.dispose();
+  box.material.dispose();
   scene.background = rt.texture;
   scene.backgroundIntensity = dim == null ? 1 : dim;
   return rt;
@@ -659,25 +691,73 @@ function spikeTexture() {
   GLOWS[key] = t;
   return t;
 }
+/* Each bright star is drawn as a point exactly the size a sprite of its
+   width would be at its distance — the height of the picture in pixels
+   times the lens's own scale — so the sky looks as it did when each star
+   was a sprite of its own, in two draws instead of eighty. */
+const BRIGHT_VERT = /* glsl */`
+attribute float aSize;
+attribute vec3 aColor;
+uniform float uHalfH;
+varying vec3 vC;
+void main(){
+  vC = aColor;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * mv;
+  gl_PointSize = aSize * projectionMatrix[1][1] * uHalfH / max(-mv.z, 1.0);
+}
+`;
+const BRIGHT_FRAG = /* glsl */`
+uniform sampler2D uMap;
+varying vec3 vC;
+void main(){
+  vec4 t = texture2D(uMap, gl_PointCoord);
+  gl_FragColor = vec4(vC * t.rgb, t.a);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}
+`;
 /* a scattering of bright stars on the sky, a third of them along the band
-   of the galaxy; the group is meant to travel with the camera */
+   of the galaxy, one in five with spikes; the group is meant to travel
+   with the camera */
 export function makeBrightStars(n, radius) {
   const group = new THREE.Group();
-  const tints = ['#cfe0ff', '#ffffff', '#fff2d6', '#ffd9b0', '#b9d0ff'];
+  const tints = ['#cfe0ff', '#ffffff', '#fff2d6', '#ffd9b0', '#b9d0ff'].map(c => new THREE.Color(c));
   const bandN = new THREE.Vector3(0.28, 1.0, 0.36).normalize();
+  const sets = [{ P: [], C: [], S: [] }, { P: [], C: [], S: [] }];      /* round, spiked */
   for (let i = 0; i < n; i++) {
     const v = new THREE.Vector3().randomDirection();
     if (i < n * 0.35) v.addScaledVector(bandN, -v.dot(bandN) * 0.85).normalize();
-    const spike = i % 5 === 0;
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: spike ? spikeTexture() : glowTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0.22)'),
-      color: new THREE.Color(tints[i % tints.length]), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-      opacity: 0.55 + Math.random() * 0.45
-    }));
-    const size = radius * (spike ? 0.03 + Math.random() * 0.025 : 0.01 + Math.random() * 0.016);
-    sp.scale.set(size, size, 1);
-    sp.position.copy(v.multiplyScalar(radius));
-    group.add(sp);
+    const spike = i % 5 === 0, set = sets[spike ? 1 : 0];
+    /* a sprite's opacity only ever scaled its light, so it is folded into the colour */
+    const c = tints[i % tints.length].clone().multiplyScalar(0.55 + Math.random() * 0.45);
+    set.S.push(radius * (spike ? 0.03 + Math.random() * 0.025 : 0.01 + Math.random() * 0.016));
+    v.multiplyScalar(radius);
+    set.P.push(v.x, v.y, v.z);
+    set.C.push(c.r, c.g, c.b);
   }
+  /* the picture's height, read as each set is drawn: the composer's target,
+     whatever resolution it has been given */
+  const halfH = { value: 512 }, sz = new THREE.Vector2();
+  const measure = renderer => {
+    const rt = renderer.getRenderTarget();
+    halfH.value = (rt ? rt.height : renderer.getDrawingBufferSize(sz).y) / 2;
+  };
+  [glowTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0.22)'), spikeTexture()].forEach((map, k) => {
+    const set = sets[k];
+    if (!set.S.length) return;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(set.P, 3));
+    g.setAttribute('aColor', new THREE.Float32BufferAttribute(set.C, 3));
+    g.setAttribute('aSize', new THREE.Float32BufferAttribute(set.S, 1));
+    const pts = new THREE.Points(g, new THREE.ShaderMaterial({
+      vertexShader: BRIGHT_VERT, fragmentShader: BRIGHT_FRAG,
+      uniforms: { uMap: { value: map }, uHalfH: halfH },
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+    }));
+    pts.frustumCulled = false;
+    pts.onBeforeRender = measure;
+    group.add(pts);
+  });
   return group;
 }

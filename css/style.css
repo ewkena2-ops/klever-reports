@@ -42,7 +42,7 @@
   --ink:#eef4f1;
   --ink-2:#c5d2cd;
   --mut:#8b9d97;
-  --dim:#5e706a;
+  --dim:#7f918b;
 
   --teal:#2aa58e;
   --teal-hi:#5fe0c6;
@@ -123,7 +123,7 @@ h1{
 
 /* chat and the Chairman's page, one tap from anywhere */
 .navbtn{
-  width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
   color:var(--mut);text-decoration:none;border:1px solid transparent;position:relative;
 }
 .navbtn svg{width:21px;height:21px;display:block}
@@ -136,12 +136,13 @@ h1{
 }
 .langtoggle button{
   font-family:var(--sans);font-size:12.5px;font-weight:700;letter-spacing:.03em;
+  min-width:44px;min-height:38px;
   padding:6px 10px;border:0;border-radius:9px;background:transparent;color:var(--mut);cursor:pointer;
 }
 .langtoggle button[aria-pressed="true"]{background:var(--teal-hi);color:var(--teal-ink)}
 
 .signoutbtn{
-  display:flex;align-items:center;gap:7px;cursor:pointer;height:40px;
+  display:flex;align-items:center;gap:7px;cursor:pointer;height:44px;min-width:44px;
   padding:0 10px 0 5px;border-radius:12px;background:var(--card);border:1px solid var(--line-2);
 }
 .signoutbtn .soinit{
@@ -152,7 +153,37 @@ h1{
 }
 .signoutbtn .sotext{font-size:12.5px;font-weight:600;color:var(--mut)}
 .signoutbtn:active{background:var(--card-2)}
-@media (max-width:480px){ .signoutbtn .sotext{display:none} .signoutbtn{padding:0 5px} }
+.signoutbtn.armed{border-color:var(--coral-line);background:var(--coral-bg)}
+.signoutbtn.armed .soinit{background:var(--coral);color:#fff}
+@media (max-width:480px){ .signoutbtn .sotext{display:none} .signoutbtn{padding:0 7px;justify-content:center} }
+
+/* the Chairman's fold-out menu: only where the bar would not fit */
+.navmore{display:none;position:relative}
+.navmore > summary{list-style:none;cursor:pointer}
+.navmore > summary::-webkit-details-marker{display:none}
+.navmore svg{stroke-width:3.2}
+.navmore[open] > summary{color:var(--teal-hi);background:var(--teal-bg);border-color:var(--teal-line)}
+.navmenu{
+  position:absolute;right:0;top:calc(100% + 8px);z-index:30;min-width:210px;
+  display:flex;flex-direction:column;gap:4px;padding:8px;
+  background:var(--card);border:1px solid var(--line-2);border-radius:var(--r);
+  box-shadow:0 12px 30px rgba(0,0,0,.45);
+}
+.navitem{
+  display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:10px;
+  color:var(--ink-2);text-decoration:none;font-size:14.5px;font-weight:600;
+}
+.navitem svg{width:20px;height:20px;flex-shrink:0}
+.navitem.on,.navitem:hover{background:var(--teal-bg);color:var(--teal-hi)}
+.langtoggle.infold{display:none;align-self:flex-start;margin:4px 4px 2px}
+@media (max-width:420px){
+  .top-in.chair .navbtn.fold{display:none}
+  .top-in.chair .navmore{display:block}
+}
+@media (max-width:360px){
+  .top-in.chair > .langtoggle{display:none}
+  .top-in.chair .langtoggle.infold{display:flex}
+}
 
 /* the date, in both calendars, as the letters date themselves */
 .lh{
@@ -194,6 +225,9 @@ fieldset legend{
   display:flex;align-items:center;gap:12px;
   color:var(--teal-hi);margin:34px 0 12px;
 }
+h2.eyebrow{font-family:var(--sans);font-size:11.5px;font-weight:700}
+/* a heading for screen readers alone */
+.vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .eyebrow::after{content:'';flex:1;height:1px;background:var(--line-2)}
 .eyebrow:first-child{margin-top:24px}
 
@@ -606,10 +640,11 @@ fieldset legend .lgc.full::before{content:'✓ '}
 .reprowhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
 .reprowhead .idx{color:var(--teal-hi)}
 .reprowhead .rm{
-  min-width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  min-width:44px;height:44px;display:flex;align-items:center;justify-content:center;
   border:0;border-radius:var(--r-xs);background:transparent;color:var(--dim);cursor:pointer;font-size:20px;
 }
 .reprowhead .rm:hover,.reprowhead .rm:active{background:var(--coral-bg);color:var(--coral)}
+.reprowhead .rm.armed{background:var(--coral-bg);color:var(--coral);font-size:13px;font-weight:700;padding:0 12px}
 .reprow .cell{display:grid;grid-template-columns:minmax(0,1fr) 128px;gap:6px 12px;align-items:center;padding:4px 0}
 .reprow .cell label{font-size:13px;color:var(--mut);line-height:1.3}
 .reprow input,.reprow select{min-height:42px;font-size:15px}
@@ -716,6 +751,7 @@ body[data-page="chat"] .wrap{padding-bottom:110px}
    8  THE CHAIRMAN'S PAGE
    ================================================================ */
 .chtiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0 6px}
+@media (max-width:400px){.chtiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .chtile{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;
   display:flex;flex-direction:column;justify-content:space-between;gap:6px}
 .chtl{color:var(--dim);font-size:10px}
@@ -819,7 +855,9 @@ body[data-page="chairman"] .codenote{font-size:12.5px;color:var(--dim);text-alig
 }
 .chflags .chfl,.chmissing .chfl{color:var(--coral);margin-bottom:6px;font-size:10.5px}
 
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+}
 
 /* ================================================================
    10  THE OBSERVATORY — the agents as a star system
@@ -963,9 +1001,8 @@ body[data-page="agents"] .wrap{max-width:none;padding:0}
 .obs-open svg{width:20px;height:20px;color:var(--teal-hi)}
 /* four icons, the language and the way out, on a 390px phone */
 @media (max-width:420px){
-  .top-in{padding:0 12px;gap:4px}
-  .navbtn{width:34px}
-  .langtoggle button{padding:6px 7px}
+  .top-in{padding:0 10px;gap:4px}
+  .langtoggle button{padding:6px 7px;min-width:40px}
   .top img{height:27px;padding:3px 5px}
   .obs-title{font-size:24px}
 }
@@ -1106,8 +1143,19 @@ body[data-page="universe"] .wrap{max-width:none;padding:0}
   @page{margin:16mm 14mm}
   html,body{background:#fff!important}
   body{color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:0}
-  .top,.bar,.wrap,.backlink,.toast{display:none!important}
+  .top,.bar,.backlink,.toast,canvas,.navmore{display:none!important}
+  body[data-page="form"] .wrap{display:none!important}
   .printdoc{display:block}
+  /* any other page prints as it reads, dark ink on white */
+  body:not([data-page="form"]){
+    -webkit-print-color-adjust:economy;print-color-adjust:economy;
+    --card:#fff;--card-2:#f4f5f2;--line:#cfd4cf;--line-2:#a9b2ac;
+    --mut:#4a5552;--dim:#5f6a66;--teal-hi:#0f5c54;--teal-bg:#e3efec;--coral:#8f3020;--coral-bg:#f7eae6;
+  }
+  body:not([data-page="form"]) .wrap{max-width:none;padding:0}
+  body:not([data-page="form"]) .wrap *{background:transparent!important;box-shadow:none!important;text-shadow:none!important;color:#141b1a!important}
+  body:not([data-page="form"]) details{display:block}
+  body:not([data-page="form"]) details > *{display:block!important}
 
   .pd-head{
     display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
@@ -1158,3 +1206,68 @@ body[data-page="universe"] .wrap{max-width:none;padding:0}
     letter-spacing:.1em;text-transform:uppercase;
   }
 }
+
+/* ================================================================
+   ROUND 2 — what has been sent, long text, the Chairman's page
+   ================================================================ */
+.chft,.chfh,.chinst,.chinsn,.chrr,.chfv,.chmissing,.chlater,.obs-said,.chtext{overflow-wrap:anywhere}
+.tlrow.sent,.tlgroup.sent > summary{opacity:.62}
+.tlrow.sent .tls,.tlgroup.sent .tls{color:var(--teal-hi)}
+.tlsub a.sent{opacity:.62}
+.deck-more.sent{color:var(--teal-hi)}
+.person .count.done{color:var(--teal-hi);background:var(--teal-bg)}
+.sentmark{font-size:12px;font-weight:600;color:var(--teal-hi)}
+.fstat.none .fsp{color:var(--mut)}
+.sentnote{margin-top:10px}
+button.count{font:inherit;background:none;border:0;padding:0;color:inherit;text-align:left;cursor:default}
+button.count.findable{cursor:pointer}
+.bar .btn.ghost{background:transparent;border:1px solid var(--line-2);color:var(--ink-2)}
+.seg:focus,.ratio:focus{outline:2px solid var(--teal-hi);outline-offset:3px;border-radius:10px}
+
+svg.sky .node text{font-size:11px}
+.chchips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:6px 2px 0}
+.chchip{display:inline-flex;align-items:baseline;gap:6px;min-height:44px;align-items:center;padding:0 12px;border-radius:22px;border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);font-family:var(--sans);font-size:12.5px;font-weight:600;cursor:pointer}
+.chchip-h{font-size:11px;font-weight:500;color:var(--dim)}
+.chchip.h1{border-color:var(--gold)} .chchip.h1 .chchip-h{color:var(--gold)}
+.chchip.h2{border-color:var(--coral-line);background:var(--coral-bg)} .chchip.h2 .chchip-h{color:var(--coral)}
+.chchip.brief{border-color:var(--teal-line);background:var(--teal-bg);color:var(--teal-hi)}
+.chchip:focus-visible{outline:2px solid var(--teal-hi);outline-offset:2px}
+.chbrain-d{flex-basis:100%;font-size:12px;color:var(--mut);text-align:right}
+.chlater{margin-top:8px;padding:12px 14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);font-size:13.5px;color:var(--mut);line-height:1.6}
+.chlater .chfl{color:var(--dim);margin-bottom:6px;font-size:10.5px}
+.chinsrow.cancelled .chinst{color:var(--mut);text-decoration:line-through}
+.chinsrow.cancelled .chinsh .chrt{color:var(--dim)}
+.chprev .codenote{text-align:left;margin:10px 4px}
+.chprev .chsec{margin:14px 4px 6px}
+.chprev .chchg{margin-top:8px}
+.unerr{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:40;margin:0 auto;max-width:560px}
+
+/* ---------- chat, round 2: earlier messages, the photo viewer, sign-out sheet ---------- */
+.chat-back{min-height:44px;padding:0 16px 0 12px;font-size:14.5px}
+.chat-more{display:block;margin:16px auto 0;min-height:44px;padding:0 20px;border-radius:999px;cursor:pointer;
+  font-family:var(--sans);font-size:13.5px;font-weight:600;color:var(--ink-2);background:var(--card);border:1px solid var(--line-2)}
+.chat-more:hover{border-color:var(--line-3);color:var(--ink)}
+.chat-more:disabled{opacity:.55;cursor:default}
+.chat-pill{flex:none;min-height:44px;padding:0 16px;border-radius:22px;cursor:pointer;white-space:nowrap;
+  font-family:var(--sans);font-size:14.5px;font-weight:600;color:var(--ink-2);background:var(--card);border:1px solid var(--line-2)}
+.chat-pill:hover{border-color:var(--line-3);color:var(--ink)}
+.chat-pill:disabled{opacity:.45;cursor:not-allowed}
+.chat-pill-bad{background:var(--coral-bg);color:var(--coral);border-color:var(--coral-line)}
+.recbar .recdot.chat-recstop{animation:none;background:var(--gold)}
+.chat-count{position:absolute;right:16px;top:-28px;padding:2px 9px;border-radius:999px;pointer-events:none;
+  font-family:var(--mono);font-size:11px;color:var(--ink-2);background:var(--card-2);border:1px solid var(--line-2)}
+.chan .chat-dot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--teal-hi);box-shadow:0 0 0 3px var(--teal-bg)}
+.msgimg{cursor:zoom-in}
+.msgimg:focus-visible{outline:2px solid var(--teal-hi);outline-offset:2px;border-radius:12px}
+.chat-viewer{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+  padding:calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+  background:rgba(0,0,0,.94);touch-action:pan-x pan-y pinch-zoom}
+.chat-viewer-img{display:block;max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
+.chat-viewer-x{position:absolute;top:calc(10px + env(safe-area-inset-top));right:10px;width:48px;height:48px;border-radius:50%;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1;color:#fff;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25)}
+.chat-sheet{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:50;max-width:520px;margin:0 auto;
+  padding:16px;border-radius:var(--r);background:var(--card-2);border:1px solid var(--line-2);box-shadow:var(--shadow)}
+.chat-sheet p{margin:0 0 12px;font-size:14.5px;line-height:1.45;color:var(--ink)}
+.chat-sheet .chat-warn{color:var(--coral);background:var(--coral-bg);padding:9px 11px;border-radius:var(--r-s)}
+.chat-sheet-row{display:flex;gap:8px;justify-content:flex-end}

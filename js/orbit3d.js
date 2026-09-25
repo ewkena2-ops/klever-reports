@@ -286,14 +286,21 @@ void main(){
 }
 `;
 
-/* the sky itself — rendered once into a panorama, then only looked at */
+/* the sky itself — painted once straight onto the faces of a cube, then only
+   looked at (see paintSky). The direction is read with its axes in the
+   order the old panorama used, so every cloud is where it was. */
+const SKY_VERT = /* glsl */`
+varying vec3 vDir;
+void main(){
+  vDir = (modelMatrix * vec4(position, 0.0)).xyz;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
 const SKY_FRAG = /* glsl */`
-varying vec2 vUv;
+varying vec3 vDir;
 ${NOISE}
 void main(){
-  float lon = (vUv.x - 0.5) * 6.2831853;
-  float lat = (vUv.y - 0.5) * 3.14159265;
-  vec3 d = vec3(cos(lat) * sin(lon), sin(lat), cos(lat) * cos(lon));
+  vec3 d = normalize(vDir).zyx;
   vec3 bandN = normalize(vec3(0.28, 1.0, 0.36));
   float band = exp(-pow(dot(d, bandN) / 0.2, 2.0));
   float n1 = fbm(d * 2.1 + 3.1);
@@ -401,10 +408,15 @@ const col = h => new THREE.Color(h);
 
 /* ---------------------------------------------------------------- */
 
+/* Can this device draw in 3D? The context made to ask is handed straight
+   back, so it does not hold on to the graphics chip for the page's life. */
 function webglOk() {
   try {
     const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+    const gl = c.getContext('webgl2') || c.getContext('webgl');
+    const lose = gl && gl.getExtension('WEBGL_lose_context');
+    if (lose) lose.loseContext();
+    return !!gl;
   } catch (e) { return false; }
 }
 
@@ -416,8 +428,14 @@ function mount(root, opts) {
   const obs = c.obs, hud = c.hud, sheet = c.sheet;
 
   /* ---------- renderer ---------- */
-  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  /* No antialiasing on the canvas: the picture is drawn into the composer's
+     targets and only copied to the canvas, so it smoothed nothing. The
+     composer's own target is multisampled instead, on a screen of ordinary
+     density where jagged edges show (WebGL2 only); a phone's dense screen
+     hides them and could not spare the memory. */
+  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
   let pr = Math.min(window.devicePixelRatio || 1, 1.75);
+  const PR0 = pr;
   renderer.setPixelRatio(pr);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -443,27 +461,31 @@ function mount(root, opts) {
   controls.autoRotate = !reduce;
   controls.autoRotateSpeed = 0.28;
 
-  const composer = new EffectComposer(renderer);
+  /* the size given the target here is a placeholder; resize() sets the real one */
+  const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, {
+    type: THREE.HalfFloatType, samples: renderer.capabilities.isWebGL2 && pr < 1.5 ? 4 : 0 }));
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.72, 0.5, 0.86);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 
   /* ---------- the sky, painted once ---------- */
+  /* Straight onto the six faces of a cube, with the same box and cube camera
+     three.js uses to turn a panorama into one. It used to go into a
+     2048×1024 panorama with a depth buffer, which three.js then copied onto
+     a cube: two copies and a buffer nobody used, some 38 MB. The faces keep
+     the 512 pixels that copy had, so the sky is as sharp, in a third of the
+     memory; half-float still, because the nebula is so dark that eight bits
+     would band it. */
   function paintSky() {
-    const rt = new THREE.WebGLRenderTarget(2048, 1024, { type: THREE.HalfFloatType });
-    const qs = new THREE.Scene();
-    const qc = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    const qm = new THREE.ShaderMaterial({
-      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-      fragmentShader: SKY_FRAG
-    });
-    qs.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), qm));
-    renderer.setRenderTarget(rt);
-    renderer.render(qs, qc);
-    renderer.setRenderTarget(null);
-    qm.dispose();
-    rt.texture.mapping = THREE.EquirectangularReflectionMapping;
+    const rt = new THREE.WebGLCubeRenderTarget(512, { type: THREE.HalfFloatType, depthBuffer: false });
+    const box = new THREE.Mesh(new THREE.BoxGeometry(5, 5, 5), new THREE.ShaderMaterial({
+      vertexShader: SKY_VERT, fragmentShader: SKY_FRAG,
+      side: THREE.BackSide, blending: THREE.NoBlending, depthTest: false, depthWrite: false
+    }));
+    new THREE.CubeCamera(1, 10, rt).update(renderer, box);
+    box.geometry.dispose();
+    box.material.dispose();
     scene.background = rt.texture;
     return rt;
   }
@@ -651,6 +673,42 @@ function mount(root, opts) {
   sunRet.visible = false;
   scene.add(sunRet);
 
+  /* ---------- the names' bookkeeping ---------- */
+  /* Each name keeps what was last written to it and its measured width.
+     Reading a width just after moving another name makes the browser lay
+     the page out again, once per name, every frame; so a name is measured
+     only when its words change (or the fonts arrive, or the window
+     changes), before anything is moved, and a style is written only when
+     it changes. A hidden name also leaves the tab order, once it has faded. */
+  const LS = new Map();
+  function ls(lab) {
+    let st = LS.get(lab);
+    if (!st) {
+      st = { w: 0, a: -1, x: NaN, y: NaN };
+      lab.style.transition = 'opacity .25s ease, visibility .25s';
+      LS.set(lab, st);
+    }
+    return st;
+  }
+  function measureLabels() {
+    worlds.forEach(w => {
+      const st = ls(w.label);
+      if (!st.w) st.w = w.label.offsetWidth;
+    });
+  }
+  function remeasure() { LS.forEach(st => { st.w = 0; }); }
+  function setAlpha(lab, st, a) {
+    if (st.a === a) return;
+    st.a = a;
+    lab.style.opacity = String(a);
+    lab.style.pointerEvents = a > 0.5 ? 'auto' : 'none';
+    lab.style.visibility = a > 0 ? 'visible' : 'hidden';
+  }
+  /* the loudest worlds choose where their names go first; the order only
+     changes when the readings do */
+  const RANK = { loud: 0, warm: 1, quiet: 2, none: 3 };
+  let byHeat = worlds.slice();
+
   /* ---------- how loud each world is ---------- */
   function applyHeat() {
     let loud = 0, any = false;
@@ -666,9 +724,14 @@ function mount(root, opts) {
       w.glow.scale.setScalar(w.r * ({ loud: 4.8, warm: 4.2, quiet: 3.6, none: 3.2 }[h]));
       w.beam.visible = h === 'loud';
       w.pings.forEach(p => { p.visible = h === 'loud' && !reduce; });
-      w.label.className = 'obs3d-label ' + h;
-      w.label.textContent = c.name(w.id);
+      const cls = 'obs3d-label ' + h, name = c.name(w.id);
+      if (w.label.className !== cls || w.label.textContent !== name) {
+        w.label.className = cls;
+        w.label.textContent = name;
+        ls(w.label).w = 0;
+      }
     });
+    byHeat = worlds.slice().sort((a, b) => RANK[c.heat[a.id]] - RANK[c.heat[b.id]]);
     sunBadge.innerHTML = '';
     const n = document.createElement('b');
     n.textContent = any ? String(loud) : '—';
@@ -683,6 +746,10 @@ function mount(root, opts) {
   /* ---------- the camera ---------- */
   let W = 0, H = 0, overview = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
   let tween = null, offY = 0, offGoal = 0;
+  /* whether someone has turned or zoomed the view since the last flight;
+     if so, a change of window size leaves their view alone */
+  let userMoved = false;
+  controls.addEventListener('start', () => { userMoved = true; });
   const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
   function band() {
@@ -716,14 +783,17 @@ function mount(root, opts) {
     camera.aspect = W / H;
     camera.updateProjectionMatrix();
     fitOverview();
-    if (!c.selected() && !tween) { camera.position.copy(overview.pos); controls.target.copy(overview.target); }
+    /* refit the view to the new shape only if nobody has taken the camera */
+    if (!c.selected() && !tween && !userMoved) { camera.position.copy(overview.pos); controls.target.copy(overview.target); }
     starMat.uniforms.uPR.value = pr;
+    remeasure();
   }
 
   function flyTo(pos, target, ms) {
     tween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: target,
               start: performance.now(), ms: reduce ? 1 : ms };
     controls.enabled = false;
+    userMoved = false;
   }
   function focusWorld(id) {
     if (!id) {
@@ -777,69 +847,128 @@ function mount(root, opts) {
 
   /* ---------- names, over the sky ---------- */
   const tmp = new THREE.Vector3(), camRight = new THREE.Vector3();
+  const sunS = new THREE.Vector3(), edgeV = new THREE.Vector3();
+  const taken = [];                      /* the boxes already taken this frame, four numbers each */
+  const badge = { x: NaN, y: NaN, shown: null };
+  function clash(x0, y0, x1, y1) {
+    for (let i = 0; i < taken.length; i += 4) {
+      if (x0 < taken[i + 2] && x1 > taken[i] && y0 < taken[i + 3] && y1 > taken[i + 1]) return true;
+    }
+    return false;
+  }
   function placeLabels() {
     const picked = c.selected();
-    const rank = { loud: 0, warm: 1, quiet: 2, none: 3 };
+    measureLabels();
     camRight.setFromMatrixColumn(camera.matrixWorld, 0);
-    const sunS = tmp.set(0, 0, 0).project(camera).clone();
-    const sunEdge = new THREE.Vector3().copy(camRight).multiplyScalar(6).project(camera);
+    sunS.set(0, 0, 0).project(camera);
+    edgeV.copy(camRight).multiplyScalar(6).project(camera);
     const sunX = (sunS.x + 1) / 2 * W, sunY = (1 - sunS.y) / 2 * H;
-    const sunRpx = Math.abs((sunEdge.x - sunS.x) / 2 * W);
+    const sunRpx = Math.abs((edgeV.x - sunS.x) / 2 * W);
     const sunDepth = camera.position.length();
-    const taken = [[sunX - sunRpx * 1.2, sunY - sunRpx * 1.2, sunX + sunRpx * 1.2, sunY + sunRpx * 1.2]];
+    taken.length = 0;
+    taken.push(sunX - sunRpx * 1.2, sunY - sunRpx * 1.2, sunX + sunRpx * 1.2, sunY + sunRpx * 1.2);
 
-    sunBadge.style.display = picked ? 'none' : '';
+    if (badge.shown !== !picked) { badge.shown = !picked; sunBadge.style.display = picked ? 'none' : ''; }
     if (!picked) {
-      sunBadge.style.transform = 'translate(' + Math.round(sunX) + 'px,' + Math.round(sunY + sunRpx * 1.35 + 6) + 'px) translateX(-50%)';
-      taken.push([sunX - 50, sunY + sunRpx * 1.35 + 6, sunX + 50, sunY + sunRpx * 1.35 + 34]);
+      const bx = Math.round(sunX), by = Math.round(sunY + sunRpx * 1.35 + 6);
+      if (bx !== badge.x || by !== badge.y) {
+        badge.x = bx; badge.y = by;
+        sunBadge.style.transform = 'translate(' + bx + 'px,' + by + 'px) translateX(-50%)';
+      }
+      taken.push(sunX - 50, sunY + sunRpx * 1.35 + 6, sunX + 50, sunY + sunRpx * 1.35 + 34);
     }
 
-    const order = worlds.slice().sort((a, b) => rank[c.heat[a.id]] - rank[c.heat[b.id]]);
-    order.forEach(w => {
-      if (picked) { w.label.style.opacity = '0'; w.label.style.pointerEvents = 'none'; return; }
+    byHeat.forEach(w => {
+      const st = ls(w.label);
+      if (picked) { setAlpha(w.label, st, 0); return; }
       const P = w.group.position;
       const v = tmp.copy(P).project(camera);
-      if (v.z > 1) { w.label.style.opacity = '0'; return; }
+      /* behind the camera: hidden, and not something a tap can land on */
+      if (v.z > 1) { setAlpha(w.label, st, 0); return; }
       const x = (v.x + 1) / 2 * W, y = (1 - v.y) / 2 * H;
-      const e2 = new THREE.Vector3().copy(P).addScaledVector(camRight, w.r).project(camera);
-      const rpx = Math.abs((e2.x - v.x) / 2 * W);
+      edgeV.copy(P).addScaledVector(camRight, w.r).project(camera);
+      const rpx = Math.abs((edgeV.x - v.x) / 2 * W);
       /* behind the star from here? */
       const behind = camera.position.distanceTo(P) > sunDepth && Math.hypot(x - sunX, y - sunY) < sunRpx * 1.1;
-      const lw = w.label.offsetWidth || 80, lh = 18;
+      const lw = st.w || 80, lh = 18;
       const lx = Math.max(8 + lw / 2, Math.min(W - 8 - lw / 2, x));
-      let ly = y + rpx + 5, box = [lx - lw / 2, ly, lx + lw / 2, ly + lh];
-      const clash = b => taken.some(o => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]);
-      let alpha = 1;
-      if (clash(box)) {
-        const up = [lx - lw / 2, y - rpx - 5 - lh, lx + lw / 2, y - rpx - 5];
-        if (!clash(up)) { box = up; ly = up[1]; } else alpha = 0.25;
+      let ly = y + rpx + 5, alpha = 1;
+      if (clash(lx - lw / 2, ly, lx + lw / 2, ly + lh)) {
+        const up = y - rpx - 5 - lh;
+        if (!clash(lx - lw / 2, up, lx + lw / 2, up + lh)) ly = up; else alpha = 0.25;
       }
       if (behind) alpha = 0;
-      taken.push(box);
-      w.label.style.opacity = String(alpha);
-      w.label.style.pointerEvents = alpha > 0.5 ? 'auto' : 'none';
-      w.label.style.transform = 'translate(' + Math.round(lx) + 'px,' + Math.round(ly) + 'px) translateX(-50%)';
+      taken.push(lx - lw / 2, ly, lx + lw / 2, ly + lh);
+      setAlpha(w.label, st, alpha);
+      const rx = Math.round(lx), ry = Math.round(ly);
+      if (rx !== st.x || ry !== st.y) {
+        st.x = rx; st.y = ry;
+        w.label.style.transform = 'translate(' + rx + 'px,' + ry + 'px) translateX(-50%)';
+      }
     });
+  }
+
+  /* ---------- keeping up ---------- */
+  /* A device that cannot keep up gives things up rather than stutter:
+     first multisampling, then resolution, then bloom. The average time a
+     frame takes is checked every two seconds; two slow checks in a row
+     (under about 29 frames a second) give up one thing. Once — after half
+     a minute comfortably fast — the last thing given up comes back, and if
+     that proves too much it goes again for good. None of this moves the
+     camera, and it watches the whole visit, not just its first seconds. */
+  function setPR(p) {
+    pr = p;
+    renderer.setPixelRatio(p);
+    composer.setPixelRatio(p);
+    starMat.uniforms.uPR.value = p;
+  }
+  const MSAA0 = composer.renderTarget1.samples;
+  function setSamples(n) {
+    [composer.renderTarget1, composer.renderTarget2].forEach(t => { t.samples = n; t.dispose(); });
+  }
+  const STEPS = [
+    { can: () => composer.renderTarget1.samples > 0, down: () => setSamples(0), up: () => setSamples(MSAA0) },
+    { can: () => pr > 1, down: () => setPR(1), up: () => setPR(PR0) },
+    { can: () => bloom.enabled, down: () => { bloom.enabled = false; }, up: () => { bloom.enabled = true; } }
+  ];
+  const pace = { sum: 0, n: 0, slow: 0, fast: 0, given: [], tookBack: false };
+  function keepUp(ms) {
+    if (ms > 400) return;                   /* a stall or a return to the tab, not the pace */
+    pace.sum += ms; pace.n++;
+    if (pace.sum < 2000) return;
+    const avg = pace.sum / pace.n;
+    pace.sum = 0; pace.n = 0;
+    if (avg > 35) { pace.slow++; pace.fast = 0; }
+    else if (avg < 20) { pace.fast++; pace.slow = 0; }
+    else { pace.slow = 0; pace.fast = 0; }
+    if (pace.slow >= 2) {
+      pace.slow = 0;
+      const step = STEPS.find(x => x.can());
+      if (step) { step.down(); pace.given.push(step); }
+    } else if (pace.fast >= 15 && pace.given.length && !pace.tookBack) {
+      pace.fast = 0;
+      pace.tookBack = true;
+      pace.given.pop().up();
+    }
   }
 
   /* ---------- the loop ---------- */
   const phase = O.rings.map(r => r.start);
-  let speed = reduce ? 0 : 1, last = 0, raf = 0, alive = true, time = 0;
-  let frames = 0, slow = 0, bloomOn = true;
+  let speed = reduce ? 0 : 1, last = 0, raf = 0, alive = true, time = 0, frames = 0, lost = false;
 
   function frame(now) {
-    if (!alive) return;
-    const dt = last ? Math.min(0.064, (now - last) / 1000) : 0.016;
+    if (!alive || lost) return;
+    const ms = last ? now - last : 0;
+    const dt = last ? Math.min(0.064, ms / 1000) : 0.016;
     last = now;
     time += dt;
+    /* with motion reduced, what moves by itself holds still: the stars'
+       twinkle, the star's surface, the clouds, the worlds' spin, the light
+       along the beams, the reticle */
+    const at = reduce ? 0 : time, adt = reduce ? 0 : dt;
 
-    /* keep a phone that cannot keep up usable: less resolution, then no bloom */
     frames++;
-    if (frames > 30 && frames < 240) {
-      slow = slow * 0.95 + (dt > 0.034 ? 1 : 0) * 0.05;
-      if (slow > 0.6 && pr > 1) { pr = 1; renderer.setPixelRatio(1); resize(); slow = 0.3; }
-      else if (slow > 0.6 && bloomOn) { bloomOn = false; bloom.enabled = false; slow = 0.3; }
-    }
+    if (frames > 60 && ms) keepUp(ms);
 
     const target = (c.selected() || reduce) ? 0 : 1;
     speed += (target - speed) * Math.min(1, dt * 3);
@@ -848,8 +977,8 @@ function mount(root, opts) {
     worlds.forEach(w => {
       const a = phase[w.ri] + w.phase0, R = w.fam.orbit;
       w.group.position.set(Math.cos(a) * R, Math.sin(a) * R * w.fam.incl, Math.sin(a) * R);
-      w.surf.rotation.y += dt * w.spin;
-      if (w.clouds) { w.clouds.rotation.y += dt * w.spin * 1.35; w.clouds.material.uniforms.uTime.value = time; }
+      w.surf.rotation.y += adt * w.spin;
+      if (w.clouds) { w.clouds.rotation.y += adt * w.spin * 1.35; w.clouds.material.uniforms.uTime.value = at; }
       const h = c.heat[w.id];
       if (h === 'loud') {
         w.rimU.uIntensity.value = 1.35 + (reduce ? 0 : 0.45 * Math.sin(time * 3.2 + w.j));
@@ -871,17 +1000,17 @@ function mount(root, opts) {
                         from.z + (w.group.position.z - from.z) * t);
         }
         pos.needsUpdate = true;
-        w.beamU.uTime.value = time;
+        w.beamU.uTime.value = at;
         w.beamU.uDim.value = c.selected() && c.selected() !== w.id ? 0.25 : 1;
       }
       w.ret.visible = c.selected() === w.id;
-      if (w.ret.visible) w.ret.material.rotation = time * 0.5;
+      if (w.ret.visible) w.ret.material.rotation = at * 0.5;
     });
     sunRet.visible = c.selected() === 'brief';
-    if (sunRet.visible) sunRet.material.rotation = time * 0.4;
-    sunU.uTime.value = time;
-    sun.rotation.y += dt * 0.02;
-    starMat.uniforms.uTime.value = time;
+    if (sunRet.visible) sunRet.material.rotation = at * 0.4;
+    sunU.uTime.value = at;
+    sun.rotation.y += adt * 0.02;
+    starMat.uniforms.uTime.value = at;
     const breathe = reduce ? 1 : 1 + 0.03 * Math.sin(time * 1.3);
     corona.scale.set(24 * breathe, 24 * breathe, 1);
 
@@ -903,13 +1032,51 @@ function mount(root, opts) {
     raf = requestAnimationFrame(frame);
   }
 
+  /* ---------- when the graphics chip is taken away ---------- */
+  /* A phone takes the graphics chip back when another app wants it — the
+     camera, a video call — and usually hands it back when this page is
+     looked at again. So losing it only pauses the sky. If it has not come
+     back within three seconds of the page being on screen, the page is told
+     (and falls back to the flat sky); if it does come back, the sky is
+     built again — by the page, if it offers to, or by reloading when the
+     page is next on screen. */
+  let lostTimer = 0, reloadOnShow = false;
+  function waitForContext() {
+    clearTimeout(lostTimer);
+    if (!lost || document.hidden) return;
+    lostTimer = setTimeout(() => { if (lost && alive && opts.onLost) opts.onLost(); }, 3000);
+  }
+  function onContextLost(e) {
+    e.preventDefault();
+    lost = true;
+    cancelAnimationFrame(raf); raf = 0;
+    waitForContext();
+  }
+  function onContextBack() {
+    if (!alive || !lost) return;
+    lost = false;
+    clearTimeout(lostTimer);
+    if (opts.onRestore) opts.onRestore();
+    else if (document.hidden) reloadOnShow = true;
+    else location.reload();
+  }
+
   function onVis() {
-    if (document.hidden) { cancelAnimationFrame(raf); raf = 0; }
-    else if (!raf) { last = 0; raf = requestAnimationFrame(frame); }
+    if (document.hidden) { cancelAnimationFrame(raf); raf = 0; clearTimeout(lostTimer); return; }
+    if (reloadOnShow) { location.reload(); return; }
+    if (lost) { waitForContext(); return; }
+    if (!raf) { last = 0; raf = requestAnimationFrame(frame); }
   }
   document.addEventListener('visibilitychange', onVis);
   window.addEventListener('resize', resize);
-  canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); if (opts.onLost) opts.onLost(); });
+  canvas.addEventListener('webglcontextlost', onContextLost);
+  canvas.addEventListener('webglcontextrestored', onContextBack);
+  /* the names are measured again once the page's fonts have arrived */
+  const onFonts = () => remeasure();
+  if (document.fonts) {
+    document.fonts.addEventListener('loadingdone', onFonts);
+    document.fonts.ready.then(onFonts);
+  }
   resize();
   raf = requestAnimationFrame(frame);
   requestAnimationFrame(() => canvas.classList.add('in'));
@@ -919,9 +1086,14 @@ function mount(root, opts) {
     select: c.select,
     destroy() {
       alive = false;
+      reloadOnShow = false;
+      clearTimeout(lostTimer);
       cancelAnimationFrame(raf);
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('resize', resize);
+      canvas.removeEventListener('webglcontextlost', onContextLost);
+      canvas.removeEventListener('webglcontextrestored', onContextBack);
+      if (document.fonts) document.fonts.removeEventListener('loadingdone', onFonts);
       controls.dispose();
       skyRT.dispose();
       renderer.dispose();

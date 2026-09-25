@@ -41,34 +41,138 @@
     if (v === '' || isNaN(Number(v))) return String(n);
     return Number(v).toLocaleString('en-US');
   }
-  /* yyyy-mm-dd in local time. toISOString() is UTC, and Addis is three hours
-     ahead, so a draft typed at 1am was being filed under yesterday and looked
-     lost the next morning. */
-  function stamp() {
-    var d = new Date();
-    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) +
-           '-' + ('0' + d.getDate()).slice(-2);
+  /* KLEVER KEEPS ADDIS ABABA'S TIME — UTC+3, no daylight saving — whatever
+     the phone's own clock zone is set to. A phone left on UTC used to say a
+     report was on time three hours after the ledger had marked it late, and
+     the day rolled over at 3am. Every date and deadline here is Addis time:
+     addis() is "now" shifted three hours, always read with getUTC*. */
+  var ADDIS_MS = 3 * 3600e3;
+  function pad2(n) { return ('0' + n).slice(-2); }
+  function addis(ms) { return new Date((ms == null ? Date.now() : ms) + ADDIS_MS); }
+  function ymdOf(a) { return a.getUTCFullYear() + '-' + pad2(a.getUTCMonth() + 1) + '-' + pad2(a.getUTCDate()); }
+  /* yyyy-mm-dd of today, in Addis */
+  function stamp() { return ymdOf(addis()); }
+  function addDays(ymd, n) {
+    var d = new Date(ymd + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + n);
+    return ymdOf(d);
   }
-  function today() {
-    var d = new Date(), m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return d.getDate() + ' ' + m[d.getMonth()] + ' ' + d.getFullYear();
+  function dowOf(ymd) { return new Date(ymd + 'T12:00:00Z').getUTCDay(); }
+  function dayStartMs(ymd) { return new Date(ymd + 'T00:00:00+03:00').getTime(); }
+  function deadlineOf(ymd, tm) { return new Date(ymd + 'T' + (tm || '17:30') + ':00+03:00').getTime(); }
+  function monShort(m) {
+    return lang === 'am' ? MONTHS_AM[m]
+      : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m];
   }
-  function clock() {
-    var d = new Date();
-    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  function today() { var a = addis(); return a.getUTCDate() + ' ' + monShort(a.getUTCMonth()) + ' ' + a.getUTCFullYear(); }
+  function clock() { var a = addis(); return pad2(a.getUTCHours()) + ':' + pad2(a.getUTCMinutes()); }
+  function clockOf(date) { var a = addis(date.getTime()); return pad2(a.getUTCHours()) + ':' + pad2(a.getUTCMinutes()); }
+  /* "Fri 26 Sep" for a yyyy-mm-dd */
+  function dayLabel(ymd) {
+    var d = new Date(ymd + 'T12:00:00Z');
+    var wd = (lang === 'am' ? DAYS_AM : DAYS_EN)[d.getUTCDay()];
+    return (lang === 'am' ? wd : wd.slice(0, 3)) + ' ' + d.getUTCDate() + ' ' + monShort(d.getUTCMonth());
   }
-  /* daily reports are late after their time of day; weekly ones are late once
-     their due day has passed (dueDay: 0=Sun .. 5=Fri) */
-  function isLate(dueTime, dueDay) {
-    if (!dueTime) return false;
-    var p = dueTime.split(':'), d = new Date();
-    var now = d.getHours() * 60 + d.getMinutes();
-    var due = Number(p[0]) * 60 + Number(p[1]);
-    if (dueDay == null) return now > due;
-    var today = d.getDay();
-    if (today < dueDay) return false;
-    if (today === dueDay) return now > due;
-    return true;
+
+  /* IS A REPORT OWED ON A DAY — the ledger's rule, day for day
+     (apps-script/Agent.js dueOn_): nothing on Sundays; a daily report except
+     on its days off; a weekly one on its day; a monthly one on the 1st, or
+     on the 2nd when the 1st is a Sunday. */
+  function dueOn(r, ymd) {
+    var dow = dowOf(ymd), dom = Number(ymd.slice(8));
+    if (dow === 0) return false;
+    if (r.cadence === 'monthly') return dom === 1 || (dom === 2 && dowOf(addDays(ymd, -1)) === 0);
+    if (r.cadence === 'weekly') return r.dueDay === dow;
+    return !(r.skipDays && r.skipDays.indexOf(dow) >= 0);
+  }
+  /* how many days ahead of its due day a filing still counts (the ledger's
+     window): a daily report only on the day, a weekly one up to six days
+     early, a monthly one up to seven */
+  function windowDays(r) { return r.cadence === 'daily' ? 0 : (r.cadence === 'weekly' ? 6 : 7); }
+
+  /* The due day a filing sent now would count toward, and how it stands:
+       due   — it is that day and the deadline has not passed
+       late  — it is that day and the deadline has passed
+       early — a later day within reach (a weekly or monthly report sent ahead)
+       none  — nothing: not a due day, and no due day within reach
+     This is the same answer the ledger will give when it closes the day, so
+     the phone, the email, the Sheet and the fines all say the same thing. */
+  function periodNow(r) {
+    var d0 = stamp(), now = Date.now();
+    for (var k = 0; k <= windowDays(r); k++) {
+      var d = addDays(d0, k);
+      if (!dueOn(r, d)) continue;
+      var dl = deadlineOf(d, r.dueTime);
+      if (k === 0) return { day: d, deadline: dl, state: now > dl ? 'late' : 'due' };
+      return { day: d, deadline: dl, state: 'early' };
+    }
+    return { day: null, deadline: null, state: 'none' };
+  }
+  function nextDueDay(r) {
+    for (var k = 1; k <= 40; k++) { var d = addDays(stamp(), k); if (dueOn(r, d)) return d; }
+    return null;
+  }
+  function statusWord(pd) {
+    return { due: t('onTime'), late: t('late'), early: t('early'), none: t('notDueToday') }[pd.state];
+  }
+  function statusLine(r, pd) {
+    if (pd.state === 'none') {
+      var nx = nextDueDay(r);
+      return nx ? t('nextDue') + ' ' + dayLabel(nx) : '';
+    }
+    return t('countsFor') + ' ' + dayLabel(pd.day);
+  }
+
+  /* WHAT HAS ALREADY BEEN FILED. Watched from Firestore once signed in — the
+     server's copy, plus this phone's own filings that have not reached it
+     yet, which count as sent-but-waiting. A report is done for a due day when
+     a filing of it, by its owner's name, falls inside that day's window. */
+  var FILINGS = [], SERVER_FILINGS = [];
+
+  /* Filings sent from this phone and not yet on the server. They wait in
+     Firestore's cache and go when there is signal, but its queries leave
+     them out until then — their time is the server's to set — so this phone
+     keeps its own note of them, dropped once the server copy is seen. */
+  function pendingList() {
+    try { return JSON.parse(localStorage.getItem('klever.pending') || '[]') || []; } catch (e) { return []; }
+  }
+  function savePending(l) { try { localStorage.setItem('klever.pending', JSON.stringify(l)); } catch (e) {} }
+  function addPending(r) {
+    var p = { k: Math.random().toString(36).slice(2), report: r.id, person: r.person, at: Date.now() };
+    savePending(pendingList().concat([p]));
+    mergeFilings();
+    return p.k;
+  }
+  function dropPending(k) {
+    savePending(pendingList().filter(function (p) { return p.k !== k; }));
+    mergeFilings();
+  }
+  function mergeFilings() {
+    var cut = Date.now() - 8 * 864e5;
+    var pend = pendingList().filter(function (p) {
+      if (p.at < cut) return false;
+      /* the server copy is here (its time is the server's; a phone clock
+         can be a few minutes out) */
+      return !SERVER_FILINGS.some(function (f) {
+        return f.report === p.report && f.person === p.person && !f.pending && f.at.getTime() >= p.at - 10 * 60e3;
+      });
+    });
+    savePending(pend);
+    FILINGS = SERVER_FILINGS.concat(pend.map(function (p) {
+      return { report: p.report, person: p.person, at: new Date(p.at), pending: true };
+    }));
+  }
+
+  function filingFor(r, day) {
+    if (!day) return null;
+    var from = dayStartMs(addDays(day, -windowDays(r))), to = dayStartMs(addDays(day, 1));
+    var best = null;
+    FILINGS.forEach(function (f) {
+      if (f.report !== r.id || f.person !== r.person) return;
+      var tms = f.at.getTime();
+      if (tms >= from && tms < to && (!best || tms < best.at.getTime())) best = f;
+    });
+    return best;
   }
   function personById(id) {
     for (var i = 0; i < PEOPLE.length; i++) if (PEOPLE[i].id === id) return PEOPLE[i];
@@ -112,9 +216,12 @@
     inner.appendChild(el('div', 'spacer'));
 
     var tg = el('div', 'langtoggle');
+    tg.setAttribute('role', 'group');
+    tg.setAttribute('aria-label', 'Language · ቋንቋ');
     [['en', 'EN'], ['am', 'አማ']].forEach(function (p) {
       var b = el('button', null, p[1]);
       b.type = 'button';
+      b.lang = p[0];
       b.setAttribute('aria-pressed', lang === p[0] ? 'true' : 'false');
       b.onclick = function () {
         lang = p[0];
@@ -134,13 +241,45 @@
         navs.unshift(['chairman.html', 'day', t('chOverview'), here === 'chairman']);
       }
       navs.forEach(function (n) {
-        var a2 = el('a', 'navbtn' + (n[3] ? ' on' : ''));
+        var fold = n[0] === 'universe.html' || n[0] === 'agents.html';
+        var a2 = el('a', 'navbtn' + (n[3] ? ' on' : '') + (fold ? ' fold' : ''));
         a2.href = n[0];
         a2.title = n[2];
         a2.setAttribute('aria-label', n[2]);
+        if (n[3]) a2.setAttribute('aria-current', 'page');
         a2.appendChild(icon(n[1]));
         inner.appendChild(a2);
       });
+      /* Four icons, the language and the way out do not fit a 320 px phone:
+         there, the two 3D pages — and below 360 px the language too — move
+         into this menu. On a wider screen it is not shown at all. */
+      if (AUTH.isChairman()) {
+        inner.classList.add('chair');
+        var more = el('details', 'navmore');
+        var sum = el('summary', 'navbtn');
+        sum.setAttribute('aria-label', t('moreMenu'));
+        sum.title = t('moreMenu');
+        sum.appendChild(icon('more'));
+        more.appendChild(sum);
+        var panel = el('div', 'navmenu');
+        navs.filter(function (n) { return n[0] === 'universe.html' || n[0] === 'agents.html'; })
+          .forEach(function (n) {
+            var a3 = el('a', 'navitem' + (n[3] ? ' on' : ''));
+            a3.href = n[0];
+            a3.appendChild(icon(n[1]));
+            a3.appendChild(el('span', null, n[2]));
+            panel.appendChild(a3);
+          });
+        var tg2 = tg.cloneNode(true);
+        tg2.className = 'langtoggle infold';
+        Array.prototype.forEach.call(tg2.querySelectorAll('button'), function (b, i) {
+          b.onclick = tg.querySelectorAll('button')[i].onclick;
+        });
+        panel.appendChild(tg2);
+        more.appendChild(panel);
+        document.addEventListener('click', function (ev) { if (!more.contains(ev.target)) more.open = false; });
+        inner.appendChild(more);
+      }
     }
     inner.appendChild(tg);
 
@@ -151,8 +290,26 @@
       out.type = 'button';
       out.appendChild(el('span', 'soinit', AUTH.isChairman() ? '★' : L(me).charAt(0)));
       out.appendChild(el('span', 'sotext', t('signOut')));
-      out.title = AUTH.isChairman() ? 'Chairman' : L(me);
+      out.title = (AUTH.isChairman() ? t('chairmanWord') : L(me)) + ' · ' + t('signOut');
+      out.setAttribute('aria-label', t('signOut'));
+      /* one tap used to sign out of the whole site, and on a phone the button
+         is only an initial, easily taken for a picture. Ask first. */
+      var armed = false, disarm = null;
       out.onclick = function () {
+        if (!armed) {
+          armed = true;
+          out.classList.add('armed');
+          out.querySelector('.sotext').textContent = t('signOutConfirm');
+          toast(t('signOutConfirm'));
+          disarm = setTimeout(function () {
+            armed = false;
+            out.classList.remove('armed');
+            out.querySelector('.sotext').textContent = t('signOut');
+          }, 4000);
+          return;
+        }
+        clearTimeout(disarm);
+        try { localStorage.removeItem('klever.lastUser'); } catch (e) {}
         AUTH.signOut().then(function () { location.href = 'index.html'; });
       };
       inner.appendChild(out);
@@ -166,9 +323,11 @@
   function toast(msg) {
     var tEl = document.querySelector('.toast');
     if (!tEl) { tEl = el('div', 'toast'); document.body.appendChild(tEl); }
+    tEl.setAttribute('role', 'status');
     tEl.textContent = msg;
     tEl.classList.add('on');
-    setTimeout(function () { tEl.classList.remove('on'); }, 1900);
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(function () { tEl.classList.remove('on'); }, Math.max(1900, msg.length * 55));
   }
 
   /* ---------------- index page ---------------- */
@@ -200,20 +359,14 @@
 
   /* Klever runs a six-day week — 240 m² a week at 40 m² a day. */
   function dueToday() {
-    var dow = new Date().getDay();
-    return REPORTS.filter(function (r) {
-      /* the two monthly reports fall due on the 1st of the following month */
-      if (r.cadence === 'monthly') return new Date().getDate() === 1;
-      if (r.cadence === 'weekly') return r.dueDay === dow;
-      if (dow === 0) return false;
-      return !(r.skipDays && r.skipDays.indexOf(dow) >= 0);
-    }).sort(function (a, b) { return (a.dueTime || '').localeCompare(b.dueTime || ''); });
+    var d = stamp();
+    return REPORTS.filter(function (r) { return dueOn(r, d); })
+      .sort(function (a, b) { return (a.dueTime || '').localeCompare(b.dueTime || ''); });
   }
 
   function minsUntil(tm) {
     if (!tm) return null;
-    var p = tm.split(':'), d = new Date();
-    return Number(p[0]) * 60 + Number(p[1]) - (d.getHours() * 60 + d.getMinutes());
+    return Math.floor((deadlineOf(stamp(), tm) - Date.now()) / 60000);
   }
 
   function countdown(mins) {
@@ -226,6 +379,9 @@
 
   function hhmm(tm) {
     var p = tm.split(':'), h24 = Number(p[0]);
+    /* Amharic readers get the plain 24-hour time; the report's own due line
+       already gives the Ethiopian clock */
+    if (lang === 'am') return pad2(h24) + ':' + p[1];
     var ap = h24 >= 12 ? 'PM' : 'AM', h12 = h24 % 12 || 12;
     return h12 + ':' + p[1] + ' ' + ap;
   }
@@ -241,13 +397,16 @@
      that was due at five and has not arrived" is the whole day. */
   function standing(pid) {
     var list = dueToday().filter(function (r) { return !pid || r.person === pid; });
-    var late = [], soon = null, soonMins = 1e9;
+    var late = [], soon = null, soonMins = 1e9, sent = [];
+    var d = stamp();
     list.forEach(function (r) {
+      /* a report already filed for today is done, however late the hour */
+      if (filingFor(r, d)) { sent.push(r); return; }
       var m = minsUntil(r.dueTime);
       if (m < 0) late.push(r);
       else if (m < soonMins) { soonMins = m; soon = r; }
     });
-    return { all: list, late: late, next: soon, mins: soon ? soonMins : null };
+    return { all: list, late: late, next: soon, mins: soon ? soonMins : null, sent: sent };
   }
 
 
@@ -289,6 +448,11 @@
      a channel they actually share — for those fourteen it is #commercial,
      where Ephrata sits with the people who report to her. */
   function channelFor(report, fromId) {
+    /* When the Chairman files on someone's behalf, the report travels as
+       theirs: to their private line if it is for him alone, otherwise the
+       room they share with its recipients. (There is no line from the
+       Chairman to himself; delivery there always failed.) */
+    if (fromId === 'chairman' || fromId === '*') fromId = report.person;
     var to = recipientsOf(report);
     if (!to.length || typeof CHANNELS === 'undefined') return null;
 
@@ -340,7 +504,8 @@
     day: 'M3 12.5h4l2.5-6 5 12 2.5-6h4',
     orbit: 'M12 9.6a2.4 2.4 0 1 1 0 4.8a2.4 2.4 0 0 1 0-4.8zM2.8 12c0-2.3 4.1-4.2 9.2-4.2s9.2 1.9 9.2 4.2-4.1 4.2-9.2 4.2-9.2-1.9-9.2-4.2zM19.2 5.6a1.1 1.1 0 1 1 0 .01',
     doc: 'M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10.5A.5.5 0 0 1 6.5 20V4a.5.5 0 0 1 .5-.5zM14 3.5V8h4M9.5 12h5M9.5 15.5h5',
-    galaxy: 'M12 10.4a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 0 1 0-3.2zM12 4.5c4.4 0 7.5 3.2 7.5 7 0 3-2.4 5-5.2 5M12 19.5c-4.4 0-7.5-3.2-7.5-7 0-3 2.4-5 5.2-5'
+    galaxy: 'M12 10.4a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 0 1 0-3.2zM12 4.5c4.4 0 7.5 3.2 7.5 7 0 3-2.4 5-5.2 5M12 19.5c-4.4 0-7.5-3.2-7.5-7 0-3 2.4-5 5.2-5',
+    more: 'M5.5 12h.01M12 12h.01M18.5 12h.01'
   };
   function icon(name) {
     var s = svg('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
@@ -389,7 +554,7 @@
 
     var r = st.next || st.late[0];
     if (!r) {
-      wrap.appendChild(el('p', 'deck-clear', t('nothingForYou')));
+      wrap.appendChild(el('p', 'deck-clear', st.sent && st.sent.length ? t('allSent') : t('nothingForYou')));
       return wrap;
     }
 
@@ -419,10 +584,12 @@
     go.href = 'form.html?r=' + encodeURIComponent(r.id);
     wrap.appendChild(go);
 
-    if (st.all.length > 1) {
-      var n = st.all.length - 1;
-      wrap.appendChild(el('p', 'deck-more',
-        n + ' ' + (lang === 'am' ? 'ሌሎች ዛሬ' : (n === 1 ? 'more today' : 'more today'))));
+    var left = st.late.length + (st.next ? 1 : 0) - 1;
+    if (left > 0) {
+      wrap.appendChild(el('p', 'deck-more', left + ' ' + t('moreToday')));
+    }
+    if (st.sent && st.sent.length) {
+      wrap.appendChild(el('p', 'deck-more sent', st.sent.length + ' ' + t('sentToday')));
     }
     return wrap;
   }
@@ -445,26 +612,31 @@
         var rs = byTime[tm];
         if (rs.length < 3) { rs.forEach(function (r) { wrap.appendChild(tlRow(r, pid)); }); return; }
         var mins = minsUntil(tm);
-        var g = el('details', 'tlgroup ' + (mins < 0 ? 'gone' : (mins <= 120 ? 'soon' : '')));
+        var nSent = rs.filter(function (r) { return filingFor(r, stamp()); }).length;
+        var g = el('details', 'tlgroup ' + (nSent === rs.length ? 'sent' : (mins < 0 ? 'gone' : (mins <= 120 ? 'soon' : ''))));
         var sm = el('summary');
         var led = el('span', 'tled'); led.appendChild(el('i')); sm.appendChild(led);
         var b = el('span', 'tlbody');
         b.appendChild(el('span', 'tlt', hhmm(tm)));
-        b.appendChild(el('span', 'tlw', rs.length + ' ' + t('reportsDue')));
+        b.appendChild(el('span', 'tlw', rs.length + ' ' + t('reportsDue') +
+          (nSent ? ' · ' + nSent + ' ' + t('sentShort') : '')));
         b.appendChild(el('span', 'tlp', rs.map(function (r) {
           var w = personById(r.person); return w ? L(w).split(' ')[0] : r.person;
         }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(', ')));
         sm.appendChild(b);
-        sm.appendChild(el('span', 'tls',
-          mins < 0 ? t('passed') : countdown(mins).replace(t('inTime') + ' ', '')));
+        sm.appendChild(el('span', 'tls', nSent === rs.length ? t('sentShort')
+          : (mins < 0 ? t('passed') : countdown(mins).replace(t('inTime') + ' ', ''))));
         g.appendChild(sm);
         var sub = el('div', 'tlsub');
         rs.forEach(function (r) {
           var a = el('a');
           a.href = 'form.html?r=' + encodeURIComponent(r.id);
           var w = personById(r.person);
+          var fr = filingFor(r, stamp());
           a.appendChild(el('span', null, L(r)));
-          a.appendChild(el('span', null, w ? L(w) : r.person));
+          a.appendChild(el('span', null, (w ? L(w) : r.person) +
+            (fr ? ' · ' + (fr.pending ? t('waitingToSend') : t('sentAt') + ' ' + clockOf(fr.at)) : '')));
+          if (fr) a.className = 'sent';
           sub.appendChild(a);
         });
         g.appendChild(sub);
@@ -479,7 +651,8 @@
 
   function tlRow(r, pid) {
     var mins = minsUntil(r.dueTime);
-    var state = mins < 0 ? 'gone' : (mins <= 120 ? 'soon' : '');
+    var fr = filingFor(r, stamp());
+    var state = fr ? 'sent' : (mins < 0 ? 'gone' : (mins <= 120 ? 'soon' : ''));
     var a = el('a', 'tlrow ' + state);
     a.href = 'form.html?r=' + encodeURIComponent(r.id);
 
@@ -496,13 +669,15 @@
     }
     a.appendChild(b);
 
-    a.appendChild(el('span', 'tls',
-      mins < 0 ? t('passed') : countdown(mins).replace(t('inTime') + ' ', '')));
+    a.appendChild(el('span', 'tls', fr
+      ? (fr.pending ? t('waitingToSend') : t('sentAt') + ' ' + clockOf(fr.at))
+      : (mins < 0 ? t('passed') : countdown(mins).replace(t('inTime') + ' ', ''))));
     return a;
   }
 
   function letterhead(p) {
-    var d = new Date(), e = toEthiopian(d);
+    /* the Addis date, read as a plain local date for the calendar sums */
+    var a = addis(), d = new Date(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate()), e = toEthiopian(d);
     var head = el('header', 'lh');
 
     var mark = el('div', 'lh-mark');
@@ -521,111 +696,13 @@
     return head;
   }
 
-  /* the sentence, built from what is actually true right now */
-  function sentence(st) {
-    var p = el('p', 'says');
-    if (!st.all.length) { p.textContent = t('nothingForYou'); return p; }
-
-    function strong(txt) { var b = el('b', null, txt); return b; }
-
-    if (st.next && st.late.length) {
-      p.appendChild(document.createTextNode(t('sayHave') + ' '));
-      p.appendChild(strong(t('sayOneDue') + ' ' + countdown(st.mins).replace(t('inTime') + ' ', '')));
-      p.appendChild(document.createTextNode(' ' + t('sayAnd') + ' ' +
-        (st.late.length === 1 ? t('sayOneLate') : st.late.length + ' ' + t('sayManyLate')) + '.'));
-    } else if (st.next) {
-      p.appendChild(document.createTextNode(t('sayHave') + ' '));
-      p.appendChild(strong(t('sayOneDue') + ' ' + countdown(st.mins).replace(t('inTime') + ' ', '')));
-      p.appendChild(document.createTextNode('.'));
-    } else {
-      p.appendChild(document.createTextNode(t('sayAllIn') + ' '));
-      p.appendChild(strong(st.late.length === 1 ? t('sayOneLate') : st.late.length + ' ' + t('sayManyLate')));
-      p.appendChild(document.createTextNode('.'));
-    }
-    return p;
-  }
-
-  /* the one number, and the one thing to press */
-  function nextUp(st) {
-    var box = el('section', 'next');
-    var r = st.next || st.late[0];
-    if (!r) return box;
-
-    var late = !st.next;
-    box.className = 'next' + (late ? ' late' : '');
-    box.appendChild(el('p', 'next-k', late ? t('nextOverdue') : t('nextDue')));
-
-    var n = el('p', 'next-n');
-    if (late) {
-      n.appendChild(document.createTextNode(hhmm(r.dueTime)));
-    } else {
-      var mins = st.mins, hh = Math.floor(mins / 60), mm = mins % 60;
-      if (hh) {
-        n.appendChild(document.createTextNode(String(hh)));
-        n.appendChild(el('s', null, lang === 'am' ? 'ሰ' : 'h'));
-        if (mm) {
-          n.appendChild(document.createTextNode(' ' + mm));
-          n.appendChild(el('s', null, lang === 'am' ? 'ደ' : 'm'));
-        }
-      } else {
-        n.appendChild(document.createTextNode(String(mm || 0)));
-        n.appendChild(el('s', null, lang === 'am' ? 'ደቂቃ' : 'min'));
-      }
-    }
-    box.appendChild(n);
-
-    box.appendChild(el('p', 'next-w', L(r)));
-    box.appendChild(el('p', 'next-t',
-      hhmm(r.dueTime) + ' · ' + t('to').toLowerCase() + ' ' + (lang === 'am' ? r.toAm : r.toEn)));
-
-    var go = el('a', 'next-go', t('fillItIn'));
-    go.href = 'form.html?r=' + encodeURIComponent(r.id);
-    box.appendChild(go);
-    return box;
-  }
-
-  /* the day as a ruled list — time, what, where it stands */
-  function dayList(pid) {
-    var list = dueToday().filter(function (r) { return !pid || r.person === pid; });
-    if (!list.length) return null;
-    var wrap = el('div', 'dayl');
-    list.forEach(function (r) {
-      var mins = minsUntil(r.dueTime);
-      var a = el('a', 'dayln' + (mins < 0 ? ' gone' : (mins <= 120 ? ' soon' : '')));
-      a.href = 'form.html?r=' + encodeURIComponent(r.id);
-      a.appendChild(el('span', 'dtm', hhmm(r.dueTime)));
-      var mid = el('span', 'dtx');
-      mid.appendChild(el('b', null, L(r)));
-      if (!pid) {
-        var who = personById(r.person);
-        mid.appendChild(el('span', null, who ? L(who) : r.person));
-      } else {
-        mid.appendChild(el('span', null, t('to').toLowerCase() + ' ' + (lang === 'am' ? r.toAm : r.toEn)));
-      }
-      a.appendChild(mid);
-      a.appendChild(el('span', 'dfl', mins < 0 ? t('passed') : countdown(mins).replace(t('inTime') + ' ', '')));
-      wrap.appendChild(a);
-    });
-    return wrap;
-  }
-
   /* ---------------- sign in ---------------- */
-
-  function signOutLink(root) {
-    var a = el('a', 'signout', t('signOut'));
-    a.href = '#';
-    a.onclick = function (e) {
-      e.preventDefault();
-      AUTH.signOut().then(function () { location.href = 'index.html'; });
-    };
-    return a;
-  }
 
   function renderSignIn(root) {
     document.title = t('siteTitle');
     root.innerHTML = '';
     rebuildTop();
-    clearInterval(renderIndex.tick);
+    setView(null);
     root.appendChild(letterhead(null));
 
     var card = el('section', 'signin');
@@ -637,6 +714,7 @@
        to be someone else, and nobody has to know their account is really
        betty@klever.local. */
     var lab2 = el('label', 'codelab', t('chatPassword'));
+    lab2.htmlFor = 'code';
     card.appendChild(lab2);
 
     var input = document.createElement('input');
@@ -664,19 +742,29 @@
       go.disabled = true;
       go.textContent = t('chatSigningIn');
       AUTH.signInByPassword(input.value).then(function () {
+        LINK_KEY = null;
+        try { localStorage.setItem('klever.lastUser', AUTH.who() || ''); } catch (e) {}
         rebuildTop();
+        watchFilings();
         /* on the Chairman's page the next screen belongs to chairman.js, and
            only a reload hands it over cleanly */
         if (ownPage()) { location.reload(); return; }
-        renderIndex(root);
+        /* signed in from a link to a report: go on to that report */
+        if (document.body.dataset.page === 'form') renderForm(root);
+        else renderIndex(root);
       })['catch'](function (e) {
-        /* never say which half was wrong */
-        err.textContent = (e && e.message === 'offline')
-          ? t('signInOffline') : t('chatBadSignIn');
+        /* Say what actually went wrong — but never whose password it might
+           have been. No signal is not a wrong password, and a wrong password
+           typed again after "too many tries" only makes the wait longer. */
+        var code = (e && (e.code || e.message)) || '';
+        var net = code === 'offline' || code === 'auth/network-request-failed';
+        err.textContent = net ? t('signInOffline')
+          : (code === 'auth/too-many-requests' ? t('signInTooMany') : t('chatBadSignIn'));
         err.hidden = false;
         go.disabled = false;
         go.textContent = t('codeGo');
-        input.value = '';
+        /* keep what was typed when the network was the problem */
+        if (!net) input.value = '';
         input.focus();
       });
     }
@@ -687,8 +775,9 @@
     root.appendChild(card);
     root.appendChild(foot());
     input.focus();
-    /* opened from a personal link: sign straight in */
-    if (LINK_KEY) { input.value = LINK_KEY; LINK_KEY = null; attempt(); }
+    /* opened from a personal link: sign straight in. The key is kept until
+       the sign-in works, so a link opened with no signal can be retried. */
+    if (LINK_KEY) { input.value = LINK_KEY; attempt(); }
   }
 
 
@@ -704,7 +793,7 @@
     if (stopWatch) { try { stopWatch(); } catch (e) {} stopWatch = null; }
 
     var wrap = el('div');
-    wrap.appendChild(el('p', 'eyebrow', t('chatTitle')));
+    wrap.appendChild(el('h2', 'eyebrow', t('chatTitle')));
 
     var a = el('a', 'chan chatcard');
     a.href = 'chat.html';
@@ -754,7 +843,7 @@
       var open = all.filter(function (i) { return i.status === 'open'; })
                     .sort(function (a, b) { return a.due < b.due ? -1 : (a.due > b.due ? 1 : 0); });
       if (!open.length) return;
-      wrap.appendChild(el('p', 'eyebrow', t('insTitle')));
+      wrap.appendChild(el('h2', 'eyebrow', t('insTitle')));
       open.forEach(function (i) { wrap.appendChild(insRow(i)); });
     });
     return wrap;
@@ -801,8 +890,25 @@
     return row;
   }
 
+  /* THE VIEW ON SCREEN, redrawn once a minute and whenever a filing lands, so
+     countdowns move and a report sent from another phone shows as sent. It
+     keeps the reader's place: the scroll position and which lists are open.
+     The form page is not redrawn this way — it would take the keyboard away
+     from someone typing — it updates its own status line instead. */
+  var currentView = null;
+  function setView(fn) { currentView = fn; }
+  function rerender() {
+    if (!currentView || document.hidden) return;
+    var y = window.scrollY;
+    var open = Array.prototype.map.call(document.querySelectorAll('#app details'), function (d) { return d.open; });
+    currentView();
+    Array.prototype.forEach.call(document.querySelectorAll('#app details'), function (d, i) { if (open[i]) d.open = true; });
+    window.scrollTo(0, y);
+  }
+
   function renderIndex(root) {
     if (!AUTH.who()) return renderSignIn(root);
+    setView(function () { renderIndex(root); });
     /* everyone but the Chairman lands straight on their own reports —
        no roster, no other people's forms */
     if (!AUTH.isChairman()) {
@@ -814,11 +920,12 @@
     document.title = t('siteTitle');
     root.innerHTML = '';
     var st = standing(null);
+    root.appendChild(el('h1', 'vh', t('siteTitle')));
     root.appendChild(deck(null, st));
 
     var tl = timeline(null);
     if (tl) {
-      root.appendChild(el('p', 'eyebrow', t('dueToday')));
+      root.appendChild(el('h2', 'eyebrow', t('dueToday')));
       root.appendChild(tl);
     }
 
@@ -835,8 +942,12 @@
       who.appendChild(el('span', 'nm', L(p)));
       who.appendChild(el('span', 'rl', lang === 'am' ? p.roleAm : p.roleEn));
       b.appendChild(who);
-      var n = due.filter(function (r) { return r.person === p.id; }).length;
-      if (n) b.appendChild(el('span', 'count', n + ' ' + t('reportsDue')));
+      var mineToday = due.filter(function (r) { return r.person === p.id; });
+      var left = mineToday.filter(function (r) { return !filingFor(r, stamp()); }).length;
+      if (mineToday.length) {
+        b.appendChild(el('span', 'count' + (left ? '' : ' done'),
+          left ? left + ' ' + t('reportsDue') : t('allSentShort')));
+      }
       b.appendChild(el('span', 'arrow', '\u2192'));
       b.onclick = function () { renderPersonReports(root, p); };
       return b;
@@ -848,7 +959,7 @@
     var rest = PEOPLE.filter(function (p) { return owing.indexOf(p) === -1; });
 
     if (owing.length) {
-      root.appendChild(el('p', 'eyebrow', t('whoReports')));
+      root.appendChild(el('h2', 'eyebrow', t('whoReports')));
       var list = el('div', 'people');
       owing.forEach(function (p) { list.appendChild(card(p)); });
       root.appendChild(list);
@@ -876,7 +987,7 @@
     ow.appendChild(el('span', 'rl', t('chAnalysis')));
     ov.appendChild(ow);
     ov.appendChild(el('span', 'arrow', '→'));
-    root.appendChild(el('p', 'eyebrow', t('chRaw')));
+    root.appendChild(el('h2', 'eyebrow', t('chRaw')));
     root.appendChild(ov);
 
     root.appendChild(chatCard());
@@ -889,17 +1000,13 @@
     root.appendChild(dz);
 
     root.appendChild(foot());
-
-    /* keep the countdowns honest without reloading the page */
-    clearInterval(renderIndex.tick);
-    renderIndex.tick = setInterval(function () {
-      if (document.querySelector('.due')) renderIndex(root);
-    }, 60000);
   }
 
   function renderPersonReports(root, p) {
+    setView(function () { renderPersonReports(root, p); });
     document.title = t('siteTitle');
     root.innerHTML = '';
+    root.appendChild(el('h1', 'vh', L(p)));
     if (AUTH.isChairman()) {
       var back = el('a', 'backlink', t('back'));
       back.href = '#';
@@ -913,7 +1020,7 @@
 
     var tl = timeline(p.id);
     if (tl) {
-      root.appendChild(el('p', 'eyebrow', t('dueForYou')));
+      root.appendChild(el('h2', 'eyebrow', AUTH.isChairman() ? t('dueFromThem') : t('dueForYou')));
       root.appendChild(tl);
     }
 
@@ -924,13 +1031,18 @@
       return;
     }
 
-    root.appendChild(el('p', 'eyebrow', t('yourReports')));
+    root.appendChild(el('h2', 'eyebrow', t('yourReports')));
     var list = el('div', 'reports');
     rs.forEach(function (r) {
       var a = el('a', 'report');
       a.href = 'form.html?r=' + encodeURIComponent(r.id);
       a.appendChild(el('span', 'rt', L(r)));
       var meta = el('div', 'meta');
+      /* already sent for the period it is due in? say so */
+      var pd = periodNow(r), fr = pd.day ? filingFor(r, pd.day) : null;
+      if (fr) meta.appendChild(el('span', 'sentmark',
+        fr.pending ? t('waitingToSend') : t('sentAt') + ' ' + clockOf(fr.at) +
+          (ymdOf(addis(fr.at.getTime())) !== stamp() ? ' · ' + dayLabel(ymdOf(addis(fr.at.getTime()))) : '')));
       meta.appendChild(el('span', 'due', lang === 'am' ? r.dueAm : r.dueEn));
       meta.appendChild(el('span', null, t('to') + ' · ' + (lang === 'am' ? r.toAm : r.toEn)));
       a.appendChild(meta);
@@ -969,8 +1081,22 @@
     var person = personById(report.person);
     document.title = L(report) + ' · ' + L(person);
 
-    draftKey = 'klever.draft.' + report.id + '.' + stamp();
-    try { values = JSON.parse(store.get(draftKey) || '{}'); } catch (e) { values = {}; }
+    setView(null);
+    /* A draft belongs to the due day it is for, not the calendar day it was
+       typed on: a weekly report started on Thursday for Friday is still
+       there on Friday. If there is none for this period, the newest unsent
+       draft of this report from the last week comes back instead — a daily
+       report typed at 23:50 is not lost at 00:05. */
+    var pd0 = periodNow(report);
+    draftKey = 'klever.draft.' + report.id + '.' + (pd0.day || stamp());
+    var restoredFrom = null;
+    try { values = JSON.parse(store.get(draftKey) || 'null'); } catch (e) { values = null; }
+    /* an empty draft (the form was only opened) does not hide a real one */
+    if (!values || typeof values !== 'object' || !Object.keys(values).length) {
+      values = {};
+      var older = latestDraft(report.id, draftKey);
+      if (older) { values = older.values; restoredFrom = older.day; }
+    }
 
     root.innerHTML = '';
     var back = el('a', 'backlink', t('back'));
@@ -998,11 +1124,18 @@
     metaRow(t('due'), lang === 'am' ? report.dueAm : report.dueEn);
     head.appendChild(meta);
 
-    var lateNow = isLate(report.dueTime, report.dueDay);
-    var stat = el('div', 'fstat' + (lateNow ? ' late' : ''));
-    stat.appendChild(el('span', 'fsp', lateNow ? t('late') : t('onTime')));
-    stat.appendChild(el('span', 'fsc', today() + ' · ' + clock()));
+    var stat = el('div', 'fstat');
+    stat.id = 'fstat';
     head.appendChild(stat);
+    drawStatus();
+    /* sent already for this period? then a second Send would file twice */
+    var already = el('div', 'penalty soft sentnote');
+    already.id = 'sentnote';
+    already.hidden = true;
+    head.appendChild(already);
+    if (restoredFrom) {
+      head.appendChild(el('div', 'penalty soft', t('draftRestored').replace('{day}', dayLabel(restoredFrom))));
+    }
 
     /* the penalty is the reason the deadline matters, so it is not a footnote */
     if (report.penEn) head.appendChild(el('div', 'penalty', lang === 'am' ? report.penAm : report.penEn));
@@ -1032,11 +1165,58 @@
 
     buildBar();
     refresh();
+    /* the status line keeps time while the form is open */
+    clearInterval(renderForm.tick);
+    renderForm.tick = setInterval(drawStatus, 30000);
+  }
+
+  /* On time / late / early / not due, and which day it counts for — the
+     same answer the ledger will give. */
+  function drawStatus() {
+    var box = document.getElementById('fstat');
+    if (!box || !report) return;
+    var pd = periodNow(report);
+    box.className = 'fstat' + (pd.state === 'late' ? ' late' : (pd.state === 'none' ? ' none' : ''));
+    box.innerHTML = '';
+    box.appendChild(el('span', 'fsp', statusWord(pd)));
+    box.appendChild(el('span', 'fsc', statusLine(report, pd) + ' · ' + clock()));
+    var note = document.getElementById('sentnote');
+    if (note) {
+      var fr = pd.day ? filingFor(report, pd.day) : null;
+      note.hidden = !fr;
+      if (fr) note.textContent = (fr.pending ? t('waitingToSend') : t('sentAt') + ' ' + clockOf(fr.at)) +
+        ' · ' + t('sentAgainWarn');
+    }
+  }
+
+  /* the newest unsent draft of a report from the past week, other than `except` */
+  function latestDraft(reportId, except) {
+    var best = null, prefix = 'klever.draft.' + reportId + '.';
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || k.indexOf(prefix) !== 0 || k === except) continue;
+        var day = k.slice(prefix.length);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < addDays(stamp(), -7)) continue;
+        var v = JSON.parse(localStorage.getItem(k) || 'null');
+        if (v && Object.keys(v).length && (!best || day > best.day)) best = { day: day, values: v };
+      }
+    } catch (e) { /* a blocked store just means no draft */ }
+    return best;
+  }
+  function clearDrafts(reportId) {
+    try {
+      var kill = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('klever.draft.' + reportId + '.') === 0) kill.push(k);
+      }
+      kill.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) {}
   }
 
   function shortDate(d) {
-    var m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return d.getDate() + ' ' + m[d.getMonth()];
+    return d.getDate() + ' ' + monShort(d.getMonth());
   }
 
   /* repeating rows: t:'table' (person adds rows) and t:'grid' (fixed rows) */
@@ -1067,15 +1247,26 @@
         if (f.t === 'table') {
           var rm = el('button', 'rm', '\u00d7');
           rm.type = 'button';
-          rm.title = 'remove';
-          rm.onclick = function () { data.splice(i, 1); draw(); refresh(); };
+          rm.title = t('removeRow');
+          rm.setAttribute('aria-label', t('removeRow') + ' ' + rowLabel(i));
+          /* a row can hold a lot; take it away only on a second tap */
+          rm.onclick = function () {
+            if (!rm.classList.contains('armed')) {
+              rm.classList.add('armed');
+              rm.textContent = t('removeRowConfirm');
+              setTimeout(function () { rm.classList.remove('armed'); rm.textContent = '\u00d7'; }, 3000);
+              return;
+            }
+            data.splice(i, 1); draw(); refresh();
+          };
           head.appendChild(rm);
         }
         card.appendChild(head);
 
         f.cols.forEach(function (c) {
           var cell = el('div', 'cell');
-          cell.appendChild(el('label', null, L(c)));
+          var cl = el('label', null, L(c));
+          cell.appendChild(cl);
           var inp;
           if (c.t === 'yesno' || c.t === 'choice') {
             inp = document.createElement('select');
@@ -1092,9 +1283,13 @@
             });
           } else {
             inp = document.createElement('input');
-            inp.type = (c.t === 'num' || c.t === 'money') ? 'number' : 'text';
-            if (inp.type === 'number') inp.inputMode = 'decimal';
+            inp.type = 'text';
+            /* a number box that reads "1,500" as empty is worse than a text box
+               with the number keyboard; the digits are read by num() */
+            if (c.t === 'num' || c.t === 'money') inp.inputMode = 'decimal';
           }
+          inp.id = 'c_' + f.id + '_' + i + '_' + c.id;
+          cl.htmlFor = inp.id;
           inp.value = rowData[c.id] != null ? rowData[c.id] : '';
           inp.onchange = inp.oninput = function () { rowData[c.id] = inp.value; refresh(); };
           cell.appendChild(inp);
@@ -1126,17 +1321,33 @@
                  + (f.t === 'choice' ? ' wide' : '')
                  + (f.t === 'yesno' ? ' yn' : ''));
     var lab = el('label', null, L(f));
+    lab.id = 'l_' + f.id;
     lab.htmlFor = 'f_' + f.id;
     row.appendChild(lab);
 
     if (f.t === 'ratio') {
+      /* two boxes under one question; the wrapper carries the id, so the
+         "still empty" finder and the red mark can find it */
       var wrap = el('div', 'ratio');
-      wrap.appendChild(numInput(f.id + '__a', f));
+      wrap.id = 'f_' + f.id;
+      wrap.tabIndex = -1;
+      wrap.setAttribute('role', 'group');
+      wrap.setAttribute('aria-labelledby', lab.id);
+      lab.removeAttribute('for');
+      var ia = numInput(f.id + '__a', f), ib = numInput(f.id + '__b', f);
+      ia.setAttribute('aria-label', L(f) + ' — 1');
+      ib.setAttribute('aria-label', L(f) + ' — 2');
+      wrap.appendChild(ia);
       wrap.appendChild(el('span', 'of', '/'));
-      wrap.appendChild(numInput(f.id + '__b', f));
+      wrap.appendChild(ib);
       row.appendChild(wrap);
     } else if (f.t === 'yesno') {
       var seg = el('div', 'seg');
+      seg.id = 'f_' + f.id;
+      seg.tabIndex = -1;
+      seg.setAttribute('role', 'group');
+      seg.setAttribute('aria-labelledby', lab.id);
+      lab.removeAttribute('for');
       [['yes', t('yes')], ['no', t('no')]].forEach(function (o) {
         var b = el('button', null, o[1]);
         b.type = 'button';
@@ -1201,8 +1412,9 @@
 
   function numInput(key, f) {
     var i = document.createElement('input');
-    i.type = 'number';
+    i.type = 'text';
     i.inputMode = 'decimal';
+    i.autocomplete = 'off';
     i.id = 'f_' + key;
     i.value = values[key] != null ? values[key] : '';
     i.oninput = function () { values[key] = i.value; refresh(); };
@@ -1277,8 +1489,9 @@
       meta.appendChild(el('dt', null, i === 1 ? t('from') : r[0]));
       meta.appendChild(el('dd', null, r[1]));
     });
-    var st = el('dd', 'pd-status' + (isLate(report.dueTime, report.dueDay) ? ' late' : ''));
-    st.textContent = isLate(report.dueTime, report.dueDay) ? t('late') : t('onTime');
+    var pdn = periodNow(report);
+    var st = el('dd', 'pd-status' + (pdn.state === 'late' ? ' late' : ''));
+    st.textContent = statusWord(pdn) + (pdn.day ? ' · ' + statusLine(report, pdn) : '');
     meta.appendChild(el('dt', null, ''));
     meta.appendChild(st);
     doc.appendChild(meta);
@@ -1317,7 +1530,7 @@
 
   function buildBar() {
     var bar = el('div', 'bar'), inner = el('div', 'bar-in');
-    var count = el('div', 'count'); count.id = 'count';
+    var count = el('button', 'count'); count.id = 'count'; count.type = 'button';
     var copy = el('button', 'btn ghost', t('copy'));
     copy.type = 'button';
     copy.onclick = function () {
@@ -1332,65 +1545,132 @@
     window.addEventListener('beforeprint', buildPrintDoc);
     var send = el('button', 'btn', t('send'));
     send.type = 'button'; send.id = 'send';
+    var retry = el('button', 'btn ghost retry', t('retryDelivery'));
+    retry.type = 'button';
+    retry.hidden = true;
+
+    /* Deliver it into chat. Filing is the record; this puts it in front of
+       the people who have to act on it. Only this part is ever retried — a
+       second press used to file the report and its Sheet row again. A long
+       report goes in parts, because a chat message holds 4,000 characters. */
+    var toDeliver = null;
+    function deliver() {
+      if (!toDeliver) return;
+      var job = toDeliver, names = lang === 'am' ? report.toAm : report.toEn;
+      retry.hidden = true;
+      if (!job.chan || !window.FB || !window.FB.live()) { retry.hidden = false; toast(t('sendNotDelivered')); return; }
+      var parts = splitForChat(job.text, 3900), i = 0;
+      (function next() {
+        if (i >= parts.length) { toDeliver = null; toast(t('sentTo').replace('{who}', names)); return; }
+        window.FB.deliverReport(job.chan, parts[i]).then(function () { i++; next(); })['catch'](function (e) {
+          /* keep the parts not yet delivered, and offer to try those again */
+          job.text = parts.slice(i).join('\n');
+          retry.hidden = false;
+          toast((e && e.code === 'permission-denied') ? t('sendRefused') : t('sendNotDelivered'));
+        });
+      })();
+    }
+    retry.onclick = deliver;
+
     send.onclick = function () {
-      var txt = buildMessage();
+      if (sending) return;
+      sending = true;
+      send.disabled = true;
+      send.textContent = t('sending');
+      var txt = buildMessage(), pd = periodNow(report), late = pd.state === 'late';
+      var person = personById(report.person);
 
       /* Two homes, on purpose. The Sheet is the Chairman's window on the day
          and it drives the emails; Firestore is the copy that is signed in and
-         cannot be forged, which is the one the penalty ledger will answer for. */
-      if (window.FB && window.FB.live() && AUTH.who()) {
-        window.FB.fileReport({
-          person: report.person,
-          report: report.id,
-          late: isLate(report.dueTime, report.dueDay),
-          due: lang === 'am' ? report.dueAm : report.dueEn,
-          values: values,
-          flags: reportFlags(),
-          text: txt,
-          lang: lang
-        })['catch'](function () { /* the cache will retry; the Sheet still has it */ });
-      }
-
+         cannot be forged, which is the one the penalty ledger answers for.
+         The Sheet is sent English names and ids whatever language the form
+         was filled in, so one report's history stays in one tab. */
       ARCHIVE.file({
         at: new Date().toISOString(),
         person: report.person,
-        personName: L(personById(report.person)),
+        personName: person.en,
         report: report.id,
-        reportName: L(report),
-        by: AUTH.who(),
-        byName: AUTH.isChairman() ? 'Chairman' : L(personById(AUTH.who())),
-        to: lang === 'am' ? report.toAm : report.toEn,
-        roleName: lang === 'am' ? personById(report.person).roleAm : personById(report.person).roleEn,
-        due: lang === 'am' ? report.dueAm : report.dueEn,
+        reportName: report.en,
+        by: AUTH.who() === '*' ? 'chairman' : AUTH.who(),
+        byName: AUTH.isChairman() ? 'Chairman' : personById(AUTH.who()).en,
+        to: report.toEn,
+        roleName: person.roleEn,
+        due: report.dueEn,
         doc: reportDoc(),
         flags: reportFlags(),
-        late: isLate(report.dueTime, report.dueDay),
+        late: late,
         values: values,
-        text: txt
+        text: txt,
+        lang: lang
       });
-      /* Deliver it. Filing it is the record; this is the part that puts it
-         in front of the person who has to act on it. */
-      var chan = channelFor(report, AUTH.isChairman() ? 'chairman' : AUTH.who());
-      var names = lang === 'am' ? report.toAm : report.toEn;
-      if (window.FB && window.FB.live() && chan) {
-        send.disabled = true;
-        send.textContent = t('sending');
-        window.FB.deliverReport(chan, txt).then(function () {
-          toast(t('sentTo').replace('{who}', names));
-          send.textContent = t('sentDone');
-        })['catch'](function () {
-          send.disabled = false;
-          send.textContent = t('send');
-          toast(t('sendNotDelivered'));
-        });
-      } else {
-        toast(t('sendNotDelivered'));
+
+      toDeliver = { chan: channelFor(report, AUTH.isChairman() ? 'chairman' : AUTH.who()), text: txt };
+
+      if (!(window.FB && window.FB.live() && AUTH.who())) {
+        sending = false;
+        send.textContent = t('sentDone');
+        deliver();
+        return;
       }
+      /* With no signal the filing waits in this phone's store and goes when
+         the signal comes back. Say so plainly, rather than "Sending…" forever:
+         the time that counts is when it reaches the server. */
+      var slow = setTimeout(function () {
+        send.textContent = t('waitingToSend');
+        toast(t('savedNotReceived'));
+      }, 6000);
+      var pendKey = addPending(report);
+      drawStatus();
+      window.FB.fileReport({
+        person: report.person,
+        report: report.id,
+        late: late,
+        due: report.dueEn,
+        values: values,
+        flags: reportFlags(),
+        text: txt,
+        lang: lang
+      }).then(function () {
+        clearTimeout(slow);
+        sending = false;
+        sentThisVisit = true;
+        send.textContent = t('sentDone');
+        clearDrafts(report.id);
+        dropPending(pendKey);
+        drawStatus();
+      })['catch'](function (e) {
+        clearTimeout(slow);
+        dropPending(pendKey);
+        drawStatus();
+        sending = false;
+        send.disabled = false;
+        send.textContent = t('send');
+        toast((e && e.code === 'permission-denied') ? t('sendRefused') : t('sendFailed'));
+      });
+      /* delivery goes at once too: offline, it waits with the filing */
+      deliver();
     };
     inner.appendChild(count); inner.appendChild(pdf); inner.appendChild(copy);
+    inner.appendChild(retry);
     inner.appendChild(send);
     bar.appendChild(inner);
     document.body.appendChild(bar);
+  }
+
+  /* a sent report is not sent twice by accident */
+  var sending = false, sentThisVisit = false;
+
+  /* a message longer than chat holds, cut at line ends into numbered parts */
+  function splitForChat(txt, max) {
+    if (txt.length <= max) return [txt];
+    var parts = [], cur = '';
+    txt.split('\n').forEach(function (line) {
+      while (line.length > max) { parts.push(line.slice(0, max)); line = line.slice(max); }
+      if ((cur + '\n' + line).length > max) { parts.push(cur); cur = line; }
+      else cur = cur ? cur + '\n' + line : line;
+    });
+    if (cur) parts.push(cur);
+    return parts.map(function (p, i) { return '(' + (i + 1) + '/' + parts.length + ')\n' + p; });
   }
 
   /* ---------------- live state ---------------- */
@@ -1421,10 +1701,29 @@
   }
   function has(v) { return v != null && String(v).trim() !== ''; }
 
+  /* the digits in what was typed: "1,500 Birr" is 1500 */
+  function num(v) {
+    var x = String(v == null ? '' : v).replace(/[^0-9.\-]/g, '');
+    return x === '' ? NaN : Number(x);
+  }
+  /* The value a target is checked against. A yes/no question counts yes as
+     1 and no as 0. A ratio (a / b) is a percentage when its target is one
+     (100% of leads called within the hour); a target of a small whole number
+     is a count of the first box (all 5 reports on time). */
+  function targetValue(f) {
+    if (f.t === 'ratio') {
+      var a = num(values[f.id + '__a']), b = num(values[f.id + '__b']);
+      if (isNaN(a)) return NaN;
+      if (f.tgt.v >= 50) return (!isNaN(b) && b > 0) ? a / b * 100 : NaN;
+      return a;
+    }
+    if (f.t === 'yesno') return values[f.id] === 'yes' ? 1 : (values[f.id] === 'no' ? 0 : NaN);
+    return num(values[f.id]);
+  }
   function targetMiss(f) {
     if (f.t === 'table' || f.t === 'grid') return false;
-    if (!f.tgt || !has(values[f.id])) return false;
-    var v = Number(values[f.id]);
+    if (!f.tgt) return false;
+    var v = targetValue(f);
     if (isNaN(v)) return false;
     return f.tgt.op === 'gte' ? v < f.tgt.v : v > f.tgt.v;
   }
@@ -1461,7 +1760,7 @@
         var h = document.getElementById('h_' + f.id);
         if (h) {
           var miss = targetMiss(f);
-          h.className = 'hint' + (miss ? ' bad' : (has(values[f.id]) ? ' good' : ''));
+          h.className = 'hint' + (miss ? ' bad' : (!isNaN(targetValue(f)) ? ' good' : ''));
           h.textContent = (lang === 'am' ? f.tgt.am : f.tgt.en) +
             (miss ? ' — ' + (f.tgt.op === 'gte' ? t('below') : t('above')) : '');
         }
@@ -1492,6 +1791,8 @@
         c.appendChild(b);
         c.appendChild(document.createTextNode(' ' + t('empty')));
         /* the number alone is not help on a form ten screens long */
+        c.classList.remove('findable');
+        c.onclick = null;
         if (firstEmpty) {
           c.classList.add('findable');
           c.title = t('findNext');
@@ -1511,7 +1812,8 @@
       }
     }
     var send = document.getElementById('send');
-    if (send) send.disabled = missing > 0;
+    /* typing while a report is on its way must not re-arm Send */
+    if (send && !sending && !sentThisVisit) send.disabled = missing > 0;
 
     var bar = document.querySelector('.progress i');
     if (bar) bar.style.width = (need ? Math.round(done / need * 100) : 0) + '%';
@@ -1539,7 +1841,7 @@
         if (c.opts[i].v === v) return lang === 'am' ? c.opts[i].am : c.opts[i].en;
       return v;
     }
-    if (c.t === 'money') return money(v) + ' Birr';
+    if (c.t === 'money') return money(v) + ' ' + t('birr');
     return String(v).trim();
   }
 
@@ -1581,8 +1883,8 @@
       var dd = new Date(v);
       return isNaN(dd.getTime()) ? String(v) : shortDate(dd) + ' ' + dd.getFullYear();
     }
-    if (f.t === 'money') return money(v) + ' Birr';
-    if (f.t === 'pct') return v + '%';
+    if (f.t === 'money') return money(v) + ' ' + t('birr');
+    if (f.t === 'pct') return String(v).replace(/%/g, '').trim() + '%';
     return String(v).trim();
   }
 
@@ -1591,7 +1893,9 @@
     var out = [];
     out.push('*' + L(report).toUpperCase() + '*');
     out.push(L(person) + ' · ' + (lang === 'am' ? person.roleAm : person.roleEn));
-    out.push(today() + ' · ' + clock() + ' · ' + (isLate(report.dueTime, report.dueDay) ? t('late') : t('onTime')));
+    var pdm = periodNow(report);
+    out.push(today() + ' · ' + clock() + ' · ' + statusWord(pdm) +
+      (pdm.day && pdm.day !== stamp() ? ' · ' + statusLine(report, pdm) : ''));
 
     report.sections.forEach(function (sec) {
       var lines = [];
@@ -1639,48 +1943,94 @@
     /* the same answers the forms use, for the pages that draw the company:
        who a report goes to, and what is owed today */
     recipientsOf: recipientsOf,
-    dueToday: dueToday
+    dueToday: dueToday,
+    /* Addis time, and the ledger's rule for what is owed when */
+    today: stamp,
+    dayStart: dayStartMs,
+    deadlineOf: deadlineOf,
+    dueOn: dueOn
   };
 
-  /* Yesterday's drafts, swept once a day. Without this a phone accumulates one
-     key per report per day forever, and the quota error when it fills is
-     swallowed by store.set and by the offline outbox both. */
-  function sweepDrafts(keepStamp) {
+  /* Drafts older than a week are swept. Without this a phone accumulates keys
+     forever, and the quota error when it fills is swallowed by store.set and
+     by the offline outbox both. A draft is also cleared the moment its report
+     is confirmed filed. */
+  function sweepDrafts() {
     try {
-      var kill = [];
+      var kill = [], oldest = addDays(stamp(), -8);
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (k && k.indexOf('klever.draft.') === 0 && k.slice(-10) !== keepStamp) kill.push(k);
+        if (k && k.indexOf('klever.draft.') === 0 && k.slice(-10) < oldest) kill.push(k);
       }
       kill.forEach(function (k) { localStorage.removeItem(k); });
     } catch (e) { /* a full or blocked store is not worth taking the page down for */ }
+  }
+
+  /* This person's filings of the last week (all of them, for the Chairman),
+     so the home screen knows what has been sent. Started once signed in. */
+  var stopFilings = null;
+  function watchFilings() {
+    if (stopFilings || !window.FB || !window.FB.watchFilings || !AUTH.who()) return;
+    var since = new Date(dayStartMs(addDays(stamp(), -7)));
+    stopFilings = window.FB.watchFilings(AUTH.isChairman() ? null : AUTH.who(), since, function (list) {
+      SERVER_FILINGS = list;
+      mergeFilings();
+      rerender();
+      drawStatus();
+    });
+  }
+
+  /* The bar and "Connecting…" go up the moment this script runs. The rest
+     waits for DOMContentLoaded, which on the Chairman's page also waits for
+     chairman.js to fetch Firebase — a blank screen for as long as that takes
+     on a slow line, if the bar waited too. This script sits after #app. */
+  var earlyRoot = document.getElementById('app'), earlyBoot = null;
+  if (earlyRoot && !document.querySelector('.top')) {
+    buildTop();
+    earlyBoot = el('p', 'booting', t('connecting'));
+    earlyRoot.appendChild(earlyBoot);
   }
 
   document.addEventListener('DOMContentLoaded', function () {
     /* save.js is not loaded on every page — the Chairman's page has no forms
        to file, so it has no outbox to flush. Guard rather than assume. */
     if (typeof ARCHIVE !== 'undefined') ARCHIVE.flush();
-    sweepDrafts(stamp());
+    sweepDrafts();
+    mergeFilings();
     var root = document.getElementById('app');
     if (!root) return;
+    setInterval(rerender, 60000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) { rerender(); drawStatus(); } });
 
     /* The header goes up first, always. It used to be drawn inside the promise
        below, which meant that if Firebase never answered — no signal, a blocked
        CDN, a wedged cache — the person got a blank white page with nothing on
        it at all, not even a logo. Nothing that is not waiting on an answer
        should wait for one. */
-    buildTop();
-    root.appendChild(el('p', 'booting', t('connecting')));
+    if (!document.querySelector('.top')) buildTop();
+    var booting = earlyBoot || el('p', 'booting', t('connecting'));
+    if (!booting.parentNode) root.appendChild(booting);
 
-    /* Who is signed in is Firebase's answer and it takes a moment. But a
+    /* Who is signed in is Firebase's answer and it takes a moment — on a slow
+       line, the several seconds it takes to download Firebase itself. A
        promise that can hang forever must not be the only thing standing
-       between a person and a usable page, so it races a clock: after four
-       seconds we carry on as signed-out, which shows the sign-in card rather
-       than nothing. A late answer is still honoured — FB.on() re-renders. */
+       between a person and a usable page, so it races a clock. Someone who
+       was signed in on this phone before keeps seeing "Connecting…" (with a
+       word about the slow line) rather than a sign-in card they don't need;
+       anyone else sees the sign-in card after four seconds. */
     var settled = window.FB ? window.FB.ready : Promise.resolve(null);
+    var knownHere = false;
+    try { knownHere = !!localStorage.getItem('klever.lastUser'); } catch (e) {}
     var raced = Promise.race([
       settled,
-      new Promise(function (resolve) { setTimeout(function () { resolve(null); }, 4000); })
+      new Promise(function (resolve) {
+        if (knownHere) {
+          setTimeout(function () { booting.textContent = t('connectingSlow'); }, 5000);
+          setTimeout(function () { resolve(null); }, 30000);
+        } else {
+          setTimeout(function () { resolve(null); }, 4000);
+        }
+      })
     ]);
 
     /* An answer that arrives after we gave up waiting, or a sign-out in another
@@ -1695,8 +2045,30 @@
         if (!settledOnce) return;
         var mapped = id ? AUTH._fromFb(id) : null;
         if (mapped === AUTH.who()) return;
-        location.reload();
+        /* the Chairman's own pages hand over only on a reload */
+        if (ownPage()) { location.reload(); return; }
+        /* otherwise put the page right where it stands */
+        AUTH._adopt(id);
+        rebuildTop();
+        route();
       });
+    }
+
+    function route() {
+      if (!AUTH.who()) { renderSignIn(root); return; }
+      try { localStorage.setItem('klever.lastUser', AUTH.who()); } catch (e) {}
+      watchFilings();
+      /* chairman.js owns #app on its own page. app.js is still loaded there
+         for buildTop, renderSignIn and the shared helpers, and must draw
+         nothing itself or the two race each other for the same node. */
+      if (ownPage()) return;
+      if (LINK_KEY) {
+        /* a personal link opened on a phone where someone else is signed in */
+        toast(t('linkOtherAccount'));
+        LINK_KEY = null;
+      }
+      if (document.body.dataset.page === 'form') renderForm(root);
+      else renderIndex(root);
     }
 
     raced.then(function (id) {
@@ -1707,13 +2079,7 @@
       rebuildTop();
       var b = root.querySelector('.booting');
       if (b) b.parentNode.removeChild(b);
-      if (!AUTH.who()) { renderSignIn(root); return; }
-      /* chairman.js owns #app on its own page. app.js is still loaded there
-         for buildTop, renderSignIn and the shared helpers, and must draw
-         nothing itself or the two race each other for the same node. */
-      if (ownPage()) return;
-      if (document.body.dataset.page === 'form') renderForm(root);
-      else renderIndex(root);
+      route();
     });
   });
 })();

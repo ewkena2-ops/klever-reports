@@ -314,7 +314,8 @@
     function drawHud() {
       if (meta.dayLabel) {
         mLast.textContent = s('lastReading', 'Reading of') + ' ' + meta.dayLabel +
-          (meta.ranAt ? ' · ' + pad(meta.ranAt.getHours()) + ':' + pad(meta.ranAt.getMinutes()) : '') +
+          /* Addis time, whatever the phone's zone */
+          (meta.ranAt ? ' · ' + pad(new Date(meta.ranAt.getTime() + 3 * 3600e3).getUTCHours()) + ':' + pad(meta.ranAt.getMinutes()) : '') +
           (meta.provisional ? ' · ' + s('soFar', 'so far today') : '');
       } else {
         mLast.textContent = s('noReading', 'No reading yet');
@@ -385,7 +386,7 @@
     var ctx = canvas.getContext('2d');
     var W = 0, H = 0, dpr = 1, cx = 0, cy = 0, rx = 0, ry = 0, sunR = 30, k = 1;
     var goal = { cx: 0, cy: 0, rx: 0, ry: 0, k: 1 };
-    var stars = [], nebula = null, planets = [], sunPos = { x: 0, y: 0 };
+    var stars = [], starLayer = null, starOff = 0, nebula = null, planets = [], sunPos = { x: 0, y: 0 };
     var phase = RINGS.map(function (r) { return r.start; });
     var speed = reduce ? 0 : 1, shoot = null, nextShoot = 4000;
 
@@ -400,14 +401,41 @@
 
       /* a star for every so many pixels, three depths */
       var n = Math.min(520, Math.round(W * H / 1500));
+      var faint = [];
       stars = [];
       for (var i = 0; i < n; i++) {
         var z = Math.random();
-        stars.push({ x: Math.random() * W, y: Math.random() * H, z: z,
-                     r: 0.35 + z * z * 1.3, a: 0.25 + z * 0.65, tw: rand(0.6, 2.2), ph: Math.random() * TAU,
-                     warm: Math.random() < 0.12 });
+        var st = { x: Math.random() * W, y: Math.random() * H, z: z,
+                   r: 0.35 + z * z * 1.3, a: 0.25 + z * 0.65, tw: rand(0.6, 2.2), ph: Math.random() * TAU,
+                   warm: Math.random() < 0.12 };
+        (st.r > 1.25 ? stars : faint).push(st);
       }
+      starLayer = bakeStars(faint);
       nebula = makeNebula();
+    }
+
+    /* The faint stars — most of them — are painted once onto a layer of
+       their own, which drifts across the sky as one; only the bright few
+       with a cross of light are drawn, and twinkle, every frame. Five
+       hundred little circles a frame, each with its own colour string, was
+       most of what this canvas cost a phone. */
+    function bakeStars(list) {
+      var c = document.createElement('canvas');
+      c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+      var g = c.getContext('2d');
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var tw = reduce ? 1 : 0.75;              /* about where a twinkle spends its time */
+      list.forEach(function (st) {
+        g.fillStyle = st.warm ? 'rgba(255,226,190,' + (st.a * tw) + ')' : 'rgba(225,245,240,' + (st.a * tw) + ')';
+        /* a star on the seam is painted on both sides of it, so the layer tiles */
+        [st.x, st.x < 2 ? st.x + W : null, st.x > W - 2 ? st.x - W : null].forEach(function (x) {
+          if (x == null) return;
+          g.beginPath();
+          g.arc(x, st.y, st.r, 0, TAU);
+          g.fill();
+        });
+      });
+      return c;
     }
 
     /* Where the system sits. Normally between the text at the top and the
@@ -789,6 +817,8 @@
     var last = 0, raf = 0, alive = true;
     function frame(t) {
       if (!alive) return;
+      /* thirty frames a second is plenty for a sky this slow, and half the work */
+      if (last && t - last < 30) { raf = requestAnimationFrame(frame); return; }
       var dt = last ? Math.min(64, t - last) : 16;
       last = t;
       var target = (sel() || reduce) ? 0 : 1;
@@ -809,6 +839,14 @@
         var ox = reduce ? 0 : Math.sin(t * 0.00003) * W * 0.05, oy = reduce ? 0 : Math.cos(t * 0.00002) * H * 0.04;
         ctx.globalAlpha = 1;
         ctx.drawImage(nebula, -W * 0.1 + ox, -H * 0.1 + oy, W * 1.2, H * 1.2);
+      }
+      if (starLayer) {
+        /* the faint layer drifts left at the pace of a middling star, in
+           whole device pixels so it is copied, not blurred */
+        if (!reduce) starOff = W ? (starOff + 0.0025 * dt) % W : 0;
+        var so = Math.round(starOff * dpr) / dpr;
+        ctx.drawImage(starLayer, -so, 0, W, H);
+        if (so > 0) ctx.drawImage(starLayer, W - so, 0, W, H);
       }
       drawStars(t, dt);
       drawShoot(t, dt);

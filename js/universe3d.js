@@ -45,7 +45,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TAU, ease, webglOk, makeRenderer, makeComposer, paintSky, makeStars, glowSprite, glowTexture,
-         makeWorld, makeSun, ringTexture, makeBelt, makeBrightStars } from './space3d.js?v=e7b39a62';
+         makeWorld, makeSun, ringTexture, makeBelt, makeBrightStars } from './space3d.js?v=1d82963b';
 
 /* ---------------------------------------------------------------- *
  *  The shape of the company                                          *
@@ -368,7 +368,11 @@ void main(){
 
 function money(n) { return Math.round(n).toLocaleString('en-US'); }
 function num(v) { const x = Number(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')); return isNaN(x) ? 0 : x; }
-function hhmm(d) { return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+/* Klever keeps Addis Ababa's time (UTC+3, no daylight saving), whatever the
+   phone's clock zone: every hour, date and midnight here is Addis's. */
+const ADDIS_MS = 3 * 3600e3;
+const addisOf = d => new Date(d.getTime() + ADDIS_MS);   /* read with getUTC* */
+function hhmm(d) { const a = addisOf(d); return ('0' + a.getUTCHours()).slice(-2) + ':' + ('0' + a.getUTCMinutes()).slice(-2); }
 function bullets(s) { return String(s || '').replace(/^[ \t]*[*-][ \t]+/gm, '• '); }
 function hash(s) { let h = 7; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
 function el(tag, cls, txt) {
@@ -377,6 +381,7 @@ function el(tag, cls, txt) {
   if (txt != null) e.textContent = txt;
   return e;
 }
+function setAttr(e, k, v) { if (e.getAttribute(k) !== v) e.setAttribute(k, v); }
 
 export function mount(root, opts) {
   if (!webglOk()) throw new Error('no webgl');
@@ -397,6 +402,7 @@ export function mount(root, opts) {
 
   const renderer = makeRenderer();
   let pr = renderer.getPixelRatio();
+  const PR0 = pr;
   const canvas = renderer.domElement;
   canvas.className = 'obs-sky obs-3d';
   canvas.setAttribute('aria-hidden', 'true');
@@ -441,6 +447,12 @@ export function mount(root, opts) {
   play.setAttribute('aria-label', s('replay', 'Replay the day'));
   const tLabel = el('span', 'uni-clock', '');
   const track = el('div', 'uni-track');
+  /* the track is a slider for a keyboard and a screen reader too: the
+     arrows move a quarter of an hour, Home goes to six in the morning,
+     End comes back to now */
+  track.tabIndex = 0;
+  track.setAttribute('role', 'slider');
+  track.setAttribute('aria-label', s('timeline', lang === 'am' ? 'የቀኑ ሰዓት' : 'Time of day'));
   const fill = el('i', 'uni-fill');
   const head = el('b', 'uni-head');
   track.appendChild(fill); track.appendChild(head);
@@ -550,6 +562,13 @@ export function mount(root, opts) {
   due.forEach(r => { reporters[r.person] = true; });
   const byDept = {};
   DEPTS.forEach(d => { byDept[d.key] = people.filter(p => p.grp === d.key); });
+  /* who is in each department, and what they file: neither changes during
+     the day, so it is worked out once rather than every frame */
+  const deptIds = {}, deptReps = {};
+  DEPTS.forEach(d => {
+    deptIds[d.key] = new Set(byDept[d.key].map(p => p.id));
+    deptReps[d.key] = due.filter(r => deptIds[d.key].has(r.person));
+  });
   const firstCount = {};
   people.forEach(p => { const f = L(p).split(' ')[0]; firstCount[f] = (firstCount[f] || 0) + 1; });
   const short = p => {
@@ -736,6 +755,12 @@ export function mount(root, opts) {
     const glow = glowSprite('rgba(255,255,255,0.9)', 'rgba(255,255,255,0.15)', 7 * BS);
     klever.add(glow);
     const lg = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+    lg.attributes.position.setUsage(THREE.DynamicDrawUsage);
+    /* the dashes are measured along the line; the two distances (0 and its
+       length) are rewritten in place each frame rather than handed a new
+       buffer, as computeLineDistances() would */
+    const ld = new THREE.BufferAttribute(new Float32Array(2), 1).setUsage(THREE.DynamicDrawUsage);
+    lg.setAttribute('lineDistance', ld);
     const lmat = new THREE.LineDashedMaterial({ color: 0x5fe0c6, dashSize: 1.2, gapSize: 1.6, transparent: true, opacity: 0 });
     const line = new THREE.Line(lg, lmat);
     line.frustumCulled = false;
@@ -745,7 +770,7 @@ export function mount(root, opts) {
     lab.textContent = (window.KleverOrbit && window.KleverOrbit.agents[id]) ? L(window.KleverOrbit.agents[id]) : id;
     lab.onclick = () => pick({ kind: 'agent', id });
     labels.appendChild(lab);
-    return { id, w, glow, line, lm: lmat, lab, a0: i / arr.length * TAU, heat: 'none' };
+    return { id, w, glow, line, ld, lm: lmat, lab, a0: i / arr.length * TAU, heat: 'none' };
   });
 
   /* ---------- the other four companies ---------- */
@@ -851,21 +876,38 @@ export function mount(root, opts) {
     pu.sp.visible = true;
   }
 
+  /* everything the loop walks over, gathered once into plain lists */
+  const planetList = DEPTS.map(d => planets[d.key]);
+  const nodeList = Object.values(nodes);
+  const labNodes = nodeList.filter(n => n.lab);
+  const moonList = nodeList.filter(n => n.P);
+  const markerNodes = nodeList.filter(n => n.marker);
+  const instList = Object.values(insts);
+  const minorList = Object.values(minors);
+
   /* ---------- the day ---------- */
   const clock = opts.clock || (() => new Date());
-  const today0 = () => { const d = clock(); d.setHours(0, 0, 0, 0); return d; };
+  /* Addis midnight of the clock's day */
+  const today0 = () => { const a = addisOf(clock());
+    return new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate()) - ADDIS_MS); };
   let D = { filings: [], findings: [], instructions: [], dayStart: today0(), now: clock() };
   let T = D.now.getTime(), mode = 'live', playFrom = 0, playT0 = 0, lastTick = 0;
   const PLAY_MS = 24000;
 
   function deadline(r) {
-    const d = new Date(D.dayStart);
     const p = String(r.dueTime || '17:30').split(':');
-    d.setHours(Number(p[0]), Number(p[1]), 0, 0);
-    return d.getTime();
+    return D.dayStart.getTime() + (Number(p[0]) * 60 + Number(p[1])) * 60000;
   }
+  /* The filing that counts for today: the ledger's window — a daily report
+     only today, a weekly one from six days before, a monthly one from seven
+     — and by the report's owner (the Chairman may file on their behalf). */
+  const WINDOW = { daily: 0, weekly: 6, monthly: 7 };
   function filingOf(r, t) {
-    for (const f of D.filings) if (f.report === r.id && f.at.getTime() <= t) return f;
+    const from = D.dayStart.getTime() - (WINDOW[r.cadence] || 0) * 864e5;
+    for (const f of D.filings) {
+      const ft = f.at.getTime();
+      if (f.report === r.id && (!f.person || f.person === r.person) && ft >= from && ft <= t) return f;
+    }
     return null;
   }
   function stateOf(r, t) {
@@ -875,7 +917,9 @@ export function mount(root, opts) {
   }
   function lastValues(reportId, t) {
     let v = null;
-    for (const f of D.filings) if (f.report === reportId && f.at.getTime() <= t) v = f.values || {};
+    /* today's figures only: the streams are the day's money and output */
+    const from = D.dayStart.getTime();
+    for (const f of D.filings) if (f.report === reportId && f.at.getTime() >= from && f.at.getTime() <= t) v = f.values || {};
     return v;
   }
   const rank = { missing: 3, late: 2, pending: 1, on: 0 };
@@ -889,15 +933,20 @@ export function mount(root, opts) {
                  am: ['እሑድ', 'ሰኞ', 'ማክሰኞ', 'ረቡዕ', 'ሐሙስ', 'ዓርብ', 'ቅዳሜ'] };
   const MONTHS = { en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
                    am: ['ጃንዩወሪ', 'ፌብሩወሪ', 'ማርች', 'ኤፕሪል', 'ሜይ', 'ጁን', 'ጁላይ', 'ኦገስት', 'ሴፕቴምበር', 'ኦክቶበር', 'ኖቬምበር', 'ዲሴምበር'] };
-  const dayName = d => DAYS[lang][d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[lang][d.getMonth()];
+  const dayName = d => { const a = addisOf(d); return DAYS[lang][a.getUTCDay()] + ' ' + a.getUTCDate() + ' ' + MONTHS[lang][a.getUTCMonth()]; };
   const shortDate = ymd => {
     const p = String(ymd || '').split('-');
     return p.length === 3 ? Number(p[2]) + ' ' + MONTHS[lang][Number(p[1]) - 1].slice(0, lang === 'am' ? 4 : 3) : String(ymd || '');
   };
-  const ymdOf = d => d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  const ymdOf = d => { const a = addisOf(d); return a.getUTCFullYear() + '-' + ('0' + (a.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + a.getUTCDate()).slice(-2); };
   let dayText = '';
-  const kidan = { reps: [], filed: 0, pay: null }, rove = { m2: null };
+  const kidan = { reps: due.filter(r => /Kidan/.test(r.toEn || '')), filed: 0, pay: null }, rove = { m2: null };
+  const STATE_N = { pending: 0, on: 1, late: 2, missing: 3 };
 
+  /* This runs once a second, and every frame while the day replays, so it
+     writes to the page only what has actually changed: rewriting a word
+     with the same word still makes the browser redo its layout. */
+  let tPct = '';
   function applyDay(now) {
     let on = 0, late = 0, missing = 0;
     const personWorst = {};
@@ -911,66 +960,75 @@ export function mount(root, opts) {
       const st = stateOf(b.r, T);
       if (st !== b.state) {
         if ((st === 'on' || st === 'late') && b.state !== 'on' && b.state !== 'late') {
-          if (mode === 'live' && !b.seen) b.litAt = -1e9;
+          /* with motion reduced a filing simply shows: no light racing out, no ring */
+          if (reduce || (mode === 'live' && !b.seen)) b.litAt = -1e9;
           else { b.litAt = now; b.pulseAt = now; }
         }
         b.state = st;
+        b.u.uState.value = STATE_N[st];
+        b.u.uColor.value.set(STATUS[st].color);
       }
       b.seen = true;
-      b.u.uState.value = { pending: 0, on: 1, late: 2, missing: 3 }[st];
-      b.u.uColor.value.set(STATUS[st].color);
     });
     Object.keys(personWorst).forEach(id => {
       const n = nodes[id];
-      if (!n) return;
+      if (!n || n.state === personWorst[id]) return;
       n.state = personWorst[id];
+      tiersDirty = true;
       if (n.marker) n.marker.material.color.set(STATUS[n.state].color);
     });
     DEPTS.forEach(d => {
       const P = planets[d.key];
-      const ids = byDept[d.key].map(p => p.id);
-      P.state = worstOf(due.filter(r => ids.indexOf(r.person) !== -1));
+      const st = worstOf(deptReps[d.key]);
+      if (P.shown && st === P.state) return;
+      P.shown = true;
+      P.state = st;
       P.dot.style.background = P.state ? STATUS[P.state].color : 'transparent';
       P.dot.style.boxShadow = P.state ? '0 0 8px ' + STATUS[P.state].color : 'none';
     });
     /* what reaches the other companies, from Klever's own reports */
-    kidan.reps = due.filter(r => /Kidan/.test(r.toEn || ''));
     kidan.filed = kidan.reps.filter(r => filingOf(r, T)).length;
     const bv = lastValues('betty-daily', T), av = lastValues('amaha-daily', T);
     kidan.pay = bv && bv.pay_kidan !== '' && bv.pay_kidan != null ? num(bv.pay_kidan) : null;
     rove.m2 = av && av.p_rove !== '' && av.p_rove != null ? num(av.p_rove) : null;
-    if (minors.groupfinance) minors.groupfinance.feed.lab.textContent = kidan.reps.length
-      ? s('toKidan', 'Klever’s reports to Kidan') + ' · ' + kidan.filed + ' / ' + kidan.reps.length : '';
-    if (minors.rovestone) minors.rovestone.feed.lab.textContent = rove.m2 != null
-      ? money(rove.m2) + ' m² · ' + s('forRove', 'made for Rovestone today') : '';
+    const toKidan = kidan.reps.length ? s('toKidan', 'Klever’s reports to Kidan') + ' · ' + kidan.filed + ' / ' + kidan.reps.length : '';
+    const forRove = rove.m2 != null ? money(rove.m2) + ' m² · ' + s('forRove', 'made for Rovestone today') : '';
+    if (minors.groupfinance) setText(minors.groupfinance.feed.lab, toKidan);
+    if (minors.rovestone) setText(minors.rovestone.feed.lab, forRove);
     /* the stream to Kidan takes the colour of the worst of his reports */
     const kw = kidan.reps.length ? worstOf(kidan.reps) : 'pending';
-    const kc = STATUS[kw === 'pending' ? 'pending' : kw].color;
-    if (minors.groupfinance) minors.groupfinance.feed.pm.color.set(kw === 'on' ? '#5fe0c6' : kc);
-    links.forEach(lk => { if (lk.id === 'groupfinance') lk.pm.color.set(kw === 'on' ? '#5fe0c6' : kc); });
+    const kc = kw === 'on' ? '#5fe0c6' : STATUS[kw].color;
+    if (minors.groupfinance) minors.groupfinance.feed.pm.color.set(kc);
     links.forEach(lk => {
-      lk.lab.textContent = lk.id === 'groupfinance'
-        ? (kidan.reps.length ? s('toKidan', 'Klever’s reports to Kidan') + ' · ' + kidan.filed + ' / ' + kidan.reps.length : '')
-        : (rove.m2 != null ? money(rove.m2) + ' m² · ' + s('forRove', 'made for Rovestone today') : '');
+      if (lk.id === 'groupfinance') lk.pm.color.set(kc);
+      setText(lk.lab, lk.id === 'groupfinance' ? toKidan : forRove);
     });
     let inn = 0, out = 0;
     flows.forEach(fl => {
       const v = lastValues(fl.f.report, T);
       fl.amount = v ? num(v[fl.f.field]) : 0;
       if (fl.f.sum === 'in') inn += fl.amount; else if (fl.f.sum === 'out') out += fl.amount;
+      /* a stream that stops keeps its last figure while it fades */
+      if (fl.amount) setText(fl.lab, money(fl.amount) + ' ' + s('birr', 'Birr'));
     });
     dayText = dayName(D.dayStart) + '  ·  ' + s('filed', 'Filed') + ' ' + (on + late) + ' / ' + due.length +
       (late ? ' · ' + late + ' ' + s('late', 'late') : '') +
       (missing ? ' · ' + missing + ' ' + s('missing', 'missing') : '') +
       ((inn || out) ? '  ·  ' + s('in', 'in') + ' ' + money(inn) + ' · ' + s('out', 'out') + ' ' + money(out) : '');
     heading();
-    tLabel.textContent = hhmm(new Date(T));
+    const clockTxt = hhmm(new Date(T));
+    setText(tLabel, clockTxt);
     const t0 = D.dayStart.getTime() + 6 * 3600e3, t1 = Math.max(t0 + 60e3, D.now.getTime());
     const u = Math.max(0, Math.min(1, (T - t0) / (t1 - t0)));
-    fill.style.width = (u * 100) + '%';
-    head.style.left = (u * 100) + '%';
+    const pct = (Math.round(u * 1000) / 10) + '%';
+    if (pct !== tPct) { tPct = pct; fill.style.width = pct; head.style.left = pct; }
+    const min = t => String(Math.round((t - D.dayStart.getTime()) / 60000));
+    setAttr(track, 'aria-valuemin', min(Math.min(t0, T)));
+    setAttr(track, 'aria-valuemax', min(t1));
+    setAttr(track, 'aria-valuenow', min(T));
+    setAttr(track, 'aria-valuetext', mode === 'live' ? clockTxt + ' · ' + s('live', 'Live') : clockTxt);
     live.classList.toggle('on', mode === 'live');
-    play.textContent = mode === 'play' ? '❚❚' : '▶';
+    setText(play, mode === 'play' ? '❚❚' : '▶');
   }
 
   /* the ticks on the timeline: every deadline, every filing */
@@ -1016,7 +1074,22 @@ export function mount(root, opts) {
     playT0 = performance.now();
     if (level !== 'company') goCompany(cur);
   };
-  live.onclick = () => { mode = 'live'; D.now = clock(); T = D.now.getTime(); applyDay(performance.now()); };
+  function goLive() { mode = 'live'; D.now = clock(); T = D.now.getTime(); applyDay(performance.now()); }
+  live.onclick = goLive;
+  track.addEventListener('keydown', e => {
+    const t0 = D.dayStart.getTime() + 6 * 3600e3, t1 = Math.max(t0 + 60e3, D.now.getTime());
+    let t;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') t = T - 15 * 60e3;
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') t = T + 15 * 60e3;
+    else if (e.key === 'Home') t = t0;
+    else if (e.key === 'End') t = t1;
+    else return;
+    e.preventDefault();
+    if (t >= t1) { goLive(); return; }
+    T = Math.max(Math.min(t0, T), t);
+    mode = 'scrub';
+    applyDay(performance.now());
+  });
 
   function applyAgents() {
     const find = {};
@@ -1027,7 +1100,8 @@ export function mount(root, opts) {
       st.w.rimU.uColor.value.set(HEAT[h]);
       st.glow.material.color.set(HEAT[h]);
       st.lm.color.set(h === 'loud' ? '#ff7a5c' : '#5fe0c6');
-      st.lab.className = 'obs3d-label uni-agent ' + h;
+      const cls = 'obs3d-label uni-agent ' + h;
+      if (st.lab.className !== cls) { st.lab.className = cls; remeasure(st.lab); }
     });
   }
 
@@ -1211,6 +1285,10 @@ export function mount(root, opts) {
 
   /* ---------- camera ---------- */
   let W = 0, H = 0, level = 'group', cur = 'klever', tween = null, offY = 0, offGoal = 0;
+  /* whether someone has turned or zoomed the view since the last flight;
+     if so, a change of window size leaves their view alone */
+  let userMoved = false;
+  controls.addEventListener('start', () => { userMoved = true; });
   const views = {};
   function band() {
     const top = (document.querySelector('.top') || hud).getBoundingClientRect().bottom;
@@ -1258,6 +1336,7 @@ export function mount(root, opts) {
               n0: o0.clone().normalize(), q: new THREE.Quaternion().setFromUnitVectors(o0.clone().normalize(), o1.clone().normalize()),
               start: performance.now(), ms: reduce ? 1 : ms };
     controls.enabled = false;
+    userMoved = false;
   }
   const qI = new THREE.Quaternion(), qK = new THREE.Quaternion();
   const Y_AXIS = new THREE.Vector3(0, 1, 0), lastF = new THREE.Vector3(), tmpF = new THREE.Vector3();
@@ -1274,9 +1353,9 @@ export function mount(root, opts) {
   }
   function heading() {
     const co = coById(cur);
-    cCo.textContent = L(co);
-    title.textContent = level === 'group' ? s('group', 'Amare Holdings') : cur === 'klever' ? s('title', 'Klever, today') : L(co);
-    stats.textContent = level === 'group' ? s('groupStats', 'Five companies · one reporting live') : cur === 'klever' ? dayText : minorText(cur);
+    setText(cCo, L(co));
+    setText(title, level === 'group' ? s('group', 'Amare Holdings') : cur === 'klever' ? s('title', 'Klever, today') : L(co));
+    setText(stats, level === 'group' ? s('groupStats', 'Five companies · one reporting live') : cur === 'klever' ? dayText : minorText(cur));
   }
   function goGroup() {
     level = 'group';
@@ -1361,49 +1440,129 @@ export function mount(root, opts) {
   });
 
   /* ---------- names over the world ---------- */
-  const tmp = new THREE.Vector3(), camUp = new THREE.Vector3(), anchorV = new THREE.Vector3();
+  const tmp = new THREE.Vector3(), camUp = new THREE.Vector3(), anchorV = new THREE.Vector3(), curveV = new THREE.Vector3();
+  const scr = { x: 0, y: 0, z: 0 };
   function screen(v) {
     tmp.copy(v).project(camera);
-    return { x: (tmp.x + 1) / 2 * W, y: (1 - tmp.y) / 2 * H, z: tmp.z };
+    scr.x = (tmp.x + 1) / 2 * W; scr.y = (1 - tmp.y) / 2 * H; scr.z = tmp.z;
+    return scr;
+  }
+
+  /* Some sixty names are placed every frame. Reading a name's size just
+     after moving another makes the browser lay the page out again — once
+     per name, every frame — and writing a style that has not changed still
+     makes it look again. So each name keeps what was last written to it and
+     its measured size; a name is measured only when its words change (or
+     the fonts arrive, or the window changes), all measuring is done before
+     any name is moved, and nothing is written twice. A hidden name is also
+     made invisible to the keyboard and to a screen reader, once it has
+     faded (the visibility change waits for the fade). */
+  const LS = new Map();
+  function ls(lab) {
+    let st = LS.get(lab);
+    if (!st) {
+      st = { w: 0, h: 0, a: -1, x: NaN, y: NaN };
+      lab.style.transition = 'opacity .25s ease, visibility .25s';
+      LS.set(lab, st);
+    }
+    return st;
+  }
+  function measureLabels() {
+    for (const lab of labels.children) {
+      const st = ls(lab);
+      if (st.w) continue;
+      const w = lab.offsetWidth;
+      if (w) { st.w = w; st.h = lab.offsetHeight || 18; }
+    }
+  }
+  function remeasure(lab) {
+    if (lab) { const st = LS.get(lab); if (st) st.w = 0; }
+    else LS.forEach(st => { st.w = 0; });
+  }
+  function setText(e, t) {
+    if (e.textContent === t) return;
+    e.textContent = t;
+    remeasure(e);
+  }
+  function setAlpha(lab, st, a) {
+    if (st.a === a) return;
+    st.a = a;
+    lab.style.opacity = String(a);
+    lab.style.pointerEvents = a > 0.5 ? 'auto' : 'none';
+    lab.style.visibility = a > 0 ? 'visible' : 'hidden';
+  }
+  function hide(lab) { setAlpha(lab, ls(lab), 0); }
+
+  /* the boxes already taken this frame, four numbers each */
+  const takenA = [], takenB = [];
+  function clash(taken, x0, y0, x1, y1) {
+    for (let i = 0; i < taken.length; i += 4) {
+      if (x0 < taken[i + 2] && x1 > taken[i] && y0 < taken[i + 3] && y1 > taken[i + 1]) return true;
+    }
+    return false;
   }
   /* a name sits just below its world, whatever the world's size */
   const below = (pos, r) => anchorV.copy(pos).addScaledVector(camUp, -r * 1.25);
   function place(lab, v, dy, taken, prio, soft) {
-    const p = screen(v);
+    const p = screen(v), st = ls(lab);
     if (p.z > 1 || p.x < -40 || p.x > W + 40 || p.y < -20 || p.y > H + 20) {
       if (soft) return false;
-      lab.style.opacity = '0'; lab.style.pointerEvents = 'none'; return false;
+      setAlpha(lab, st, 0); return false;
     }
-    const w = lab.offsetWidth || 60, h = lab.offsetHeight || 18;
+    const w = st.w || 60, h = st.h || 18;
     const x = Math.max(6 + w / 2, Math.min(W - 6 - w / 2, p.x));
-    let y = p.y + dy;
-    let box = [x - w / 2, y, x + w / 2, y + h];
-    const clash = b => taken.some(o => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]);
-    let a = 1;
-    if (clash(box)) {
-      const up = [x - w / 2, p.y - dy - h - 8, x + w / 2, p.y - dy - 8];
-      if (!clash(up)) { box = up; y = up[1]; } else if (soft) return false; else a = prio ? 0.35 : 0;
+    let y = p.y + dy, a = 1;
+    if (clash(taken, x - w / 2, y, x + w / 2, y + h)) {
+      const up = p.y - dy - h - 8;
+      if (!clash(taken, x - w / 2, up, x + w / 2, up + h)) y = up;
+      else if (soft) return false;
+      else a = prio ? 0.35 : 0;
     }
-    taken.push(box);
-    lab.style.opacity = String(a);
-    lab.style.pointerEvents = a > 0.5 ? 'auto' : 'none';
-    lab.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px) translateX(-50%)';
+    taken.push(x - w / 2, y, x + w / 2, y + h);
+    setAlpha(lab, st, a);
+    const rx = Math.round(x), ry = Math.round(y);
+    if (rx !== st.x || ry !== st.y) {
+      st.x = rx; st.y = ry;
+      lab.style.transform = 'translate(' + rx + 'px,' + ry + 'px) translateX(-50%)';
+    }
     return a === 1;
   }
-  function hide(lab) { lab.style.opacity = '0'; lab.style.pointerEvents = 'none'; }
+  /* an amount looks for room along its own stream before it gives up */
+  const ALONG_FEED = [0.5, 0.35, 0.65], ALONG_LINK = [0.5, 0.4, 0.6], ALONG_FLOW = [0.5, 0.36, 0.64, 0.26, 0.74];
+  function placeAlong(lab, curve, us, taken) {
+    for (let i = 0; i < us.length; i++) {
+      if (place(lab, curve.getPoint(us[i], curveV), -8, taken, false, true)) return true;
+    }
+    return false;
+  }
   const placeNode = (n, taken, prio) => place(n.lab, below(n.pos, n.r), 3, taken, prio);
+
+  /* the Chairman and anyone late or missing first, then the leads, then
+     everyone else; sorted again only when someone's state changes */
+  const tier = n => n.id === 'chairman' ? 0 : (n.state === 'missing' || n.state === 'late') ? 1
+    : (n.person && isLead(n.person)) ? 2 : 3;
+  const tiers = [[], [], [], []];
+  let tiersDirty = true;
+  function sortTiers() {
+    tiers.forEach(t => { t.length = 0; });
+    labNodes.forEach(n => tiers[tier(n)].push(n));
+    tiersDirty = false;
+  }
+
   function placeLabels(kFade, near) {
-    const taken = [];
+    measureLabels();
+    const taken = takenA;
+    taken.length = 0;
     const showCo = near < 0.3;
     /* the other companies' systems, when the camera is in one */
-    Object.values(minors).forEach(m => {
+    minorList.forEach(m => {
       const on = m.f > 0.5;
       const pk = picked && (picked.kind === 'head' || picked.kind === 'crew') ? picked : null;
       if (on) {
         place(m.headLab, below(m.c0, m.sR), 3, taken, true);
         m.crew.forEach(c => place(c.lab, below(c.pos, c.r), 3, taken, true));
         if (m.feed && m.feed.lab.textContent && !pk) {
-          if (![0.5, 0.35, 0.65].some(u => place(m.feed.lab, m.feed.curve.getPoint(u), -8, taken, false, true))) hide(m.feed.lab);
+          if (!placeAlong(m.feed.lab, m.feed.curve, ALONG_FEED, taken)) hide(m.feed.lab);
         } else if (m.feed) hide(m.feed.lab);
       } else {
         hide(m.headLab);
@@ -1413,58 +1572,65 @@ export function mount(root, opts) {
     });
     links.forEach(lk => {
       if (showCo && !picked && lk.lab.textContent) {
-        if (![0.5, 0.4, 0.6].some(u => place(lk.lab, lk.curve.getPoint(u), -8, taken, false, true))) hide(lk.lab);
+        if (!placeAlong(lk.lab, lk.curve, ALONG_LINK, taken)) hide(lk.lab);
       } else hide(lk.lab);
     });
     coMarks.forEach(c => {
       if (showCo && !picked) place(c.lab, anchorV.copy(c.pos).addScaledVector(camUp, -c.co.radius * 0.6), 0, taken, true);
       else hide(c.lab);
     });
-    const allNodes = Object.values(nodes).filter(n => n.lab);
     if (kFade < 0.5 || (picked && picked.kind !== 'company')) {
       /* something is picked: its name, and the names of what it touches */
-      const near = {};
+      const nearIds = {};
       let keepPlanet = null, keepInst = null, keepSat = null;
       if (picked && kFade >= 0.5) {
         if (picked.kind === 'person') {
-          beams.forEach(b => { if (b.r.person === picked.id) near[b.to] = 1; if (b.to === picked.id) near[b.r.person] = 1; });
-          near[picked.id] = 2;
+          beams.forEach(b => { if (b.r.person === picked.id) nearIds[b.to] = 1; if (b.to === picked.id) nearIds[b.r.person] = 1; });
+          nearIds[picked.id] = 2;
         } else if (picked.kind === 'dept') {
-          byDept[picked.id].forEach(p => { near[p.id] = 1; });
+          byDept[picked.id].forEach(p => { nearIds[p.id] = 1; });
           keepPlanet = picked.id;
         } else if (picked.kind === 'inst') keepInst = picked.id;
         else if (picked.kind === 'agent') { keepSat = picked.id; keepPlanet = WATCH[picked.id]; }
       }
-      const mine = [];
-      allNodes.filter(n => near[n.id] === 2).forEach(n => placeNode(n, mine, true));
-      allNodes.forEach(n => { if (near[n.id] === 1) placeNode(n, mine, false); else if (near[n.id] !== 2) hide(n.lab); });
-      Object.values(planets).forEach(pl => { if (pl.d.key === keepPlanet) place(pl.lab, below(pl.pos, pl.r), 3, mine, true); else hide(pl.lab); });
-      Object.values(insts).forEach(i => { if (i.it.id === keepInst) place(i.lab, below(i.pos, i.r), 3, mine, true); else hide(i.lab); });
+      const mine = takenB;
+      mine.length = 0;
+      labNodes.forEach(n => { if (nearIds[n.id] === 2) placeNode(n, mine, true); });
+      labNodes.forEach(n => { if (nearIds[n.id] === 1) placeNode(n, mine, false); else if (nearIds[n.id] !== 2) hide(n.lab); });
+      planetList.forEach(pl => { if (pl.d.key === keepPlanet) place(pl.lab, below(pl.pos, pl.r), 3, mine, true); else hide(pl.lab); });
+      instList.forEach(i => { if (i.it.id === keepInst) place(i.lab, below(i.pos, i.r), 3, mine, true); else hide(i.lab); });
       sats.forEach(x => { if (x.id === keepSat) place(x.lab, below(satPos(x), 0.8 * BS), 3, mine, true); else hide(x.lab); });
       flows.forEach(f => hide(f.lab));
       return;
     }
     /* the Chairman and anyone late or missing first, then the leads, then
        the departments, the money, and everyone else if there is room */
-    const tier = n => n.id === 'chairman' ? 0 : (n.state === 'missing' || n.state === 'late') ? 1
-      : (n.person && isLead(n.person)) ? 2 : 3;
-    const order = allNodes.sort((a, b) => tier(a) - tier(b));
-    order.filter(n => tier(n) === 0).forEach(n => placeNode(n, taken, true));
-    Object.values(planets).forEach(pl => place(pl.lab, below(pl.pos, pl.r), 3, taken, true));
-    Object.values(insts).forEach(i => place(i.lab, below(i.pos, i.r), 3, taken, true));
-    order.filter(n => tier(n) === 1 || tier(n) === 2).forEach(n => placeNode(n, taken, true));
-    /* an amount looks for room along its own stream before it gives up */
+    if (tiersDirty) sortTiers();
+    tiers[0].forEach(n => placeNode(n, taken, true));
+    planetList.forEach(pl => place(pl.lab, below(pl.pos, pl.r), 3, taken, true));
+    instList.forEach(i => place(i.lab, below(i.pos, i.r), 3, taken, true));
+    tiers[1].forEach(n => placeNode(n, taken, true));
+    tiers[2].forEach(n => placeNode(n, taken, true));
     flows.forEach(f => {
       if (!f.amount || f.show < 0.5) { hide(f.lab); return; }
-      f.lab.textContent = money(f.amount) + ' ' + s('birr', 'Birr');
-      if (![0.5, 0.36, 0.64, 0.26, 0.74].some(u => place(f.lab, f.curve.getPoint(u), -8, taken, false, true))) hide(f.lab);
+      if (!placeAlong(f.lab, f.curve, ALONG_FLOW, taken)) hide(f.lab);
     });
-    order.filter(n => tier(n) === 3).forEach(n => placeNode(n, taken, false));
+    tiers[3].forEach(n => placeNode(n, taken, false));
     /* on a phone the agents keep their colour but not their names */
     sats.forEach(x => { if (x.heat === 'loud' && W >= 600) place(x.lab, below(satPos(x), 0.8 * BS), 3, taken, false); else hide(x.lab); });
   }
 
   /* ---------- the loop ---------- */
+  /* Point sizes in the shaders are counted in pixels of the picture, so they
+     follow its resolution. The largest a galaxy's star may be drawn is kept
+     the same size on the glass whatever the resolution, so a device that
+     has had to drop resolution sees the same sky, not bigger stars. */
+  function pointScale() {
+    galU.uScale.value = H * pr / (2 * Math.tan(THREE.MathUtils.degToRad(45 / 2)));
+    galU.uMax.value = 3.6 * pr / PR0;
+    dustU.uMax.value = 140 * pr / PR0;
+    starMat.uniforms.uPR.value = pr;
+  }
   function resize() {
     W = window.innerWidth; H = window.innerHeight;
     renderer.setSize(W, H, false);
@@ -1472,30 +1638,79 @@ export function mount(root, opts) {
     composer.setSize(W, H);
     camera.aspect = W / H;
     camera.updateProjectionMatrix();
-    galU.uScale.value = H * pr / (2 * Math.tan(THREE.MathUtils.degToRad(45 / 2)));
-    starMat.uniforms.uPR.value = pr;
+    pointScale();
+    remeasure();
     computeViews();
-    if (!tween) {
+    /* refit the frame to the new shape only if nobody has taken the camera
+       since the last flight; someone who has turned the view keeps it */
+    if (!tween && !picked && !userMoved) {
       const v = level === 'group' ? views.group : views.company;
-      if (!picked) { camera.position.copy(v.pos); controls.target.copy(v.target); }
+      camera.position.copy(v.pos); controls.target.copy(v.target);
+    }
+  }
+
+  /* ---------- keeping up ---------- */
+  /* A device that cannot keep up gives things up rather than stutter:
+     first multisampling, then resolution, then bloom. The average time a
+     frame takes is checked every two seconds; two slow checks in a row
+     (under about 29 frames a second) give up one thing. Once — after half
+     a minute comfortably fast — the last thing given up comes back, and if
+     that proves too much it goes again for good. None of this touches the
+     camera, and it watches the whole visit, not just its first seconds. */
+  function setPR(p) {
+    pr = p;
+    renderer.setPixelRatio(p);
+    composer.setPixelRatio(p);
+    pointScale();
+  }
+  const MSAA0 = composer.renderTarget1.samples;
+  function setSamples(n) {
+    [composer.renderTarget1, composer.renderTarget2].forEach(t => { t.samples = n; t.dispose(); });
+  }
+  const STEPS = [
+    { can: () => composer.renderTarget1.samples > 0, down: () => setSamples(0), up: () => setSamples(MSAA0) },
+    { can: () => pr > 1, down: () => setPR(1), up: () => setPR(PR0) },
+    { can: () => bloom.enabled, down: () => { bloom.enabled = false; }, up: () => { bloom.enabled = true; } }
+  ];
+  const pace = { sum: 0, n: 0, slow: 0, fast: 0, given: [], tookBack: false };
+  function keepUp(ms) {
+    if (ms > 400) return;                   /* a stall or a return to the tab, not the pace */
+    pace.sum += ms; pace.n++;
+    if (pace.sum < 2000) return;
+    const avg = pace.sum / pace.n;
+    pace.sum = 0; pace.n = 0;
+    if (avg > 35) { pace.slow++; pace.fast = 0; }
+    else if (avg < 20) { pace.fast++; pace.slow = 0; }
+    else { pace.slow = 0; pace.fast = 0; }
+    if (pace.slow >= 2) {
+      pace.slow = 0;
+      const step = STEPS.find(x => x.can());
+      if (step) { step.down(); pace.given.push(step); }
+    } else if (pace.fast >= 15 && pace.given.length && !pace.tookBack) {
+      pace.fast = 0;
+      pace.tookBack = true;
+      pace.given.pop().up();
     }
   }
 
   const watchTarget = key => key === 'chairman' ? sunPos : planets[key].pos;
-  let last = 0, raf = 0, alive = true, time = 0, frames = 0, slow = 0, bloomOn = true;
+  const SAT_GLOW = { loud: 0.85, warm: 0.55, quiet: 0.3, none: 0.12 };
+  let last = 0, raf = 0, alive = true, time = 0, frames = 0;
   let revealed = false, revealAt = 0, drawnDone = false, orbitT = 0;
+  let lost = false;
   function frame(now) {
-    if (!alive) return;
-    const dt = last ? Math.min(0.064, (now - last) / 1000) : 0.016;
+    if (!alive || lost) return;
+    const ms = last ? now - last : 0;
+    const dt = last ? Math.min(0.064, ms / 1000) : 0.016;
     last = now; time += dt;
     if (!reduce) orbitT += dt;
+    /* with motion reduced, what moves by itself holds still: the stars'
+       twinkle, the sun's surface, the clouds, the light along the beams,
+       the agents on their orbit, the money along its streams */
+    const at = reduce ? 0 : time, adt = reduce ? 0 : dt;
 
     frames++;
-    if (frames > 30 && frames < 260) {
-      slow = slow * 0.95 + (dt > 0.034 ? 1 : 0) * 0.05;
-      if (slow > 0.6 && pr > 1) { pr = 1; renderer.setPixelRatio(1); resize(); slow = 0.3; }
-      else if (slow > 0.6 && bloomOn) { bloomOn = false; bloom.enabled = false; slow = 0.3; }
-    }
+    if (frames > 60 && ms) keepUp(ms);
 
     if (mode === 'play') {
       const u = Math.min(1, (now - playT0) / PLAY_MS);
@@ -1537,24 +1752,24 @@ export function mount(root, opts) {
     }
     starMat.userData.points.position.copy(camera.position);
     bright.position.copy(camera.position);
-    starMat.uniforms.uTime.value = time;
+    starMat.uniforms.uTime.value = at;
 
     /* how far into Klever the camera is: 0 out among the galaxies, 1 in the system */
     const dK = camera.position.length();
     const kf = THREE.MathUtils.clamp(1 - (dK - 400) / 1400, 0, 1);
     /* how far into each other company's system the camera is */
     let near = kf;
-    Object.values(minors).forEach(m => {
+    minorList.forEach(m => {
       const dm = camera.position.distanceTo(m.c0);
       m.f = THREE.MathUtils.clamp(1 - (dm - 300) / 1100, 0, 1);
       near = Math.max(near, m.f);
       m.g.visible = m.f > 0.01;
       if (!m.g.visible) return;
-      m.star.u.uTime.value = time;
+      m.star.u.uTime.value = at;
       m.star.corona.material.opacity = m.f;
       m.star.haze.material.opacity = m.f;
-      m.ws.forEach(w => w.update(dt, time));
-      m.belt.update(reduce ? 0 : dt, m.f);
+      m.ws.forEach(w => w.update(adt, at));
+      m.belt.update(adt, m.f);
       m.crew.forEach(c => {
         const a = c.a0 + c.om * orbitT;
         c.pos.set(Math.cos(a) * c.orbit, 0, Math.sin(a) * c.orbit).add(m.c0);
@@ -1564,12 +1779,16 @@ export function mount(root, opts) {
       if (m.feed) {
         const has = m.co.id === 'groupfinance' ? kidan.reps.length > 0 : rove.m2 != null && rove.m2 > 0;
         m.feed.pm.opacity = m.f * (has ? 0.9 : 0);
-        const pos = m.feed.pts.geometry.attributes.position;
-        for (let i = 0; i < m.feed.n; i++) {
-          const p = m.feed.curve.getPoint(((time * 0.1) + i / m.feed.n) % 1);
-          pos.setXYZ(i, p.x, p.y, p.z);
+        /* a stream with nothing in it is not drawn at all */
+        m.feed.pts.visible = has;
+        if (has) {
+          const pos = m.feed.pts.geometry.attributes.position;
+          for (let i = 0; i < m.feed.n; i++) {
+            const p = m.feed.curve.getPoint(((at * 0.1) + i / m.feed.n) % 1, curveV);
+            pos.setXYZ(i, p.x, p.y, p.z);
+          }
+          pos.needsUpdate = true;
         }
-        pos.needsUpdate = true;
       }
     });
     links.forEach(lk => {
@@ -1579,20 +1798,23 @@ export function mount(root, opts) {
       if (!lk.pts.visible) return;
       const pos = lk.pts.geometry.attributes.position;
       for (let i = 0; i < lk.n; i++) {
-        const p = lk.curve.getPoint(((time * 0.05) + i / lk.n) % 1);
+        const p = lk.curve.getPoint(((at * 0.05) + i / lk.n) % 1, curveV);
         pos.setXYZ(i, p.x, p.y, p.z);
       }
       pos.needsUpdate = true;
     });
     galU.uFade.value = 1 - 0.62 * near;
     /* a glow that would fill the screen is not a glow any more but a fog:
-       each fades out as it grows past a fraction of the frame */
+       each fades out as it grows past a fraction of the frame, and one that
+       has faded out entirely is not drawn */
     const frac = (size, dist) => size / (2 * Math.max(dist, 1) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
     const shrink = (size, dist) => 1 - THREE.MathUtils.smoothstep(frac(size, dist), 0.18, 0.45);
     here.material.opacity = THREE.MathUtils.clamp((dK - 700) / 2500, 0, 1) * shrink(700, dK);
+    here.visible = here.material.opacity > 0.004;
     coMarks.forEach(c => {
       const dc = camera.position.distanceTo(c.pos);
       c.core.material.opacity = 0.8 * shrink(c.co.core, dc);
+      c.core.visible = c.core.material.opacity > 0.004;
     });
 
     klever.visible = kf > 0.01;
@@ -1615,16 +1837,15 @@ export function mount(root, opts) {
       drawnDone = rv >= 1;
     }
     if (klever.visible) {
-      belt.update(reduce ? 0 : dt, kf);
+      belt.update(adt, kf);
       /* the worlds move: planets round the sun, moons round their planets */
-      Object.values(planets).forEach(P => {
+      planetList.forEach(P => {
         const a = P.a0 + P.om * orbitT;
         P.pos.set(Math.cos(a) * P.d.orbit, 0, Math.sin(a) * P.d.orbit);
         P.w.group.position.copy(P.pos);
         P.shell.position.copy(P.pos);
       });
-      Object.values(nodes).forEach(n => {
-        if (!n.P) return;
+      moonList.forEach(n => {
         const a = n.a0 + n.om * orbitT;
         n.pos.set(Math.cos(a) * n.R, 0, Math.sin(a) * n.R).applyEuler(n.e).add(n.P.pos);
         n.w.group.position.copy(n.pos);
@@ -1654,55 +1875,57 @@ export function mount(root, opts) {
         pu.sp.scale.set(sc, sc, 1);
         pu.sp.material.opacity = kf * Math.pow(1 - u, 1.6);
       });
-      sun.u.uTime.value = time;
+      sun.u.uTime.value = at;
       sun.corona.material.opacity = kf;
       sun.haze.material.opacity = kf;
-      worlds.forEach(w => w.update(dt, time));
+      worlds.forEach(w => w.update(adt, at));
       lineMats.forEach(m => { m.opacity = kf * m.userData.base; });
-      Object.values(nodes).forEach(n => {
-        if (!n.marker) return;
+      markerNodes.forEach(n => {
         const st = n.state;
-        n.marker.material.opacity = kf * (st === 'missing' ? 0.55 + 0.4 * Math.sin(time * 3 + n.pos.x)
+        n.marker.material.opacity = kf * (st === 'missing' ? (reduce ? 0.8 : 0.55 + 0.4 * Math.sin(time * 3 + n.pos.x))
           : st === 'pending' || !st ? 0.35 : 0.85);
       });
       const pp = picked && (picked.kind === 'person' || picked.kind === 'dept') ? picked : null;
-      const inDept = pp && pp.kind === 'dept' ? byDept[pp.id].map(p => p.id) : null;
+      const inDept = pp && pp.kind === 'dept' ? deptIds[pp.id] : null;
       beams.forEach(b => {
-        b.u.uTime.value = time;
+        b.u.uTime.value = at;
         b.u.uFade.value = kf;
         b.u.uArrive.value = Math.min(1, (now - b.litAt) / 1400);
         let dim = 1;
         if (pp && pp.kind === 'person' && pp.id !== b.r.person && pp.id !== b.to) dim = 0.12;
-        if (inDept && inDept.indexOf(b.r.person) === -1 && inDept.indexOf(b.to) === -1) dim = 0.12;
+        if (inDept && !inDept.has(b.r.person) && !inDept.has(b.to)) dim = 0.12;
         b.u.uDim.value = dim;
       });
       flows.forEach(fl => {
         const on = fl.amount > 0 ? 1 : 0;
         fl.show += (on - fl.show) * Math.min(1, dt * 3);
         fl.pm.opacity = fl.show * kf;
+        /* no money reported, no stream drawn */
+        fl.pts.visible = fl.pm.opacity > 0.004;
+        if (!fl.pts.visible) return;
         const n = Math.max(4, Math.min(fl.n, Math.round(Math.log10(Math.max(10, fl.amount)) * 6)));
         const pos = fl.pts.geometry.attributes.position;
         for (let i = 0; i < fl.n; i++) {
           if (i >= n) { pos.setXYZ(i, 0, -9999, 0); continue; }
-          const u = ((time * 0.12) + i / n) % 1;
-          const p = fl.curve.getPoint(u);
+          const p = fl.curve.getPoint(((at * 0.12) + i / n) % 1, curveV);
           pos.setXYZ(i, p.x, p.y, p.z);
         }
         pos.needsUpdate = true;
       });
-      Object.values(insts).forEach(i => { i.extra.forEach(m => { m.opacity = kf * 0.9; }); });
+      instList.forEach(i => { i.extra.forEach(m => { m.opacity = kf * 0.9; }); });
       sats.forEach((st, i) => {
-        const a = st.a0 + time * 0.012;
+        const a = st.a0 + at * 0.012;
         const p = satPos(st);
-        p.set(Math.cos(a) * SAT_R, SAT_Y + Math.sin(time * 0.5 + i) * 0.8, Math.sin(a) * SAT_R);
+        p.set(Math.cos(a) * SAT_R, SAT_Y + Math.sin(at * 0.5 + i) * 0.8, Math.sin(a) * SAT_R);
         st.glow.position.copy(p);
-        st.glow.material.opacity = kf * ({ loud: 0.85, warm: 0.55, quiet: 0.3, none: 0.12 }[st.heat]);
+        st.glow.material.opacity = kf * SAT_GLOW[st.heat];
         const tgt = watchTarget(WATCH[st.id]);
         const lp = st.line.geometry.attributes.position;
         lp.setXYZ(0, p.x, p.y, p.z);
         lp.setXYZ(1, tgt.x, tgt.y, tgt.z);
         lp.needsUpdate = true;
-        st.line.computeLineDistances();
+        st.ld.setX(1, p.distanceTo(tgt));
+        st.ld.needsUpdate = true;
         st.lm.opacity = kf * (st.heat === 'loud' ? 0.3 : 0.03);
       });
 
@@ -1717,20 +1940,59 @@ export function mount(root, opts) {
     if (tween) camera.lookAt(controls.target); else controls.update();
     camUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
     placeLabels(kf, near);
-    if (opts.debug) window.__uni = { p: camera.position.toArray().map(Math.round), t: controls.target.toArray().map(Math.round), fov: camera.fov, kf, near };
+    if (opts.debug) window.__uni = { p: camera.position.toArray().map(Math.round), t: controls.target.toArray().map(Math.round), fov: camera.fov, kf, near, pr, bloom: bloom.enabled, samples: composer.renderTarget1.samples,
+                                   target: [composer.renderTarget1.width, composer.renderTarget1.height], canvas: [canvas.width, canvas.height] };
     composer.render();
     raf = requestAnimationFrame(frame);
   }
 
+  /* ---------- when the graphics chip is taken away ---------- */
+  /* A phone takes the graphics chip back when another app wants it — the
+     camera, a video call — and usually hands it back when this page is
+     looked at again. So losing it only pauses the picture. If it has not
+     come back within three seconds of the page being on screen, the page is
+     told it is gone (and shows what it shows without 3D); if it does come
+     back, the world is built again — by the page, if it offers to, or by
+     reloading when the page is next on screen. */
+  let lostTimer = 0, reloadOnShow = false;
+  function waitForContext() {
+    clearTimeout(lostTimer);
+    if (!lost || document.hidden) return;
+    lostTimer = setTimeout(() => { if (lost && alive && opts.onLost) opts.onLost(); }, 3000);
+  }
+  function onContextLost(e) {
+    e.preventDefault();
+    lost = true;
+    cancelAnimationFrame(raf); raf = 0;
+    waitForContext();
+  }
+  function onContextBack() {
+    if (!alive || !lost) return;
+    lost = false;
+    clearTimeout(lostTimer);
+    if (opts.onRestore) opts.onRestore();
+    else if (document.hidden) reloadOnShow = true;
+    else location.reload();
+  }
+
   function onVis() {
-    if (document.hidden) { cancelAnimationFrame(raf); raf = 0; }
-    else if (!raf) { last = 0; raf = requestAnimationFrame(frame); }
+    if (document.hidden) { cancelAnimationFrame(raf); raf = 0; clearTimeout(lostTimer); return; }
+    if (reloadOnShow) { location.reload(); return; }
+    if (lost) { waitForContext(); return; }
+    if (!raf) { last = 0; raf = requestAnimationFrame(frame); }
   }
   document.addEventListener('visibilitychange', onVis);
   window.addEventListener('resize', resize);
-  canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); if (opts.onLost) opts.onLost(); });
+  canvas.addEventListener('webglcontextlost', onContextLost);
+  canvas.addEventListener('webglcontextrestored', onContextBack);
   function onKey(e) { if (e.key === 'Escape' && picked) pick(null); }
   document.addEventListener('keydown', onKey);
+  /* the names are measured again once the page's fonts have arrived */
+  const onFonts = () => remeasure();
+  if (document.fonts) {
+    document.fonts.addEventListener('loadingdone', onFonts);
+    document.fonts.ready.then(onFonts);
+  }
 
   resize();
   camera.position.copy(views.group.pos);
@@ -1758,11 +2020,16 @@ export function mount(root, opts) {
     },
     destroy() {
       alive = false;
+      reloadOnShow = false;
       clearTimeout(introTimer);
+      clearTimeout(lostTimer);
       cancelAnimationFrame(raf);
       document.removeEventListener('visibilitychange', onVis);
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('resize', resize);
+      canvas.removeEventListener('webglcontextlost', onContextLost);
+      canvas.removeEventListener('webglcontextrestored', onContextBack);
+      if (document.fonts) document.fonts.removeEventListener('loadingdone', onFonts);
       controls.dispose();
       skyRT.dispose();
       renderer.dispose();

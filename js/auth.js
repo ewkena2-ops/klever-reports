@@ -72,8 +72,12 @@ var AUTH = {
      rejects — and, as before, never says what was wrong beyond "no". */
   signInByPassword: function (password) {
     var self = this;
-    if (!window.FB || !window.FB.live()) return Promise.reject(new Error('offline'));
-    return this.whoIs(password).then(function (cands) {
+    if (!window.FB) return Promise.reject(new Error('offline'));
+    /* Firebase loads after the page draws; a quick typist waits for it */
+    return window.FB.ready.then(function () {
+      if (!window.FB.live()) throw new Error('offline');
+      return self.whoIs(password);
+    }).then(function (cands) {
       if (!cands.length) throw new Error('unknown');
       var i = 0;
       function next() {

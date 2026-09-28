@@ -1408,7 +1408,7 @@
           inp.id = 'c_' + f.id + '_' + i + '_' + c.id;
           cl.htmlFor = inp.id;
           inp.value = rowData[c.id] != null ? rowData[c.id] : '';
-          inp.onchange = inp.oninput = function () { rowData[c.id] = inp.value; refresh(); };
+          inp.onchange = inp.oninput = function () { rowData[c.id] = inp.value; refresh(); if (wrap.sumUp) wrap.sumUp(); };
           cell.appendChild(inp);
           card.appendChild(cell);
         });
@@ -1421,12 +1421,35 @@
         add.onclick = function () { data.push({}); draw(); refresh(); };
         body.appendChild(add);
       }
+      if (wrap.sumUp) wrap.sumUp();
+    }
+
+    /* A table whose entry names a `total` column adds it up as it is
+       typed — "Total expected: 1,250,000 Birr" — so nobody has to. */
+    if (f.total) {
+      var tot = el('div', 'reptotal');
+      wrap.appendChild(tot);
+      wrap.sumUp = function () { tot.textContent = totalLine(f); };
     }
 
     if (f.t === 'table' && !data.length) data.push({});
     draw();
     wrap.redraw = draw;
     return wrap;
+  }
+
+  /* the sum of a table's `total` column, and that sum as a line of text */
+  function tableTotal(f) {
+    var sum = 0;
+    (Array.isArray(values[f.id]) ? values[f.id] : []).forEach(function (r) {
+      var x = num(r && r[f.total]);
+      if (!isNaN(x)) sum += x;
+    });
+    return sum;
+  }
+  function totalLine(f) {
+    return (lang === 'am' ? (f.totalAm || 'ጠቅላላ') : (f.totalEn || 'Total')) + ': ' +
+           money(String(tableTotal(f))) + ' ' + t('birr');
   }
 
   /* "Question? (left box / right box)" → the question, and the two box words */
@@ -2092,6 +2115,7 @@
         out.push(String(i + 1) + '. ' + cells.join(' \u00b7 '));
       }
     });
+    if (any && f.total) out.push(totalLine(f));
     return any ? out : [];
   }
 

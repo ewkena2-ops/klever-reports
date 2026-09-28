@@ -48,6 +48,29 @@ function n_(v) {
   var x = Number(String(v).replace(/[^0-9.\-]/g, ''));
   return isNaN(x) ? 0 : x;
 }
+/* A two-box answer — "8 / 10" — is filed as field__a and field__b. Read
+   as one number it was always 0 (answered within the hour, three quotes,
+   called before arrival all read nothing). Both numbers, or null. */
+function pair_(v, id) {
+  var a = (v || {})[id + '__a'], b = (v || {})[id + '__b'];
+  if ((a === '' || a == null) && (b === '' || b == null)) return null;
+  return { done: n_(a), of: n_(b) };
+}
+/* Ephrata's expected collections: the total, by what the payment is for
+   and by when, and the list itself. */
+function expectedOf_(v) {
+  var rows = Object.prototype.toString.call((v || {}).expected_list) === '[object Array]' ? v.expected_list : [];
+  var out = { total: 0, by_type: {}, by_when: {}, payments: [] };
+  rows.forEach(function (r) {
+    if (!r || (!r.cust && !r.amount)) return;
+    var x = n_(r.amount);
+    out.total += x;
+    out.by_type[r.kind || 'not said'] = (out.by_type[r.kind || 'not said'] || 0) + x;
+    out.by_when[r.when || 'not said'] = (out.by_when[r.when || 'not said'] || 0) + x;
+    out.payments.push({ client: r.cust || '', for: r.kind || '', birr: x, when: r.when || '' });
+  });
+  return rows.length ? out : null;
+}
 function yes_(v) {
   return String(v == null ? '' : v).toLowerCase().indexOf('y') === 0;
 }
@@ -525,7 +548,7 @@ var AGENTS = [
       ephrata_and_betty_told: yes_(purch.p_told),
       substitution_made: yes_(purch.p_sub),
       wude_approved_substitute: yes_(purch.p_subok),
-      requests_with_3_or_more_quotes: n_(purch.pr_quotes),
+      requests_with_3_or_more_quotes: pair_(purch, 'pr_quotes'),
       requests_prepared: n_(purch.pr_prep),
       supplier_delays: n_(purch.sup_delay),
       supplier_quality_issues: n_(purch.sup_quality),
@@ -576,7 +599,7 @@ var AGENTS = [
       leads_today: n_(ephrata.leads_total),
       leads_by_source: { social:n_(ephrata.leads_social), showroom:n_(ephrata.leads_showroom),
                          referral:n_(ephrata.leads_referral), agent:n_(ephrata.leads_agent), other:n_(ephrata.leads_other) },
-      answered_within_1hr: n_(ephrata.resp_1hr),
+      new_leads_called_within_1hr: pair_(ephrata, 'resp_1hr'),
       visits_booked: n_(ephrata.visits_booked), visits_done: n_(ephrata.visits_done), visits_late: n_(ephrata.visits_late),
       quotes_issued: n_(ephrata.quotes_issued), quotes_late: n_(ephrata.quotes_late),
       contracts_signed: n_(ephrata.contracts), contract_value: n_(ephrata.contract_value),
@@ -595,10 +618,14 @@ var AGENTS = [
          the gap" on a Thursday, with Friday and Saturday both still to come */
       working_days_left_this_week: Math.max(0, 6 - dow_(d.day)),
       leads_last_7_days: series_(d, 'ephrata-daily', 'leads_total'),
-      contracts_last_7_days: series_(d, 'ephrata-daily', 'contracts')
+      contracts_last_7_days: series_(d, 'ephrata-daily', 'contracts'),
+      /* what she expects to collect, added up in code */
+      expected_collections: expectedOf_(ephrata)
     };
   },
-  ask:'Is the week going to reach 3,000,000 Birr, and if not say it now rather than on '+
+  ask:'Compare what she expected to collect with what actually came in: an expected '+
+      'payment that keeps sliding to next week is a customer who is not paying. '+
+      'Is the week going to reach 3,000,000 Birr, and if not say it now rather than on '+
       'Friday. Look at where leads came from against which ones converted — if one source '+
       'produces volume and no contracts, that is money being spent for nothing. Unanswered '+
       'WhatsApp is a lost customer nobody has noticed yet.' },
@@ -657,7 +684,7 @@ var AGENTS = [
       complaints_at_site: n_(elyas.ac_complaints),
       complaints_in_whatsapp: n_(ephrata.wa_complaints),
       acceptances_signed: n_(elyas.ac_signed),
-      customers_called_before_arrival: yes_(elyas.ac_called),
+      customers_called_before_arrival: pair_(elyas, 'ac_called'),
       unanswered_messages: n_(ephrata.wa_unanswered),
       pulse_filed: !!got_(d.filed, 'betty-pulse'),
       site_complaints_last_7_days: series_(d, 'elyas-daily', 'ac_complaints'),

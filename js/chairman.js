@@ -795,6 +795,17 @@ import {
       row.appendChild(el('span', 'chfk', meta ? meta.label : k));
       row.appendChild(el('span', 'chfv', flatten(v)));
       wrap.appendChild(row);
+      /* a table that adds up a column shows its total, as the form did */
+      if (meta && meta.f.total && Object.prototype.toString.call(v) === '[object Array]') {
+        var sum = v.reduce(function (a, r) {
+          var x = Number(String((r || {})[meta.f.total] == null ? '' : r[meta.f.total]).replace(/[^0-9.\-]/g, ''));
+          return a + (isNaN(x) ? 0 : x);
+        }, 0);
+        var tr = el('div', 'chf chftotal');
+        tr.appendChild(el('span', 'chfk', lang === 'am' ? (meta.f.totalAm || 'ጠቅላላ') : (meta.f.totalEn || 'Total')));
+        tr.appendChild(el('span', 'chfv', birr(sum) + ' ' + t('unBirr')));
+        wrap.appendChild(tr);
+      }
     });
     if (!wrap.childNodes.length) wrap.appendChild(el('p', 'codenote', t('chNoValues')));
     return wrap;

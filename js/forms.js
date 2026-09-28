@@ -143,7 +143,24 @@ const REPORTS = [
         ]},
       {id:'week_total', en:'How much has come in this week so far?', am:'በዚህ ሳምንት እስካሁን ስንት ብር ገባ?', t:'money',
         tgt:{op:'gte', v:3000000, en:'Commission starts at 3,000,000 Birr/week', am:'ኮሚሽን የሚጀምረው በሳምንት ከ3,000,000 ብር ነው'}},
-      {id:'week_gap', en:'The week is below 3,000,000 Birr. Which customers will close the gap by Friday, and for how much?', am:'ሳምንቱ ከ3,000,000 ብር በታች ነው። እስከ ዓርብ ክፍተቱን የሚሞሉት የትኞቹ ደንበኞች ናቸው? በስንት ብር?', t:'area', show:{f:'week_total', when:'miss'}}
+      {id:'week_gap', en:'The week is below 3,000,000 Birr. Which customers will close the gap by Friday, and for how much?', am:'ሳምንቱ ከ3,000,000 ብር በታች ነው። እስከ ዓርብ ክፍተቱን የሚሞሉት የትኞቹ ደንበኞች ናቸው? በስንት ብር?', t:'area', show:{f:'week_total', when:'miss'}},
+      {id:'expected_list', en:'Expected collections: which clients will pay, what for, how much and when?', am:'የሚጠበቁ ክፍያዎች፦ የትኞቹ ደንበኞች፣ ለምን፣ ስንት እና መቼ ይከፍላሉ?', t:'table',
+        addEn:'Add an expected payment', addAm:'የሚጠበቅ ክፍያ ጨምር',
+        total:'amount', totalEn:'Total expected', totalAm:'ጠቅላላ የሚጠበቅ',
+        cols:[
+          {id:'cust', en:'Client', am:'ደንበኛ', t:'text'},
+          {id:'kind', en:'Payment', am:'የክፍያ ዓይነት', t:'choice', opts:[
+            {v:'advance', en:'Advance', am:'ቅድመ ክፍያ'},
+            {v:'final', en:'Final payment', am:'የመጨረሻ ክፍያ'},
+            {v:'settlement', en:'Settlement', am:'የቀሪ ሂሳብ ማወራረጃ'}]},
+          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
+          {id:'when', en:'When', am:'መቼ', t:'choice', opts:[
+            {v:'today', en:'Today', am:'ዛሬ'},
+            {v:'tomorrow', en:'Tomorrow', am:'ነገ'},
+            {v:'week', en:'This week', am:'በዚህ ሳምንት'},
+            {v:'next', en:'Next week', am:'በሚቀጥለው ሳምንት'},
+            {v:'later', en:'Later', am:'ከዚያ በኋላ'}]}
+        ]},
     ]},
     { en:'7 · WhatsApp compliance', am:'7 · የዋትስአፕ ተገዢነት', fields:[
       {id:'wa_groups', en:'How many customer groups are active?', am:'ስንት የደንበኛ ግሩፖች ንቁ ናቸው?', t:'num'},

@@ -761,8 +761,8 @@ body[data-page="chat"] .wrap{padding-bottom:110px}
 /* ================================================================
    8  THE CHAIRMAN'S PAGE
    ================================================================ */
-.chtiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0 6px}
-@media (max-width:400px){.chtiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.chtiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0 6px}
+@media (max-width:560px){.chtiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .chtile{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;
   display:flex;flex-direction:column;justify-content:space-between;gap:6px}
 .chtl{color:var(--dim);font-size:10px}
@@ -1345,3 +1345,11 @@ svg.sky .node text{font-size:11px}
 .chinsrow.bonus .chinsh .chrr{color:var(--teal-hi)}
 .chinsrow.consequence .chinsh .chrr{color:var(--gold)}
 @media (max-width:420px){ .chmonth .chf .chfv{width:68px;font-size:12px} }
+/* the bonuses: this month so far */
+.chstanding{margin:12px 0 0}
+.chsofar .chf.chsf{align-items:flex-start;padding:9px 16px}
+.chsf .chfk b{color:var(--ink);font-weight:600}
+.chsf .chsfw{color:var(--mut)}
+.chsf .chsfy{display:block;font-size:11.5px;color:var(--dim);margin-top:3px;line-height:1.45;overflow-wrap:anywhere}
+.chsofar.off .chfv,.chsofar.unk .chfv{color:var(--dim)}
+.chpaybox{margin:10px 0 0}

@@ -213,6 +213,14 @@ service cloud.firestore {
       allow create, update: if isLedger();
       allow delete: if false;
     }
+    /* This month's bonuses so far — rewritten each morning by the ledger
+       account, read on his page. Nothing in it is paid; the month's own
+       close is. */
+    match /standing/{month} {
+      allow get, list: if isChairman() || isLedger();
+      allow create, update: if isLedger();
+      allow delete: if false;
+    }
 
     /* ---------------------------------------------------------------- *
      *  A charge the Chairman cancels                                     *

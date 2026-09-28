@@ -306,7 +306,7 @@ function gate_(line, rule, day) {
 /* A rule a test got wrong must not take the day down with it: the rest of
    the lines are still made, and the failure is written beside them. */
 function runTests_(which, ctx, day, schedule, only) {
-  var R = loadRules_(), lines = [], errors = [], unjudged = [];
+  var R = loadRules_(), lines = [], errors = [], unjudged = [], missed = [];
   R.list.forEach(function (rule) {
     var t = EVAL_[rule.id];
     var spec = rule.test && (which === 'month' ? rule.test.at === 'month'
@@ -316,7 +316,7 @@ function runTests_(which, ctx, day, schedule, only) {
     var hits;
     try {
       hits = (t && t[which]) ? (t[which](ctx, rule) || [])
-                             : judge_(rule, which, ctx, schedule, unjudged);
+                             : judge_(rule, which, ctx, schedule, unjudged, missed);
     }
     catch (e) { errors.push(rule.id + ': ' + e.message); return; }
     var members = membersOf_(rule.who, schedule);
@@ -331,7 +331,7 @@ function runTests_(which, ctx, day, schedule, only) {
       lines.push(gate_(ruleLine_(rule, h, day, schedule), rule, day));
     });
   });
-  return { lines: lines, errors: errors, unjudged: unjudged };
+  return { lines: lines, errors: errors, unjudged: unjudged, missed: missed };
 }
 
 /* One day's rule lines: the tests on that day's reports, and what the
@@ -399,7 +399,17 @@ function closeMonth_(month, opts) {
   var end = addDays_(next, -1);
   var filings = filedBetween_(addDays_(start, -7), addDays_(next, 3));
   var ledgers = ledgersBetween_(start, next);
+  if (opts.asOf) {
+    filings = filings.filter(function (f) { return f.day <= opts.asOf; });
+    ledgers = ledgers.filter(function (l) { return l.day <= opts.asOf; });
+  }
   var ctx = monthCtx_(month, filings, ledgers, schedule);
+  /* judged part-way through, for "this month so far": only the days that
+     have happened count, so "every day filed" means every day until now */
+  if (opts.asOf) {
+    ctx.days = ctx.days.filter(function (d) { return d <= opts.asOf; });
+    ctx.workingDays = ctx.workingDays.filter(function (d) { return d <= opts.asOf; });
+  }
   /* a line the Chairman cancelled did not happen, for the rules that count */
   ctx.cancelled = {};
   tryQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start], ['day', 'LESS_THAN', next]], 'day')
@@ -412,10 +422,55 @@ function closeMonth_(month, opts) {
     lines: got.lines,
     errors: got.errors,
     unjudged: got.unjudged || [],
+    missed: got.missed || [],
     penalty: sumKind_(got.lines, 'penalty'),
     bonus: sumKind_(got.lines, 'bonus')
   };
-  if (opts.write !== false) fsPut_('months/' + month, doc);
+  if (opts.write !== false && !opts.asOf) fsPut_('months/' + month, doc);
+  return doc;
+}
+
+/* ------------------------------------------------------------------ *
+ *  This month so far — the bonuses                                    *
+ * ------------------------------------------------------------------ */
+
+/* Most bonuses are monthly, so without this the Chairman would see nothing
+   about them until the 2nd of the next month. Each morning, after the close,
+   the month's bonus rules are judged on the month so far and written to
+   /standing/{yyyy-mm}: on track (and what it would pay), not on track (and
+   the figures that say so), or cannot tell yet (a report it needs has not
+   come, like a monthly report due on the 1st). Nothing here is paid — the
+   month's own close on the 2nd is what counts. */
+function bonusStanding_(asOf) {
+  var month = asOf.slice(0, 7);
+  var R = loadRules_();
+  var schedule = loadSchedule_();
+  var names = {};
+  (schedule.people || []).forEach(function (p) { names[p.id] = p.en; });
+  var groupName = function (rule) {
+    var g = (rule.who || []).map(function (w) { return R.groups[w]; }).filter(Boolean)[0];
+    return g ? g.en : (rule.who || []).map(function (w) { return names[w] || w; }).join(', ');
+  };
+  var isBonus = function (id) { return R.byId[id] && R.byId[id].kind === 'bonus'; };
+  var m = closeMonth_(month, { write: false, asOf: asOf });
+  var entry = function (x) {
+    var rule = R.byId[x.rule];
+    return { rule: x.rule, person: x.person || '', name: x.person ? (names[x.person] || x.person) : groupName(rule),
+             what: rule.en, birr: rule.birr, why: x.why || '' };
+  };
+  var doc = {
+    month: month,
+    asOf: asOf,
+    at: new Date(),
+    onTrack: m.lines.filter(function (l) { return l.kind === 'bonus'; }).map(function (l) {
+      return { rule: l.rule, person: l.person, name: l.name, what: l.reportName,
+               birr: l.amount || l.wouldBe || 0, counted: l.amount > 0, why: l.why };
+    }),
+    notOnTrack: (m.missed || []).filter(function (x) { return isBonus(x.rule); }).map(entry),
+    cannotTell: (m.unjudged || []).filter(function (x) { return isBonus(x.rule); }).map(entry),
+    errors: m.errors
+  };
+  fsPut_('standing/' + month, doc);
   return doc;
 }
 
@@ -541,7 +596,7 @@ var EVAL_ = {};
 
 function specUsesP_(spec) { return JSON.stringify(spec).indexOf('{p}') !== -1; }
 
-function judge_(rule, which, ctx, schedule, unjudged) {
+function judge_(rule, which, ctx, schedule, unjudged, missed) {
   var spec = rule.test, members = membersOf_(rule.who, schedule);
   var perPerson = specUsesP_(spec);
   var subjects = perPerson ? members : [members.length === 1 ? members[0] : null];
@@ -565,7 +620,8 @@ function judge_(rule, which, ctx, schedule, unjudged) {
     if (spec.when) {
       var ok = cond_(J, spec.when);
       if (ok === null) { unjudged.push({ rule: rule.id, person: p, why: J.missing || 'a report it needs was not filed' }); return; }
-      if (!ok) return;
+      /* judged and not met — kept, with the figures, for "not on track" */
+      if (!ok) { if (missed) missed.push({ rule: rule.id, person: p, why: J.said.join('; ') }); return; }
     }
     var why = J.said.join('; ');
     var who = p || (members.length === 1 ? members[0] : null);
@@ -617,7 +673,10 @@ function judge_(rule, which, ctx, schedule, unjudged) {
         amount = !step ? 0 : spec.tiers ? step[1] : v * step[1] / 100;
       }
       amount = Math.round(amount);
-      if (amount <= 0) return;
+      if (amount <= 0) {
+        if (missed) missed.push({ rule: rule.id, person: p, why: J.said.join('; ') + ' — below the first band' });
+        return;
+      }
       base.amount = amount;
       base.why = J.said.join('; ') + (spec.rate ? ' × ' + fmt_(spec.rate.birr) : '') +
                  (spec.pct ? ' × ' + t.steps.filter(function (s) { return v >= s[0]; }).pop()[1] + '%' : '') +

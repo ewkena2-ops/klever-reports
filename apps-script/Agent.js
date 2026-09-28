@@ -610,25 +610,30 @@ function writeLedgerTab_(ledger, day) {
   if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
 }
 
-/* The rest of the rulebook's lines, a row each: the fines for what
-   happened, the bonuses earned, the warnings and suspensions. Same window,
-   not the record — the record is Firestore. */
-var RULES_TAB_ = 'Penalties and Bonuses';
+/* The rest of the rulebook's lines, a row each, in two tabs: "Penalties"
+   (fines, and the warnings and suspensions that go with them) and
+   "Bonuses". Same window, not the record — the record is Firestore. */
+var PENALTY_TAB_ = 'Penalties';
+var BONUS_TAB_ = 'Bonuses';
 function writeRulesTab_(lines, day) {
   if (!lines || !lines.length) return;
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName(RULES_TAB_);
-  if (!sh) {
-    sh = ss.insertSheet(RULES_TAB_);
-    sh.appendRow(['Date', 'Person', 'Kind', 'What', 'Birr', 'Would be (not counted yet)',
-                  'Why', 'Under which letter']);
-    sh.setFrozenRows(1);
-  }
-  var rows = lines.map(function (l) {
-    return [day, l.name, l.kind, l.reportName, l.kind === 'bonus' ? l.amount : -l.amount,
-            l.wouldBe || '', l.why, l.src];
+  [[PENALTY_TAB_, function (l) { return l.kind !== 'bonus'; }],
+   [BONUS_TAB_, function (l) { return l.kind === 'bonus'; }]].forEach(function (t) {
+    var mine = lines.filter(t[1]);
+    if (!mine.length) return;
+    var sh = ss.getSheetByName(t[0]);
+    if (!sh) {
+      sh = ss.insertSheet(t[0]);
+      sh.appendRow(['Date', 'Person', t[0] === BONUS_TAB_ ? 'Bonus' : 'Fine or warning', 'Birr',
+                    'Not counted yet (would be)', 'Why', 'Under which letter']);
+      sh.setFrozenRows(1);
+    }
+    var rows = mine.map(function (l) {
+      return [day, l.name, l.reportName, l.kind === 'consequence' ? '' : l.amount, l.wouldBe || '', l.why, l.src];
+    });
+    sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
   });
-  sh.getRange(sh.getLastRow() + 1, 1, rows.length, 8).setValues(rows);
 }
 
 /* ------------------------------------------------------------------ *

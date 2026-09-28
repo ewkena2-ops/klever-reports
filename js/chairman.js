@@ -288,7 +288,9 @@ import {
     var tFiled = tile(t('chFiled'), '—');
     var tMissing = tile(t('chMissing'), '—');
     var tOwed = tile(t('chOwedMonth'), '—');
+    var tBonus = tile(t('chBonusMonth'), '—');
     tiles.appendChild(tFiled.box); tiles.appendChild(tMissing.box); tiles.appendChild(tOwed.box);
+    tiles.appendChild(tBonus.box);
     root.appendChild(tiles);
 
     /* --- what the agents made of it --- */
@@ -348,11 +350,21 @@ import {
     var ins = el('div', 'chins');
     root.appendChild(ins);
 
-    /* --- what the letters charged, and his say over it --- */
+    /* --- what the letters charged, and his say over it: the fines in one
+       place, the bonuses in another, and what they come to for each
+       person's pay --- */
     root.appendChild(el('p', 'eyebrow', t('chCharges')));
     var charges = el('div', 'chcharges');
     charges.appendChild(el('p', 'codenote', t('chLoading')));
     root.appendChild(charges);
+    root.appendChild(el('p', 'eyebrow', t('chBonusesSec')));
+    var bonusBox = el('div', 'chcharges chbonus');
+    bonusBox.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(bonusBox);
+    var standing = el('div', 'chstanding');
+    root.appendChild(standing);
+    var payBox = el('div', 'chpaybox');
+    root.appendChild(payBox);
     var record = el('div', 'chrecord');
     root.appendChild(record);
 
@@ -370,7 +382,8 @@ import {
 
     watchAnalysis(analysis);
     watchInstructions(ins);
-    watchCharges(charges, tOwed);
+    watchCharges({ fines: charges, bonus: bonusBox, pay: payBox }, tOwed, tBonus);
+    watchStanding(standing);
     watchEvents(record);
     watchWeek(week);
     watchReports(raw, tFiled, tMissing);
@@ -1010,15 +1023,22 @@ import {
      each morning from the 3rd to the 6th with whatever he cancelled. */
   var PAY_FINAL_DAY = 5;
 
-  function watchCharges(into, tOwed) {
+  /* Three places from the same closed days: the fines (with the warnings
+     and suspensions that go with them), the bonuses, and what the month
+     comes to for each person's pay. */
+  function watchCharges(box, tOwed, tBonus) {
     var month = DAY.slice(0, 8) + '01';
     var early = Number(DAY.slice(8)) <= PAY_FINAL_DAY;
     var from = early ? addDays(month, -1).slice(0, 8) + '01' : month;
     var ledgers = [], months = [], waivers = {}, got = {}, wErr = null, mErr = null;
+    var isFine = function (l) { return kindOf(l) !== 'bonus'; };
+    var isBonus = function (l) { return kindOf(l) === 'bonus'; };
 
     function draw() {
       if (!got.l || !got.w || !got.m) return;
-      into.innerHTML = '';
+      box.fines.innerHTML = '';
+      box.bonus.innerHTML = '';
+      box.pay.innerHTML = '';
       /* a closed month carries its last day, so it sorts after that day */
       var docs = ledgers.concat(months.map(function (m) {
         return { day: m.day, ruleLines: m.lines || [], month: m.month, errors: m.errors || [] };
@@ -1026,13 +1046,15 @@ import {
         return a.day < b.day ? -1 : a.day > b.day ? 1 : (a.month ? 1 : -1);
       });
       if (!docs.length) {
-        into.appendChild(el('p', 'codenote', t('chNoLedger')));
-        if (wErr) into.appendChild(el('p', 'codeerr', errText(wErr)));
+        box.fines.appendChild(el('p', 'codenote', t('chNoLedger')));
+        box.bonus.appendChild(el('p', 'codenote', t('chNoLedger')));
+        if (wErr) box.fines.appendChild(el('p', 'codeerr', errText(wErr)));
         tOwed.set('0');
+        tBonus.set('0');
         return;
       }
 
-      var per = {}, fines = 0, bonuses = 0, prev = [], pf = 0, pb = 0, prevAny = false;
+      var per = {}, fines = 0, bonuses = 0, prev = [], pf = 0, pb = 0, prevF = false, prevB = false;
       docs.forEach(function (d) {
         var before = d.day < month;
         if (before) prev.push(d);
@@ -1040,49 +1062,53 @@ import {
           if (!worthShowing(l)) return;
           var k = kindOf(l), off = waivers[d.day + '|' + l.report];
           if (before) {
-            prevAny = true;
-            if (!off && k === 'bonus') pb += l.amount || 0;
-            if (!off && k === 'penalty') pf += l.amount || 0;
+            if (k === 'bonus') { prevB = true; if (!off) pb += l.amount || 0; }
+            else { prevF = true; if (!off && k === 'penalty') pf += l.amount || 0; }
             return;
           }
           /* only what moves pay makes a row — a held or unsigned line does not */
           if (off || !(l.amount > 0) || k === 'consequence') return;
           var p = per[l.person] || (per[l.person] = { name: lineWho(l), fines: 0, bonuses: 0 });
-          if (k === 'bonus') { p.bonuses += l.amount || 0; bonuses += l.amount || 0; }
-          if (k === 'penalty') { p.fines += l.amount || 0; fines += l.amount || 0; }
+          if (k === 'bonus') { p.bonuses += l.amount; bonuses += l.amount; }
+          else { p.fines += l.amount; fines += l.amount; }
         });
       });
       tOwed.set(short(fines), exact(fines));
+      tBonus.set(short(bonuses), exact(bonuses));
 
       var last = ledgers[ledgers.length - 1];
-      if (last) {
+      function lastDay(into, pick, empty) {
+        if (!last) return;
         into.appendChild(el('p', 'skysub', t('chChargesDay') + ' · ' + prettyDay(last.day)));
-        var lines = linesOf(last).filter(worthShowing);
-        if (!lines.length) into.appendChild(el('p', 'codenote', t('chNoCharges')));
+        var lines = linesOf(last).filter(worthShowing).filter(pick);
+        if (!lines.length) into.appendChild(el('p', 'codenote', empty));
         grouped(lines).forEach(function (l) {
           into.appendChild(l.group ? groupRow(last.day, l.group, waivers)
                                    : chargeRow(last.day, l, waivers[last.day + '|' + l.report]));
         });
-        if (last.ruleErrors && last.ruleErrors.length) {
-          into.appendChild(el('p', 'codeerr', t('chRuleErrors') + ' ' + last.ruleErrors.join('; ')));
-        }
       }
+      lastDay(box.fines, isFine, t('chNoCharges'));
+      if (last && last.ruleErrors && last.ruleErrors.length) {
+        box.fines.appendChild(el('p', 'codeerr', t('chRuleErrors') + ' ' + last.ruleErrors.join('; ')));
+      }
+      if (prevF) box.fines.appendChild(lastMonth(prev, isFine, pf, 'penalty', last && last.day));
+      lastDay(box.bonus, isBonus, t('chNoBonusDay'));
+      if (prevB) box.bonus.appendChild(lastMonth(prev, isBonus, pb, 'bonus', last && last.day));
 
-      if (prevAny) into.appendChild(lastMonth(prev, pf, pb, last && last.day));
-
+      /* each person's month: fines, bonuses, and the net change to pay */
       var ids = Object.keys(per).sort(function (a, b) {
         return (per[a].bonuses - per[a].fines) - (per[b].bonuses - per[b].fines);
       });
       if (ids.length) {
-        var box = el('details', 'chmonth');
-        box.appendChild(el('summary', null, t('chByPerson') + ' · ' + signed(fines, 'penalty') +
+        var det = el('details', 'chmonth chpay');
+        det.appendChild(el('summary', null, t('chByPerson') + ' · ' + signed(fines, 'penalty') +
           ' · ' + signed(bonuses, 'bonus') + ' ' + t('unBirr')));
         var head = el('div', 'chf chfhead');
         head.appendChild(el('span', 'chfk', ''));
         head.appendChild(el('span', 'chfv', t('chFines')));
         head.appendChild(el('span', 'chfv', t('chBonuses')));
         head.appendChild(el('span', 'chfv', t('chNet')));
-        box.appendChild(head);
+        det.appendChild(head);
         ids.forEach(function (k) {
           var p = per[k], net = p.bonuses - p.fines;
           var r = el('div', 'chf');
@@ -1090,33 +1116,34 @@ import {
           r.appendChild(el('span', 'chfv fine', p.fines ? signed(p.fines, 'penalty') : '—'));
           r.appendChild(el('span', 'chfv bonus', p.bonuses ? signed(p.bonuses, 'bonus') : '—'));
           r.appendChild(el('span', 'chfv net', net ? signed(Math.abs(net), net > 0 ? 'bonus' : 'penalty') : '0'));
-          box.appendChild(r);
+          det.appendChild(r);
         });
-        into.appendChild(box);
+        box.pay.appendChild(det);
       }
       /* without the cancellations the figures above would be wrong */
-      if (wErr) into.appendChild(el('p', 'codeerr', errText(wErr)));
-      if (mErr) into.appendChild(el('p', 'codeerr', errText(mErr)));
+      if (wErr) box.fines.appendChild(el('p', 'codeerr', errText(wErr)));
+      if (mErr) box.bonus.appendChild(el('p', 'codeerr', errText(mErr)));
     }
 
-    /* Last month, every line of it, each still cancellable until its pay is
-       final — newest first. The day already shown above is not repeated. */
-    function lastMonth(prev, fines, bonuses, shown) {
-      var box = el('details', 'chmonth chprev');
-      box.appendChild(el('summary', null, t('chPrevMonth') + ' · ' + monthName(prev[0].day) +
-        ' · ' + signed(fines, 'penalty') + ' · ' + signed(bonuses, 'bonus') + ' ' + t('unBirr')));
-      box.appendChild(el('p', 'codenote', t('chPrevMonthNote')));
+    /* Last month's fines, or its bonuses — every line, each still
+       cancellable until its pay is final, newest first. The day already
+       shown above is not repeated. */
+    function lastMonth(prev, pick, sum, kind, shown) {
+      var det = el('details', 'chmonth chprev');
+      det.appendChild(el('summary', null, t('chPrevMonth') + ' · ' + monthName(prev[0].day) +
+        ' · ' + signed(sum, kind) + ' ' + t('unBirr')));
+      det.appendChild(el('p', 'codenote', t('chPrevMonthNote')));
       prev.slice().reverse().forEach(function (d) {
         if (d.day === shown && !d.month) return;
-        var lines = linesOf(d).filter(worthShowing);
+        var lines = linesOf(d).filter(worthShowing).filter(pick);
         if (!lines.length) return;
-        box.appendChild(el('div', 'chsec', d.month ? t('chMonthClosed') + ' · ' + monthName(d.day) : prettyDay(d.day)));
+        det.appendChild(el('div', 'chsec', d.month ? t('chMonthClosed') + ' · ' + monthName(d.day) : prettyDay(d.day)));
         grouped(lines).forEach(function (l) {
-          box.appendChild(l.group ? groupRow(d.day, l.group, waivers)
+          det.appendChild(l.group ? groupRow(d.day, l.group, waivers)
                                   : chargeRow(d.day, l, waivers[d.day + '|' + l.report]));
         });
       });
-      return box;
+      return det;
     }
 
     onSnapshot(query(collection(db, 'ledger'), where('day', '>=', from), orderBy('day', 'asc')),
@@ -1125,7 +1152,7 @@ import {
         qs.forEach(function (d) { ledgers.push(d.data()); });
         got.l = true;
         draw();
-      }, failInto(into));
+      }, failInto(box.fines));
     onSnapshot(query(collection(db, 'months'), where('month', '>=', from.slice(0, 7))),
       function (qs) {
         months = [];
@@ -1142,6 +1169,46 @@ import {
         wErr = null;
         draw();
       }, function (e) { got.w = true; wErr = e; draw(); });
+  }
+
+  /* This month's bonuses so far — judged each morning on the month until
+     then. Nothing here is paid; the month's close on the 2nd is. */
+  function watchStanding(into) {
+    function part(title, rows, cls, open, value) {
+      if (!rows.length) return null;
+      var det = el('details', 'chmonth chsofar ' + cls);
+      if (open) det.open = true;
+      det.appendChild(el('summary', null, title + ' (' + rows.length + ')'));
+      rows.forEach(function (x) {
+        var r = el('div', 'chf chsf');
+        var k = el('span', 'chfk');
+        k.appendChild(el('b', null, personById(x.person) ? L(personById(x.person)) : x.name));
+        var rule = ruleById(x.rule);
+        k.appendChild(el('span', 'chsfw', ' · ' + (rule ? L(rule) : x.what)));
+        if (x.why) k.appendChild(el('small', 'chsfy', x.why));
+        r.appendChild(k);
+        r.appendChild(el('span', 'chfv bonus', value(x)));
+        det.appendChild(r);
+      });
+      return det;
+    }
+    onSnapshot(query(collection(db, 'standing'), orderBy('asOf', 'desc'), limit(1)), function (qs) {
+      into.innerHTML = '';
+      var s = null;
+      qs.forEach(function (d) { s = d.data(); });
+      into.appendChild(el('p', 'skysub', t('chMonthSoFar') + (s ? ' · ' + monthName(s.asOf) + ' · ' + t('chAsOf') + ' ' + prettyDay(s.asOf) : '')));
+      if (!s) { into.appendChild(el('p', 'codenote', t('chNoStanding'))); return; }
+      into.appendChild(el('p', 'codenote', t('chMonthSoFarNote')));
+      /* the total is what would be paid: a held or unsigned bonus is listed,
+         in brackets, and not added in */
+      var on = s.onTrack || [], sum = on.reduce(function (a, x) { return a + (x.counted ? (x.birr || 0) : 0); }, 0);
+      [part(t('chOnTrack') + ' · ' + signed(sum, 'bonus') + ' ' + t('unBirr'), on, 'on', true, function (x) {
+         return x.counted ? signed(x.birr, 'bonus') : '(' + signed(x.birr, 'bonus') + ')';
+       }),
+       part(t('chNotOnTrack'), s.notOnTrack || [], 'off', false, function (x) { return x.birr ? signed(x.birr, 'bonus') : ''; }),
+       part(t('chCantTell'), s.cannotTell || [], 'unk', false, function (x) { return x.birr ? signed(x.birr, 'bonus') : ''; })
+      ].forEach(function (d) { if (d) into.appendChild(d); });
+    }, failInto(into));
   }
 
   /* A team rule makes one line for every production worker — twenty-two

@@ -824,6 +824,9 @@ function dailyRun() {
     try { refreshPay_(prevMonthStart_(todayAddis_()).slice(0, 7)); }
     catch (e) { Logger.log('pay refresh: %s', e.message); }
   }
+  /* the month's bonuses so far, for the Bonuses section of his page */
+  try { bonusStanding_(day); }
+  catch (e) { Logger.log('bonus standing: %s', e.message); }
   if (!c.due.length) return;
   runOn_(c, false);
 }
@@ -1091,12 +1094,16 @@ function mailAnalysis_(results, d) {
             fmt_(owed) + '</td></tr></table>';
   }
 
-  /* the rest of the rulebook — fines for what happened, bonuses, warnings */
-  var rl = (d.ruleLines || []).filter(function (l) {
+  /* the rest of the rulebook, in two places: fines (with the warnings and
+     suspensions that go with them), then bonuses */
+  var shown = (d.ruleLines || []).filter(function (l) {
     return l.amount > 0 || l.wouldBe > 0 || l.kind === 'consequence';
   });
-  if (rl.length) {
-    html += '<h3 style="font-size:13.5px;margin:26px 0 6px;color:#0f5c54">Fines and bonuses under the letters</h3>' +
+  [['Fines under the letters', function (l) { return l.kind !== 'bonus'; }],
+   ['Bonuses under the letters', function (l) { return l.kind === 'bonus'; }]].forEach(function (part) {
+    var rl = shown.filter(part[1]);
+    if (!rl.length) return;
+    html += '<h3 style="font-size:13.5px;margin:26px 0 6px;color:#0f5c54">' + part[0] + '</h3>' +
             '<table width="100%" cellpadding="0" cellspacing="0" style="font-size:12.5px">';
     rl.forEach(function (l) {
       var colour = l.kind === 'bonus' ? '#4a6b1f' : l.kind === 'penalty' ? '#8f3020' : '#8a6d1f';
@@ -1109,7 +1116,10 @@ function mailAnalysis_(results, d) {
               '<td align="right" style="padding:5px 8px;border-bottom:1px solid #e4e7e3;font-family:monospace;' +
               'white-space:nowrap;vertical-align:top;color:' + colour + '">' + fig + '</td></tr>';
     });
-    html += '</table><p style="font-size:11.5px;color:#66716d;margin:6px 0 0">A figure in brackets is ' +
+    html += '</table>';
+  });
+  if (shown.some(function (l) { return !l.amount && l.wouldBe > 0; })) {
+    html += '<p style="font-size:11.5px;color:#66716d;margin:6px 0 0">A figure in brackets is ' +
             'tracked but not counted: held for your decision, or under paper not yet signed.</p>';
   }
   if (d.ruleErrors && d.ruleErrors.length) {

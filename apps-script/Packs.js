@@ -46,9 +46,16 @@ function weeklyPack(endDay) {
 function monthlyPack(month) {
   var start = month ? month + '-01' : prevMonthStart_(todayAddis_());
   var end = monthEnd_(start);
+  /* the rules that are judged on the whole month, closed first so the pay
+     table below includes them */
+  var monthDoc;
+  try { monthDoc = closeMonth_(start.slice(0, 7)); }
+  catch (e) { monthDoc = { lines: [], errors: ['month: ' + e.message] }; }
   var P = packData_(start, end);
+  P.monthDoc = monthDoc;
   var facts = monthFacts_(P);
   writeDeductionsTab_(start.slice(0, 7), facts.deductions);
+  writePayTab_(start.slice(0, 7), facts.pay);
   var text = askPack_(MONTH_ASK_, facts, P);
   savePack_('month-' + start.slice(0, 7), 'month', P, facts, text);
   mailPack_('month', P, facts, text);
@@ -60,7 +67,9 @@ function previewWeekly(endDay) {
 }
 function previewMonthly(month) {
   var start = month ? month + '-01' : prevMonthStart_(todayAddis_());
-  Logger.log(JSON.stringify(monthFacts_(packData_(start, monthEnd_(start))), null, 1));
+  var P = packData_(start, monthEnd_(start));
+  P.monthDoc = closeMonth_(start.slice(0, 7), { write: false });
+  Logger.log(JSON.stringify(monthFacts_(P), null, 1));
 }
 
 /* ------------------------------------------------------------------ *
@@ -363,6 +372,8 @@ function monthFacts_(P) {
         return { name: p.name, late: p.late, missing: p.missing, charged: p.birr_charged,
                  cancelled: p.birr_cancelled, owed: p.birr_owed, cancellations: p.cancelled };
       }),
+    /* everything else the letters add and take this month, and the net */
+    pay: payOf_(P.ledgers, P.monthDoc || null, P.waivers, P.names),
     operations: operations_(P),
     instructions: instructionsIn_(P),
     monthly_reports: reportsOfCadence_(P, 'monthly'),
@@ -452,6 +463,46 @@ function writeDeductionsTab_(month, deductions) {
   sh.setFrozenRows(1);
 }
 
+/* The Pay tab again, from what is stored — the closed days, the closed
+   month and the cancellations — with no model and no mail. Run each morning
+   from the 3rd to the 6th so a cancellation made before the end of the 5th
+   is in the figure payroll uses. */
+function refreshPay_(month) {
+  var start = month + '-01';
+  var end = monthEnd_(start);
+  var next = addDays_(end, 1);
+  var names = {};
+  (loadSchedule_().people || []).forEach(function (p) { names[p.id] = p.en; });
+  var monthDoc = null;
+  try { monthDoc = fsQuery_('months', [['month', 'EQUAL', month]], null)[0] || null; }
+  catch (e) { monthDoc = null; }
+  var pay = payOf_(ledgersBetween_(start, next), monthDoc,
+                   tryQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start],
+                                         ['day', 'LESS_THAN', next]], 'day'), names);
+  writePayTab_(month, pay);
+  return pay;
+}
+
+/* The one tab payroll works from: every fine and bonus of the month, what
+   was cancelled, and the net change to each person's pay. */
+function writePayTab_(month, pay) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var name = 'Pay ' + month;
+  var old = ss.getSheetByName(name);
+  if (old) ss.deleteSheet(old);
+  var sh = ss.insertSheet(name);
+  var rows = [['Person', 'Late reports', 'Missing reports', 'Report fines (Birr)', 'Other fines (Birr)',
+               'Bonuses (Birr)', 'Fines cancelled (Birr)', 'Bonuses cancelled (Birr)',
+               'Net change to pay (Birr)', 'Warnings and suspensions', 'Cancelled because']];
+  (pay || []).forEach(function (p) {
+    rows.push([p.name, p.late, p.missing, p.reportFines, p.otherFines, p.bonuses,
+               p.finesCancelled, p.bonusesCancelled, p.net, p.notes.join('; '),
+               p.cancelled.map(function (c) { return c.day + ' ' + c.what + ': ' + c.reason; }).join('; ')]);
+  });
+  sh.getRange(1, 1, rows.length, 11).setValues(rows);
+  sh.setFrozenRows(1);
+}
+
 function mailPack_(kind, P, facts, text) {
   var rep = facts.reporting, ops = facts.operations, ins = facts.instructions;
   var title = kind === 'week' ? 'Klever — the week' : 'Klever — ' + facts.month;
@@ -523,6 +574,35 @@ function mailPack_(kind, P, facts, text) {
     if (kind === 'month') {
       html += '<p style="font-size:12px;color:#66716d;margin:8px 0 0">The same table is in the Sheet, ' +
               'tab “Deductions ' + esc_(P.start.slice(0, 7)) + '”.</p>';
+    }
+  }
+
+  /* the month's pay: every fine and bonus in the letters, not only reports */
+  if (kind === 'month' && facts.pay && facts.pay.length) {
+    html += '<h3 style="font-size:13.5px;margin:24px 0 6px;color:#0f5c54">Pay for the month — fines and bonuses</h3>' +
+            '<table width="100%" cellpadding="0" cellspacing="0" style="font-size:12.5px">' +
+            '<tr style="color:#66716d;font-size:10.5px;letter-spacing:.08em;text-align:left">' +
+            '<th style="padding:0 8px 5px">PERSON</th><th style="padding:0 8px 5px;text-align:right">FINES</th>' +
+            '<th style="padding:0 8px 5px;text-align:right">BONUSES</th>' +
+            '<th style="padding:0 8px 5px;text-align:right">NET</th></tr>';
+    facts.pay.forEach(function (p) {
+      var fines = p.reportFines + p.otherFines - p.finesCancelled;
+      var bon = p.bonuses - p.bonusesCancelled;
+      html += '<tr><td style="' + cell + '">' + esc_(p.name) +
+              (p.notes.length ? '<div style="color:#8f3020;font-size:11.5px">' + esc_(p.notes.join('; ')) + '</div>' : '') +
+              '</td><td align="right" style="' + cell + ';font-family:monospace;color:#8f3020">' +
+              (fines ? '−' + fmt_(fines) : '—') + '</td><td align="right" style="' + cell +
+              ';font-family:monospace;color:#4a6b1f">' + (bon ? '+' + fmt_(bon) : '—') +
+              '</td><td align="right" style="' + cell + ';font-family:monospace;font-weight:bold">' +
+              (p.net > 0 ? '+' : p.net < 0 ? '−' : '') + fmt_(Math.abs(p.net)) + '</td></tr>';
+    });
+    html += '</table><p style="font-size:12px;color:#66716d;margin:8px 0 0">For payroll: the Sheet, ' +
+            'tab “Pay ' + esc_(P.start.slice(0, 7)) + '”, with every cancellation and its reason. ' +
+            'Anything you cancel on your page before the end of the 5th is taken off; the tab is ' +
+            'final on the morning of the 6th.</p>';
+    if (P.monthDoc && P.monthDoc.errors && P.monthDoc.errors.length) {
+      html += '<p style="font-size:12px;color:#8f3020">Rules that could not be judged this month: ' +
+              esc_(P.monthDoc.errors.join('; ')) + '</p>';
     }
   }
 

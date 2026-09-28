@@ -353,6 +353,8 @@ import {
     var charges = el('div', 'chcharges');
     charges.appendChild(el('p', 'codenote', t('chLoading')));
     root.appendChild(charges);
+    var record = el('div', 'chrecord');
+    root.appendChild(record);
 
     /* --- the week --- */
     root.appendChild(el('p', 'eyebrow', t('chWeek')));
@@ -369,6 +371,7 @@ import {
     watchAnalysis(analysis);
     watchInstructions(ins);
     watchCharges(charges, tOwed);
+    watchEvents(record);
     watchWeek(week);
     watchReports(raw, tFiled, tMissing);
   }
@@ -974,87 +977,143 @@ import {
   function lineWho(l) { var p = personById(l.person); return p ? L(p) : (l.name || l.person); }
   function lineReport(l) { var r = reportById(l.report); return r ? L(r) : (l.reportName || l.report); }
 
+  /* Report lines carry no kind — they are all fines. A rule line says
+     whether it is a fine, a bonus, or a note that is not money (a warning,
+     a suspension). */
+  function kindOf(l) { return l.kind || 'penalty'; }
+  var KIND_WORD = { penalty: 'chFine', bonus: 'chBonus', consequence: 'chNoted' };
+  function ruleById(id) {
+    if (typeof RULES === 'undefined') return null;
+    for (var i = 0; i < RULES.length; i++) if (RULES[i].id === id) return RULES[i];
+    return null;
+  }
+  function lineWhat(l) {
+    if (!l.rule) return lineReport(l);
+    var r = ruleById(l.rule);
+    return r ? L(r) : (l.reportName || l.rule);
+  }
+  /* every line of one closed day, reports first; a closed month has only
+     rule lines */
+  function linesOf(d) { return (d.lines || []).concat(d.ruleLines || []); }
+  /* worth showing: anything that costs or pays, a note, or a line tracked
+     at nothing only because its paper is not signed yet */
+  function worthShowing(l) {
+    return l.amount > 0 || kindOf(l) === 'consequence' || l.wouldBe > 0;
+  }
+  function signed(n, kind) {
+    if (kind === 'consequence') return '';
+    return (kind === 'bonus' ? '+' : '−') + birr(n);
+  }
+
+  /* Last month's pay is final at the end of the 5th: until then every
+     line of it can still be cancelled, and the Pay tab is written again
+     each morning from the 3rd to the 6th with whatever he cancelled. */
+  var PAY_FINAL_DAY = 5;
+
   function watchCharges(into, tOwed) {
     var month = DAY.slice(0, 8) + '01';
-    /* Last month comes off pay when the monthly pack runs, at 8:00 on the
-       2nd, and its last day is only closed on the morning of the 1st.
-       Reading from this month's 1st alone hid that day on the 1st — the one
-       day it could still be cancelled. So on the 1st and the 2nd the window
-       opens a month earlier, and last month is listed on its own, apart
-       from this month's total, until the pack has taken it. */
-    var early = DAY.slice(8) === '01' || DAY.slice(8) === '02';
+    var early = Number(DAY.slice(8)) <= PAY_FINAL_DAY;
     var from = early ? addDays(month, -1).slice(0, 8) + '01' : month;
-    var ledgers = [], waivers = {}, gotL = false, gotW = false, wErr = null;
+    var ledgers = [], months = [], waivers = {}, got = {}, wErr = null, mErr = null;
 
     function draw() {
-      if (!gotL || !gotW) return;
+      if (!got.l || !got.w || !got.m) return;
       into.innerHTML = '';
-      if (!ledgers.length) {
+      /* a closed month carries its last day, so it sorts after that day */
+      var docs = ledgers.concat(months.map(function (m) {
+        return { day: m.day, ruleLines: m.lines || [], month: m.month, errors: m.errors || [] };
+      })).sort(function (a, b) {
+        return a.day < b.day ? -1 : a.day > b.day ? 1 : (a.month ? 1 : -1);
+      });
+      if (!docs.length) {
         into.appendChild(el('p', 'codenote', t('chNoLedger')));
         if (wErr) into.appendChild(el('p', 'codeerr', errText(wErr)));
         tOwed.set('0');
         return;
       }
 
-      var per = {}, total = 0, prev = [], prevTotal = 0, prevAny = false;
-      ledgers.forEach(function (day) {
-        var before = day.day < month;
-        if (before) prev.push(day);
-        (day.lines || []).forEach(function (l) {
-          if (!l.amount) return;
-          var off = waivers[day.day + '|' + l.report];
+      var per = {}, fines = 0, bonuses = 0, prev = [], pf = 0, pb = 0, prevAny = false;
+      docs.forEach(function (d) {
+        var before = d.day < month;
+        if (before) prev.push(d);
+        linesOf(d).forEach(function (l) {
+          if (!worthShowing(l)) return;
+          var k = kindOf(l), off = waivers[d.day + '|' + l.report];
           if (before) {
             prevAny = true;
-            if (!off) prevTotal += l.amount;
+            if (!off && k === 'bonus') pb += l.amount || 0;
+            if (!off && k === 'penalty') pf += l.amount || 0;
             return;
           }
-          var p = per[l.person] || (per[l.person] = { name: lineWho(l), owed: 0 });
-          if (!off) { p.owed += l.amount; total += l.amount; }
+          /* only what moves pay makes a row — a held or unsigned line does not */
+          if (off || !(l.amount > 0) || k === 'consequence') return;
+          var p = per[l.person] || (per[l.person] = { name: lineWho(l), fines: 0, bonuses: 0 });
+          if (k === 'bonus') { p.bonuses += l.amount || 0; bonuses += l.amount || 0; }
+          if (k === 'penalty') { p.fines += l.amount || 0; fines += l.amount || 0; }
         });
       });
-      tOwed.set(short(total), exact(total));
+      tOwed.set(short(fines), exact(fines));
 
       var last = ledgers[ledgers.length - 1];
-      into.appendChild(el('p', 'skysub', t('chChargesDay') + ' · ' + prettyDay(last.day)));
-      var lines = (last.lines || []).filter(function (l) { return l.amount > 0; });
-      if (!lines.length) into.appendChild(el('p', 'codenote', t('chNoCharges')));
-      lines.forEach(function (l) {
-        into.appendChild(chargeRow(last.day, l, waivers[last.day + '|' + l.report]));
+      if (last) {
+        into.appendChild(el('p', 'skysub', t('chChargesDay') + ' · ' + prettyDay(last.day)));
+        var lines = linesOf(last).filter(worthShowing);
+        if (!lines.length) into.appendChild(el('p', 'codenote', t('chNoCharges')));
+        grouped(lines).forEach(function (l) {
+          into.appendChild(l.group ? groupRow(last.day, l.group, waivers)
+                                   : chargeRow(last.day, l, waivers[last.day + '|' + l.report]));
+        });
+        if (last.ruleErrors && last.ruleErrors.length) {
+          into.appendChild(el('p', 'codeerr', t('chRuleErrors') + ' ' + last.ruleErrors.join('; ')));
+        }
+      }
+
+      if (prevAny) into.appendChild(lastMonth(prev, pf, pb, last && last.day));
+
+      var ids = Object.keys(per).sort(function (a, b) {
+        return (per[a].bonuses - per[a].fines) - (per[b].bonuses - per[b].fines);
       });
-
-      if (prevAny) into.appendChild(lastMonth(prev, prevTotal, last.day));
-
-      var ids = Object.keys(per).sort(function (a, b) { return per[b].owed - per[a].owed; });
       if (ids.length) {
         var box = el('details', 'chmonth');
-        box.appendChild(el('summary', null, t('chByPerson') + ' · ' + birr(total) + ' ' + t('unBirr')));
+        box.appendChild(el('summary', null, t('chByPerson') + ' · ' + signed(fines, 'penalty') +
+          ' · ' + signed(bonuses, 'bonus') + ' ' + t('unBirr')));
+        var head = el('div', 'chf chfhead');
+        head.appendChild(el('span', 'chfk', ''));
+        head.appendChild(el('span', 'chfv', t('chFines')));
+        head.appendChild(el('span', 'chfv', t('chBonuses')));
+        head.appendChild(el('span', 'chfv', t('chNet')));
+        box.appendChild(head);
         ids.forEach(function (k) {
+          var p = per[k], net = p.bonuses - p.fines;
           var r = el('div', 'chf');
-          r.appendChild(el('span', 'chfk', per[k].name));
-          r.appendChild(el('span', 'chfv', birr(per[k].owed)));
+          r.appendChild(el('span', 'chfk', p.name));
+          r.appendChild(el('span', 'chfv fine', p.fines ? signed(p.fines, 'penalty') : '—'));
+          r.appendChild(el('span', 'chfv bonus', p.bonuses ? signed(p.bonuses, 'bonus') : '—'));
+          r.appendChild(el('span', 'chfv net', net ? signed(Math.abs(net), net > 0 ? 'bonus' : 'penalty') : '0'));
           box.appendChild(r);
         });
         into.appendChild(box);
       }
-      /* without the cancellations the figures above would be too high */
+      /* without the cancellations the figures above would be wrong */
       if (wErr) into.appendChild(el('p', 'codeerr', errText(wErr)));
+      if (mErr) into.appendChild(el('p', 'codeerr', errText(mErr)));
     }
 
-    /* Last month's charges, every day of it, each still cancellable until
-       the pack deducts them — newest day first. The day already shown above
-       as the last closed day is not repeated. */
-    function lastMonth(prev, sum, shown) {
+    /* Last month, every line of it, each still cancellable until its pay is
+       final — newest first. The day already shown above is not repeated. */
+    function lastMonth(prev, fines, bonuses, shown) {
       var box = el('details', 'chmonth chprev');
       box.appendChild(el('summary', null, t('chPrevMonth') + ' · ' + monthName(prev[0].day) +
-        ' · ' + birr(sum) + ' ' + t('unBirr')));
+        ' · ' + signed(fines, 'penalty') + ' · ' + signed(bonuses, 'bonus') + ' ' + t('unBirr')));
       box.appendChild(el('p', 'codenote', t('chPrevMonthNote')));
-      prev.slice().reverse().forEach(function (day) {
-        if (day.day === shown) return;
-        var lines = (day.lines || []).filter(function (l) { return l.amount > 0; });
+      prev.slice().reverse().forEach(function (d) {
+        if (d.day === shown && !d.month) return;
+        var lines = linesOf(d).filter(worthShowing);
         if (!lines.length) return;
-        box.appendChild(el('div', 'chsec', prettyDay(day.day)));
-        lines.forEach(function (l) {
-          box.appendChild(chargeRow(day.day, l, waivers[day.day + '|' + l.report]));
+        box.appendChild(el('div', 'chsec', d.month ? t('chMonthClosed') + ' · ' + monthName(d.day) : prettyDay(d.day)));
+        grouped(lines).forEach(function (l) {
+          box.appendChild(l.group ? groupRow(d.day, l.group, waivers)
+                                  : chargeRow(d.day, l, waivers[d.day + '|' + l.report]));
         });
       });
       return box;
@@ -1064,31 +1123,113 @@ import {
       function (qs) {
         ledgers = [];
         qs.forEach(function (d) { ledgers.push(d.data()); });
-        gotL = true;
+        got.l = true;
         draw();
       }, failInto(into));
+    onSnapshot(query(collection(db, 'months'), where('month', '>=', from.slice(0, 7))),
+      function (qs) {
+        months = [];
+        qs.forEach(function (d) { months.push(d.data()); });
+        got.m = true;
+        mErr = null;
+        draw();
+      }, function (e) { got.m = true; mErr = e; draw(); });
     onSnapshot(query(collection(db, 'waivers'), where('day', '>=', from)),
       function (qs) {
         waivers = {};
         qs.forEach(function (d) { var w = d.data(); waivers[w.day + '|' + w.report] = w; });
-        gotW = true;
+        got.w = true;
         wErr = null;
         draw();
-      }, function (e) { gotW = true; wErr = e; draw(); });
+      }, function (e) { got.w = true; wErr = e; draw(); });
+  }
+
+  /* A team rule makes one line for every production worker — twenty-two
+     rows saying the same thing. Four or more lines of the same rule and the
+     same amount on one day are shown as one row, and cancelled together. */
+  function grouped(lines) {
+    var out = [], by = {}, order = [];
+    lines.forEach(function (l) {
+      if (!l.rule) { out.push(l); return; }
+      var k = l.rule + '|' + (l.amount || 0) + '|' + (l.wouldBe || 0);
+      if (!by[k]) { by[k] = []; order.push(k); }
+      by[k].push(l);
+    });
+    order.forEach(function (k) {
+      var g = by[k];
+      if (g.length < 4) g.forEach(function (l) { out.push(l); });
+      else out.push({ group: g });
+    });
+    return out;
+  }
+
+  function groupRow(day, g, waivers) {
+    var l = g[0], k = kindOf(l);
+    var r = ruleById(l.rule);
+    var grp = r && typeof RULE_GROUPS !== 'undefined' &&
+              (r.who || []).map(function (w) { return RULE_GROUPS[w]; }).filter(Boolean)[0];
+    var open = g.filter(function (x) { return !waivers[day + '|' + x.report]; });
+    var pending = !l.amount && l.wouldBe > 0;
+    var row = el('div', 'chchg ' + k + (open.length ? '' : ' off') + (pending ? ' pending' : ''));
+    var head = el('div', 'chinsh');
+    head.appendChild(el('span', 'chrw', (grp ? L(grp) : t('chPeople')) + ' ×' + g.length));
+    head.appendChild(el('span', 'chrr', lineWhat(l) + ' · ' + t(KIND_WORD[k])));
+    var each = pending ? l.wouldBe : l.amount;
+    head.appendChild(el('span', 'chrt', (pending ? '(' : '') + signed(each, k) + ' ' + t('chEach') + (pending ? ')' : '')));
+    row.appendChild(head);
+    if (l.why) row.appendChild(el('div', 'chinsn', l.why));
+    if (!open.length) {
+      var w = waivers[day + '|' + l.report];
+      row.appendChild(el('div', 'chinsn', t('chCancelled') + (w ? ': ' + w.reason : '')));
+      return row;
+    }
+    if (pending) return row;
+    var btn = el('button', 'chmini', t('chCancel') + ' (' + open.length + ')');
+    btn.type = 'button';
+    var box = el('div', 'chcancel');
+    box.hidden = true;
+    var why = el('input');
+    why.type = 'text';
+    why.maxLength = 500;
+    why.placeholder = t('chCancelWhy');
+    var go = el('button', 'chmini bad', t('chCancelGo'));
+    go.type = 'button';
+    box.appendChild(why);
+    box.appendChild(go);
+    btn.onclick = function () { btn.hidden = true; box.hidden = false; why.focus(); };
+    go.onclick = function () {
+      var reason = why.value.trim();
+      if (reason.length < 3) { why.focus(); return; }
+      go.disabled = true;
+      Promise.all(open.map(function (x) {
+        return addDoc(collection(db, 'waivers'), {
+          day: day, report: x.report, person: x.person, reason: reason,
+          amount: x.amount || 0, by: 'chairman', at: serverTimestamp()
+        });
+      }))['catch'](function () { go.disabled = false; toast(t('chSaveFailed')); });
+    };
+    row.appendChild(btn);
+    row.appendChild(box);
+    return row;
   }
 
   function chargeRow(day, l, waiver) {
-    var row = el('div', 'chchg' + (waiver ? ' off' : ''));
+    var k = kindOf(l);
+    var pending = !l.amount && l.wouldBe > 0;
+    var row = el('div', 'chchg ' + k + (waiver ? ' off' : '') + (pending ? ' pending' : ''));
     var head = el('div', 'chinsh');
     head.appendChild(el('span', 'chrw', lineWho(l)));
-    head.appendChild(el('span', 'chrr', lineReport(l) + ' · ' + statusText(l.status)));
-    head.appendChild(el('span', 'chrt', birr(l.amount)));
+    head.appendChild(el('span', 'chrr', lineWhat(l) + ' · ' +
+      (l.rule ? t(KIND_WORD[k]) : statusText(l.status)) + (l.count > 1 ? ' ×' + l.count : '')));
+    head.appendChild(el('span', 'chrt', pending ? '(' + signed(l.wouldBe, k) + ')' : signed(l.amount, k)));
     row.appendChild(head);
+    if (l.rule && l.why) row.appendChild(el('div', 'chinsn', l.why));
 
     if (waiver) {
       row.appendChild(el('div', 'chinsn', t('chCancelled') + ': ' + waiver.reason));
       return row;
     }
+    if (pending) return row;
     var open = el('button', 'chmini', t('chCancel'));
     open.type = 'button';
     var box = el('div', 'chcancel');
@@ -1108,12 +1249,181 @@ import {
       go.disabled = true;
       addDoc(collection(db, 'waivers'), {
         day: day, report: l.report, person: l.person, reason: reason,
-        amount: l.amount, by: 'chairman', at: serverTimestamp()
+        amount: l.amount || 0, by: 'chairman', at: serverTimestamp()
       })['catch'](function () { go.disabled = false; toast(t('chSaveFailed')); });
     };
     row.appendChild(open);
     row.appendChild(box);
     return row;
+  }
+
+  /* ---------------- recording what happened ---------------- */
+
+  /* Most rules are decided from the reports. The rest he records: who,
+     which rule, which day. He never types an amount — the ledger takes it
+     from the rulebook at the next morning's close, which is also when the
+     line appears above. The letter's own words are shown under the rule so
+     he records against what the paper says, not what he remembers. */
+  function rulePeople(r) {
+    var out = [];
+    (r.who || []).forEach(function (w) {
+      var g = (typeof RULE_GROUPS !== 'undefined') && RULE_GROUPS[w];
+      if (g && g.role) {
+        PEOPLE.forEach(function (p) { if (p.roleEn === g.role) out.push(p.id); });
+      } else out.push(w);
+    });
+    return out;
+  }
+  function rulesFor(key) {
+    if (typeof RULES === 'undefined') return [];
+    return RULES.filter(function (r) {
+      if (r.birr == null && r.kind !== 'consequence') return false;   /* a formula is worked out, not recorded */
+      return rulePeople(r).indexOf(key) !== -1;
+    });
+  }
+
+  function watchEvents(into) {
+    var box = el('details', 'chmonth chrec');
+    box.appendChild(el('summary', null, t('chRecord')));
+    var form = el('div', 'chinsform');
+
+    var who = el('select');
+    PEOPLE.forEach(function (p) {
+      var o = el('option', null, L(p) + ' — ' + (lang === 'am' ? p.roleAm : p.roleEn));
+      o.value = p.id;
+      who.appendChild(o);
+    });
+    [['assembler', t('chAnAssembler')], ['cleaner', t('chTheCleaner')]].forEach(function (x) {
+      var o = el('option', null, x[1]);
+      o.value = x[0];
+      who.appendChild(o);
+    });
+    var named = el('input');
+    named.type = 'text';
+    named.maxLength = 60;
+    named.placeholder = t('chAssemblerName');
+    named.hidden = true;
+
+    var rule = el('select');
+    var said = el('p', 'chrecsrc');
+    var count = el('input');
+    count.type = 'number';
+    count.min = '1';
+    count.max = '1000';
+    count.value = '1';
+    count.inputMode = 'numeric';
+    var day = el('input');
+    day.type = 'date';
+    day.value = DAY;
+    day.max = DAY;
+    var note = el('textarea');
+    note.rows = 2;
+    note.maxLength = 500;
+    note.placeholder = t('chRecNote');
+    var go = el('button', 'seed', t('chRecGo'));
+    go.type = 'button';
+
+    function fillRules() {
+      rule.innerHTML = '';
+      var list = rulesFor(who.value);
+      var mine = list.filter(function (r) { return r.how === 'recorded'; });
+      var auto = list.filter(function (r) { return r.how !== 'recorded'; });
+      function add(into_, r) {
+        var o = el('option', null, (r.kind === 'bonus' ? '+ ' : r.kind === 'penalty' ? '− ' : '• ') +
+          L(r) + (r.birr ? ' · ' + birr(r.birr) : ''));
+        o.value = r.id;
+        into_.appendChild(o);
+      }
+      mine.forEach(function (r) { add(rule, r); });
+      if (auto.length) {
+        var g = el('optgroup');
+        g.label = t('chRecAuto');
+        auto.forEach(function (r) { add(g, r); });
+        rule.appendChild(g);
+      }
+      go.disabled = !list.length;
+      explain();
+    }
+    function explain() {
+      var r = ruleById(rule.value);
+      said.textContent = r ? r.src : t('chRecNone');
+      var n = Math.max(1, Math.min(1000, parseInt(count.value, 10) || 1));
+      if (r && r.birr) said.textContent += '  →  ' + signed(r.birr * n, r.kind) + ' ' + t('unBirr');
+    }
+    who.onchange = function () { named.hidden = who.value !== 'assembler'; fillRules(); };
+    rule.onchange = explain;
+    count.oninput = explain;
+
+    function field(label, input) {
+      var r = el('label', 'chinsf');
+      r.appendChild(el('span', null, label));
+      r.appendChild(input);
+      return r;
+    }
+    form.appendChild(field(t('chRecWho'), who));
+    form.appendChild(named);
+    form.appendChild(field(t('chRecRule'), rule));
+    form.appendChild(said);
+    form.appendChild(field(t('chRecDay'), window.KLEVER && window.KLEVER.dressDate ? window.KLEVER.dressDate(day) : day));
+    form.appendChild(field(t('chRecCount'), count));
+    form.appendChild(note);
+    form.appendChild(go);
+    box.appendChild(form);
+    fillRules();
+
+    go.onclick = function () {
+      var r = ruleById(rule.value);
+      if (!r || !day.value) return;
+      var key = who.value, name;
+      if (key === 'assembler') {
+        name = named.value.trim();
+        if (name.length < 2) { named.focus(); return; }
+        key = 'assembler:' + name.toLowerCase().replace(/\s+/g, ' ');
+      } else if (key === 'cleaner') {
+        name = 'Cleaner';
+      } else {
+        name = (personById(key) || {}).en || key;
+      }
+      go.disabled = true;
+      addDoc(collection(db, 'events'), {
+        person: key.slice(0, 80), name: name.slice(0, 80), rule: r.id, day: day.value,
+        count: Math.max(1, Math.min(1000, parseInt(count.value, 10) || 1)),
+        note: note.value.trim().slice(0, 500), by: 'chairman', at: serverTimestamp()
+      }).then(function () {
+        note.value = '';
+        count.value = '1';
+        go.disabled = false;
+        explain();
+        toast(t('chRecDone'));
+      })['catch'](function () { go.disabled = false; toast(t('chSaveFailed')); });
+    };
+
+    /* what he recorded in the last fortnight, newest first */
+    var list = el('div', 'chinslist');
+    box.appendChild(list);
+    onSnapshot(query(collection(db, 'events'), where('at', '>=', dayStart(addDays(DAY, -14)))),
+      function (qs) {
+        var evs = [];
+        qs.forEach(function (d) { evs.push(d.data({ serverTimestamps: 'estimate' })); });
+        evs.sort(function (a, b) {
+          return (b.at && b.at.toMillis ? b.at.toMillis() : 0) - (a.at && a.at.toMillis ? a.at.toMillis() : 0);
+        });
+        list.innerHTML = '';
+        if (!evs.length) { list.appendChild(el('p', 'codenote', t('chRecEmpty'))); return; }
+        evs.forEach(function (e) {
+          var r = ruleById(e.rule);
+          var row = el('div', 'chinsrow ' + (r ? r.kind : ''));
+          var h = el('div', 'chinsh');
+          h.appendChild(el('span', 'chrw', personById(e.person) ? L(personById(e.person)) : e.name));
+          h.appendChild(el('span', 'chrr', (r ? L(r) : e.rule) + (e.count > 1 ? ' ×' + e.count : '')));
+          var when = e.at && e.at.toDate ? addisYmd(e.at.toDate()) : DAY;
+          h.appendChild(el('span', 'chrt', when === DAY ? t('chRecTomorrow') : t('chRecCounted') + ' ' + when));
+          row.appendChild(h);
+          row.appendChild(el('div', 'chinsn', prettyDay(e.day) + (e.note ? ' — ' + e.note : '')));
+          list.appendChild(row);
+        });
+      }, failInto(list));
+    into.appendChild(box);
   }
 
   /* ---------------- the week ---------------- */

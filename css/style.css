@@ -609,6 +609,17 @@ fieldset legend .lgc.full::before{content:'✓ '}
 .fld .hint.good{color:var(--teal-hi)}
 .fld .hint.good::before{content:'✓ '}
 
+/* a follow-up: opens under the answer that needs explaining, and says so */
+.fld.follow,.repwrap.follow{
+  margin-left:6px;padding-left:12px;border-left:2px solid var(--gold);
+  background:linear-gradient(90deg,var(--gold-bg),transparent 70%);
+}
+.fld.follow > label,.repwrap.follow .replabel{color:var(--ink)}
+.fld.follow > label::before,.repwrap.follow .replabel::before{content:'↳ ';color:var(--gold);font-weight:600}
+.follow.opened{animation:followIn .28s ease}
+@keyframes followIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.follow.opened{animation:none}}
+
 .ratio{display:grid;grid-template-columns:minmax(0,1fr) 12px minmax(0,1fr);gap:4px;align-items:center}
 .ratio .of{text-align:center;font-family:var(--mono);color:var(--dim);font-size:14px}
 
@@ -1311,3 +1322,26 @@ svg.sky .node text{font-size:11px}
 /* Send on a report with questions still empty: available, but not the bright "ready" button */
 #send.partial{background:var(--card-2);color:var(--ink-2);border:1px solid var(--line-2);box-shadow:none}
 #send.partial:hover{border-color:var(--gold);color:var(--ink)}
+
+/* ---------- penalties and bonuses (the rulebook) ---------- */
+.chchg.penalty .chinsh .chrt{color:var(--coral)}
+.chchg.bonus .chinsh .chrt{color:var(--teal-hi)}
+.chchg.consequence{border-color:rgba(227,181,71,.32)}
+.chchg.consequence .chinsh .chrr{color:var(--gold)}
+.chchg.pending{opacity:.72}
+.chchg.pending .chinsh .chrt{color:var(--dim)}
+.chmonth .chf .chfv{flex:none;width:86px;max-width:none}
+.chfhead .chfv{font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.chfv.fine{color:var(--coral)}
+.chfv.bonus{color:var(--teal-hi)}
+.chfv.net{font-weight:600}
+.chrec{margin:12px 0 0}
+.chrec .chinsform{margin:10px 0 12px}
+.chrec .chinsf span{width:64px}
+.chrec select,.chrec .chinsf input{flex:1;min-width:0;max-width:100%}
+.chrec input[type=text]{min-height:40px}
+.chrecsrc{margin:0;padding:8px 11px;border-left:2px solid var(--teal-line);background:rgba(255,255,255,.03);
+  font-family:var(--serif);font-size:13.5px;line-height:1.5;color:var(--ink-2);overflow-wrap:anywhere}
+.chinsrow.bonus .chinsh .chrr{color:var(--teal-hi)}
+.chinsrow.consequence .chinsh .chrr{color:var(--gold)}
+@media (max-width:420px){ .chmonth .chf .chfv{width:68px;font-size:12px} }

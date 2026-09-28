@@ -101,7 +101,11 @@ function series_(d, reportId, field) {
   for (var i = 6; i >= 0; i--) {
     var day = addDays_(d.day, -i), v = null;
     (d.recent || []).forEach(function (f) {
-      if (f.report === reportId && f.day === day) v = n_((f.fields || {})[field]);
+      if (f.report === reportId && f.day === day) {
+        /* a yes/no answer counts as 1 or 0 — read as a number it was always 0 */
+        var raw = (f.fields || {})[field];
+        v = /^(yes|no)$/i.test(String(raw)) ? (yes_(raw) ? 1 : 0) : n_(raw);
+      }
     });
     if (v === null && rep && !dueOn_({ reports: [rep] }, day).length) v = 'not due';
     out.push(v);
@@ -495,7 +499,7 @@ var AGENTS = [
       anything_at_5_days_or_less: yes_(yord.k_low),
       which_and_told_getachew: yord.k_which || '',
       shortages_flagged: n_(yord.sh_flagged),
-      production_stopped_by_shortage: n_(yord.sh_stopped),
+      production_stopped_by_shortage: got_(d.filed, 'yordanos-daily') ? yes_(yord.sh_stopped) : null,
       which_materials: yord.sh_what || '',
       discrepancies: n_(yord.st_disc),
       offcut_m2_returned: n_(yord.k_offin),
@@ -692,7 +696,15 @@ var AGENTS = [
       }),
       note_yordanos: 'Yordanos files a daily store report but his letter sets no penalty ' +
                      'for missing it — he is listed and charged nothing until the Chairman decides.',
-      more_than_once_this_week: repeats_(d)
+      more_than_once_this_week: repeats_(d),
+      /* everything else the letters charged and paid today — fines for what
+         happened, bonuses earned, warnings — already worked out in code */
+      other_fines_and_bonuses: (d.ruleLines || []).filter(function (l) {
+        return l.amount > 0 || l.wouldBe > 0 || l.kind === 'consequence';
+      }).map(function (l) {
+        return { person: l.name, kind: l.kind, what: l.reportName, birr: l.amount,
+                 held_or_not_counted_would_be: l.wouldBe || 0, why: l.why };
+      })
     };
   },
   ask:'The amounts are already calculated and correct — do not restate the arithmetic and '+
@@ -745,7 +757,7 @@ var AGENTS = [
       amaha_stopped_for_board: got_(d.filed,'amaha-daily') ? yes_(amaha.b_short) : null,
       amaha_which_board: amaha.b_shortw || '',
       yordanos_shortages: N('yordanos-daily','sh_flagged'),
-      yordanos_stopped_production: N('yordanos-daily','sh_stopped'),
+      yordanos_stopped_production: got_(d.filed, 'yordanos-daily') ? yes_(yord.sh_stopped) : null,
       yordanos_which: yord.sh_what || '',
       wude_pass_rate: N('wude-daily','i_rate'),
       mahelet_qc_pass: N('liu-daily','qc_pass'), mahelet_qc_fail: N('liu-daily','qc_fail'),
@@ -804,6 +816,14 @@ var AGENTS = [
 function dailyRun() {
   var day = addDays_(todayAddis_(), -1);
   var c = closeDay_(day);
+  /* Last month's pay stays open to cancellation until the end of the 5th:
+     each morning from the 3rd to the 6th the Pay tab is written again from
+     the stored lines, so what he cancelled on the 4th is off by the 5th. */
+  var dom = Number(todayAddis_().slice(8));
+  if (dom >= 3 && dom <= 6) {
+    try { refreshPay_(prevMonthStart_(todayAddis_()).slice(0, 7)); }
+    catch (e) { Logger.log('pay refresh: %s', e.message); }
+  }
   if (!c.due.length) return;
   runOn_(c, false);
 }
@@ -859,6 +879,8 @@ function gather_(c, provisional) {
     due: c.due,
     names: c.names,
     ledger: ledger,
+    ruleLines: c.ruleLines || [],
+    ruleErrors: c.ruleErrors || [],
     instructions: instructionsOn_(c.day, c.names)
   };
 }
@@ -1067,6 +1089,32 @@ function mailAnalysis_(results, d) {
     html += '<tr><td colspan="3" style="padding:7px 8px;font-weight:bold">Total</td>' +
             '<td align="right" style="padding:7px 8px;font-family:monospace;font-weight:bold">' +
             fmt_(owed) + '</td></tr></table>';
+  }
+
+  /* the rest of the rulebook — fines for what happened, bonuses, warnings */
+  var rl = (d.ruleLines || []).filter(function (l) {
+    return l.amount > 0 || l.wouldBe > 0 || l.kind === 'consequence';
+  });
+  if (rl.length) {
+    html += '<h3 style="font-size:13.5px;margin:26px 0 6px;color:#0f5c54">Fines and bonuses under the letters</h3>' +
+            '<table width="100%" cellpadding="0" cellspacing="0" style="font-size:12.5px">';
+    rl.forEach(function (l) {
+      var colour = l.kind === 'bonus' ? '#4a6b1f' : l.kind === 'penalty' ? '#8f3020' : '#8a6d1f';
+      var fig = l.kind === 'consequence' ? '' :
+                l.amount ? (l.kind === 'bonus' ? '+' : '−') + fmt_(l.amount) :
+                '(' + (l.kind === 'bonus' ? '+' : '−') + fmt_(l.wouldBe) + ')';
+      html += '<tr><td style="padding:5px 8px;border-bottom:1px solid #e4e7e3;vertical-align:top">' + esc_(l.name) +
+              '</td><td style="padding:5px 8px;border-bottom:1px solid #e4e7e3;color:#3a4442">' + esc_(l.reportName) +
+              '<div style="color:#66716d;font-size:11.5px">' + esc_(l.why) + '</div></td>' +
+              '<td align="right" style="padding:5px 8px;border-bottom:1px solid #e4e7e3;font-family:monospace;' +
+              'white-space:nowrap;vertical-align:top;color:' + colour + '">' + fig + '</td></tr>';
+    });
+    html += '</table><p style="font-size:11.5px;color:#66716d;margin:6px 0 0">A figure in brackets is ' +
+            'tracked but not counted: held for your decision, or under paper not yet signed.</p>';
+  }
+  if (d.ruleErrors && d.ruleErrors.length) {
+    html += '<p style="font-size:12px;color:#8f3020;margin:10px 0 0">Rules that could not be judged: ' +
+            esc_(d.ruleErrors.join('; ')) + '</p>';
   }
 
   html += '<p style="color:#66716d;font-size:11.5px;margin-top:28px;line-height:1.6">' +

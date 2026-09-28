@@ -204,6 +204,15 @@ service cloud.firestore {
       allow create, update: if isLedger();
       allow delete: if false;
     }
+    /* The month, closed: the bonuses and penalties that can only be
+       judged on a whole month (waste for the month, a month with no
+       complaint, the third penalty that brings a suspension). Written by
+       the ledger account on the 2nd, beside the daily ledgers it reads. */
+    match /months/{month} {
+      allow get, list: if isChairman() || isLedger();
+      allow create, update: if isLedger();
+      allow delete: if false;
+    }
 
     /* ---------------------------------------------------------------- *
      *  A charge the Chairman cancels                                     *
@@ -228,6 +237,41 @@ service cloud.firestore {
                     && request.resource.data.reason is string
                     && request.resource.data.reason.size() >= 3
                     && request.resource.data.reason.size() <= 500;
+      allow update, delete: if false;
+    }
+
+    /* ---------------------------------------------------------------- *
+     *  Something that happened, recorded by the Chairman                 *
+     * ---------------------------------------------------------------- *
+     *  Most rules in the letters are decided from the reports. Some can
+     *  only be seen — rudeness to a customer, a machine used without
+     *  training. He records what happened, to whom, on which day, under
+     *  which rule; the amount is never typed here. The ledger looks the
+     *  rule up in js/rules.js and charges (or pays) what the letter says,
+     *  at the next close. A record cannot be edited or removed: to undo
+     *  one, he cancels the charge it produced, with a reason, like any
+     *  other.                                                            */
+    match /events/{eid} {
+      allow get, list: if isChairman() || isLedger();
+      allow create: if isChairman()
+                    && request.resource.data.keys().hasOnly(
+                         ['person','name','rule','day','count','note','by','at'])
+                    && request.resource.data.by == 'chairman'
+                    && request.resource.data.at == request.time
+                    && request.resource.data.person is string
+                    && request.resource.data.person.size() > 0
+                    && request.resource.data.person.size() <= 80
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() <= 80
+                    && request.resource.data.rule is string
+                    && request.resource.data.rule.matches('^[a-z0-9-]{3,80}$')
+                    && request.resource.data.day is string
+                    && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                    && request.resource.data.count is int
+                    && request.resource.data.count >= 1
+                    && request.resource.data.count <= 1000
+                    && request.resource.data.note is string
+                    && request.resource.data.note.size() <= 500;
       allow update, delete: if false;
     }
 

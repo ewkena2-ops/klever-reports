@@ -15,7 +15,7 @@ first, so the hash of the file that imports already includes the new stamp.
 import io, hashlib, re, os
 
 ASSETS = ['css/style.css', 'js/app.js', 'js/i18n.js', 'js/forms.js', 'js/people.js', 'js/auth.js',
-          'js/save.js', 'js/channels.js', 'js/firebase-config.js', 'js/chat.js',
+          'js/rules.js', 'js/save.js', 'js/channels.js', 'js/firebase-config.js', 'js/chat.js',
           'js/chairman.js', 'js/fb.js', 'js/media.js', 'js/orbit.js', 'js/agents.js', 'js/orbit3d.js',
           'js/space3d.js', 'js/universe3d.js', 'js/universe.js',
           'assets/icon.svg', 'assets/icon-32.png', 'assets/icon-180.png', 'site.webmanifest']

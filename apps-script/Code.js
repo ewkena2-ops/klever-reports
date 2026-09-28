@@ -4,7 +4,7 @@
 
 /* Tabs this endpoint must never write to — they belong to the ledger and the
    packs, and the figures in them come off people's pay. */
-var RESERVED_TABS_ = /^(Penalty Ledger|Daily Analysis|Deductions)/i;
+var RESERVED_TABS_ = /^(Penalty Ledger|Daily Analysis|Deductions|Penalties and Bonuses|Pay )/i;
 
 /* The few things in a report that should not wait for the morning brief.
    Checked here, in code, against the figures as filed; each one puts ALERT at
@@ -28,9 +28,11 @@ var ALERTS_ = [
     say: function () { return 'A cash shortfall is expected in the next 4 weeks'; } },
   { report: 'yordanos-daily', test: function (v) { return yes__(v.sec_theft); },
     say: function () { return 'Theft or unauthorized removal reported at the store'; } },
-  { report: 'yordanos-daily', test: function (v) { return num_(v.sh_stopped) > 0; },
+  /* a yes/no question: read as a number it was always 0, and this alert never fired */
+  { report: 'yordanos-daily', test: function (v) { return yes__(v.sh_stopped); },
     say: function (v) { return 'Production stopped by a material shortage' +
-                               (has_(v.sh_what) ? ' — ' + v.sh_what : ''); } },
+                               (has_(v.sh_stopped_what) ? ' — ' + v.sh_stopped_what
+                                : has_(v.sh_what) ? ' — ' + v.sh_what : ''); } },
   { report: 'amaha-daily', test: function (v) { return yes__(v.b_short); },
     say: function (v) { return 'The factory stopped for missing board' +
                                (has_(v.b_shortw) ? ' — ' + v.b_shortw : ''); } },

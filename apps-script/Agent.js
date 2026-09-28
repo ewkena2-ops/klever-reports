@@ -193,6 +193,10 @@ function previewLedger(day) {
     Logger.log('%s | %s | %s | %s Birr', l.name, l.reportName, l.status, l.amount);
   });
   Logger.log('total: %s Birr', c.ledger.reduce(function (a, l) { return a + l.amount; }, 0));
+  c.ruleLines.forEach(function (l) {
+    Logger.log('%s | %s | %s | %s Birr | %s', l.name, l.kind, l.reportName, l.amount, l.why);
+  });
+  if (c.ruleErrors.length) Logger.log('rulebook errors: %s', c.ruleErrors.join('; '));
 }
 
 /* ------------------------------------------------------------------ *
@@ -543,7 +547,16 @@ function closeDay_(day, opts) {
   var before = ledgersBetween_(addDays_(day, -7), day);
   var ledger = charge_(due, filings, day, before, opts.asOf || null, names);
 
-  if (opts.write !== false && due.length) {
+  /* Every other rule in the letters — the fines for what happened, the
+     bonuses — from Rules.js. Kept apart from `ledger`, which the agents
+     and the packs read as "the reports that were owed". If the rulebook
+     cannot be read, the report ledger still closes, and the failure is
+     written down beside it rather than losing the day. */
+  var rules = { lines: [], errors: [] };
+  try { rules = ruleLinesForDay_(day, filings, schedule); }
+  catch (e) { rules.errors.push('rulebook: ' + e.message); }
+
+  if (opts.write !== false && (due.length || rules.lines.length)) {
     fsPut_('ledger/' + day, {
       day: day,
       closedAt: new Date(),
@@ -551,9 +564,14 @@ function closeDay_(day, opts) {
       lines: ledger.map(function (l) {
         return { person: l.person, name: l.name, report: l.report, reportName: l.reportName,
                  due: l.due, status: l.status, at: l.at, amount: l.amount, why: l.why };
-      })
+      }),
+      ruleLines: rules.lines,
+      rulePenalty: sumKind_(rules.lines, 'penalty'),
+      ruleBonus: sumKind_(rules.lines, 'bonus'),
+      ruleErrors: rules.errors
     });
     writeLedgerTab_(ledger, day);
+    writeRulesTab_(rules.lines, day);
   }
 
   return {
@@ -564,7 +582,9 @@ function closeDay_(day, opts) {
     filings: filings,
     filed: filings.filter(function (f) { return f.day === day; }),
     before: before,
-    ledger: ledger
+    ledger: ledger,
+    ruleLines: rules.lines,
+    ruleErrors: rules.errors
   };
 }
 
@@ -588,6 +608,27 @@ function writeLedgerTab_(ledger, day) {
     return [day, l.name, l.reportName, l.due, l.status, l.amount, l.why];
   });
   if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
+}
+
+/* The rest of the rulebook's lines, a row each: the fines for what
+   happened, the bonuses earned, the warnings and suspensions. Same window,
+   not the record — the record is Firestore. */
+var RULES_TAB_ = 'Penalties and Bonuses';
+function writeRulesTab_(lines, day) {
+  if (!lines || !lines.length) return;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(RULES_TAB_);
+  if (!sh) {
+    sh = ss.insertSheet(RULES_TAB_);
+    sh.appendRow(['Date', 'Person', 'Kind', 'What', 'Birr', 'Would be (not counted yet)',
+                  'Why', 'Under which letter']);
+    sh.setFrozenRows(1);
+  }
+  var rows = lines.map(function (l) {
+    return [day, l.name, l.kind, l.reportName, l.kind === 'bonus' ? l.amount : -l.amount,
+            l.wouldBe || '', l.why, l.src];
+  });
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, 8).setValues(rows);
 }
 
 /* ------------------------------------------------------------------ *

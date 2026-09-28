@@ -1338,7 +1338,7 @@
 
   /* repeating rows: t:'table' (person adds rows) and t:'grid' (fixed rows) */
   function repeater(f) {
-    var wrap = el('div', 'repwrap');
+    var wrap = el('div', 'repwrap' + (f.show ? ' follow' : ''));
     wrap.id = 'w_' + f.id;
     wrap.appendChild(el('div', 'replabel', L(f)));
     var body = el('div', 'rep');
@@ -1438,7 +1438,9 @@
                  + (f.t === 'choice' ? ' wide' : '')
                  /* and a date reads "Wed 9 Sep 2026 · ጳጉሜን 4 ቀን 2018" */
                  + (f.t === 'date' ? ' wide' : '')
-                 + (f.t === 'yesno' ? ' yn' : ''));
+                 + (f.t === 'yesno' ? ' yn' : '')
+                 + (f.show ? ' follow' : ''));
+    row.id = 'r_' + f.id;
     var lab = el('label', null, L(f));
     lab.id = 'l_' + f.id;
     lab.htmlFor = 'f_' + f.id;
@@ -1557,6 +1559,7 @@
     report.sections.forEach(function (sec) {
       var rows = [];
       sec.fields.forEach(function (fl) {
+        if (!shown(fl)) return;
         if (fl.t === 'table' || fl.t === 'grid') {
           var tl = tableLines(fl);
           if (tl.length) rows.push([L(fl), tl.join(String.fromCharCode(10))]);
@@ -1564,7 +1567,7 @@
         }
         var v = fmt(fl);
         if (!has(v) || v === '— / —') return;
-        rows.push([(fl.i ? '· ' : '') + L(fl), v]);
+        rows.push([(fl.i || fl.show ? '· ' : '') + L(fl), v]);
       });
       if (rows.length) doc.push({ sec: L(sec), rows: rows });
     });
@@ -1575,8 +1578,8 @@
     var out = [];
     var gaps = unanswered();
     if (gaps.length) out.push(unansweredLine(gaps));
-    allFields().forEach(function (fl) {
-      if (targetMiss(fl)) out.push(L(fl) + ': ' + fmt(fl) + ' — ' + (lang === 'am' ? fl.tgt.am : fl.tgt.en));
+    liveFields().forEach(function (fl) {
+      if (targetMiss(fl)) out.push(said(L(fl)) + ' ' + fmt(fl) + ' — ' + (lang === 'am' ? fl.tgt.am : fl.tgt.en));
     });
     return out;
   }
@@ -1739,7 +1742,7 @@
         doc: reportDoc(),
         flags: reportFlags(),
         late: late,
-        values: values,
+        values: answers(),
         text: txt,
         lang: lang
       });
@@ -1766,7 +1769,7 @@
         report: report.id,
         late: late,
         due: report.dueEn,
-        values: values,
+        values: answers(),
         flags: reportFlags(),
         text: txt,
         lang: lang
@@ -1820,7 +1823,7 @@
 
   /* the required questions still unanswered, by name */
   function unanswered() {
-    return allFields().filter(function (f) { return !f.opt && !filled(f); }).map(function (f) { return L(f); });
+    return liveFields().filter(function (f) { return !f.opt && !filled(f); }).map(function (f) { return L(f); });
   }
   function unansweredLine(list) {
     return t('notAnsweredCount').replace('{n}', list.length);
@@ -1830,6 +1833,49 @@
     var out = [];
     report.sections.forEach(function (s) { s.fields.forEach(function (f) { out.push(f); }); });
     return out;
+  }
+
+  /* A follow-up question — show:{f:'<the question above>', when:…} — opens
+     only when that answer needs explaining: 'pos' a count above zero, 'miss'
+     a target missed, 'short' fewer than all (5 / 7), 'yes' or 'no', 'is' one
+     choice (with v), 'any' answered at all. A closed follow-up is not asked,
+     not counted as empty, and not sent. */
+  function fieldById(id) {
+    var hit = null;
+    report.sections.forEach(function (s) { s.fields.forEach(function (f) { if (f.id === id) hit = f; }); });
+    return hit;
+  }
+  function shown(f) {
+    if (!f.show) return true;
+    var p = fieldById(f.show.f), w = f.show.when || 'pos';
+    if (!p || !shown(p)) return false;
+    if (w === 'any') return filled(p);
+    if (w === 'miss') return targetMiss(p);
+    if (w === 'yes' || w === 'no') return values[p.id] === w;
+    if (w === 'is') return values[p.id] === f.show.v;
+    if (p.t === 'ratio') {
+      var a = num(values[p.id + '__a']), b = num(values[p.id + '__b']);
+      if (w === 'short') return !isNaN(a) && !isNaN(b) && a < b;
+      return !isNaN(a) && a > 0;
+    }
+    var v = num(values[p.id]);
+    return !isNaN(v) && v > 0;
+  }
+  function liveFields() { return allFields().filter(shown); }
+
+  /* what is filed: the answers to the questions that were asked. A follow-up
+     answered and then closed again (the 2 went back to 0) is left out. */
+  function answers() {
+    var out = {};
+    allFields().forEach(function (f) {
+      if (shown(f)) return;
+      out['-' + f.id] = 1;
+      out['-' + f.id + '__a'] = 1;
+      out['-' + f.id + '__b'] = 1;
+    });
+    var keep = {};
+    Object.keys(values).forEach(function (k) { if (!out['-' + k]) keep[k] = values[k]; });
+    return keep;
   }
 
   function rowHasData(row, cols) {
@@ -1888,6 +1934,15 @@
     var fields = allFields(), need = 0, done = 0;
     var firstEmpty = null;
     fields.forEach(function (f) {
+      var open = shown(f);
+      if (f.show) {
+        var fr = document.getElementById('r_' + f.id) || document.getElementById('w_' + f.id);
+        if (fr && fr.hidden === open) {
+          fr.hidden = !open;
+          if (open) { fr.classList.remove('opened'); void fr.offsetWidth; fr.classList.add('opened'); }
+        }
+      }
+      if (!open) return;
       if (!f.opt) {
         /* a grid is not one answer. w_stage is seven rows of three boxes, and
            counting it as a single unit made "1 still empty" mean anything from
@@ -1924,7 +1979,7 @@
       if (!lc) return;
       var sn = 0, sd = 0;
       sec.fields.forEach(function (f) {
-        if (f.opt) return;
+        if (f.opt || !shown(f)) return;
         var u = (f.t === 'grid' && f.rows) ? f.rows.length : 1;
         sn += u;
         if (filled(f)) sd += u;
@@ -2022,6 +2077,11 @@
     return any ? out : [];
   }
 
+  /* a question already ends in its own mark; "Why?:" reads as a typo */
+  function said(label) {
+    return /[?？፧]\s*$/.test(label) ? label : label + ':';
+  }
+
   function fmt(f) {
     if (f.t === 'table' || f.t === 'grid') return '';
     if (f.t === 'ratio') {
@@ -2057,17 +2117,18 @@
     report.sections.forEach(function (sec) {
       var lines = [];
       sec.fields.forEach(function (f) {
+        if (!shown(f)) return;
         if (f.t === 'table' || f.t === 'grid') {
           var tl = tableLines(f);
           if (tl.length) {
-            lines.push(L(f) + ':');
+            lines.push((f.show ? '  ↳ ' : '') + said(L(f)));
             lines.push.apply(lines, tl);
           }
           return;
         }
         var v = fmt(f);
         if (!has(v) || v === '— / —') return;
-        lines.push((f.i ? '  ' : '') + L(f) + ': ' + v);
+        lines.push((f.show ? '  ↳ ' : (f.i ? '  ' : '')) + said(L(f)) + ' ' + v);
       });
       if (lines.length) {
         out.push('');
@@ -2077,9 +2138,9 @@
     });
 
     var flags = [];
-    allFields().forEach(function (f) {
+    liveFields().forEach(function (f) {
       if (targetMiss(f)) {
-        flags.push('• ' + L(f) + ': ' + fmt(f) + ' — ' +
+        flags.push('• ' + said(L(f)) + ' ' + fmt(f) + ' — ' +
           (lang === 'am' ? f.tgt.am : f.tgt.en));
       }
     });

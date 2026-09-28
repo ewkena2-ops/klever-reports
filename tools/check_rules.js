@@ -132,6 +132,7 @@ function checkCond(id, c, rule, at) {
   if (c && c.all) return c.all.forEach(x => checkCond(id, x, rule, at));
   if (c && c.any) return c.any.forEach(x => checkCond(id, x, rule, at));
   if (c && c.not) return checkCond(id, c.not, rule, at);
+  if (c && c.blank) { checkRef(id, c.blank, rule, at); return; }
   if (c && (c.every || c.some)) {
     const s = c.every || c.some;
     if (at !== 'month') err(id, 'every/some are for month tests');
@@ -200,7 +201,14 @@ let total = 0;
         if (!t.on) err(id, 'week test needs on:"<weekly report id>"');
         else { const on = t.on.replace('{p}', membersOf(r.who)[0] || ''); const rr = REPORTS.find(x => x.id === on); if (!rr || rr.cadence !== 'weekly') err(id, 'on: ' + t.on + ' is not a weekly report'); }
       }
-      const keys = Object.keys(t).filter(k => !['at', 'on', 'when', 'team', 'needFiled', 'blocks'].includes(k));
+      const keys = Object.keys(t).filter(k => !['at', 'on', 'when', 'team', 'needFiled', 'blocks', 'share', 'exclude'].includes(k));
+      if ((t.share || t.exclude) && !t.team) err(id, 'share and exclude go with team:true');
+      if (t.exclude) {
+        const g = checkRef(id, t.exclude.of, r, at);
+        if (g && g.f.t !== 'table') err(id, 'exclude.of must be a table');
+        if (g && !(g.f.cols || []).some(x => x.id === t.exclude.col)) err(id, 'exclude: no column ' + t.exclude.col);
+        if (!(t.exclude.group in GROUPS)) err(id, 'exclude: unknown group ' + t.exclude.group);
+      }
       if (t.blocks) {
         if (at !== 'week') err(id, 'blocks are for week tests');
         if (!/^\d{4}-\d{2}-\d{2}$/.test(t.blocks.from || '') || !(t.blocks.days > 0) || t.blocks.days % 7) err(id, 'blocks: { from:"yyyy-mm-dd", days: a multiple of 7 }');

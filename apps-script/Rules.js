@@ -685,7 +685,30 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
                  ' → ' + fmt_(amount) + ' Birr' + (why ? '; ' + why : '');
     }
     if (spec.team) {
-      members.forEach(function (m) { hits.push(Object.assign({}, base, { person: m })); });
+      /* A team amount goes to every member of the group — or, with `share`,
+         is divided between them. `exclude` names a table of people who were
+         not there that day (the absent list): they neither pay nor share. */
+      var team = members.slice();
+      if (spec.exclude) {
+        var gone = rowsOf_(J, spec.exclude.of) || [];
+        gone.forEach(function (row) {
+          var m = ctx.match(row.r[spec.exclude.col], spec.exclude.group);
+          if (m && m.matched) team = team.filter(function (x) { return x !== m.person; });
+        });
+      }
+      if (!team.length) return;
+      if (spec.share) {
+        var whole = base.amount != null ? base.amount : (rule.birr || 0) * (base.count || 1);
+        var each = Math.round(whole / team.length);
+        if (each <= 0) return;
+        team.forEach(function (m) {
+          hits.push(Object.assign({}, base, { person: m, amount: each,
+            why: (base.why ? base.why + ' — ' : '') + fmt_(whole) + ' Birr shared by ' + team.length +
+                 (spec.exclude ? ' workers present' : ' workers') + ': ' + fmt_(each) + ' each' }));
+        });
+        return;
+      }
+      team.forEach(function (m) { hits.push(Object.assign({}, base, { person: m })); });
       return;
     }
     if (!base.person) throw new Error('no person to charge');
@@ -936,6 +959,15 @@ function cond_(J, c) {
     return unk ? null : false;
   }
   if (c.not) { var z = cond_(J, c.not); return z === null ? null : !z; }
+  /* a question left empty in a report that was filed — "no reason given" */
+  if (c.blank) {
+    var br = split_(J, c.blank), bf = filingFor_(J, br.report);
+    if (!bf) { J.missing = br.report + ' not filed'; return null; }
+    var bv = bf[br.field];
+    var isBlank = bv == null || String(bv).trim() === '';
+    J.said.push(fieldLabel_(J, br.report, br.field) + ': ' + (isBlank ? 'not answered' : 'answered'));
+    return isBlank;
+  }
   if (c.every || c.some) {
     var s = c.every || c.some;
     if (J.which !== 'month') return cond_(J, s);
@@ -1180,11 +1212,14 @@ EVAL_['worker-attendance-bonus'] = { month: function (ctx, rule) {
   });
 } };
 
-function escalate_(ctx, people, steps, what, alsoPending, onlyRules) {
+function escalate_(ctx, people, steps, what, alsoPending, onlyRules, skipTeam) {
   var hits = [];
+  var R = loadRules_();
   people.forEach(function (p) {
     var n = ctx.lines(p).filter(function (l) {
       if (onlyRules && onlyRules.indexOf(l.rule) === -1) return false;
+      var rr = l.rule && R.byId[l.rule];
+      if (skipTeam && rr && rr.test && rr.test.team) return false;
       return countedPenalty_(ctx, l, alsoPending);
     }).reduce(function (a, l) {
       /* a recorded event can be several at once (count); a Birr figure cannot */
@@ -1208,7 +1243,7 @@ function namedIn_(ctx, prefix) {
 EVAL_['worker-escalation'] = { month: function (ctx, rule) {
   return escalate_(ctx, membersOf_(rule.who, ctx.schedule),
     [[3, 'written warning'], [5, '3-day suspension without pay'], [7, 'removal from Klever']],
-    'penalties counted', false);
+    'penalties counted', false, null, true);
 } };
 EVAL_['assembler-3-penalties-suspension'] = { month: function (ctx) {
   return escalate_(ctx, namedIn_(ctx, 'assembler:'), [[3, 'suspension']], 'penalty lines', true);

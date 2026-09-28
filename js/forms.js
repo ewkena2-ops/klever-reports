@@ -1211,7 +1211,7 @@ const REPORTS = [
         ]},
       {id:'g_quality', en:'How many quality problems came from suppliers?', am:'ከአቅራቢዎች ስንት የጥራት ችግር መጣ?', t:'num'},
       {id:'g_quality_what', en:'Which suppliers, what went wrong, and should we keep buying from them?', am:'የትኞቹ አቅራቢዎች? ምን ችግር ነበር? ከእነሱ መግዛታችንን መቀጠል አለብን?', t:'area', show:{f:'g_quality', when:'pos'}},
-      {id:'g_saving', en:'How much below budget did you buy this week?', am:'በዚህ ሳምንት ከበጀት በታች በስንት ብር ገዙ?', t:'money', opt:1},
+      {id:'g_saving', en:'How much below the last price paid did you buy this week?', am:'በዚህ ሳምንት ከመጨረሻው የተከፈለ ዋጋ በታች በስንት ብር ገዙ?', t:'money', opt:1},
       {id:'g_saving_how', en:'On which purchases, and how was the saving made?', am:'በየትኞቹ ግዥዎች? ቁጠባው እንዴት ተገኘ?', t:'area', show:{f:'g_saving', when:'pos'}},
       {id:'g_best', en:'Which supplier served us best this week, and why?', am:'በዚህ ሳምንት በጣም ጥሩ ያገለገለን የትኛው አቅራቢ ነው? ለምን?', t:'area', opt:1}
     ]},

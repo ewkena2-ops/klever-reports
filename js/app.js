@@ -1429,6 +1429,12 @@
     return wrap;
   }
 
+  /* "Question? (left box / right box)" → the question, and the two box words */
+  function boxWords(f) {
+    var m = /^([\s\S]*?)\s*\(([^()]+?)\s\/\s([^()]+?)\)\s*$/.exec(L(f) || '');
+    return m ? { q: m[1], a: m[2], b: m[3] } : null;
+  }
+
   function fieldRow(f) {
     if (f.t === 'table' || f.t === 'grid') return repeater(f);
     var row = el('div', 'fld' + (f.i ? ' indent' : '')
@@ -1438,6 +1444,8 @@
                  + (f.t === 'choice' ? ' wide' : '')
                  /* and a date reads "Wed 9 Sep 2026 · ጳጉሜን 4 ቀን 2018" */
                  + (f.t === 'date' ? ' wide' : '')
+                 /* two boxes, each with its words under it, need the full row */
+                 + (f.t === 'ratio' ? ' wide' : '')
                  + (f.t === 'yesno' ? ' yn' : '')
                  + (f.show ? ' follow' : ''));
     row.id = 'r_' + f.id;
@@ -1456,11 +1464,21 @@
       wrap.setAttribute('aria-labelledby', lab.id);
       lab.removeAttribute('for');
       var ia = numInput(f.id + '__a', f), ib = numInput(f.id + '__b', f);
-      ia.setAttribute('aria-label', L(f) + ' — 1');
-      ib.setAttribute('aria-label', L(f) + ' — 2');
-      wrap.appendChild(ia);
-      wrap.appendChild(el('span', 'of', '/'));
-      wrap.appendChild(ib);
+      /* Every two-box question ends by naming its boxes — "(called within
+         1 hour / all new leads today)". Blank boxes left people guessing
+         which number went where, so the question loses its bracket and each
+         box carries its own words underneath. */
+      var words = boxWords(f);
+      if (words) lab.textContent = words.q;
+      ia.setAttribute('aria-label', L(f) + ' — ' + (words ? words.a : '1'));
+      ib.setAttribute('aria-label', L(f) + ' — ' + (words ? words.b : '2'));
+      [[ia, words && words.a], [ib, words && words.b]].forEach(function (x, i) {
+        var cell = el('div', 'rbox');
+        cell.appendChild(x[0]);
+        if (x[1]) cell.appendChild(el('span', 'rlab', x[1]));
+        wrap.appendChild(cell);
+        if (!i) wrap.appendChild(el('span', 'of', '/'));
+      });
       row.appendChild(wrap);
     } else if (f.t === 'yesno') {
       var seg = el('div', 'seg');

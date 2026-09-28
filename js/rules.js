@@ -854,8 +854,8 @@ const RULES = [
     note:'Per job, only when the step is met and its WhatsApp message posted; the Chairman enters the Birr figure.' },
 
   { id:'sales-stage-02-visit-48h', who:['sales'], kind:'bonus', birr:1, per:'birr', how:'recorded',
-    en:'Commission stage 2: site visit booked within 48 hours (0.2%)',
-    am:'የኮሚሽን ደረጃ 2፦ የሥራ ቦታ ጉብኝት በ48 ሰዓት ውስጥ ተይዟል (0.2%)',
+    en:'Commission stage 2: pre-measurement booked within 48 hours (0.2%)',
+    am:'የኮሚሽን ደረጃ 2፦ የቅድመ ልኬት ቀጠሮ በ48 ሰዓት ውስጥ ተይዟል (0.2%)',
     src:'The salesperson letter — “Site visit booked within 48 hours Appointment confirmation in the group 0.2%”',
     formula:'0.2% of the collected contract value (external contracts only)',
     note:'Per job, only when the step is met and its WhatsApp message posted; the Chairman enters the Birr figure.' },
@@ -1029,8 +1029,8 @@ const RULES = [
     test:{ at:'day', when:[{ diff:['{p}-sales-daily.r_show__b', '{p}-sales-daily.r_show__a'] }, '>', 0], count:{ diff:['{p}-sales-daily.r_show__b', '{p}-sales-daily.r_show__a'] } } },
 
   { id:'sales-site-visit-48h', who:['sales'], kind:'penalty', birr:300, per:'event', how:'recorded',
-    en:'Site visit not booked within 48 hours',
-    am:'የሥራ ቦታ ጉብኝት በ48 ሰዓት ውስጥ አልተያዘም',
+    en:'Pre-measurement not booked within 48 hours',
+    am:'የቅድመ ልኬት ቀጠሮ በ48 ሰዓት ውስጥ አልተያዘም',
     src:'The salesperson letter — “Site visit not booked within 48 hours –300 Birr”',
     note:'The daily form counts visits still waiting, so the same visit repeats day after day — record each late visit once.' },
 

@@ -608,6 +608,8 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
       var rep = reportOf_(schedule, wk);
       if (!rep) throw new Error('no weekly report ' + wk);
       if (rep.dueDay !== ctx.dow) return;
+      /* judged once per block, not every week: only on the block's last day */
+      if (spec.blocks && !isBlockDay_(spec.blocks, ctx.day)) return;
     }
     if (spec.needFiled && which === 'month') {
       var gaps = spec.needFiled.map(function (r) { return r.replace('{p}', p || ''); })
@@ -1029,19 +1031,38 @@ EVAL_['liu-wa-repeat-kpi-cancel'] = { month: function (ctx) {
 } };
 
 /* ---- Ephrata: the rolling 4-week total, and the marketing leads ---- */
+/* A block day: the last day of a block of `days`, counting from `from`
+   (itself a block day). Ephrata's 4-week total is judged on these only —
+   every fourth Friday — so one bad period is charged once (Chairman,
+   28 September 2026). */
+function isBlockDay_(blocks, day) {
+  if (day < blocks.from) return false;
+  var n = Math.round((dayStart_(day).getTime() - dayStart_(blocks.from).getTime()) / 86400000);
+  return n % blocks.days === 0;
+}
+
+/* Two blocks in a row below a threshold: this block's 4-week total, filed
+   in the week to the block day, and the one filed for the block before. */
 function ephrataBelow_(ctx, threshold, what) {
-  var f = weeklyFilings_(ctx, 'ephrata-weekly', 2);
-  if (f.length < 2 || f[0].day < addDays_(ctx.day, -6)) return [];
-  var a = fig_(f[0].v.r_total), b = fig_(f[1].v.r_total);
+  var rule = loadRules_().byId['ephrata-rolling-below-12m-25000'];
+  var blocks = rule && rule.test && rule.test.blocks;
+  if (!blocks) throw new Error('ephrata-rolling-below-12m-25000 names no blocks');
+  if (!isBlockDay_(blocks, ctx.day)) return [];
+  var f = weeklyFilings_(ctx, 'ephrata-weekly', blocks.days / 7 + 1);
+  var now = f.filter(function (x) { return x.day >= addDays_(ctx.day, -6); })[0];
+  var prevDay = addDays_(ctx.day, -blocks.days);
+  var before = f.filter(function (x) { return x.day <= prevDay && x.day >= addDays_(prevDay, -6); })[0];
+  if (!now || !before) return [];
+  var a = fig_(now.v.r_total), b = fig_(before.v.r_total);
   if (a === null || b === null || a >= threshold || b >= threshold) return [];
-  return [{ person: 'ephrata', why: 'Rolling 4-week total ' + fmt_(a) + ' (' + f[0].day + ') and ' + fmt_(b) + ' (' + f[1].day +
-            ') — both below ' + fmt_(threshold) + ': ' + what }];
+  return [{ person: 'ephrata', why: '4-week total ' + fmt_(a) + ' (block to ' + ctx.day + ') and ' + fmt_(b) +
+            ' (block to ' + prevDay + ') — both below ' + fmt_(threshold) + ': ' + what }];
 }
 EVAL_['ephrata-rolling-review'] = { day: function (ctx) {
-  return ctx.dow === 5 ? ephrataBelow_(ctx, 12000000, 'formal performance review') : [];
+  return ephrataBelow_(ctx, 12000000, 'formal performance review');
 } };
 EVAL_['ephrata-rolling-removal'] = { day: function (ctx) {
-  return ctx.dow === 5 ? ephrataBelow_(ctx, 10000000, 'removal from the role') : [];
+  return ephrataBelow_(ctx, 10000000, 'removal from the role');
 } };
 EVAL_['ephrata-zero-mkt-leads'] = { day: function (ctx) {
   var rep = reportOf_(ctx.schedule, 'ephrata-weekly');

@@ -200,7 +200,15 @@ let total = 0;
         if (!t.on) err(id, 'week test needs on:"<weekly report id>"');
         else { const on = t.on.replace('{p}', membersOf(r.who)[0] || ''); const rr = REPORTS.find(x => x.id === on); if (!rr || rr.cadence !== 'weekly') err(id, 'on: ' + t.on + ' is not a weekly report'); }
       }
-      const keys = Object.keys(t).filter(k => !['at', 'on', 'when', 'team', 'needFiled'].includes(k));
+      const keys = Object.keys(t).filter(k => !['at', 'on', 'when', 'team', 'needFiled', 'blocks'].includes(k));
+      if (t.blocks) {
+        if (at !== 'week') err(id, 'blocks are for week tests');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(t.blocks.from || '') || !(t.blocks.days > 0) || t.blocks.days % 7) err(id, 'blocks: { from:"yyyy-mm-dd", days: a multiple of 7 }');
+        else {
+          const on = REPORTS.find(x => x.id === String(t.on).replace('{p}', membersOf(r.who)[0] || ''));
+          if (on && new Date(t.blocks.from + 'T12:00:00Z').getUTCDay() !== on.dueDay) err(id, 'blocks.from must fall on the day ' + t.on + ' is due');
+        }
+      }
       const shapes = keys.filter(k => ['count', 'rows', 'tiers', 'rate', 'pct'].includes(k));
       keys.filter(k => !['count', 'rows', 'tiers', 'rate', 'pct'].includes(k)).forEach(k => err(id, 'unknown test key ' + k));
       if (shapes.length > 1 && !(shapes.length === 2 && shapes.includes('count') && false)) err(id, 'use one of count, rows, tiers, rate, pct');

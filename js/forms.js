@@ -3222,6 +3222,10 @@ function oddFigures(report, v) {
         var tot = num(v[f.id]), sum = 0, got = 0;
         f.parts.of.forEach(function (id) { var x = num(v[id]); if (x !== null) { sum += x; got++; } });
         if (tot === null || !got) return;
+        /* m² come with decimals, and 31.6 + 11.3 adds up to 42.900000000000006
+           in a computer — more than a correct 42.9. Compare to the thousandth. */
+        sum = Math.round(sum * 1000) / 1000;
+        tot = Math.round(tot * 1000) / 1000;
         if (sum > tot) {
           out.push({ f: f.id,
             en: 'the answers under it add up to ' + show(sum) + ', more than ' + show(tot),

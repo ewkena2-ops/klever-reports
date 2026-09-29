@@ -133,9 +133,21 @@ function notFiled_(d) {
 /* Reports that arrived with questions left empty, and how many. The phone
    counts them when it sends ("18 not answered" among the flags); a report
    sent before that count existed says nothing and is taken as complete. */
+/* The filings of the day that count: the last of each report. A correction is
+   a second filing (nothing filed can be changed), and got_ already believes
+   the later one; what was blank or wrong in the first must not be reported
+   once it has been corrected. */
+function latestFiled_(d) {
+  var by = {}, order = [];
+  (d.filed || []).forEach(function (f) {
+    if (!(f.report in by)) order.push(f.report);
+    by[f.report] = f;
+  });
+  return order.map(function (r) { return by[r]; });
+}
 function leftBlank_(d) {
   var out = [];
-  (d.filed || []).forEach(function (f) {
+  latestFiled_(d).forEach(function (f) {
     var n = 0;
     (f.flags || []).forEach(function (x) {
       var m = /^(\d+)\s/.exec(String(x));
@@ -159,7 +171,7 @@ function reportName_(d, id) {
 function oddIn_(d) {
   var odd = d.schedule && d.schedule.odd, out = [];
   if (typeof odd !== 'function') return out;
-  (d.filed || []).forEach(function (f) {
+  latestFiled_(d).forEach(function (f) {
     var rep = null;
     (d.schedule.reports || []).forEach(function (r) { if (r.id === f.report) rep = r; });
     if (!rep) return;
@@ -349,15 +361,15 @@ var DECISIONS = [
           (l.status === 'LATE' || l.status === 'MISSING')) hit = l.status;
     });
     if (!hit) return null;
-    /* before LEDGER_START nobody pays, so "everyone else paid" was not true */
-    var paid = d.ledger.some(function (l) {
-      return l.amount > 0 && (l.status === 'LATE' || l.status === 'MISSING');
-    });
+    /* before LEDGER_START nobody pays, so "everyone else paid" is not true
+       then — decided by the day, not by whether anyone else happened to be
+       charged today (on a day he is the only one missing, nobody is) */
+    var start = prop_('LEDGER_START', '');
+    var charging = !start || d.day >= start;
     return 'Yordanos was ' + hit + ' today and was charged nothing, because his letter sets no '+
-           'figure. ' + (paid ? 'Everyone else in the same position paid.'
-                              : 'Nobody is charged yet — charging starts ' +
-                                (prop_('LEDGER_START', '') || 'when LEDGER_START is set') +
-                                '. From then everyone else in the same position pays and he still would not.');
+           'figure. ' + (charging ? 'Anyone else late or missing with a daily report is charged.'
+                                  : 'Nobody is charged yet — charging starts ' + start +
+                                    '. From then everyone else in the same position pays and he still would not.');
   } },
 
 { id:'weekly-missing', what:'What a weekly report costs when it never arrives',

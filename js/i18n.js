@@ -340,8 +340,8 @@ const T = {
     oddCount:'{n} to check — cannot be right as written',
     toCheck:'Check',
     sendOddAnyway:'Send with {n} to check?',
-    sendOddWarn:'{n} answers cannot be right as written (marked). Correct them, or tap Send again to send it as it is.',
-    sendBothWarn:'{n} questions are still empty and {m} answers cannot be right as written (all marked). Tap Send again to send it as it is.'
+    sendOddWarn:'Cannot be right as written: {n} (marked in gold). Correct them, or tap Send again to send it as it is.',
+    sendBothWarn:'Still empty: {n} (marked in red). Cannot be right as written: {m} (marked in gold). Tap Send again to send it as it is.'
   },
   am:{
     siteTitle:'የክሌቨር ሪፖርቶች',

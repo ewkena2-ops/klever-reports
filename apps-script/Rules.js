@@ -668,7 +668,10 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
       c = Math.floor(c);
       if (c <= 0) return;
       base.count = c;
-      base.why = (why ? why + '; ' : '') + J.said.join('; ');
+      /* when the count is the same figure the condition already showed
+         ("required 20 less posted 19 = 1"), say it once */
+      var cs = J.said.join('; ');
+      base.why = why && cs && why.indexOf(cs) !== -1 ? why : (why ? why + '; ' : '') + cs;
     }
     if (spec.tiers || spec.rate || spec.pct) {
       var t = spec.tiers || spec.rate || spec.pct;

@@ -293,6 +293,12 @@ import {
     tiles.appendChild(tBonus.box);
     root.appendChild(tiles);
 
+    /* --- at a glance: the same figures, drawn --- */
+    root.appendChild(el('p', 'eyebrow', t('chGlance')));
+    var charts = el('div', 'chcharts');
+    charts.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(charts);
+
     /* --- what the agents made of it --- */
     root.appendChild(el('p', 'eyebrow', t('chAnalysis')));
     var runBtn = el('button', 'seed', t('chRunNow'));
@@ -387,6 +393,7 @@ import {
     watchEvents(record);
     watchWeek(week);
     watchReports(raw, tFiled, tMissing);
+    watchCharts(charts);
   }
 
   function tile(label, value, full) {
@@ -719,6 +726,9 @@ import {
         x.when = x.at && x.at.toDate ? x.at.toDate() : new Date();
         all.push(x);
       });
+      /* the charts' "today" column is drawn from these same filings */
+      TODAY_FEED.all = all;
+      TODAY_FEED.fns.forEach(function (f) { f(); });
       var filed = all.filter(function (f) { return f.when.getTime() >= start; });
 
       tFiled.set(String(filed.length));
@@ -731,7 +741,288 @@ import {
       drawOwed();
     }, failInto(into));
 
-    setInterval(function () { if (all) drawOwed(); }, 60000);
+    setInterval(function () {
+      if (!all) return;
+      drawOwed();
+      /* a deadline passing turns "not due yet" into "missing" without any
+         new report — the charts ask whether that changed their picture */
+      TODAY_FEED.fns.forEach(function (f) { f(true); });
+    }, 60000);
+  }
+
+  /* ---------------- at a glance ---------------- */
+
+  /* The figures above, and the ones the reports carry, drawn (js/charts.js
+     does the drawing). Read once and kept current like the rest of the
+     page: the ledger's closed days for who reported, and four people's own
+     reports for the money, the output, the waste and the quality. Only
+     their reports are read, and only four weeks of them — the page is
+     opened on a phone, and the whole archive is not needed to draw a month.
+
+     A figure that was not reported is shown as not reported, never as 0 —
+     the same rule the agents follow. */
+  var TODAY_FEED = { all: null, fns: [] };
+  var CHART_PEOPLE = ['betty', 'ephrata', 'amaha', 'wude'];
+  var WD = {
+    en: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
+    am: ['እ', 'ሰ', 'ማ', 'ረ', 'ሐ', 'ዓ', 'ቅ']
+  };
+
+  function tfill(k, o) {
+    var s = t(k);
+    Object.keys(o || {}).forEach(function (x) { s = s.split('{' + x + '}').join(o[x]); });
+    return s;
+  }
+  /* "Mon 28 Sep" — short enough for a tooltip, in his language */
+  function dayShort(day) {
+    var d = new Date(day + 'T12:00:00Z');
+    return lang === 'am'
+      ? DAYS.am[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MONTHS.am[d.getUTCMonth()]
+      : DAYS.en[d.getUTCDay()].slice(0, 3) + ' ' + d.getUTCDate() + ' ' + MONTHS.en[d.getUTCMonth()].slice(0, 3);
+  }
+  function monShort(day) {
+    var m = MONTHS[lang][Number(day.slice(5, 7)) - 1];
+    return lang === 'am' ? m : m.slice(0, 3);
+  }
+  /* a figure from a report, or null — a blank is not a zero */
+  function fig(v) {
+    if (v == null || String(v).trim() === '') return null;
+    var s = String(v).replace(/[^0-9.\-]/g, '');
+    return s === '' || isNaN(Number(s)) ? null : Number(s);
+  }
+  /* the last n working days (no Sundays), oldest first, ending with `end` */
+  function workDays(end, n) {
+    var out = [], d = end;
+    while (out.length < n) { if (dow(d) !== 0) out.unshift(d); d = addDays(d, -1); }
+    return out;
+  }
+  /* "Abrham G." where two people share a first name */
+  function shortNames() {
+    var first = {}, out = {};
+    PEOPLE.forEach(function (p) { var f = L(p).split(' ')[0]; first[f] = (first[f] || 0) + 1; });
+    PEOPLE.forEach(function (p) {
+      var w = L(p).split(' ');
+      out[p.id] = first[w[0]] > 1 && w[1] ? w[0] + ' ' + w[1].charAt(0) + '.' : w[0];
+    });
+    return out;
+  }
+
+  function watchCharts(box) {
+    var C = window.KleverCharts;
+    if (!C) { box.innerHTML = ''; return; }
+    var ledgers = null, reps = null, whoSig = '';
+
+    onSnapshot(query(collection(db, 'ledger'), where('day', '>=', addDays(DAY, -20)), orderBy('day', 'asc')),
+      function (qs) {
+        ledgers = [];
+        qs.forEach(function (d) { ledgers.push(d.data()); });
+        draw();
+      }, failInto(box));
+    onSnapshot(query(collection(db, 'reports'), where('person', 'in', CHART_PEOPLE),
+                     where('at', '>=', dayStart(addDays(DAY, -41)))),
+      function (qs) {
+        reps = [];
+        qs.forEach(function (d) {
+          var x = d.data({ serverTimestamps: 'estimate' });
+          x.when = x.at && x.at.toDate ? x.at.toDate() : new Date();
+          reps.push(x);
+        });
+        draw();
+      }, failInto(box));
+    TODAY_FEED.fns.push(function (tick) {
+      if (tick && todaySig() === whoSig) return;
+      draw();
+    });
+
+    function todaySig() {
+      return JSON.stringify(todayCells().map(function (c) { return c.person + c.s; }));
+    }
+
+    /* today, by the ledger's rules, from the filings the page already has */
+    function todayCells() {
+      var all = TODAY_FEED.all;
+      if (!all) return [];
+      var end = dayStart(addDays(DAY, 1)).getTime(), now = Date.now();
+      return dueOn(DAY).map(function (r) {
+        var from = dayStart(addDays(DAY, -reach(r))).getTime(), hit = null;
+        all.forEach(function (f) {
+          var tm = f.when.getTime();
+          if (f.report === r.id && f.person === r.person && tm >= from && tm < end) hit = f;
+        });
+        var s = hit ? (isLate(hit) ? 'late' : 'ok') : (now < deadline(r, DAY).getTime() ? 'wait' : 'miss');
+        return { person: r.person, report: L(r), s: s, at: hit ? hit.when : null };
+      });
+    }
+
+    function draw() {
+      if (!ledgers || !reps) return;
+      whoSig = todaySig();
+      box.innerHTML = '';
+      box.appendChild(whoChart());
+      box.appendChild(bankChart());
+      box.appendChild(collectChart());
+      box.appendChild(dailyChart({ report: 'amaha-daily', field: 'p_total', title: t('chgProd'), sub: t('chgProdSub'),
+        ref: { v: 40, label: t('chgTarget40'), good: 'above' }, unit: ' m²', ok: 'chgProdOk', bad: 'chgProdBad' }));
+      box.appendChild(dailyChart({ report: 'amaha-daily', field: 'w_pct', title: t('chgWaste'), sub: t('chgWasteSub'),
+        ref: { v: 20, label: t('chgLimit20'), good: 'below' }, unit: '%', ok: 'chgWasteOk', bad: 'chgWasteBad' }));
+      /* a pass rate lives between 90 and 100: as bars from zero, 97 and 98
+         look the same; as a line read from 80, the bonus line is visible */
+      box.appendChild(dailyChart({ report: 'wude-daily', field: 'i_rate', title: t('chgPass'), sub: t('chgPassSub'),
+        ref: { v: 98, label: t('chgTarget98'), good: 'above' }, unit: '%', min: 80, max: 100, line: true,
+        ok: 'chgPassOk', bad: 'chgPassBad' }));
+    }
+
+    /* ---- who reported: the ledger's closed days, and today so far ---- */
+    function whoChart() {
+      var WORD = { ok: t('chgOn'), late: t('chgLate'), miss: t('chgMiss'), wait: t('chgWait') };
+      var RANK = { miss: 4, late: 3, ok: 2, wait: 1 };
+      function sOf(status) { return status === 'MISSING' ? 'miss' : status === 'LATE' ? 'late' : status === 'On time' ? 'ok' : null; }
+      var days = ledgers.filter(function (d) { return d.day < DAY && (d.lines || []).length; }).slice(-10);
+      var cols = days.map(function (d) {
+        return { day: d.day, lines: (d.lines || []).map(function (l) {
+          var at = l.at && l.at.toDate ? l.at.toDate() : null;
+          return { person: l.person, report: lineReport(l), s: sOf(l.status), at: at };
+        }).filter(function (l) { return l.s; }) };
+      });
+      var tc = todayCells();
+      if (tc.length) cols.push({ day: DAY, today: true, lines: tc });
+
+      var names = shortNames(), seen = {};
+      cols.forEach(function (c) { c.lines.forEach(function (l) { seen[l.person] = true; }); });
+      var people = PEOPLE.filter(function (p) { return seen[p.id]; });
+
+      var rows = people.map(function (p) {
+        return { name: names[p.id], cells: cols.map(function (c) {
+          var mine = c.lines.filter(function (l) { return l.person === p.id; });
+          if (!mine.length) return null;
+          var worst = mine.reduce(function (a, l) { return RANK[l.s] > RANK[a] ? l.s : a; }, 'wait');
+          return { s: worst, tip: [L(p) + ' · ' + (c.today ? t('chgToday') : dayShort(c.day))].concat(mine.map(function (l) {
+            return l.report + ' — ' + WORD[l.s] + (l.at ? ', ' + hhmm(l.at) : '');
+          })) };
+        }) };
+      });
+      var colsOut = cols.map(function (c) {
+        var due = c.lines.filter(function (l) { return l.s !== 'wait'; }).length;
+        var ok = c.lines.filter(function (l) { return l.s === 'ok'; }).length;
+        return { top: WD[lang][dow(c.day)], bottom: c.today ? '•' : String(Number(c.day.slice(8))), today: !!c.today,
+                 tip: [tfill('chgOnTimeOf', { ok: ok, due: due }), c.today ? t('chgToday') : dayShort(c.day)] };
+      });
+      var last = cols.filter(function (c) { return !c.today; }).pop(), cap = null;
+      if (last) {
+        var inN = last.lines.filter(function (l) { return l.s === 'ok' || l.s === 'late'; }).length;
+        cap = tfill('chgWhoCap', { day: dayShort(last.day), 'in': inN, due: last.lines.length,
+                                   ok: last.lines.filter(function (l) { return l.s === 'ok'; }).length });
+      }
+      var tally = rows.map(function (r, i) {
+        var n = { ok: 0, late: 0, miss: 0 };
+        r.cells.forEach(function (c) { if (c && n[c.s] != null) n[c.s]++; });
+        return [L(people[i]), String(n.ok), String(n.late), String(n.miss)];
+      });
+      return C.grid({
+        title: t('chgWho'), sub: t('chgWhoSub'), cols: colsOut, rows: rows, caption: cap,
+        legend: [['ok', '✓', WORD.ok], ['late', '!', WORD.late], ['miss', '✕', WORD.miss], ['wait', '·', WORD.wait]],
+        numbers: { title: t('chgNumbers'), head: [t('chgPerson'), '✓ ' + WORD.ok, '! ' + WORD.late, '✕ ' + WORD.miss], rows: tally }
+      });
+    }
+
+    /* the last filing of a report on each Addis day: {day: values} */
+    function byDay(reportId) {
+      var out = {};
+      reps.filter(function (f) { return f.report === reportId; })
+          .sort(function (a, b) { return a.when - b.when; })
+          .forEach(function (f) { out[addisYmd(f.when)] = f.values || {}; });
+      return out;
+    }
+
+    /* ---- money in the bank, against the reserve ---- */
+    function bankChart() {
+      var daily = byDay('betty-daily'), fc = byDay('betty-forecast'), pts = [];
+      for (var i = 27; i >= 0; i--) {
+        var d = addDays(DAY, -i);
+        var v = fig((daily[d] || {}).bank_total), note = t('chgFromDaily');
+        if (v == null) { v = fig((fc[d] || {}).cf7_bank); note = t('chgFromForecast'); }
+        pts.push({ day: d, top: String(Number(d.slice(8))), bottom: (i === 27 || d.slice(8) === '01') ? monShort(d) : '',
+                   title: dayShort(d), v: v, note: v == null ? '' : note });
+      }
+      var lastP = pts.filter(function (p) { return p.v != null; }).pop();
+      var status = !lastP ? { kind: 'none', icon: '–', text: t('chgBankNone') }
+        : lastP.v < 6000000 ? { kind: 'bad', icon: '▼', text: tfill('chgBankBelow', { v: birr(lastP.v), day: dayShort(lastP.day) }) }
+        : { kind: 'good', icon: '✓', text: tfill('chgBankAbove', { v: birr(lastP.v), day: dayShort(lastP.day) }) };
+      return C.line({
+        title: t('chgBank'), sub: t('chgBankSub'), status: status, points: pts, joinGap: 2,
+        ref: { v: 6000000, label: t('chgReserve'), good: 'above' },
+        fmt: function (v) { return birr(v) + ' ' + t('unBirr'); }, tick: function (v) { return short(v); },
+        lab: function (v) { return short(v); },
+        words: { notRep: t('chgNotRep'), none: t('chgBankNone') },
+        numbers: { title: t('chgNumbers'), head: [t('chgDay'), t('chgValue')],
+                   rows: pts.filter(function (p) { return p.v != null; }).map(function (p) { return [p.title + ' · ' + p.note, birr(p.v)]; }) }
+      });
+    }
+
+    /* ---- collected each week, against the 3,000,000 floor ---- */
+    function collectChart() {
+      var eph = byDay('ephrata-daily'), monday = addDays(DAY, -((dow(DAY) + 6) % 7)), pts = [];
+      for (var w = 4; w >= 0; w--) {
+        var m = addDays(monday, -7 * w), sum = 0, rep = 0, owed = 0;
+        for (var k = 0; k < 6; k++) {
+          var d = addDays(m, k);
+          if (d > DAY) break;
+          owed++;
+          var v = fig((eph[d] || {}).collected_today);
+          if (v != null) { sum += v; rep++; }
+        }
+        /* "28 Sep"; in Amharic the month's name is too long for a column,
+           so the week is written 28/9 */
+        var wkLabel = lang === 'am' ? Number(m.slice(8)) + '/' + Number(m.slice(5, 7))
+                                    : Number(m.slice(8)) + ' ' + monShort(m);
+        pts.push({ day: m, top: wkLabel, bottom: w === 0 ? t('chgThisWeek') : '',
+                   title: tfill('chgWeekOf', { day: dayShort(m) }), v: rep ? sum : null, partial: w === 0 && dow(DAY) !== 0,
+                   note: tfill('chgDaysRep', { n: rep, m: owed }), rep: rep, owed: owed, label: w === 0 });
+      }
+      var now = pts[pts.length - 1];
+      var status = now.v == null ? { kind: 'none', icon: '–', text: t('chgCollectNone') }
+        : now.v >= 3000000 ? { kind: 'good', icon: '✓', text: tfill('chgCollectMet', { v: birr(now.v) }) }
+        : { kind: 'warn', icon: '!', text: tfill('chgCollectNow', { v: birr(now.v), n: now.rep, m: now.owed }) };
+      return C.columns({
+        title: t('chgCollect'), sub: t('chgCollectSub'), status: status, points: pts,
+        ref: { v: 3000000, label: t('chgFloor'), good: 'above' },
+        fmt: function (v) { return birr(v) + ' ' + t('unBirr'); }, tick: function (v) { return short(v); },
+        lab: function (v) { return short(v); },
+        words: { notRep: t('chgNotRep'), notYet: t('chgNotYet'), none: t('chgNoneDays') },
+        legend: [['is-good', t('chgLegendMet'), '✓'], ['is-bad', t('chgLegendShort'), '✕'],
+                 ['is-partial', t('chgLegendSoFar'), ''], ['is-none', t('chgLegendNone'), '–']],
+        numbers: { title: t('chgNumbers'), head: [t('chgWeek'), t('chgValue')],
+                   rows: pts.map(function (p) { return [p.title + ' · ' + p.note, p.v == null ? t('chgNotRep') : birr(p.v)]; }) }
+      });
+    }
+
+    /* ---- one figure a working day, against its line ---- */
+    function dailyChart(o) {
+      var rep = reportById(o.report), by = byDay(o.report), now = Date.now();
+      var pts = workDays(DAY, 12).map(function (d) {
+        var v = fig((by[d] || {})[o.field]);
+        return { day: d, top: WD[lang][dow(d)], bottom: String(Number(d.slice(8))), title: dayShort(d), v: v,
+                 wait: v == null && d === DAY && rep && now < deadline(rep, DAY).getTime() };
+      });
+      var fmt = function (v) { return (Math.round(v * 10) / 10).toLocaleString('en-US') + o.unit; };
+      var lastP = pts.filter(function (p) { return p.v != null; }).pop(), status;
+      if (!lastP) status = { kind: 'none', icon: '–', text: t('chgNoneDays') };
+      else {
+        var good = o.ref.good === 'above' ? lastP.v >= o.ref.v : lastP.v <= o.ref.v;
+        var gap = Math.round(Math.abs(lastP.v - o.ref.v) * 10) / 10;
+        status = { kind: good ? 'good' : 'bad', icon: good ? '✓' : '✕',
+                   text: tfill('chgLatest', { v: fmt(lastP.v), day: dayShort(lastP.day),
+                                              how: tfill(good ? o.ok : o.bad, { d: gap.toLocaleString('en-US') }) }) };
+      }
+      return C[o.line ? 'line' : 'columns']({
+        title: o.title, sub: o.sub, status: status, points: pts, ref: o.ref, max: o.max, min: o.min, joinGap: 1, labelGap: 22,
+        fmt: fmt, tick: function (v) { return (Math.round(v * 10) / 10) + o.unit.trim().replace('m²', ''); },
+        words: { notRep: t('chgNotRep'), notYet: t('chgNotYet'), none: t('chgNoneDays') },
+        legend: [['is-good', t('chgLegendMet'), '✓'], ['is-bad', t('chgLegendShort'), '✕'], ['is-none', t('chgLegendNone'), '–']],
+        numbers: { title: t('chgNumbers'), head: [t('chgDay'), t('chgValue')],
+                   rows: pts.map(function (p) { return [p.title, p.v == null ? (p.wait ? t('chgNotYet') : t('chgNotRep')) : fmt(p.v)]; }) }
+      });
+    }
   }
 
   function owedList(cls, title, reports) {

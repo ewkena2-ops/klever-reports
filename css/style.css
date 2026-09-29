@@ -873,6 +873,81 @@ body[data-page="chairman"] .codenote{font-size:12.5px;color:var(--dim);text-alig
 }
 .chflags .chfl,.chmissing .chfl{color:var(--coral);margin-bottom:6px;font-size:10.5px}
 
+/* ---------- at a glance: the charts (js/charts.js) ----------
+   Teal is met or on time, gold is late, red is missing or short — the site's
+   own meanings. "Missing" is a redder red than --coral: beside gold, coral
+   measured 14.9 apart for normal vision, under the 15 two status colours
+   need; this one measures 18.7, and 14.2 for red-green colour blindness.
+   Every mark still carries its sign or its words; colour is never alone. */
+:root{--miss:#e5574a}
+.chcharts{display:grid;gap:12px;margin:14px 0 6px}
+.cg{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 12px;min-width:0}
+.cg-head{margin:0 0 10px}
+.cg-title{font-size:15px;font-weight:700;margin:0;color:var(--ink);letter-spacing:-.01em;line-height:1.3}
+.cg-sub{font-size:12.5px;color:var(--mut);margin:2px 0 0;line-height:1.45}
+.cg-now{font-size:13.5px;color:var(--ink-2);margin:8px 0 0;display:flex;gap:7px;align-items:baseline;line-height:1.45}
+.cg-now .cg-ic{font-weight:700;flex:none}
+.cg-now.good .cg-ic{color:var(--teal-hi)}
+.cg-now.warn .cg-ic{color:var(--gold)}
+.cg-now.bad .cg-ic{color:var(--miss)}
+.cg-now.none .cg-ic{color:var(--dim)}
+.cg-plot{position:relative;width:100%}
+.cg-svg{display:block;overflow:visible;touch-action:pan-y;-webkit-tap-highlight-color:transparent}
+.cg-tick{font:500 10.5px var(--mono);fill:var(--mut)}
+.cg-tick.cg-today{fill:var(--teal-hi);font-weight:600}
+.cg-name{font:500 12px var(--sans);fill:var(--ink-2)}
+.cg-grid{stroke:var(--line);stroke-width:1}
+.cg-base{stroke:var(--line-3);stroke-width:1}
+.cg-ref{stroke:var(--ink-2);stroke-width:1.5;opacity:.7}
+.cg-tick.cg-reftick{fill:var(--ink);font-weight:600}
+.cg-val{font:600 11px var(--mono);fill:var(--ink)}
+/* words laid over marks keep a halo of the card, so a line or a bar behind
+   them cannot make them unreadable */
+.cg-val,.cg-tick{paint-order:stroke;stroke:var(--card);stroke-width:3.5px;stroke-linejoin:round}
+.cg-bar.is-good{fill:var(--teal-hi)}
+.cg-bar.is-bad{fill:var(--miss)}
+.cg-bar.is-partial{fill:var(--teal-hi);opacity:.45}
+g.on .cg-bar,g.on .cg-dot{filter:brightness(1.18)}
+.cg-none{fill:var(--dim);opacity:.75}
+.cg-wait{fill:var(--line-3)}
+.cg-path{fill:none;stroke:var(--teal-hi);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.cg-dot{stroke:var(--card);stroke-width:2}
+.cg-dot.is-good{fill:var(--teal-hi)}
+.cg-dot.is-bad{fill:var(--miss)}
+.cg-cross{stroke:var(--line-3);stroke-width:1}
+.cg-hit{fill:transparent;cursor:pointer;outline:none}
+.cg-hit:focus-visible{fill:rgba(95,224,198,.10);stroke:var(--teal-hi);stroke-width:1}
+.cg-cell.s-ok .cg-sq{fill:var(--teal-hi)}
+.cg-cell.s-late .cg-sq{fill:var(--gold)}
+.cg-cell.s-miss .cg-sq{fill:var(--miss)}
+.cg-cell.s-wait .cg-sq{fill:none;stroke:var(--line-3);stroke-width:1}
+.cg-cell .cg-ic{font:700 11px var(--sans);fill:#06120f;pointer-events:none}
+.cg-cell.s-wait .cg-ic{fill:var(--dim)}
+.cg-cell.on .cg-sq{filter:brightness(1.18)}
+.cg-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0 0;font-size:12px;color:var(--mut)}
+.cg-key{display:inline-flex;align-items:center;gap:6px}
+.cg-key i{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:4px;font:700 9.5px var(--sans);font-style:normal;color:#06120f}
+.cg-key.s-ok i,.cg-key.is-good i{background:var(--teal-hi)}
+.cg-key.s-late i{background:var(--gold)}
+.cg-key.s-miss i,.cg-key.is-bad i{background:var(--miss)}
+.cg-key.s-wait i{border:1px solid var(--line-3);color:var(--dim)}
+.cg-key.is-none i{background:none;color:var(--dim)}
+.cg-key.is-partial i{background:var(--teal-hi);opacity:.45}
+.cg-refkey b{display:inline-block;width:16px;height:0;border-top:1.5px solid var(--ink-2);opacity:.8}
+.cg-cap{font-size:12.5px;color:var(--mut);margin:8px 0 0;line-height:1.5}
+.cg-empty{position:absolute;left:46px;right:8px;top:46px;text-align:center;font-size:12.5px;color:var(--mut);pointer-events:none;line-height:1.45}
+.cg-tip{position:absolute;z-index:3;pointer-events:none;background:var(--raise);border:1px solid var(--line-2);border-radius:8px;
+  padding:6px 9px;box-shadow:var(--shadow);max-width:250px;font-size:12px;line-height:1.4}
+.cg-tip-v{font-weight:600;font-size:13px;color:var(--ink)}
+.cg-tip-k{color:var(--ink-2)}
+.cg-table{margin:10px 0 0}
+.cg-table summary{cursor:pointer;color:var(--mut);font-size:12.5px;padding:2px 0}
+.cg-table table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12.5px}
+.cg-table th{text-align:left;font-weight:600;color:var(--mut);padding:4px 6px;border-bottom:1px solid var(--line-2);font-size:11.5px}
+.cg-table td{padding:4px 6px;border-bottom:1px solid var(--line);color:var(--ink-2)}
+.cg-table td.num,.cg-table th+th{text-align:right}
+.cg-table td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}
 }

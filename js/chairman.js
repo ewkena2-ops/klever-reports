@@ -1517,8 +1517,10 @@ import {
       into.appendChild(el('p', 'skysub', prettyDay(w.start) + ' – ' + prettyDay(w.end)));
       var tiles = el('div', 'chtiles');
       tiles.appendChild(tile(t('chOnTime'), w.onTimePct == null ? '—' : w.onTimePct + '%').box);
-      tiles.appendChild(tile(t('chMade'), short(w.m2) + ' / ' + short(w.m2Target)).box);
-      tiles.appendChild(tile(t('chCollected'), short(w.collected), exact(w.collected)).box);
+      /* null is a week nobody reported it (see sumOf_ in Packs.js), not a 0 */
+      tiles.appendChild(tile(t('chMade'), (w.m2 == null ? '—' : short(w.m2)) + ' / ' + short(w.m2Target)).box);
+      tiles.appendChild(tile(t('chCollected'), w.collected == null ? '—' : short(w.collected),
+                             w.collected == null ? null : exact(w.collected)).box);
       into.appendChild(tiles);
       var f = el('div', 'chfind brief');
       f.appendChild(el('div', 'chft', w.text || ''));

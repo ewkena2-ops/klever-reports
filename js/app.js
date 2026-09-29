@@ -1569,6 +1569,14 @@
       h.textContent = lang === 'am' ? f.tgt.am : f.tgt.en;
       row.appendChild(h);
     }
+    /* an answer that cannot be right (see oddFigures in forms.js) says so
+       here, under the question it belongs to */
+    if (f.t === 'ratio' || f.parts) {
+      var oh = el('div', 'hint odd');
+      oh.id = 'o_' + f.id;
+      oh.hidden = true;
+      row.appendChild(oh);
+    }
     return row;
   }
 
@@ -1619,6 +1627,7 @@
     var out = [];
     var gaps = unanswered();
     if (gaps.length) out.push(unansweredLine(gaps));
+    oddNow().forEach(function (o) { out.push(t('toCheck') + ': ' + oddLine(o)); });
     liveFields().forEach(function (fl) {
       if (targetMiss(fl)) out.push(said(L(fl)) + ' ' + fmt(fl) + ' — ' + (lang === 'am' ? fl.tgt.am : fl.tgt.en));
     });
@@ -1746,12 +1755,18 @@
       if (sending) return;
       /* not everything answered: ask once, show which, then send on the
          second tap within a few seconds */
-      if (missingNow > 0 && !sendArmed) {
+      if ((missingNow > 0 || oddCount > 0) && !sendArmed) {
         sendArmed = true;
         marking = true;
         refresh();
-        send.textContent = t('sendAnyway').replace('{n}', missingNow);
-        toast(t('sendPartialWarn').replace('{n}', missingNow));
+        send.textContent = missingNow > 0 ? t('sendAnyway').replace('{n}', missingNow)
+                                          : t('sendOddAnyway').replace('{n}', oddCount);
+        toast(missingNow > 0 && oddCount > 0
+                ? t('sendBothWarn').replace('{n}', missingNow).replace('{m}', oddCount)
+                : missingNow > 0 ? t('sendPartialWarn').replace('{n}', missingNow)
+                                 : t('sendOddWarn').replace('{n}', oddCount));
+        var firstOdd = document.querySelector('.isodd');
+        if (!missingNow && firstOdd) firstOdd.scrollIntoView({ block: 'center', behavior: 'smooth' });
         clearTimeout(sendDisarm);
         sendDisarm = setTimeout(function () { sendArmed = false; if (!sending) send.textContent = t('send'); }, 6000);
         return;
@@ -1845,7 +1860,7 @@
   var sending = false, sentThisVisit = false;
   /* how many required questions are empty right now, and whether Send has
      asked "send it anyway?" and is waiting for the second tap */
-  var missingNow = 0, sendArmed = false, sendDisarm = null;
+  var missingNow = 0, oddCount = 0, sendArmed = false, sendDisarm = null;
 
   /* a message longer than chat holds, cut at line ends into numbered parts */
   function splitForChat(txt, max) {
@@ -1903,6 +1918,23 @@
     return !isNaN(v) && v > 0;
   }
   function liveFields() { return allFields().filter(shown); }
+
+  /* Answers that cannot be right — 11 called out of 10 new leads, sources
+     that add up to more than the total. The check lives in forms.js, where
+     the morning agents read it too. It never stops a report going; it asks
+     once, like an empty question, and the sent report says what to check. */
+  function oddNow() {
+    if (typeof oddFigures !== 'function') return [];
+    return oddFigures(report, values).filter(function (o) {
+      var f = fieldById(o.f);
+      return f && shown(f);
+    });
+  }
+  function oddText(o) { return lang === 'am' ? o.am : o.en; }
+  function oddLine(o) {
+    var f = fieldById(o.f), bw = f && f.t === 'ratio' ? boxWords(f) : null;
+    return said(bw ? bw.q : L(f)) + ' ' + oddText(o);
+  }
 
   /* what is filed: the answers to the questions that were asked. A follow-up
      answered and then closed again (the 2 went back to 0) is left out. */
@@ -2058,14 +2090,29 @@
         c.onclick = null;
       }
     }
+    var odd = oddNow(), oddBy = {};
+    odd.forEach(function (o) { (oddBy[o.f] = oddBy[o.f] || []).push(oddText(o)); });
+    fields.forEach(function (f) {
+      var oh = document.getElementById('o_' + f.id);
+      if (!oh) return;
+      var msg = oddBy[f.id];
+      oh.hidden = !msg;
+      /* one line each, and a capital to start it — in the sent report the
+         same words follow the question, so they are written lower case */
+      oh.textContent = msg ? msg.map(function (x) { return x.charAt(0).toUpperCase() + x.slice(1); }).join('\n') : '';
+      var box = document.getElementById('r_' + f.id);
+      if (box) box.classList.toggle('isodd', !!msg);
+    });
+
     var send = document.getElementById('send');
     /* Send is always there — a report can go before every question is
        answered, after one "are you sure" (see buildBar). Typing while a
        report is on its way must not re-arm it, nor while it asks. */
     missingNow = missing;
+    oddCount = odd.length;
     if (send && !sending && !sentThisVisit) {
       send.disabled = false;
-      send.classList.toggle('partial', missing > 0);
+      send.classList.toggle('partial', missing > 0 || odd.length > 0);
       if (!sendArmed) send.textContent = t('send');
     }
 
@@ -2155,6 +2202,8 @@
       (pdm.day && pdm.day !== stamp() ? ' · ' + statusLine(report, pdm) : ''));
     var gaps = unanswered();
     if (gaps.length) out.push('⚠ ' + unansweredLine(gaps));
+    var odd = oddNow();
+    if (odd.length) out.push('⚠ ' + t('oddCount').replace('{n}', odd.length));
 
     report.sections.forEach(function (sec) {
       var lines = [];
@@ -2179,7 +2228,7 @@
       }
     });
 
-    var flags = [];
+    var flags = odd.map(function (o) { return '• ⚠ ' + oddLine(o); });
     liveFields().forEach(function (f) {
       if (targetMiss(f)) {
         flags.push('• ' + said(L(f)) + ' ' + fmt(f) + ' — ' +

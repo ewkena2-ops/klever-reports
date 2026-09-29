@@ -128,8 +128,13 @@ function daysOf_(P, reportId) {
   });
   return Object.keys(by).sort().map(function (d) { return { day: d, v: by[d] }; });
 }
+/* The total over the days that answered. A day filed with the question
+   blank adds nothing, and a week in which nobody answered it at all is null —
+   "not reported" — rather than a total of 0 that reads as a week of nothing. */
 function sumOf_(days, field) {
-  return days.reduce(function (a, x) { return a + n_(x.v[field]); }, 0);
+  var k = days.filter(function (x) { return !blank_(x.v[field]); });
+  if (!k.length) return null;
+  return k.reduce(function (a, x) { return a + n_(x.v[field]); }, 0);
 }
 function avgOf_(days, field) {
   var k = days.filter(function (x) { return x.v[field] !== '' && x.v[field] != null; });
@@ -216,7 +221,7 @@ function operations_(P) {
       days_reported: amaha.length,
       m2_made: sumOf_(amaha, 'p_total'),
       m2_target: prodDays * 40,
-      days_below_40: amaha.filter(function (x) { return n_(x.v.p_total) < 40; }).length,
+      days_below_40: amaha.filter(function (x) { return !blank_(x.v.p_total) && n_(x.v.p_total) < 40; }).length,
       average_waste_pct: avgOf_(amaha, 'w_pct'),
       waste_limit_pct: 20,
       hours_lost: sumOf_(amaha, 'w_lost'),
@@ -277,6 +282,8 @@ function forecasts_(P) {
   function judge(projected, actual, what) {
     if (projected == null) return { what: what, projected: null, actual: actual,
                                      note: 'no forecast was filed the week before' };
+    if (actual == null) return { what: what, projected: projected, actual: null,
+                                 note: 'what actually came in was not reported this week' };
     var err = projected ? Math.round((actual - projected) / projected * 1000) / 10 : null;
     return { what: what, projected: projected, actual: actual, off_by_pct: err,
              within_10_pct: err !== null && Math.abs(err) <= 10 };
@@ -515,8 +522,8 @@ function mailPack_(kind, P, facts, text) {
       esc_(dayLabel_(P.start)) + ' to ' + esc_(dayLabel_(P.end)) + '</div>' +
     '<table width="100%" cellpadding="0" cellspacing="6" style="margin:0 -6px 18px;font-family:monospace"><tr>' +
       tile_('ON TIME', rep.on_time_pct == null ? '—' : rep.on_time_pct + '%') +
-      tile_('M² MADE', fmt_(ops.production.m2_made) + ' / ' + fmt_(ops.production.m2_target)) +
-      tile_('COLLECTED', fmt_(ops.sales.collected)) +
+      tile_('M² MADE', (ops.production.m2_made == null ? '—' : fmt_(ops.production.m2_made)) + ' / ' + fmt_(ops.production.m2_target)) +
+      tile_('COLLECTED', ops.sales.collected == null ? '—' : fmt_(ops.sales.collected)) +
     '</tr></table>' +
     '<div style="background:#f3f4f1;border-left:3px solid #0f5c54;padding:14px 16px;' +
       'margin-bottom:24px;font-size:14px;line-height:1.65;white-space:pre-wrap">' + esc_(text) + '</div>';

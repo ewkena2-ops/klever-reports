@@ -339,6 +339,14 @@ function runTests_(which, ctx, day, schedule, only) {
 function ruleLinesForDay_(day, filings, schedule) {
   var R = loadRules_();
   var got = runTests_('day', dayCtx_(day, filings, schedule), day, schedule);
+  var named = {};
+  (schedule.people || []).forEach(function (p) { named[p.id] = p.en; });
+  (got.unjudged || []).forEach(function (u) {
+    if (!u.bad) return;
+    var rule = R.byId[u.rule];
+    got.errors.push('Not judged — ' + (rule ? rule.en : u.rule) + ' (' + (named[u.person] || u.person || 'team') +
+                    '): ' + u.bad);
+  });
 
   /* What the Chairman recorded goes into the close of the day he recorded
      it, whatever day it happened: something from Tuesday written down on
@@ -621,7 +629,7 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
     }
     if (spec.when) {
       var ok = cond_(J, spec.when);
-      if (ok === null) { unjudged.push({ rule: rule.id, person: p, why: J.missing || 'a report it needs was not filed' }); return; }
+      if (ok === null) { unjudged.push({ rule: rule.id, person: p, bad: J.bad || null, why: J.missing || 'a report it needs was not filed' }); return; }
       /* judged and not met — kept, with the figures, for "not on track" */
       if (!ok) { if (missed) missed.push({ rule: rule.id, person: p, why: J.said.join('; ') }); return; }
     }
@@ -630,7 +638,7 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
 
     if (spec.rows) {
       var rs = rowsOf_(J, spec.rows.of);
-      if (rs === null) { unjudged.push({ rule: rule.id, person: p, why: J.missing || 'not filed' }); return; }
+      if (rs === null) { unjudged.push({ rule: rule.id, person: p, bad: J.bad || null, why: J.missing || 'not filed' }); return; }
       var n = 0;
       rs.forEach(function (row) {
         if (spec.rows.where && !rowCond_(row.r, spec.rows.where)) return;
@@ -656,7 +664,7 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
     if (spec.count) {
       J.said = [];
       var c = val_(J, spec.count);
-      if (c === null) { unjudged.push({ rule: rule.id, person: p, why: J.missing || 'not filed' }); return; }
+      if (c === null) { unjudged.push({ rule: rule.id, person: p, bad: J.bad || null, why: J.missing || 'not filed' }); return; }
       c = Math.floor(c);
       if (c <= 0) return;
       base.count = c;
@@ -666,7 +674,7 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
       var t = spec.tiers || spec.rate || spec.pct;
       J.said = [];
       var v = val_(J, t.of);
-      if (v === null) { unjudged.push({ rule: rule.id, person: p, why: J.missing || 'not filed' }); return; }
+      if (v === null) { unjudged.push({ rule: rule.id, person: p, bad: J.bad || null, why: J.missing || 'not filed' }); return; }
       var amount = 0;
       if (spec.rate) amount = v * spec.rate.birr;
       else {
@@ -749,8 +757,35 @@ function fieldLabel_(J, report, field) {
   if (rep) (rep.sections || []).forEach(function (sec) {
     (sec.fields || []).forEach(function (f) { if (f.id === base) label = f.en; });
   });
-  label = String(label).replace(/\s*\?$/, '');
-  return label.length > 70 ? label.slice(0, 67) + '…' : label;
+  /* one box of a two-box answer is named by the word under it: "…posted —
+     required: 20", not the whole question with "(posted / required)" on it */
+  var box = boxOf_(label, field);
+  label = box ? bareQuestion_(label) + ' — ' + box : String(label).replace(/\s*\?$/, '');
+  return label.length > 90 ? label.slice(0, 87) + '…' : label;
+}
+/* "(posted / required)" at the end of a two-box question: the word for box a or b */
+function boxOf_(label, field) {
+  var side = /__a$/.test(field) ? 0 : /__b$/.test(field) ? 1 : -1;
+  if (side < 0) return null;
+  var m = /\(([^()]*?)\s\/\s([^()]*?)\)\s*$/.exec(String(label || ''));
+  return m ? m[side + 1].trim() : (side ? 'second box' : 'first box');
+}
+function bareQuestion_(label) {
+  var q = String(label || '').replace(/\s*\([^()]*\)\s*$/, '').replace(/\s*\?$/, '');
+  return q.length > 70 ? q.slice(0, 67) + '…' : q;
+}
+/* Both boxes of one question, as one phrase: "How many required stage
+   messages were posted: required 20 less posted 19". The first reading
+   printed the whole question twice, once for each box. */
+function samePair_(J, r1, r2) {
+  if (r1.report !== r2.report) return null;
+  var b1 = r1.field.replace(/__[ab]$/, ''), b2 = r2.field.replace(/__[ab]$/, '');
+  if (b1 !== b2 || b1 === r1.field || b2 === r2.field) return null;
+  var rep = reportOf_(J.schedule, r1.report), label = '';
+  (rep ? rep.sections : []).forEach(function (sec) {
+    (sec.fields || []).forEach(function (f) { if (f.id === b1) label = f.en; });
+  });
+  return { q: bareQuestion_(label), w1: boxOf_(label, r1.field), w2: boxOf_(label, r2.field) };
 }
 
 /* The one filing a day or week test reads: that day's; for a week test the
@@ -781,6 +816,23 @@ function val_(J, ref) {
     if (!f) { J.missing = r.report + ' not filed'; return null; }
     var raw = f[r.field];
     if (raw === '' || raw == null) { J.missing = fieldLabel_(J, r.report, r.field) + ' — not answered'; return null; }
+    /* Every two-box answer is part / whole. With the first box bigger (25
+       posted of 20 required) "20 less 25" is below zero and the fine was
+       simply never charged, and "all called" read as met — an answer that
+       cannot be true settled the rule. It is not judged instead, and the
+       morning email says so, so a person cannot type their way out of a fine
+       or into a bonus. */
+    var pm = /^(.*)__([ab])$/.exec(r.field);
+    if (pm) {
+      var pa = fig_(f[pm[1] + '__a']), pb = fig_(f[pm[1] + '__b']);
+      if (pa !== null && pb !== null && pa > pb) {
+        var pp = samePair_(J, { report: r.report, field: pm[1] + '__a' }, { report: r.report, field: pm[1] + '__b' });
+        J.bad = (pp ? pp.q + ': ' + pp.w1 + ' ' + fmt_(pa) + ' is more than ' + pp.w2 + ' ' + fmt_(pb)
+                    : r.field + ' ' + fmt_(pa) + ' of ' + fmt_(pb)) + ' — cannot be right as written';
+        J.missing = J.bad;
+        return null;
+      }
+    }
     var x = fig_(raw);
     J.said.push(fieldLabel_(J, r.report, r.field) + ': ' + (x === null ? raw : fmt_(x)));
     return x === null ? String(raw).toLowerCase() : x;
@@ -793,9 +845,10 @@ function val_(J, ref) {
     J.said.length = q;
     if (!b) { J.missing = 'nothing to divide by'; return null; }
     var pct = Math.round(a / b * 1000) / 10;
-    var ra = split_(J, ref.ratio[0]), rb = split_(J, ref.ratio[1]);
-    J.said.push(fieldLabel_(J, ra.report, ra.field) + ' ' + fmt_(a) + ' of ' + fieldLabel_(J, rb.report, rb.field) +
-                ' ' + fmt_(b) + ' = ' + pct + '%');
+    var ra = split_(J, ref.ratio[0]), rb = split_(J, ref.ratio[1]), rp = samePair_(J, ra, rb);
+    J.said.push(rp ? rp.q + ': ' + rp.w1 + ' ' + fmt_(a) + ' of ' + rp.w2 + ' ' + fmt_(b) + ' = ' + pct + '%'
+                   : fieldLabel_(J, ra.report, ra.field) + ' ' + fmt_(a) + ' of ' + fieldLabel_(J, rb.report, rb.field) +
+                     ' ' + fmt_(b) + ' = ' + pct + '%');
     return pct;
   }
   /* What the month's ledger already holds for this person: report lines
@@ -821,9 +874,10 @@ function val_(J, ref) {
     var d1 = val_(J, ref.diff[0]), d2 = val_(J, ref.diff[1]);
     if (d1 === null || d2 === null) return null;
     J.said.length = q2;
-    var dr1 = split_(J, ref.diff[0]), dr2 = split_(J, ref.diff[1]);
-    J.said.push(fieldLabel_(J, dr1.report, dr1.field) + ' ' + fmt_(d1) + ' less ' +
-                fieldLabel_(J, dr2.report, dr2.field) + ' ' + fmt_(d2) + ' = ' + fmt_(d1 - d2));
+    var dr1 = split_(J, ref.diff[0]), dr2 = split_(J, ref.diff[1]), dp = samePair_(J, dr1, dr2);
+    J.said.push(dp ? dp.q + ': ' + dp.w1 + ' ' + fmt_(d1) + ' less ' + dp.w2 + ' ' + fmt_(d2) + ' = ' + fmt_(d1 - d2)
+                   : fieldLabel_(J, dr1.report, dr1.field) + ' ' + fmt_(d1) + ' less ' +
+                     fieldLabel_(J, dr2.report, dr2.field) + ' ' + fmt_(d2) + ' = ' + fmt_(d1 - d2));
     return d1 - d2;
   }
   if (ref.rows && !ref.grid) {

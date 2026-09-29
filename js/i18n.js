@@ -336,7 +336,12 @@ const T = {
     sendAnyway:'Send with {n} empty?',
     sendPartialWarn:'{n} questions are still empty (marked in red). Tap Send again to send it as it is.',
     notAnswered:'Not answered',
-    notAnsweredCount:'{n} not answered'
+    notAnsweredCount:'{n} not answered',
+    oddCount:'{n} to check — cannot be right as written',
+    toCheck:'Check',
+    sendOddAnyway:'Send with {n} to check?',
+    sendOddWarn:'{n} answers cannot be right as written (marked). Correct them, or tap Send again to send it as it is.',
+    sendBothWarn:'{n} questions are still empty and {m} answers cannot be right as written (all marked). Tap Send again to send it as it is.'
   },
   am:{
     siteTitle:'የክሌቨር ሪፖርቶች',
@@ -670,6 +675,11 @@ const T = {
     sendAnyway:'{n} ባዶ ሆነው ይላክ?',
     sendPartialWarn:'{n} ጥያቄዎች ገና ባዶ ናቸው (በቀይ ተመልክተዋል)። እንዳለ ለመላክ «ላክ»ን እንደገና ይንኩ።',
     notAnswered:'ያልተመለሱ',
-    notAnsweredCount:'{n} ያልተመለሱ'
+    notAnsweredCount:'{n} ያልተመለሱ',
+    oddCount:'{n} የሚፈተሹ — እንደተጻፉት ትክክል ሊሆኑ አይችሉም',
+    toCheck:'ይፈትሹ',
+    sendOddAnyway:'{n} የሚፈተሹ ይዘው ይላክ?',
+    sendOddWarn:'{n} መልሶች እንደተጻፉት ትክክል ሊሆኑ አይችሉም (ተመልክተዋል)። ያስተካክሏቸው፤ ወይም እንዳለ ለመላክ «ላክ»ን እንደገና ይንኩ።',
+    sendBothWarn:'{n} ጥያቄዎች ገና ባዶ ናቸው፤ {m} መልሶች ደግሞ እንደተጻፉት ትክክል ሊሆኑ አይችሉም (ሁሉም ተመልክተዋል)። እንዳለ ለመላክ «ላክ»ን እንደገና ይንኩ።'
   }
 };

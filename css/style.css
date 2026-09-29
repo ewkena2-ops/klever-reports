@@ -608,6 +608,9 @@ fieldset legend .lgc.full::before{content:'✓ '}
 .fld .hint.bad::before{content:'▲ ';font-size:9px;vertical-align:1px}
 .fld .hint.good{color:var(--teal-hi)}
 .fld .hint.good::before{content:'✓ '}
+.fld .hint.odd{color:var(--gold);white-space:pre-line}
+.fld .hint.odd::before{content:'⚠ '}
+.fld.isodd input{border-color:var(--gold)}
 
 /* a follow-up: opens under the answer that needs explaining, and says so */
 .fld.follow,.repwrap.follow{

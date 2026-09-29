@@ -71,7 +71,8 @@ const REPORTS = [
   penEn:'Late –500 Birr · Missing –1,000 Birr', penAm:'ዘግይቶ –500 ብር · ካልተላከ –1,000 ብር',
   sections:[
     { en:'1 · Leads today', am:'1 · ዛሬ የመጡ አዲስ ደንበኞች', fields:[
-      {id:'leads_total', en:'How many new leads came in today?', am:'ዛሬ ስንት አዲስ ደንበኞች መጡ?', t:'num'},
+      {id:'leads_total', en:'How many new leads came in today?', am:'ዛሬ ስንት አዲስ ደንበኞች መጡ?', t:'num',
+        parts:{of:['leads_social','leads_showroom','leads_referral','leads_agent','leads_other'], all:1}},
       {id:'leads_social', en:'From social media', am:'ከሶሻል ሚዲያ', t:'num', i:1},
       {id:'leads_showroom', en:'Walked into the showroom', am:'ሾውሩም የመጡ', t:'num', i:1},
       {id:'leads_referral', en:'Referred by someone', am:'በሪፈራል', t:'num', i:1},
@@ -80,7 +81,7 @@ const REPORTS = [
       {id:'leads_best', en:'Which of today\'s leads is the most serious, and what is the next step with them?', am:'ከዛሬዎቹ ደንበኞች ውስጥ በጣም ተስፋ ያለው ማን ነው? ቀጣዩ እርምጃስ ምንድን ነው?', t:'area', show:{f:'leads_total', when:'pos'}}
     ]},
     { en:'2 · Lead response compliance', am:'2 · የምላሽ ፍጥነት', fields:[
-      {id:'resp_1hr', en:'New leads today: how many did you call within 1 hour? (called within 1 hour / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ1 ሰዓት ውስጥ ደወሉላቸው? (በ1 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio'},
+      {id:'resp_1hr', en:'New leads today: how many did you call within 1 hour? (called within 1 hour / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ1 ሰዓት ውስጥ ደወሉላቸው? (በ1 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'leads_total'},
       {id:'resp_1hr_why', en:'Which leads were not called within the hour, why, and have they been called now?', am:'በ1 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን? አሁን ተደውሎላቸዋል?', t:'area', show:{f:'resp_1hr', when:'short'}},
       {id:'resp_showroom', en:'How many showroom visitors were served the same day? (served / all visitors)', am:'ሾውሩም ከመጡት ስንቱ በዕለቱ ተስተናገዱ? (የተስተናገዱ / ሁሉም)', t:'ratio'},
       {id:'resp_showroom_why', en:'Who was not served the same day, and why?', am:'በዕለቱ ያልተስተናገደው ማን ነው? ለምን?', t:'area', show:{f:'resp_showroom', when:'short'}}
@@ -179,7 +180,7 @@ const REPORTS = [
       {id:'posts', en:'How many posts went up today?', am:'ዛሬ ስንት ፖስት ተለጠፈ?', t:'num'},
       {id:'platform', en:'On which pages?', am:'በየትኛው ገጽ? (FB / IG / TikTok)', t:'text', opt:1},
       {id:'inq', en:'How many inquiries came in?', am:'ስንት ጥያቄዎች ደረሱ?', t:'num'},
-      {id:'inq_1hr', en:'How many were answered within 1 hour? (answered / all inquiries)', am:'ስንቱ በ1 ሰዓት ውስጥ ምላሽ አገኙ? (ምላሽ ያገኙ / ሁሉም)', t:'ratio'},
+      {id:'inq_1hr', en:'How many were answered within 1 hour? (answered / all inquiries)', am:'ስንቱ በ1 ሰዓት ውስጥ ምላሽ አገኙ? (ምላሽ ያገኙ / ሁሉም)', t:'ratio', whole:'inq'},
       {id:'mkt_leads', en:'How many real leads came from marketing today?', am:'ዛሬ ከማርኬቲንግ ስንት እውነተኛ ደንበኞች መጡ?', t:'num'},
       {id:'mkt_best', en:'Which post or channel brought the most, and why do you think it worked?', am:'በጣም ውጤታማ የነበረው የትኛው ፖስት ወይም ገጽ ነው? ለምን የሠራ ይመስልዎታል?', t:'area', opt:1}
     ]},
@@ -764,7 +765,7 @@ const REPORTS = [
     ]},
     { en:'2 · Lead performance', am:'2 · የደንበኛ አፈጻጸም', fields:[
       {id:'w_leads', en:'How many new leads came in this week?', am:'በዚህ ሳምንት ስንት አዲስ ደንበኞች መጡ?', t:'num'},
-      {id:'w_leads_1hr', en:'New leads this week: how many were called within 1 hour? (called within 1 hour / all new leads this week)', am:'በዚህ ሳምንት አዲስ የመጡ ደንበኞች፦ ስንቱ በ1 ሰዓት ውስጥ ተደወለላቸው? (በ1 ሰዓት ውስጥ የተደወለላቸው / በዚህ ሳምንት የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio'},
+      {id:'w_leads_1hr', en:'New leads this week: how many were called within 1 hour? (called within 1 hour / all new leads this week)', am:'በዚህ ሳምንት አዲስ የመጡ ደንበኞች፦ ስንቱ በ1 ሰዓት ውስጥ ተደወለላቸው? (በ1 ሰዓት ውስጥ የተደወለላቸው / በዚህ ሳምንት የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'w_leads'},
       {id:'w_leads_1hr_why', en:'Which leads were missed, whose leads were they, and why?', am:'ያመለጡት ደንበኞች እነማን ናቸው? የማን ደንበኞች ነበሩ? ለምን?', t:'area', show:{f:'w_leads_1hr', when:'short'}},
       {id:'w_visits', en:'How many pre-measurement visits were done this week?', am:'በዚህ ሳምንት ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num'},
       {id:'w_quotes', en:'How many quotations went out this week?', am:'በዚህ ሳምንት ስንት ፕሮፎርማ ተሰጠ?', t:'num'},
@@ -1708,6 +1709,7 @@ const REPORTS = [
   sections:[
     { en:'1 · Production output', am:'1 · የዕለቱ ምርት', fields:[
       {id:'p_total', en:'How many m² did the factory produce today?', am:'ፋብሪካው ዛሬ ስንት ካሬ ሜትር አመረተ?', t:'num',
+        parts:{of:['p_ext','p_rove']},
         tgt:{op:'gte', v:40, en:'Daily target 40 m² — below is –300 Birr/day from commission',
              am:'የቀኑ ዒላማ 40 ካሬ ሜትር — ከዚህ በታች ከኮሚሽን –300 ብር'}},
       {id:'p_total_why', en:'Production is under 40 m². What held it back, and how will it be recovered tomorrow?', am:'ምርቱ ከ40 ካሬ ሜትር በታች ነው። ምን አዘገየው? ነገ በምን ይካካሳል?', t:'area', show:{f:'p_total', when:'miss'}},
@@ -1918,6 +1920,7 @@ const REPORTS = [
   sections:[
     { en:'1 · Production performance', am:'1 · የምርት አፈጻጸም', fields:[
       {id:'w_total', en:'How many m² did the factory produce this week?', am:'ፋብሪካው በዚህ ሳምንት ስንት ካሬ ሜትር አመረተ?', t:'num',
+        parts:{of:['w_ext','w_rove']},
         tgt:{op:'gte', v:240, en:'Weekly target 240 m²', am:'የሳምንቱ ዒላማ 240 ካሬ ሜትር'}},
       {id:'w_total_why', en:'The week is under 240 m². Which days fell short, why, and what changes next week?', am:'ሳምንቱ ከ240 ካሬ ሜትር በታች ነው። የትኞቹ ቀናት ጎደሉ? ለምን? በሚቀጥለው ሳምንት ምን ይቀየራል?', t:'area', show:{f:'w_total', when:'miss'}},
       {id:'w_ext', en:'For external customers', am:'ለውጭ ደንበኞች', t:'num', i:1},
@@ -2665,7 +2668,8 @@ const SALES_DAILY = {
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   sections:[
     { en:'1 · Leads today', am:'1 · የዛሬ አዲስ ደንበኞች', fields:[
-      {id:'l_total', en:'How many new leads did you receive today?', am:'ዛሬ ስንት አዲስ ደንበኞች መጡ?', t:'num'},
+      {id:'l_total', en:'How many new leads did you receive today?', am:'ዛሬ ስንት አዲስ ደንበኞች መጡ?', t:'num',
+        parts:{of:['l_social','l_show','l_ref','l_agent','l_other'], all:1}},
       {id:'l_social', en:'From social media', am:'ከሶሻል ሚዲያ', t:'num', i:1},
       {id:'l_show', en:'Walked into the showroom', am:'ሾውሩም የመጡ', t:'num', i:1},
       {id:'l_ref', en:'Referred by someone', am:'በሪፈራል', t:'num', i:1},
@@ -2680,7 +2684,7 @@ const SALES_DAILY = {
         ]}
     ]},
     { en:'2 · Lead response', am:'2 · የምላሽ ፍጥነት', fields:[
-      {id:'r_1hr', en:'New leads today: how many did you call within 1 hour? (called within 1 hour / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ1 ሰዓት ውስጥ ደወሉላቸው? (በ1 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio',
+      {id:'r_1hr', en:'New leads today: how many did you call within 1 hour? (called within 1 hour / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ1 ሰዓት ውስጥ ደወሉላቸው? (በ1 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'l_total',
         tgt:{op:'gte', v:100, en:'Stage 1 of your commission — –200 Birr per missed lead',
              am:'የኮሚሽንዎ 1ኛ ደረጃ — ላመለጠ እያንዳንዱ –200 ብር'}},
       {id:'r_1hr_why', en:'Which leads were not called within the hour, and why?', am:'በ1 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን?', t:'area', show:{f:'r_1hr', when:'short'}},
@@ -2818,7 +2822,7 @@ const SALES_WEEKLY = {
     ]},
     { en:'3 · Lead performance', am:'3 · የደንበኛ አያያዝ አፈጻጸም', fields:[
       {id:'lp_total', en:'How many new leads did you receive this week?', am:'በዚህ ሳምንት ስንት አዲስ ደንበኞች መጡ?', t:'num'},
-      {id:'lp_1hr', en:'New leads this week: how many were called within 1 hour? (called within 1 hour / all new leads this week)', am:'በዚህ ሳምንት አዲስ የመጡ ደንበኞች፦ ስንቱ በ1 ሰዓት ውስጥ ተደወለላቸው? (በ1 ሰዓት ውስጥ የተደወለላቸው / በዚህ ሳምንት የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio'},
+      {id:'lp_1hr', en:'New leads this week: how many were called within 1 hour? (called within 1 hour / all new leads this week)', am:'በዚህ ሳምንት አዲስ የመጡ ደንበኞች፦ ስንቱ በ1 ሰዓት ውስጥ ተደወለላቸው? (በ1 ሰዓት ውስጥ የተደወለላቸው / በዚህ ሳምንት የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'lp_total'},
       {id:'lp_1hr_why', en:'Which leads were missed, and why?', am:'ያመለጡት ደንበኞች እነማን ናቸው? ለምን?', t:'area', show:{f:'lp_1hr', when:'short'}},
       {id:'lp_visits', en:'How many pre-measurement visits were done this week?', am:'በዚህ ሳምንት ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num'},
       {id:'lp_quotes', en:'How many quotations did you present this week?', am:'በዚህ ሳምንት ስንት ፕሮፎርማ ቀረበ?', t:'num'},
@@ -3164,6 +3168,74 @@ const DESIGN_WEEKLY = {
     ]}
   ]
 };
+
+/* ======================= ANSWERS THAT CANNOT BE RIGHT =======================
+   One home for the check, read by the form (a warning under the answer, and a
+   line in the sent report) and by the morning agents (told in code, so no model
+   reasons from a figure that cannot be true). It asks nothing new; it compares
+   answers the report already has:
+
+   · every two-box answer is "part / whole", so the first box can never be the
+     bigger one — 11 called within the hour out of 10 new leads;
+   · whole:'<id>' on a two-box question: its second box counts the same thing
+     as that question, so the two must agree (all new leads today = question 1);
+   · parts:{of:[ids], all:1} on a total: the indented answers under it add up
+     to it exactly (all:1 — "Anywhere else" catches the rest), or, without all,
+     at least never pass it.
+
+   A blank is never a mismatch: it is not answered, which is counted elsewhere.
+   Each result is {f: the question it belongs under, en, am}. */
+function oddFigures(report, v) {
+  v = v || {};
+  var out = [], byId = {};
+  function num(x) {
+    var s = String(x == null ? '' : x).replace(/[^0-9.\-]/g, '');
+    return s === '' || isNaN(Number(s)) ? null : Number(s);
+  }
+  function show(x) { return Number(x).toLocaleString('en-US'); }
+  function boxes(label, fallback) {
+    var m = /\(([^()]*?)\s\/\s([^()]*?)\)\s*$/.exec(String(label || ''));
+    return m ? [m[1].trim(), m[2].trim()] : fallback;
+  }
+  function bare(label) { return String(label || '').replace(/\s*\([^()]*\)\s*$/, '').replace(/[?？፧]\s*$/, ''); }
+  (report.sections || []).forEach(function (s) {
+    (s.fields || []).forEach(function (f) { byId[f.id] = f; });
+  });
+  (report.sections || []).forEach(function (s) {
+    (s.fields || []).forEach(function (f) {
+      if (f.t === 'ratio') {
+        var a = num(v[f.id + '__a']), b = num(v[f.id + '__b']);
+        var we = boxes(f.en, ['the first box', 'the second']), wa = boxes(f.am, ['የመጀመሪያው ሳጥን', 'ሁለተኛው']);
+        if (a !== null && b !== null && a > b) {
+          out.push({ f: f.id,
+            en: we[0] + ' (' + show(a) + ') cannot be more than ' + we[1] + ' (' + show(b) + ')',
+            am: '«' + wa[0] + '» (' + show(a) + ') ከ«' + wa[1] + '» (' + show(b) + ') ሊበልጥ አይችልም' });
+        }
+        var w = f.whole && byId[f.whole], t = w ? num(v[f.whole]) : null;
+        if (b !== null && t !== null && b !== t) {
+          out.push({ f: f.id,
+            en: we[1] + ' (' + show(b) + ') should be the same as “' + bare(w.en) + '” (' + show(t) + ')',
+            am: '«' + wa[1] + '» (' + show(b) + ') ከ«' + bare(w.am) + '» (' + show(t) + ') ጋር እኩል መሆን አለበት' });
+        }
+      }
+      if (f.parts) {
+        var tot = num(v[f.id]), sum = 0, got = 0;
+        f.parts.of.forEach(function (id) { var x = num(v[id]); if (x !== null) { sum += x; got++; } });
+        if (tot === null || !got) return;
+        if (sum > tot) {
+          out.push({ f: f.id,
+            en: 'the answers under it add up to ' + show(sum) + ', more than ' + show(tot),
+            am: 'ከሥሩ ያሉት መልሶች ሲደመሩ ' + show(sum) + ' ይሆናሉ — ከ' + show(tot) + ' ይበልጣሉ' });
+        } else if (f.parts.all && got === f.parts.of.length && sum !== tot) {
+          out.push({ f: f.id,
+            en: 'the answers under it add up to ' + show(sum) + ', not ' + show(tot),
+            am: 'ከሥሩ ያሉት መልሶች ሲደመሩ ' + show(sum) + ' ይሆናሉ እንጂ ' + show(tot) + ' አይደሉም' });
+        }
+      }
+    });
+  });
+  return out;
+}
 
 (function stampShared() {
   function copyFor(tpl, pid) {

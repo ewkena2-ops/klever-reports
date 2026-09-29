@@ -235,8 +235,10 @@ function loadSchedule_() {
     throw new Error('Could not read the schedule from ' + site + ' (HTTP ' +
                     src.getResponseCode() + ')');
   }
-  /* forms.js declares PEOPLE and REPORTS at the top level and nothing else */
-  var read = new Function(src.getContentText() + '; return { people: PEOPLE, reports: REPORTS };');
+  /* forms.js declares PEOPLE and REPORTS at the top level, and oddFigures —
+     the check for answers that cannot be right, shared with the form */
+  var read = new Function(src.getContentText() + '; return { people: PEOPLE, reports: REPORTS, ' +
+                          'odd: typeof oddFigures === "function" ? oddFigures : null };');
   SCHEDULE_ = read();
   if (!SCHEDULE_.reports || !SCHEDULE_.reports.length) throw new Error('Schedule came back empty');
   return SCHEDULE_;

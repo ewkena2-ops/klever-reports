@@ -48,13 +48,34 @@ function n_(v) {
   var x = Number(String(v).replace(/[^0-9.\-]/g, ''));
   return isNaN(x) ? 0 : x;
 }
+function blank_(v) { return v == null || String(v).trim() === ''; }
+/* One answer from a report, as a number — or null when it was not given.
+   A question left blank is not a zero. The first real report read here left
+   "messages waiting over 2 hours" and "complaints" empty, n_() made both 0,
+   and the morning email said every WhatsApp inquiry was answered and nobody
+   complained. Nobody had said either. Every figure an agent is shown is read
+   through this, so the same goes for a report that was never filed ({}). */
+function a_(v, field) {
+  var x = (v || {})[field];
+  return blank_(x) ? null : n_(x);
+}
+/* the same for a yes/no question: true, false, or null for not answered —
+   a blank is not a "no" */
+function ay_(v, field) {
+  var x = (v || {})[field];
+  return blank_(x) ? null : yes_(x);
+}
 /* A two-box answer — "8 / 10" — is filed as field__a and field__b. Read
    as one number it was always 0 (answered within the hour, three quotes,
-   called before arrival all read nothing). Both numbers, or null. */
+   called before arrival all read nothing). Both numbers, or null; a box left
+   empty is null, and a first box bigger than the second (11 of 10) cannot be
+   right and says so. */
 function pair_(v, id) {
-  var a = (v || {})[id + '__a'], b = (v || {})[id + '__b'];
-  if ((a === '' || a == null) && (b === '' || b == null)) return null;
-  return { done: n_(a), of: n_(b) };
+  var a = a_(v, id + '__a'), b = a_(v, id + '__b');
+  if (a === null && b === null) return null;
+  var out = { done: a, of: b };
+  if (a !== null && b !== null && a > b) out.cannot_be_right = 'the first box is bigger than the second';
+  return out;
 }
 /* Ephrata's expected collections: the total, by what the payment is for
    and by when, and the list itself. */
@@ -69,7 +90,9 @@ function expectedOf_(v) {
     out.by_when[r.when || 'not said'] = (out.by_when[r.when || 'not said'] || 0) + x;
     out.payments.push({ client: r.cust || '', for: r.kind || '', birr: x, when: r.when || '' });
   });
-  return rows.length ? out : null;
+  /* a row with only "Settlement" picked in it is a list not filled in, and
+     reads as "nothing expected" if it is handed over as a total of 0 */
+  return out.payments.length ? out : null;
 }
 function yes_(v) {
   return String(v == null ? '' : v).toLowerCase().indexOf('y') === 0;
@@ -100,15 +123,74 @@ function rows_(v) {
    as a real one, above all when comparing two people's reports. */
 function nOrNull_(filed, reportId, field) {
   var f = got_(filed, reportId);
-  return f ? n_((f.fields || {})[field]) : null;
+  return f ? a_(f.fields, field) : null;
 }
 /* every report that was due today and did not arrive */
 function notFiled_(d) {
   return d.ledger.filter(function (l) { return l.status === 'MISSING'; })
                  .map(function (l) { return l.person + ' — ' + l.report; });
 }
+/* Reports that arrived with questions left empty, and how many. The phone
+   counts them when it sends ("18 not answered" among the flags); a report
+   sent before that count existed says nothing and is taken as complete. */
+function leftBlank_(d) {
+  var out = [];
+  (d.filed || []).forEach(function (f) {
+    var n = 0;
+    (f.flags || []).forEach(function (x) {
+      var m = /^(\d+)\s/.exec(String(x));
+      if (m && /not answered|ያልተመለሱ/.test(String(x))) n = Number(m[1]);
+    });
+    if (n) out.push((d.names && d.names[f.person] || f.person) + ' — ' + reportName_(d, f.report) +
+                    ': ' + n + ' question' + (n > 1 ? 's' : '') + ' left blank');
+  });
+  return out;
+}
+function reportName_(d, id) {
+  var hit = id;
+  ((d.schedule && d.schedule.reports) || []).forEach(function (r) { if (r.id === id) hit = r.en; });
+  return hit;
+}
+/* Answers that cannot be right as written, found in code by the same check
+   the form runs (oddFigures in forms.js) — 11 called within the hour out of
+   10 new leads, sources adding up to 33 under a total of 25. A model handed
+   those figures reasons from them; it is handed this list instead, and told
+   the figures need checking with the person before anything is built on them. */
+function oddIn_(d) {
+  var odd = d.schedule && d.schedule.odd, out = [];
+  if (typeof odd !== 'function') return out;
+  (d.filed || []).forEach(function (f) {
+    var rep = null;
+    (d.schedule.reports || []).forEach(function (r) { if (r.id === f.report) rep = r; });
+    if (!rep) return;
+    var found = [];
+    try { found = odd(rep, f.fields || {}); } catch (e) { found = []; }
+    found.forEach(function (o) {
+      out.push({ who: (d.names && d.names[f.person]) || f.person, report: rep.en, what: o.en });
+    });
+  });
+  return out;
+}
+/* The latest answer to any of these report/field pairs in the week, with the
+   day it was given: {day: 'Sat 26 Sep', birr, from, below_floor}, or null. */
+function lastKnown_(d, pairs, floor) {
+  var hit = null;
+  (d.recent || []).forEach(function (f) {
+    if (f.day > d.day) return;
+    pairs.forEach(function (p) {
+      if (f.report !== p[0]) return;
+      var x = a_(f.fields, p[1]);
+      if (x !== null && (!hit || f.at.getTime() >= hit.at.getTime())) hit = { at: f.at, day: f.day, birr: x, rid: f.report };
+    });
+  });
+  if (!hit) return null;
+  return { day: Utilities.formatDate(new Date(hit.day + 'T12:00:00' + ADDIS_), tz_(), 'EEE d MMM'),
+           birr: hit.birr, from: reportName_(d, hit.rid),
+           below_floor: floor != null ? hit.birr < floor : null };
+}
 function pctOf_(part, whole) {
-  return whole ? Math.round((part / whole) * 1000) / 10 : 0;
+  if (part === null || whole === null || !whole) return null;
+  return Math.round((part / whole) * 1000) / 10;
 }
 
 /* The same figure on each of the seven days ending today, oldest first.
@@ -116,10 +198,19 @@ function pctOf_(part, whole) {
    distinction as nOrNull_, carried across a week. 'not due' is a day nobody
    owed it: a Sunday, or a day the letter excuses. The first live run read a
    Sunday's null as a second missed store report; the two have to look
-   different. */
+   different.
+
+   Two more that are not a miss either. 'not answered' is a day the report
+   came in with this question left blank. 'not tracked' is a day before the
+   ledger began keeping count (no ledger for it): the first reading called
+   the same run of empty days "six in a row" in one paragraph and "four" in
+   the next, because the week here reached back past the first ledger and the
+   compliance count did not. A miss is now only what the ledger recorded. */
 function series_(d, reportId, field) {
   var rep = null;
   ((d.schedule && d.schedule.reports) || []).forEach(function (r) { if (r.id === reportId) rep = r; });
+  var kept = {};
+  (d.before || []).forEach(function (doc) { kept[doc.day] = true; });
   var out = [];
   for (var i = 6; i >= 0; i--) {
     var day = addDays_(d.day, -i), v = null;
@@ -127,10 +218,12 @@ function series_(d, reportId, field) {
       if (f.report === reportId && f.day === day) {
         /* a yes/no answer counts as 1 or 0 — read as a number it was always 0 */
         var raw = (f.fields || {})[field];
-        v = /^(yes|no)$/i.test(String(raw)) ? (yes_(raw) ? 1 : 0) : n_(raw);
+        v = blank_(raw) ? 'not answered'
+          : /^(yes|no)$/i.test(String(raw)) ? (yes_(raw) ? 1 : 0) : n_(raw);
       }
     });
     if (v === null && rep && !dueOn_({ reports: [rep] }, day).length) v = 'not due';
+    else if (v === null && i > 0 && !kept[day]) v = 'not tracked';
     out.push(v);
   }
   return out;
@@ -158,12 +251,18 @@ function trend_(xs) {
 function sinceMonday_(d, reportId, field) {
   var dow = dow_(d.day);
   var monday = addDays_(d.day, -(dow === 0 ? 6 : dow - 1));
-  var by = {};
+  var by = {}, blankDays = {};
   (d.recent || []).forEach(function (f) {
-    if (f.report === reportId && f.day >= monday && f.day <= d.day) by[f.day] = n_((f.fields || {})[field]);
+    if (f.report !== reportId || f.day < monday || f.day > d.day) return;
+    var x = a_(f.fields, field);
+    /* a day filed with this question blank adds nothing and is said, rather
+       than counted as a day on which nothing came in */
+    if (x === null) { blankDays[f.day] = true; delete by[f.day]; }
+    else { by[f.day] = x; delete blankDays[f.day]; }
   });
   var days = Object.keys(by);
   return { since: monday, days_reported: days.length,
+           days_filed_with_this_left_blank: Object.keys(blankDays).length,
            total: days.reduce(function (a, k) { return a + by[k]; }, 0) };
 }
 
@@ -249,8 +348,16 @@ var DECISIONS = [
       if (String(l.person).indexOf('Yordanos') === 0 &&
           (l.status === 'LATE' || l.status === 'MISSING')) hit = l.status;
     });
-    return hit ? 'Yordanos was ' + hit + ' today and was charged nothing, because his letter '+
-                 'sets no figure. Everyone else in the same position paid.' : null;
+    if (!hit) return null;
+    /* before LEDGER_START nobody pays, so "everyone else paid" was not true */
+    var paid = d.ledger.some(function (l) {
+      return l.amount > 0 && (l.status === 'LATE' || l.status === 'MISSING');
+    });
+    return 'Yordanos was ' + hit + ' today and was charged nothing, because his letter sets no '+
+           'figure. ' + (paid ? 'Everyone else in the same position paid.'
+                              : 'Nobody is charged yet — charging starts ' +
+                                (prop_('LEDGER_START', '') || 'when LEDGER_START is set') +
+                                '. From then everyone else in the same position pays and he still would not.');
   } },
 
 { id:'weekly-missing', what:'What a weekly report costs when it never arrives',
@@ -424,26 +531,26 @@ var AGENTS = [
   facts: function (d) {
     var amaha = vals_(d.filed, 'amaha-daily');
     var elyas = vals_(d.filed, 'elyas-daily');
-    var assigned = n_(amaha.mp_assigned), present = n_(amaha.mp_present);
+    var assigned = a_(amaha, 'mp_assigned'), present = a_(amaha, 'mp_present');
     return {
       factory_assigned: assigned,
       factory_present: present,
-      factory_absent: n_(amaha.mp_absent),
-      factory_late: n_(amaha.mp_late),
+      factory_absent: a_(amaha, 'mp_absent'),
+      factory_late: a_(amaha, 'mp_late'),
       factory_attendance_pct: pctOf_(present, assigned),
-      factory_behaviour_issues: n_(amaha.mp_behave),
-      site_assemblers_present: n_(elyas.a_present),
-      site_assemblers_late: n_(elyas.a_late),
-      site_left_early: n_(elyas.a_early),
-      site_behaviour_issues: n_(elyas.a_behave),
-      site_issues_reported_to_mahelet: yes_(elyas.a_reported),
+      factory_behaviour_issues: a_(amaha, 'mp_behave'),
+      site_assemblers_present: a_(elyas, 'a_present'),
+      site_assemblers_late: a_(elyas, 'a_late'),
+      site_left_early: a_(elyas, 'a_early'),
+      site_behaviour_issues: a_(elyas, 'a_behave'),
+      site_issues_reported_to_mahelet: ay_(elyas, 'a_reported'),
       production_target_m2_per_day: 40,
-      m2_produced: n_(amaha.p_total),
+      m2_produced: a_(amaha, 'p_total'),
       /* without these it will blame the shortfall on whoever was absent, which
          is the first thing it sees and often not the reason */
-      hours_lost_to_something_else: n_(amaha.w_lost),
+      hours_lost_to_something_else: a_(amaha, 'w_lost'),
       what_else_held_the_day_up: amaha.w_block || '',
-      stopped_for_missing_board: yes_(amaha.b_short),
+      stopped_for_missing_board: ay_(amaha, 'b_short'),
       factory_absent_last_7_days: series_(d, 'amaha-daily', 'mp_absent'),
       site_assemblers_late_last_7_days: series_(d, 'elyas-daily', 'a_late')
     };
@@ -459,24 +566,24 @@ var AGENTS = [
     var amaha = vals_(d.filed, 'amaha-daily');
     var stage = rows_(amaha.w_stage);
     return {
-      m2_produced: n_(amaha.p_total),
+      m2_produced: a_(amaha, 'p_total'),
       m2_target: 40,
-      m2_external: n_(amaha.p_ext),
-      m2_rovestone: n_(amaha.p_rove),
-      waste_pct: n_(amaha.w_pct),
+      m2_external: a_(amaha, 'p_ext'),
+      m2_rovestone: a_(amaha, 'p_rove'),
+      waste_pct: a_(amaha, 'w_pct'),
       waste_limit_pct: 20,
-      material_over_bom_pct: n_(amaha.w_var),
-      sheets_used: n_(amaha.b_sheets),
-      m2_per_sheet: n_(amaha.b_yield),
+      material_over_bom_pct: a_(amaha, 'w_var'),
+      sheets_used: a_(amaha, 'b_sheets'),
+      m2_per_sheet: a_(amaha, 'b_yield'),
       m2_per_sheet_target: 2.2,
-      edge_banding_m: n_(amaha.b_edge),
-      edge_reruns: n_(amaha.b_redo),
-      stopped_for_missing_board: yes_(amaha.b_short),
+      edge_banding_m: a_(amaha, 'b_edge'),
+      edge_reruns: a_(amaha, 'b_redo'),
+      stopped_for_missing_board: ay_(amaha, 'b_short'),
       which_board: amaha.b_shortw || '',
       stage_holding_us_up: amaha.w_block || '',
-      hours_lost: n_(amaha.w_lost),
+      hours_lost: a_(amaha, 'w_lost'),
       wip_by_stage: stage,
-      machines_all_reported_in_30min: yes_(amaha.m_reported),
+      machines_all_reported_in_30min: ay_(amaha, 'm_reported'),
       m2_this_week: trend_(series_(d, 'amaha-daily', 'p_total')),
       waste_pct_this_week: trend_(series_(d, 'amaha-daily', 'w_pct')),
       hours_lost_last_7_days: series_(d, 'amaha-daily', 'w_lost')
@@ -492,18 +599,18 @@ var AGENTS = [
   facts: function (d) {
     var wude = vals_(d.filed, 'wude-daily');
     return {
-      inspected: n_(wude.i_total), passed: n_(wude.i_pass), failed: n_(wude.i_fail),
-      pass_rate_pct: n_(wude.i_rate), pass_rate_bonus_at: 98,
-      defects_found: n_(wude.d_total),
-      defects_released_to_finished_goods: n_(wude.d_released),
-      rework_rate_pct: n_(wude.r_rate),
+      inspected: a_(wude, 'i_total'), passed: a_(wude, 'i_pass'), failed: a_(wude, 'i_fail'),
+      pass_rate_pct: a_(wude, 'i_rate'), pass_rate_bonus_at: 98,
+      defects_found: a_(wude, 'd_total'),
+      defects_released_to_finished_goods: a_(wude, 'd_released'),
+      rework_rate_pct: a_(wude, 'r_rate'),
       rework_bonus_below_pct: 2, rework_penalty_above_pct: 5,
       defects_by_stage: rows_(wude.c_stage),
       worst_stage: wude.c_worst || '',
-      same_stage_as_yesterday: yes_(wude.c_repeat),
-      amaha_told_the_cause: yes_(wude.c_told),
-      suppliers_fault_defects: n_(wude.c_sup),
-      pressured_to_pass: yes_(wude.pr_any),
+      same_stage_as_yesterday: ay_(wude, 'c_repeat'),
+      amaha_told_the_cause: ay_(wude, 'c_told'),
+      suppliers_fault_defects: a_(wude, 'c_sup'),
+      pressured_to_pass: ay_(wude, 'pr_any'),
       pass_rate_this_week: trend_(series_(d, 'wude-daily', 'i_rate')),
       rework_pct_this_week: trend_(series_(d, 'wude-daily', 'r_rate')),
       defects_released_last_7_days: series_(d, 'wude-daily', 'd_released')
@@ -519,17 +626,17 @@ var AGENTS = [
     var yord = vals_(d.filed, 'yordanos-daily');
     return {
       stock_and_days_of_cover: rows_(yord.k_stock),
-      anything_at_5_days_or_less: yes_(yord.k_low),
+      anything_at_5_days_or_less: ay_(yord, 'k_low'),
       which_and_told_getachew: yord.k_which || '',
-      shortages_flagged: n_(yord.sh_flagged),
-      production_stopped_by_shortage: got_(d.filed, 'yordanos-daily') ? yes_(yord.sh_stopped) : null,
+      shortages_flagged: a_(yord, 'sh_flagged'),
+      production_stopped_by_shortage: ay_(yord, 'sh_stopped'),
       which_materials: yord.sh_what || '',
-      discrepancies: n_(yord.st_disc),
-      offcut_m2_returned: n_(yord.k_offin),
-      offcut_m2_reissued: n_(yord.k_offout),
-      consumables_month_to_date: n_(yord.con_mtd),
+      discrepancies: a_(yord, 'st_disc'),
+      offcut_m2_returned: a_(yord, 'k_offin'),
+      offcut_m2_reissued: a_(yord, 'k_offout'),
+      consumables_month_to_date: a_(yord, 'con_mtd'),
       consumables_budget: 30000,
-      theft_or_unauthorized_removal: yes_(yord.sec_theft),
+      theft_or_unauthorized_removal: ay_(yord, 'sec_theft'),
       shortages_flagged_last_7_days: series_(d, 'yordanos-daily', 'sh_flagged'),
       production_stops_last_7_days: series_(d, 'yordanos-daily', 'sh_stopped')
     };
@@ -544,15 +651,15 @@ var AGENTS = [
     var purch = vals_(d.filed, 'getachew-daily');
     return {
       prices_paid_today: rows_(purch.p_rows),
-      materials_up_more_than_10pct: n_(purch.p_up),
-      ephrata_and_betty_told: yes_(purch.p_told),
-      substitution_made: yes_(purch.p_sub),
-      wude_approved_substitute: yes_(purch.p_subok),
+      materials_up_more_than_10pct: a_(purch, 'p_up'),
+      ephrata_and_betty_told: ay_(purch, 'p_told'),
+      substitution_made: ay_(purch, 'p_sub'),
+      wude_approved_substitute: ay_(purch, 'p_subok'),
       requests_with_3_or_more_quotes: pair_(purch, 'pr_quotes'),
-      requests_prepared: n_(purch.pr_prep),
-      supplier_delays: n_(purch.sup_delay),
-      supplier_quality_issues: n_(purch.sup_quality),
-      cheque_value: n_(purch.chq_value),
+      requests_prepared: a_(purch, 'pr_prep'),
+      supplier_delays: a_(purch, 'sup_delay'),
+      supplier_quality_issues: a_(purch, 'sup_quality'),
+      cheque_value: a_(purch, 'chq_value'),
       margin_floor_birr_per_m2: 6000,
       materials_up_10pct_last_7_days: series_(d, 'getachew-daily', 'p_up'),
       supplier_delays_last_7_days: series_(d, 'getachew-daily', 'sup_delay')
@@ -567,19 +674,23 @@ var AGENTS = [
   facts: function (d) {
     var fin = vals_(d.filed, 'betty-daily');
     return {
-      cash_in: n_(fin.cash_in), cash_banked: n_(fin.cash_banked), cash_in_hand: n_(fin.cash_hand),
-      bank_total: n_(fin.bank_total), reserve_floor: 6000000,
-      below_6m_reported: yes_(fin.below6_reported),
-      discrepancy: yes_(fin.discrepancy),
-      payments_approved: n_(fin.pay_approved), payment_value: n_(fin.pay_value),
-      kidan_approved_above_50k: yes_(fin.pay_kidan),
-      zamzam_transferred: n_(fin.zz_transfer), zamzam_confirmed: yes_(fin.zz_confirmed),
-      zamzam_discrepancy: n_(fin.zz_disc),
-      advance_received: n_(fin.adv_in), final_received: n_(fin.final_in),
-      board_mismatch: n_(fin.board_mismatch),
-      documents_missing: n_(fin.doc_missing),
+      cash_in: a_(fin, 'cash_in'), cash_banked: a_(fin, 'cash_banked'), cash_in_hand: a_(fin, 'cash_hand'),
+      bank_total: a_(fin, 'bank_total'), reserve_floor: 6000000,
+      below_6m_reported: ay_(fin, 'below6_reported'),
+      discrepancy: ay_(fin, 'discrepancy'),
+      payments_approved: a_(fin, 'pay_approved'), payment_value: a_(fin, 'pay_value'),
+      kidan_approved_above_50k: ay_(fin, 'pay_kidan'),
+      zamzam_transferred: a_(fin, 'zz_transfer'), zamzam_confirmed: ay_(fin, 'zz_confirmed'),
+      zamzam_discrepancy: a_(fin, 'zz_disc'),
+      advance_received: a_(fin, 'adv_in'), final_received: a_(fin, 'final_in'),
+      board_mismatch: a_(fin, 'board_mismatch'),
+      documents_missing: a_(fin, 'doc_missing'),
       bank_total_this_week: trend_(series_(d, 'betty-daily', 'bank_total')),
       morning_bank_balance_last_7_days: series_(d, 'betty-forecast', 'cf7_bank'),
+      /* the last balance anyone reported this week, and when — so a reserve
+         already breached is said on a day Finance did not file, rather than
+         left to be spotted in a list of seven */
+      last_bank_balance_reported: lastKnown_(d, [['betty-daily', 'bank_total'], ['betty-forecast', 'cf7_bank']], 6000000),
       days_until_below_6m_at_this_rate: daysToFloor_(series_(d, 'betty-forecast', 'cf7_bank'), 6000000)
     };
   },
@@ -588,7 +699,8 @@ var AGENTS = [
       'transfer, or a payment over 50,000 without Kidan is a same-day problem, not a '+
       'month-end one. If days_until_below_6m_at_this_rate gives a number, say it — that is '+
       'the warning Finance’s letter fines for not giving. If it gives none, do not '+
-      'estimate one.' },
+      'estimate one. If last_bank_balance_reported is below the reserve, say so with its day '+
+      'even when today’s report is missing — the last thing known is that the floor was broken.' },
 
 { id:'commercial', en:'Sales and commercial', am:'ሽያጭና ንግድ',
   facts: function (d) {
@@ -596,18 +708,18 @@ var AGENTS = [
     var tsega = vals_(d.filed, 'tsega-sales-daily');
     var biruk = vals_(d.filed, 'biruktayet-sales-daily');
     return {
-      leads_today: n_(ephrata.leads_total),
-      leads_by_source: { social:n_(ephrata.leads_social), showroom:n_(ephrata.leads_showroom),
-                         referral:n_(ephrata.leads_referral), agent:n_(ephrata.leads_agent), other:n_(ephrata.leads_other) },
+      leads_today: a_(ephrata, 'leads_total'),
+      leads_by_source: { social:a_(ephrata, 'leads_social'), showroom:a_(ephrata, 'leads_showroom'),
+                         referral:a_(ephrata, 'leads_referral'), agent:a_(ephrata, 'leads_agent'), other:a_(ephrata, 'leads_other') },
       new_leads_called_within_1hr: pair_(ephrata, 'resp_1hr'),
-      visits_booked: n_(ephrata.visits_booked), visits_done: n_(ephrata.visits_done), visits_late: n_(ephrata.visits_late),
-      quotes_issued: n_(ephrata.quotes_issued), quotes_late: n_(ephrata.quotes_late),
-      contracts_signed: n_(ephrata.contracts), contract_value: n_(ephrata.contract_value),
-      collected_today: n_(ephrata.collected_today),
-      week_to_date: n_(ephrata.week_total),
+      visits_booked: a_(ephrata, 'visits_booked'), visits_done: a_(ephrata, 'visits_done'), visits_late: a_(ephrata, 'visits_late'),
+      quotes_issued: a_(ephrata, 'quotes_issued'), quotes_late: a_(ephrata, 'quotes_late'),
+      contracts_signed: a_(ephrata, 'contracts'), contract_value: a_(ephrata, 'contract_value'),
+      collected_today: a_(ephrata, 'collected_today'),
+      week_to_date: a_(ephrata, 'week_total'),
       weekly_floor: 3000000,
-      unanswered_whatsapp: n_(ephrata.wa_unanswered),
-      complaints_in_groups: n_(ephrata.wa_complaints),
+      unanswered_whatsapp: a_(ephrata, 'wa_unanswered'),
+      complaints_in_groups: a_(ephrata, 'wa_complaints'),
       tsega_filed: !!got_(d.filed, 'tsega-sales-daily'),
       biruktayet_filed: !!got_(d.filed, 'biruktayet-sales-daily'),
       collected_last_7_days: series_(d, 'ephrata-daily', 'collected_today'),
@@ -651,19 +763,19 @@ var AGENTS = [
     var elyas = vals_(d.filed, 'elyas-daily');
     var ashen = vals_(d.filed, 'ashenafi-daily');
     return {
-      jobs_today: n_(elyas.j_total), completed: n_(elyas.j_done), in_progress: n_(elyas.j_wip),
-      m2_installed: n_(elyas.j_m2),
-      site_not_ready_count: n_(elyas.r_notready),
-      site_did_not_match_measurement: n_(elyas.r_meas),
+      jobs_today: a_(elyas, 'j_total'), completed: a_(elyas, 'j_done'), in_progress: a_(elyas, 'j_wip'),
+      m2_installed: a_(elyas, 'j_m2'),
+      site_not_ready_count: a_(elyas, 'r_notready'),
+      site_did_not_match_measurement: a_(elyas, 'r_meas'),
       whose_measurement: elyas.r_whose || '',
-      hours_lost_to_site: n_(elyas.r_lost),
+      hours_lost_to_site: a_(elyas, 'r_lost'),
       site_conditions: rows_(elyas.r_rows),
-      customer_told_same_day: yes_(elyas.r_told),
-      photographed_first: yes_(elyas.r_photo),
-      acceptances_signed: n_(elyas.ac_signed),
-      complaints: n_(elyas.ac_complaints),
-      rework_at_site: n_(elyas.q_rework),
-      customer_property_damaged: yes_(elyas.cl_damage),
+      customer_told_same_day: ay_(elyas, 'r_told'),
+      photographed_first: ay_(elyas, 'r_photo'),
+      acceptances_signed: a_(elyas, 'ac_signed'),
+      complaints: a_(elyas, 'ac_complaints'),
+      rework_at_site: a_(elyas, 'q_rework'),
+      customer_property_damaged: ay_(elyas, 'cl_damage'),
       ashenafi_filed: !!got_(d.filed, 'ashenafi-daily'),
       m2_installed_last_7_days: series_(d, 'elyas-daily', 'j_m2'),
       hours_lost_to_site_last_7_days: series_(d, 'elyas-daily', 'r_lost')
@@ -681,11 +793,11 @@ var AGENTS = [
     var ephrata = vals_(d.filed, 'ephrata-daily');
     return {
       pulse: pulse,
-      complaints_at_site: n_(elyas.ac_complaints),
-      complaints_in_whatsapp: n_(ephrata.wa_complaints),
-      acceptances_signed: n_(elyas.ac_signed),
+      complaints_at_site: a_(elyas, 'ac_complaints'),
+      complaints_in_whatsapp: a_(ephrata, 'wa_complaints'),
+      acceptances_signed: a_(elyas, 'ac_signed'),
       customers_called_before_arrival: pair_(elyas, 'ac_called'),
-      unanswered_messages: n_(ephrata.wa_unanswered),
+      unanswered_messages: a_(ephrata, 'wa_unanswered'),
       pulse_filed: !!got_(d.filed, 'betty-pulse'),
       site_complaints_last_7_days: series_(d, 'elyas-daily', 'ac_complaints'),
       whatsapp_complaints_last_7_days: series_(d, 'ephrata-daily', 'wa_complaints')
@@ -744,18 +856,22 @@ var AGENTS = [
     var ephrata = vals_(d.filed, 'ephrata-daily');
     var amaha = vals_(d.filed, 'amaha-daily');
     var purch = vals_(d.filed, 'getachew-daily');
-    var value = n_(ephrata.contract_value), m2 = n_(amaha.p_total);
     return {
-      contracts_signed: n_(ephrata.contracts),
-      contract_value: value,
-      m2_produced_today: m2,
-      birr_per_m2_signed_today: m2 ? Math.round(value / m2) : 0,
+      contracts_signed: a_(ephrata, 'contracts'),
+      contract_value: a_(ephrata, 'contract_value'),
+      /* There used to be a Birr-per-m² figure here: today's contract value
+         divided by today's production. Those are different jobs — what was
+         sold today is made weeks from now — so the number meant nothing and,
+         below 6,000, would have raised a false alarm. No form asks the m² of
+         a contract, so the price per m² of a sale cannot be worked out yet. */
+      price_per_m2_of_a_sale: 'not reported — no form asks the m² of a signed contract',
+      m2_produced_today: a_(amaha, 'p_total'),
       margin_floor_birr_per_m2: 6000,
-      waste_pct: n_(amaha.w_pct),
-      material_over_bom_pct: n_(amaha.w_var),
-      m2_per_sheet: n_(amaha.b_yield),
-      materials_up_over_10pct: n_(purch.p_up),
-      savings_today: n_(amaha.sav_today),
+      waste_pct: a_(amaha, 'w_pct'),
+      material_over_bom_pct: a_(amaha, 'w_var'),
+      m2_per_sheet: a_(amaha, 'b_yield'),
+      materials_up_over_10pct: a_(purch, 'p_up'),
+      savings_today: a_(amaha, 'sav_today'),
       m2_per_sheet_this_week: trend_(series_(d, 'amaha-daily', 'b_yield'))
     };
   },
@@ -772,19 +888,19 @@ var AGENTS = [
     var sentOut = null;
     if (got_(d.filed, 'amaha-daily')) {
       sentOut = 0;
-      rows_(amaha.b_rows).forEach(function (r) { sentOut += n_(r.boff); });
+      rows_(amaha.b_rows).forEach(function (r) { sentOut += a_(r, 'boff') || 0; });
     }
     return {
-      note: 'null means that report was not filed — it does not mean zero',
+      note: 'null means that report was not filed, or that question was left blank — it does not mean zero',
       not_filed: notFiled_(d),
       amaha_m2: N('amaha-daily','p_total'),        mahelet_m2: N('liu-daily','m2'),
       amaha_defects: N('amaha-daily','qc_defects'), wude_defects: N('wude-daily','d_total'),
       mahelet_defects: N('liu-daily','defects'),
       amaha_waste_pct: N('amaha-daily','w_pct'),   mahelet_waste_pct: N('liu-daily','waste'),
-      amaha_stopped_for_board: got_(d.filed,'amaha-daily') ? yes_(amaha.b_short) : null,
+      amaha_stopped_for_board: ay_(amaha, 'b_short'),
       amaha_which_board: amaha.b_shortw || '',
       yordanos_shortages: N('yordanos-daily','sh_flagged'),
-      yordanos_stopped_production: got_(d.filed, 'yordanos-daily') ? yes_(yord.sh_stopped) : null,
+      yordanos_stopped_production: ay_(yord, 'sh_stopped'),
       yordanos_which: yord.sh_what || '',
       wude_pass_rate: N('wude-daily','i_rate'),
       mahelet_qc_pass: N('liu-daily','qc_pass'), mahelet_qc_fail: N('liu-daily','qc_fail'),
@@ -793,11 +909,16 @@ var AGENTS = [
       offcut_m2_sent_by_factory: sentOut,
       /* already checked in code: pairs that differ by more than a tenth, where
          both reports were actually filed */
-      mismatches_found_in_code: contradictions_(d)
+      mismatches_found_in_code: contradictions_(d),
+      /* and inside one report: a part bigger than its whole, sources that do
+         not add up to their total (oddFigures in forms.js) */
+      cannot_be_right_within_one_report: oddIn_(d)
     };
   },
   ask:'These figures come from different people describing the same day. Where two of them '+
-      'cannot both be true, say which two and by how much. A null is a report that was never '+
+      'cannot both be true, say which two and by how much. A report can also disagree with '+
+      'itself — cannot_be_right_within_one_report lists those; name each one and who has to '+
+      'correct it. A null is a report that was never '+
       'filed — that is a gap, not a disagreement, and you must never describe it as somebody '+
       'having recorded zero. Do not reach: a small difference is rounding or timing. A '+
       'production figure that disagrees with the operations figure, or a factory stopped for '+
@@ -986,21 +1107,28 @@ function promptFor_(agent, facts, d) {
     'You are the ' + agent.en + ' analyst. Nobody else will cover your subject, and you',
     'should not cover theirs.',
     '',
-    'Every number below was already calculated in code and is correct. Do not recalculate',
-    'anything, and do not list numbers back — the Chairman can already see them. Write',
-    'about what they mean.',
+    'Every number below was already calculated in code, from the reports as they were',
+    'filed. Do not recalculate anything, and do not list numbers back — the Chairman can',
+    'already see them. Write about what they mean. The arithmetic is right; an answer',
+    'someone typed can still be wrong, and those found are listed below.',
     '',
     'At most 120 words, short bullets. Write plainly, the way you would say it to the',
     'Chairman standing in the factory: no adjectives doing the work of evidence, no',
     'headline labels in bold, nothing dressed up. "Edge banding stopped work for three',
     'hours" — not "edge banding is plaguing the shop floor". If your subject had an ordinary day,',
-    'say so in one line rather than finding something to say. A missing report means the',
-    'figure is absent, not zero — say "not reported" rather than treating it as nil.',
+    'say so in one line rather than finding something to say.',
     '',
-    'A list of seven values runs oldest to newest and the last one is today. null in it is',
-    'a day that report was owed and not filed; "not due" is a day nobody owed it (a Sunday,',
-    'or a day the letter excuses) and is not a miss. Use the week only where it changes',
-    'what today means — a third day running, a slide that started on Monday.',
+    'null means the figure was not given: the report never came, or it came with that',
+    'question left blank. It is never zero, none, nil, "no complaints" or "all answered" —',
+    'say "not reported" or "left blank", and draw nothing from it.',
+    '',
+    'A list of seven values runs oldest to newest; the days are ' + weekLabels_(d) + '.',
+    'null in it is a day that report was owed and not filed; "not answered" is a day it',
+    'came with this question blank; "not due" is a day nobody owed it (a Sunday, or a day',
+    'the letter excuses); "not tracked" is a day before the ledger began keeping count.',
+    'Only null is a miss. When you count days in a row, count only those. Use the week only',
+    'where it changes what today means — a third day running, a slide that started on Monday.',
+    'Name a day by the label above, not by counting back.',
     '',
     'YOUR QUESTION: ' + agent.ask,
     '',
@@ -1008,9 +1136,35 @@ function promptFor_(agent, facts, d) {
     (d.provisional ? 'Reports not in yet (some are not due yet, and are not late): '
                    : 'Reports that were due today and never arrived: ') +
       (notFiled_(d).join('; ') || 'none — everything was filed'),
+    'Reports that came in with questions left blank: ' +
+      (leftBlank_(d).join('; ') || 'none'),
+    oddBlock_(d),
     '',
     JSON.stringify(facts, null, 1)
   ].join('\n');
+}
+
+/* "Tue 22 Sep, … Mon 28 Sep (today)" — the first reading called a figure
+   filed at 1 AM on Saturday "Friday's", counting back along a bare list */
+function weekLabels_(d) {
+  var out = [];
+  for (var i = 6; i >= 0; i--) {
+    var day = addDays_(d.day, -i);
+    out.push(Utilities.formatDate(new Date(day + 'T12:00:00' + ADDIS_), tz_(), 'EEE d MMM') +
+             (i === 0 ? ' (today)' : ''));
+  }
+  return out.join(', ');
+}
+
+/* the answers that cannot be right, found in code — see oddIn_ */
+function oddBlock_(d) {
+  var odd = oddIn_(d);
+  if (!odd.length) return 'Answers that cannot be right as written: none found.';
+  return 'Answers that cannot be right as written, found in code — the report says one ' +
+         'thing in one place and another elsewhere, or a part is bigger than its whole. Do not ' +
+         'reason from these figures or from anything worked out of them; if one is in your ' +
+         'subject, say it cannot be relied on until the person corrects it:\n' +
+         odd.map(function (o) { return '- ' + o.who + ', ' + o.report + ': ' + o.what; }).join('\n');
 }
 
 function readReply_(res) {

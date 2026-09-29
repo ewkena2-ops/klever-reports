@@ -43,8 +43,8 @@ const CHANNEL_DEFS = [
     grp:'*' },
 
   { id:'leads',      kind:'team', en:'Leads',        am:'ኃላፊዎች',
-    descEn:'Ephrata, Mahelet, Finance, Amaha, Wude, Elyas.',
-    descAm:'ኤፍራታ፣ ማህሌት፣ ፋይናንስ፣ አማሃ፣ ውዱ፣ ኤልያስ።',
+    descEn:'Ephrata, Mahelet, Selam, Amaha, Wude, Elyas.',
+    descAm:'ኤፍራታ፣ ማህሌት፣ ሰላም፣ አማሃ፣ ውዱ፣ ኤልያስ።',
     ids:['ephrata','liu','betty','amaha','wude','elyas'] },
 
   { id:'production', kind:'team', en:'Production',   am:'ምርት',
@@ -63,8 +63,8 @@ const CHANNEL_DEFS = [
     grp:'commercial' },
 
   { id:'finance',    kind:'team', en:'Finance',      am:'ፋይናንስ',
-    descEn:'Finance, Seble, Getachew, Yordanos — and Mahelet, who is copied on their reports.',
-    descAm:'ፋይናንስ፣ ሰብለ፣ ጌታቸው፣ ዮርዳኖስ — እና ሪፖርቶቻቸው የሚደርሳት ማህሌት።',
+    descEn:'Selam, Seble, Getachew, Yordanos — and Mahelet, who is copied on their reports.',
+    descAm:'ሰላም፣ ሰብለ፣ ጌታቸው፣ ዮርዳኖስ — እና ሪፖርቶቻቸው የሚደርሳት ማህሌት።',
     grp:'finance',
     /* Mahelet is Operations, not Finance, but Getachew's and Yordanos's
        letters both address their reports to "Chairman, copied to Mahelet and
@@ -126,7 +126,7 @@ var CHANNELS = {
     };
   },
 
-  /* a job's own channel, the one Finance opens at Gate 1. Job code comes from
+  /* a job's own channel, the one Selam opens at Gate 1. Job code comes from
      the Job File, so the conversation about a job sits with that job. */
   job: function (code, memberIds) {
     return {

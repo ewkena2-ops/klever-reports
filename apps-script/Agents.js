@@ -376,13 +376,13 @@ var DECISIONS = [
   yours:true,
   detail:'Every letter sets 500 Birr for a weekly report filed late. Most set nothing for one '+
          'that never arrives. The exceptions are Ephrata’s weekly report (–500) and projection '+
-         '(–500, –1,000 the second time running) and Finance’s 4-week projection (–1,000) and '+
+         '(–500, –1,000 the second time running) and Selam’s 4-week projection (–1,000) and '+
          'job list (–500). Mahelet’s 15-day plan costs 5,000 late and nothing missing, unless it '+
          'is missed two weeks running. So for most weekly reports filing an hour late costs 500 '+
          'and not filing costs nothing, which is the wrong way round and is what the ledger '+
          'charges, because it charges what the paper says. A weekly report still missing at '+
          'midnight on its due day counts as missing.',
-  blocks:'Every letter with a weekly report in it — Ephrata, Mahelet, Finance, Amaha, Wude, '+
+  blocks:'Every letter with a weekly report in it — Ephrata, Mahelet, Selam, Amaha, Wude, '+
          'Elyas, Getachew, Yordanos, both salespeople, all five designers',
   bites: function (d) {
     var n = 0;
@@ -481,7 +481,7 @@ var DECISIONS = [
   bites: function () { return null; } },
 
 { id:'rovestone', what:'Rovestone, before anyone signs it',
-  detail:'The 50% advance contradicts Mahelet’s and Finance’s letters, which both forbid '+
+  detail:'The 50% advance contradicts Mahelet’s and Selam’s letters, which both forbid '+
          'starting production before final payment. Only Amaha’s letter mentions Rovestone at '+
          'all, so the policy binds him and nobody else. And the authorization log has no column '+
          'for the Chairman’s approval, which is the policy’s central rule.',
@@ -700,7 +700,7 @@ var AGENTS = [
       bank_total_this_week: trend_(series_(d, 'betty-daily', 'bank_total')),
       morning_bank_balance_last_7_days: series_(d, 'betty-forecast', 'cf7_bank'),
       /* the last balance anyone reported this week, and when — so a reserve
-         already breached is said on a day Finance did not file, rather than
+         already breached is said on a day Selam did not file, rather than
          left to be spotted in a list of seven */
       last_bank_balance_reported: lastKnown_(d, [['betty-daily', 'bank_total'], ['betty-forecast', 'cf7_bank']], 6000000),
       days_until_below_6m_at_this_rate: daysToFloor_(series_(d, 'betty-forecast', 'cf7_bank'), 6000000)
@@ -710,7 +710,7 @@ var AGENTS = [
       'below it has to be reported the same day. A discrepancy, an unconfirmed ZamZam '+
       'transfer, or a payment over 50,000 without Kidan is a same-day problem, not a '+
       'month-end one. If days_until_below_6m_at_this_rate gives a number, say it — that is '+
-      'the warning Finance’s letter fines for not giving. If it gives none, do not '+
+      'the warning Selam’s letter fines for not giving. If it gives none, do not '+
       'estimate one. If last_bank_balance_reported is below the reserve, say so with its day '+
       'even when today’s report is missing — the last thing known is that the floor was broken.' },
 

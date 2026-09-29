@@ -8,7 +8,7 @@
 const PEOPLE = [
   { id:'ephrata',  en:'Ephrata Assfa',   am:'ኤፍራታ አስፋ',   roleEn:'Commercial Lead',   roleAm:'የንግድ ኃላፊ', grp:'commercial' },
   { id:'liu',      en:'Mahelet Teshome', am:'ማህሌት ተሾመ',   roleEn:'Operations Lead',   roleAm:'የኦፕሬሽን ኃላፊ', grp:'lead' },
-  { id:'betty',    en:'Finance',  am:'ፋይናንስ', roleEn:'Finance Officer',   roleAm:'የፋይናንስ ኃላፊ', grp:'finance' },
+  { id:'betty',    en:'Selam',  am:'ሰላም', roleEn:'Finance Officer',   roleAm:'የፋይናንስ ኃላፊ', grp:'finance' },
   { id:'getachew', en:'Getachew Negash', am:'ጌታቸው ነጋሽ',   roleEn:'Purchasing Officer', roleAm:'የግዥ ኃላፊ', grp:'finance' },
   { id:'yordanos', en:'Yordanos Fikadu', am:'ዮርዳኖስ ፍቃዱ',  roleEn:'Storekeeper',       roleAm:'የመጋዘን ኃላፊ', grp:'finance' },
   { id:'amaha',      en:'Amaha Temechew',       am:'አማሃ ተመቸው',      roleEn:'Production Supervisor', roleAm:'የምርት ተቆጣጣሪ', grp:'production' },
@@ -257,7 +257,7 @@ const REPORTS = [
       {id:'pr_sub', en:'How many purchase requests were submitted today?', am:'ዛሬ ስንት የግዥ ጥያቄዎች ቀረቡ?', t:'num'},
       {id:'pr_app', en:'How many purchase requests were approved today?', am:'ዛሬ ስንት የግዥ ጥያቄዎች ጸደቁ?', t:'num'},
       {id:'orders', en:'How many orders were placed with suppliers today?', am:'ዛሬ ለአቅራቢዎች ስንት ትዕዛዞች ተሰጡ?', t:'num'},
-      {id:'orders_docs', en:'Did the documents for every purchase reach Finance within 24 hours?', am:'የእያንዳንዱ ግዥ ሰነድ በ24 ሰዓት ውስጥ ለፋይናንስ ደርሷል?', t:'yesno', show:{f:'orders', when:'pos'}},
+      {id:'orders_docs', en:'Did the documents for every purchase reach Selam within 24 hours?', am:'የእያንዳንዱ ግዥ ሰነድ በ24 ሰዓት ውስጥ ለሰላም ደርሷል?', t:'yesno', show:{f:'orders', when:'pos'}},
       {id:'orders_docs_why', en:'Which purchases are missing documents, and why?', am:'ሰነድ የጎደላቸው የትኞቹ ግዥዎች ናቸው? ለምን?', t:'area', show:{f:'orders_docs', when:'no'}},
       {id:'deliv_pending', en:'How many supplier deliveries are still outstanding?', am:'ስንት የአቅራቢ ርክክቦች ገና አልደረሱም?', t:'num'},
       {id:'deliv_pending_list', en:'Which ones are outstanding?', am:'ያልደረሱት የትኞቹ ናቸው?', t:'table', addEn:'Add a delivery', addAm:'ርክክብ ጨምር',
@@ -276,7 +276,7 @@ const REPORTS = [
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
-          {id:'fin', en:'Finance cleared', am:'ፋይናንስ አጽድቋል', t:'yesno'}
+          {id:'fin', en:'Selam cleared', am:'ሰላም አጽድቃለች', t:'yesno'}
         ]},
       {id:'installed', en:'How many jobs were installed today?', am:'ዛሬ ስንት ሥራዎች ተተከሉ?', t:'num'},
       {id:'site_ready', en:'Was every site confirmed ready before the installers went?', am:'ገጣጣሚዎች ከመሄዳቸው በፊት እያንዳንዱ ቦታ ዝግጁ መሆኑ ተረጋግጦ ነበር?', t:'yesno', show:{f:'installed', when:'pos'}},
@@ -481,7 +481,7 @@ const REPORTS = [
 {
   id:'getachew-daily', person:'getachew', cadence:'daily', dueTime:'17:30',
   en:'Daily Purchasing Report', am:'ዕለታዊ የግዥ ሪፖርት',
-  toEn:'Chairman, copied to Mahelet and Finance', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለፋይናንስ',
+  toEn:'Chairman, copied to Mahelet and Selam', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለሰላም',
   dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   derived:1,
@@ -496,10 +496,10 @@ const REPORTS = [
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'quotes', en:'Quotes', am:'ፕሮፎርማዎች', t:'num'}
         ]},
-      {id:'pr_sub', en:'How many went to Finance for approval?', am:'ስንቱ ለፋይናንስ ለማጽደቅ ቀረቡ?', t:'num'},
-      {id:'pr_app', en:'How many did Finance approve?', am:'ፋይናንስ ስንቱን አጸደቀ?', t:'num'},
+      {id:'pr_sub', en:'How many went to Selam for approval?', am:'ስንቱ ለሰላም ለማጽደቅ ቀረቡ?', t:'num'},
+      {id:'pr_app', en:'How many did Selam approve?', am:'ሰላም ስንቱን አጸደቀች?', t:'num'},
       {id:'pr_ret', en:'How many were returned or rejected?', am:'ስንቱ ተመለሱ ወይም ውድቅ ሆኑ?', t:'num'},
-      {id:'pr_ret_why', en:'Which ones, what did Finance find wrong, and when will each go back?', am:'የትኞቹ ናቸው? ፋይናንስ ምን ስህተት አገኘ? እያንዳንዱ መቼ ተስተካክሎ ይመለሳል?', t:'area', show:{f:'pr_ret', when:'pos'}},
+      {id:'pr_ret_why', en:'Which ones, what did Selam find wrong, and when will each go back?', am:'የትኞቹ ናቸው? ሰላም ምን ስህተት አገኘች? እያንዳንዱ መቼ ተስተካክሎ ይመለሳል?', t:'area', show:{f:'pr_ret', when:'pos'}},
       {id:'pr_quotes', en:'How many requests carried 3 or more supplier quotes? (with 3 quotes / all requests)', am:'ስንቱ ጥያቄ 3 እና ከዚያ በላይ የአቅራቢ ፕሮፎርማ ነበረው? (3 ፕሮፎርማ ያላቸው / ሁሉም ጥያቄዎች)', t:'ratio'},
       {id:'pr_quotes_why', en:'Which requests had fewer than 3 quotes, and why could a third not be found?', am:'ከ3 ያነሰ ፕሮፎርማ የነበራቸው የትኞቹ ናቸው? ሦስተኛው ለምን አልተገኘም?', t:'area', show:{f:'pr_quotes', when:'short'}}
     ]},
@@ -514,7 +514,7 @@ const REPORTS = [
           {id:'amount', en:'Amount', am:'መጠን', t:'money'}
         ]},
       {id:'chq_value', en:'What is the total value of today\'s cheques?', am:'የዛሬዎቹ ቼኮች ጠቅላላ ዋጋ ስንት ነው?', t:'money'},
-      {id:'chq_confirmed', en:'Did Finance confirm the funds in ZamZam before every cheque?', am:'ከእያንዳንዱ ቼክ በፊት ፋይናንስ ገንዘቡ ዘምዘም መግባቱን አረጋግጧል?', t:'yesno'},
+      {id:'chq_confirmed', en:'Did Selam confirm the funds in ZamZam before every cheque?', am:'ከእያንዳንዱ ቼክ በፊት ሰላም ገንዘቡ ዘምዘም መግባቱን አረጋግጣለች?', t:'yesno'},
       {id:'chq_confirmed_why', en:'Which cheque went out without confirmation, for how much, to whom, and why?', am:'ያለማረጋገጫ የተሰጠው የትኛው ቼክ ነው? በስንት ብር? ለማን? ለምን?', t:'area', show:{f:'chq_confirmed', when:'no'}},
       {id:'chq_match', en:'Was every cheque for the approved amount, to the approved supplier?', am:'እያንዳንዱ ቼክ በጸደቀው መጠንና ለጸደቀው አቅራቢ ነበር?', t:'yesno'},
       {id:'chq_match_why', en:'Which cheque differed, how, and who allowed it?', am:'የተለየው የትኛው ቼክ ነው? በምን ተለየ? ማን ፈቀደ?', t:'area', show:{f:'chq_match', when:'no'}},
@@ -548,11 +548,11 @@ const REPORTS = [
         ]},
       {id:'del_repl', en:'Has the supplier been asked for a replacement or refund?', am:'አቅራቢው ምትክ ወይም ተመላሽ እንዲሰጥ ተጠይቋል?', t:'yesno', opt:1}
     ]},
-    { en:'5 · Documents to Finance', am:'5 · ለፋይናንስ የተላኩ ሰነዶች', fields:[
-      {id:'doc_24', en:'How many purchase documents reached Finance within 24 hours? (on time / all due)', am:'ስንት የግዥ ሰነዶች በ24 ሰዓት ውስጥ ፋይናንስ ደረሱ? (በሰዓቱ / መድረስ የነበረባቸው)', t:'ratio'},
+    { en:'5 · Documents to Selam', am:'5 · ለሰላም የተላኩ ሰነዶች', fields:[
+      {id:'doc_24', en:'How many purchase documents reached Selam within 24 hours? (on time / all due)', am:'ስንት የግዥ ሰነዶች በ24 ሰዓት ውስጥ ለሰላም ደረሱ? (በሰዓቱ / መድረስ የነበረባቸው)', t:'ratio'},
       {id:'doc_missing', en:'How many documents are still outstanding?', am:'እስካሁን ያልቀረቡ ሰነዶች ስንት ናቸው?', t:'num',
         tgt:{op:'lte', v:0, en:'–200 Birr per document', am:'በሰነድ –200 ብር'}},
-      {id:'doc_missing_list', en:'Which documents, for which jobs, and when will each reach Finance?', am:'የትኞቹ ሰነዶች? ለየትኞቹ ሥራዎች? እያንዳንዱ መቼ ፋይናንስ ይደርሳል?', t:'table', addEn:'Add a document', addAm:'ሰነድ ጨምር',
+      {id:'doc_missing_list', en:'Which documents, for which jobs, and when will each reach Selam?', am:'የትኞቹ ሰነዶች? ለየትኞቹ ሥራዎች? እያንዳንዱ መቼ ለሰላም ይደርሳል?', t:'table', addEn:'Add a document', addAm:'ሰነድ ጨምር',
         show:{f:'doc_missing', when:'pos'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
@@ -582,7 +582,7 @@ const REPORTS = [
       {id:'sup_price_what', en:'Which suppliers, on what material, and from what price to what?', am:'የትኞቹ አቅራቢዎች? በየትኛው ዕቃ? ከስንት ወደ ስንት?', t:'area', show:{f:'sup_price', when:'pos'}},
       {id:'sup_quality', en:'How many quality problems came from suppliers today?', am:'ዛሬ ከአቅራቢዎች ስንት የጥራት ችግር መጣ?', t:'num'},
       {id:'sup_quality_what', en:'Which supplier, what was wrong, and what have they agreed to do?', am:'የትኛው አቅራቢ? ምን ችግር ነበር? ምን ለማድረግ ተስማሙ?', t:'area', show:{f:'sup_quality', when:'pos'}},
-      {id:'sup_reported', en:'Were Mahelet and Finance told of every issue the same day?', am:'እያንዳንዱ ችግር ለማህሌትና ለፋይናንስ በዚያው ቀን ተነግሯል?', t:'yesno'},
+      {id:'sup_reported', en:'Were Mahelet and Selam told of every issue the same day?', am:'እያንዳንዱ ችግር ለማህሌትና ለሰላም በዚያው ቀን ተነግሯል?', t:'yesno'},
       {id:'sup_reported_why', en:'Which issue was not reported, and why?', am:'ያልተነገረው የትኛው ችግር ነው? ለምን?', t:'area', show:{f:'sup_reported', when:'no'}}
     ]},
     { en:'7 · What we paid, against last time', am:'7 · ካለፈው ጋር ሲነጻጸር የከፈልነው', fields:[
@@ -600,7 +600,7 @@ const REPORTS = [
         tgt:{op:'lte', v:0, en:'The margin floor is 6,000 Birr/m² — a 10% rise must reach Ephrata before the next quote',
              am:'የትርፍ ወለሉ 6,000 ብር/ካሬ ሜትር ነው — የ10% ጭማሪ ከቀጣዩ ዋጋ በፊት ኤፍራታ ጋር መድረስ አለበት'}},
       {id:'p_up_what', en:'Which materials, by how much, and which open quotations does it affect?', am:'የትኞቹ ዕቃዎች? በስንት ጨመሩ? የትኞቹን ክፍት ፕሮፎርማዎች ይነካል?', t:'area', show:{f:'p_up', when:'pos'}},
-      {id:'p_told', en:'If any, were Ephrata and Finance told today?', am:'ካሉ ለኤፍራታና ለፋይናንስ ዛሬ ተነግሯል?', t:'yesno', opt:1, i:1},
+      {id:'p_told', en:'If any, were Ephrata and Selam told today?', am:'ካሉ ለኤፍራታና ለሰላም ዛሬ ተነግሯል?', t:'yesno', opt:1, i:1},
       {id:'p_sub', en:'Was any material swapped for a cheaper one?', am:'ማንኛውም ዕቃ በርካሽ ተተክቷል?', t:'yesno'},
       {id:'p_sub_what', en:'What was swapped for what, on which job, and why?', am:'ምን በምን ተተካ? በየትኛው ሥራ? ለምን?', t:'area', show:{f:'p_sub', when:'yes'}},
       {id:'p_subok', en:'If yes, did Wude approve it before it was bought?', am:'አዎ ከሆነ ውዱ ከመገዛቱ በፊት አጽድቃለች?', t:'yesno', opt:1, i:1}
@@ -608,7 +608,7 @@ const REPORTS = [
     { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'What was the biggest problem today, and what caused it?', am:'የዛሬው ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
       {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
-      {id:'need_help', en:'What do you need from Mahelet, Finance or the store, and by when?', am:'ከማህሌት፣ ከፋይናንስ ወይም ከመጋዘን ምን ያስፈልግዎታል? እስከ መቼ?', t:'area', opt:1},
+      {id:'need_help', en:'What do you need from Mahelet, Selam or the store, and by when?', am:'ከማህሌት፣ ከሰላም ወይም ከመጋዘን ምን ያስፈልግዎታል? እስከ መቼ?', t:'area', opt:1},
       {id:'need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_chair_what', en:'What exactly should he decide, what are the options, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_chair', when:'yes'}}
     ]},
@@ -622,7 +622,7 @@ const REPORTS = [
 {
   id:'yordanos-daily', person:'yordanos', cadence:'daily', dueTime:'17:30',
   en:'Daily Store Report', am:'ዕለታዊ የመጋዘን ሪፖርት',
-  toEn:'Chairman, copied to Mahelet and Finance', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለፋይናንስ',
+  toEn:'Chairman, copied to Mahelet and Selam', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለሰላም',
   dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Reports are mandatory daily', penAm:'ሪፖርት በየቀኑ ግዴታ ነው',
   derived:1,
@@ -647,7 +647,7 @@ const REPORTS = [
     { en:'2 · Anything rejected today', am:'2 · ዛሬ ውድቅ የተደረጉ ዕቃዎች', fields:[
       {id:'rej_reason', en:'What was rejected, from which supplier, and why?', am:'ምን ውድቅ ተደረገ? ከየትኛው አቅራቢ? ለምን?', t:'area', opt:1},
       {id:'rej_photo', en:'Was each rejection photographed?', am:'ውድቅ የተደረገው እያንዳንዱ ዕቃ ፎቶ ተነስቷል?', t:'yesno', opt:1},
-      {id:'rej_reported', en:'Were Getachew and Finance told the same day?', am:'ለጌታቸውና ለፋይናንስ በዚያው ቀን ተነግሯል?', t:'yesno', opt:1}
+      {id:'rej_reported', en:'Were Getachew and Selam told the same day?', am:'ለጌታቸውና ለሰላም በዚያው ቀን ተነግሯል?', t:'yesno', opt:1}
     ]},
     { en:'3 · Stock record', am:'3 · የክምችት መዝገብ', fields:[
       {id:'st_open', en:'How many stock items were on hand at opening?', am:'በመክፈቻ ሰዓት ስንት የክምችት ዕቃዎች ነበሩ?', t:'num'},
@@ -663,7 +663,7 @@ const REPORTS = [
           {id:'book', en:'On record', am:'በመዝገብ', t:'num'},
           {id:'shelf', en:'On the shelf', am:'በመደርደሪያ', t:'num'},
           {id:'why', en:'Likely reason', am:'ሊሆን የሚችል ምክንያት', t:'text'},
-          {id:'told', en:'Mahelet and Finance told today?', am:'ለማህሌትና ለፋይናንስ ዛሬ ተነግሯል?', t:'yesno'}
+          {id:'told', en:'Mahelet and Selam told today?', am:'ለማህሌትና ለሰላም ዛሬ ተነግሯል?', t:'yesno'}
         ]}
     ]},
     { en:'4 · Issuing materials', am:'4 · ዕቃ ማውጣት', fields:[
@@ -690,7 +690,7 @@ const REPORTS = [
       {id:'sec_locked', en:'Was the store locked and secure at close?', am:'መጋዘኑ በመዝጊያ ሰዓት ተቆልፎ ደህንነቱ ተጠብቆ ነበር?', t:'yesno'},
       {id:'sec_locked_why', en:'Why not, and who holds the key tonight?', am:'ለምን? ዛሬ ማታ ቁልፉ ማን ጋር ነው?', t:'area', show:{f:'sec_locked', when:'no'}},
       {id:'sec_theft', en:'Was anything stolen or taken out without permission?', am:'የተሰረቀ ወይም ያለፈቃድ የወጣ ዕቃ አለ?', t:'yesno'},
-      {id:'sec_theft_what', en:'What, how much is it worth, who is involved, and were Mahelet and Finance told?', am:'ምን? ዋጋው ስንት ነው? ማን ተሳትፏል? ለማህሌትና ለፋይናንስ ተነግሯል?', t:'area', show:{f:'sec_theft', when:'yes'}},
+      {id:'sec_theft_what', en:'What, how much is it worth, who is involved, and were Mahelet and Selam told?', am:'ምን? ዋጋው ስንት ነው? ማን ተሳትፏል? ለማህሌትና ለሰላም ተነግሯል?', t:'area', show:{f:'sec_theft', when:'yes'}},
       {id:'sec_sep', en:'Are job materials kept apart from consumables?', am:'የሥራ ዕቃዎች ከፍጆታ ዕቃዎች ተለይተው ተቀምጠዋል?', t:'yesno'}
     ]},
     { en:'8 · What is on the shelf, and how long it lasts', am:'8 · በመጋዘን ያለውና ምን ያህል እንደሚቆይ', fields:[
@@ -724,7 +724,7 @@ const REPORTS = [
     { en:'9 · Problems and solutions', am:'9 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'What was the biggest problem in the store today, and what caused it?', am:'በመጋዘኑ የዛሬው ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
       {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
-      {id:'need_help', en:'What do you need from Mahelet, Getachew or Finance, and by when?', am:'ከማህሌት፣ ከጌታቸው ወይም ከፋይናንስ ምን ያስፈልግዎታል? እስከ መቼ?', t:'area', opt:1},
+      {id:'need_help', en:'What do you need from Mahelet, Getachew or Selam, and by when?', am:'ከማህሌት፣ ከጌታቸው ወይም ከሰላም ምን ያስፈልግዎታል? እስከ መቼ?', t:'area', opt:1},
       {id:'need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_chair_what', en:'What exactly should he decide, what are the options, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_chair', when:'yes'}}
     ]},
@@ -981,8 +981,8 @@ const REPORTS = [
           {id:'new', en:'New date', am:'አዲሱ ቀን', t:'text'}
         ]},
       {id:'pl_reason', en:'What is the main reason for the delays?', am:'የመዘግየቱ ዋና ምክንያት ምንድን ነው?', t:'area', opt:1},
-      {id:'pl_unpaid', en:"How many jobs went into the plan without Finance's written payment confirmation?",
-        am:'ያለ ፋይናንስ የጽሑፍ የክፍያ ማረጋገጫ ስንት ሥራዎች ወደ ዕቅዱ ገቡ?', t:'num',
+      {id:'pl_unpaid', en:"How many jobs went into the plan without Selam's written payment confirmation?",
+        am:'ያለ ሰላም የጽሑፍ የክፍያ ማረጋገጫ ስንት ሥራዎች ወደ ዕቅዱ ገቡ?', t:'num',
         tgt:{op:'lte', v:0, en:'–5,000 Birr per job', am:'በሥራ –5,000 ብር'}},
       {id:'pl_unpaid_what', en:'Which jobs, who put them in, and have they been stopped?', am:'የትኞቹ ሥራዎች? ማን አስገባቸው? ቆመዋል?', t:'area', show:{f:'pl_unpaid', when:'pos'}}
     ]},
@@ -1172,14 +1172,14 @@ const REPORTS = [
 {
   id:'getachew-weekly', person:'getachew', cadence:'weekly', dueTime:'17:00', dueDay:5,
   en:'Weekly Purchasing Summary', am:'ሳምንታዊ የግዥ ሪፖርት',
-  toEn:'Chairman, copied to Mahelet and Finance', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለፋይናንስ',
+  toEn:'Chairman, copied to Mahelet and Selam', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለሰላም',
   dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
   derived:1,
   sections:[
     { en:'1 · Purchase requests', am:'1 · የግዥ ጥያቄዎች', fields:[
       {id:'g_prep', en:'How many purchase requests did you prepare this week?', am:'በዚህ ሳምንት ስንት የግዥ ጥያቄ አዘጋጁ?', t:'num'},
-      {id:'g_app', en:'How many did Finance approve?', am:'ፋይናንስ ስንቱን አጸደቀ?', t:'num'},
+      {id:'g_app', en:'How many did Selam approve?', am:'ሰላም ስንቱን አጸደቀች?', t:'num'},
       {id:'g_ret', en:'How many were returned or rejected?', am:'ስንቱ ተመለሱ ወይም ውድቅ ሆኑ?', t:'num'},
       {id:'g_ret_why', en:'What were the reasons, and what will change so it stops happening?', am:'ምክንያቶቹ ምን ነበሩ? እንዳይደገም ምን ይቀየራል?', t:'area', show:{f:'g_ret', when:'pos'}},
       {id:'g_quotes', en:'How many requests carried 3 or more quotes? (with 3 quotes / all requests)', am:'ስንቱ ጥያቄ 3 እና ከዚያ በላይ ፕሮፎርማ ነበረው? (3 ፕሮፎርማ ያላቸው / ሁሉም ጥያቄዎች)', t:'ratio'},
@@ -1216,11 +1216,11 @@ const REPORTS = [
       {id:'g_saving_how', en:'On which purchases, and how was the saving made?', am:'በየትኞቹ ግዥዎች? ቁጠባው እንዴት ተገኘ?', t:'area', show:{f:'g_saving', when:'pos'}},
       {id:'g_best', en:'Which supplier served us best this week, and why?', am:'በዚህ ሳምንት በጣም ጥሩ ያገለገለን የትኛው አቅራቢ ነው? ለምን?', t:'area', opt:1}
     ]},
-    { en:'4 · Documents to Finance', am:'4 · ለፋይናንስ የተላኩ ሰነዶች', fields:[
-      {id:'g_doc24', en:'How many documents reached Finance within 24 hours? (on time / all due)', am:'ስንት ሰነዶች በ24 ሰዓት ውስጥ ፋይናንስ ደረሱ? (በሰዓቱ / መድረስ የነበረባቸው)', t:'ratio'},
+    { en:'4 · Documents to Selam', am:'4 · ለሰላም የተላኩ ሰነዶች', fields:[
+      {id:'g_doc24', en:'How many documents reached Selam within 24 hours? (on time / all due)', am:'ስንት ሰነዶች በ24 ሰዓት ውስጥ ለሰላም ደረሱ? (በሰዓቱ / መድረስ የነበረባቸው)', t:'ratio'},
       {id:'g_doc_missing', en:'How many documents are still outstanding?', am:'እስካሁን ያልቀረቡ ሰነዶች ስንት ናቸው?', t:'num',
         tgt:{op:'lte', v:0, en:'–200 Birr per document', am:'በሰነድ –200 ብር'}},
-      {id:'g_doc_missing_list', en:'Which documents, for which jobs, and when will each reach Finance?', am:'የትኞቹ ሰነዶች? ለየትኞቹ ሥራዎች? እያንዳንዱ መቼ ፋይናንስ ይደርሳል?', t:'table', addEn:'Add a document', addAm:'ሰነድ ጨምር',
+      {id:'g_doc_missing_list', en:'Which documents, for which jobs, and when will each reach Selam?', am:'የትኞቹ ሰነዶች? ለየትኞቹ ሥራዎች? እያንዳንዱ መቼ ለሰላም ይደርሳል?', t:'table', addEn:'Add a document', addAm:'ሰነድ ጨምር',
         show:{f:'g_doc_missing', when:'pos'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
@@ -1237,7 +1237,7 @@ const REPORTS = [
     { en:'5 · Problems and solutions', am:'5 · ችግሮችና መፍትሔዎች', fields:[
       {id:'w_problem', en:'What was the biggest problem this week, and what caused it?', am:'የዚህ ሳምንት ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
       {id:'w_action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
-      {id:'w_need', en:'What do you need from Mahelet, Finance or the store next week?', am:'በሚቀጥለው ሳምንት ከማህሌት፣ ከፋይናንስ ወይም ከመጋዘን ምን ያስፈልግዎታል?', t:'area', opt:1},
+      {id:'w_need', en:'What do you need from Mahelet, Selam or the store next week?', am:'በሚቀጥለው ሳምንት ከማህሌት፣ ከሰላም ወይም ከመጋዘን ምን ያስፈልግዎታል?', t:'area', opt:1},
       {id:'w_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'w_chair_what', en:'What exactly should he decide, what are the options, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'w_chair', when:'yes'}},
       {id:'w_next', en:'What must be bought next week, for which jobs, and what is at risk of arriving late?', am:'በሚቀጥለው ሳምንት ምን መገዛት አለበት? ለየትኞቹ ሥራዎች? የመዘግየት ስጋት ያለበት ምንድን ነው?', t:'area', opt:1}
@@ -1249,7 +1249,7 @@ const REPORTS = [
 {
   id:'yordanos-weekly', person:'yordanos', cadence:'weekly', dueTime:'17:00', dueDay:5,
   en:'Weekly Store Summary', am:'ሳምንታዊ የመጋዘን ሪፖርት',
-  toEn:'Chairman, copied to Mahelet and Finance', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለፋይናንስ',
+  toEn:'Chairman, copied to Mahelet and Selam', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለሰላም',
   dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'Reports are mandatory weekly', penAm:'ሳምንታዊ ሪፖርት ግዴታ ነው',
   derived:1,
@@ -1311,10 +1311,10 @@ const REPORTS = [
       {id:'y_secure', en:'Was the store locked and secure every night?', am:'መጋዘኑ በየምሽቱ ተቆልፎ ደህንነቱ ተጠብቆ ነበር?', t:'yesno'},
       {id:'y_secure_why', en:'Which nights not, and why?', am:'የትኞቹ ምሽቶች አልተቆለፈም? ለምን?', t:'area', show:{f:'y_secure', when:'no'}},
       {id:'y_theft', en:'Was anything stolen or taken out without permission this week?', am:'በዚህ ሳምንት የተሰረቀ ወይም ያለፈቃድ የወጣ ዕቃ አለ?', t:'yesno'},
-      {id:'y_theft_what', en:'What, how much is it worth, who is involved, and were Mahelet and Finance told?', am:'ምን? ዋጋው ስንት ነው? ማን ተሳትፏል? ለማህሌትና ለፋይናንስ ተነግሯል?', t:'area', show:{f:'y_theft', when:'yes'}},
+      {id:'y_theft_what', en:'What, how much is it worth, who is involved, and were Mahelet and Selam told?', am:'ምን? ዋጋው ስንት ነው? ማን ተሳትፏል? ለማህሌትና ለሰላም ተነግሯል?', t:'area', show:{f:'y_theft', when:'yes'}},
       {id:'y_problem', en:'What was the biggest problem in the store this week, and what caused it?', am:'በመጋዘኑ የዚህ ሳምንት ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
       {id:'y_action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
-      {id:'y_need', en:'What do you need from Mahelet, Getachew or Finance?', am:'ከማህሌት፣ ከጌታቸው ወይም ከፋይናንስ ምን ያስፈልግዎታል?', t:'area', opt:1},
+      {id:'y_need', en:'What do you need from Mahelet, Getachew or Selam?', am:'ከማህሌት፣ ከጌታቸው ወይም ከሰላም ምን ያስፈልግዎታል?', t:'area', opt:1},
       {id:'y_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'y_chair_what', en:'What exactly should he decide, what are the options, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'y_chair', when:'yes'}}
     ]},
@@ -1393,16 +1393,16 @@ const REPORTS = [
       {id:'plan_prep', en:'Who prepared this plan?', am:'ዕቅዱን ያዘጋጀው ማን ነው?', t:'text'},
       {id:'plan_changes', en:'What changed from last week\'s plan, and did the Chairman approve each change?', am:'ካለፈው ሳምንት ዕቅድ ምን ተቀየረ? እያንዳንዱ ለውጥ በሊቀመንበሩ ጸድቋል?', t:'area', opt:1}
     ]},
-    { en:'2 · Payment-confirmed jobs from Finance', am:'2 · ከፋይናንስ የክፍያ ማረጋገጫ ያላቸው ሥራዎች', fields:[
-      {id:'plan_paid', en:'Which jobs has Finance confirmed in writing as fully paid?', am:'ፋይናንስ ሙሉ ክፍያቸውን በጽሑፍ ያረጋገጠላቸው የትኞቹ ሥራዎች ናቸው?',
+    { en:'2 · Payment-confirmed jobs from Selam', am:'2 · ከሰላም የክፍያ ማረጋገጫ ያላቸው ሥራዎች', fields:[
+      {id:'plan_paid', en:'Which jobs has Selam confirmed in writing as fully paid?', am:'ሰላም ሙሉ ክፍያቸውን በጽሑፍ ያረጋገጠችላቸው የትኞቹ ሥራዎች ናቸው?',
        t:'table', addEn:'Add job', addAm:'ሥራ ጨምር', cols:[
         {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
         {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
         {id:'m2',   en:'m²', am:'ካሬ ሜትር', t:'num'},
         {id:'ok',   en:'Final payment confirmed', am:'የመጨረሻ ክፍያ ተረጋግጧል', t:'yesno'},
-        {id:'date', en:"Finance's confirmation date", am:'ፋይናንስ ያረጋገጠበት ቀን', t:'text'}
+        {id:'date', en:"Selam's confirmation date", am:'ሰላም ያረጋገጠችበት ቀን', t:'text'}
       ]},
-      {id:'plan_list_late', en:'Did Finance\'s list reach you by Friday 1:00 PM?', am:'የፋይናንስ ዝርዝር እስከ ዓርብ 7፡00 ደርሶዎታል?', t:'yesno'},
+      {id:'plan_list_late', en:'Did Selam\'s list reach you by Friday 1:00 PM?', am:'የሰላም ዝርዝር እስከ ዓርብ 7፡00 ደርሶዎታል?', t:'yesno'},
       {id:'plan_list_late_why', en:'When did it arrive, and what did the delay cost this plan?', am:'መቼ ደረሰ? መዘግየቱ በዚህ ዕቅድ ላይ ምን አስከተለ?', t:'area', show:{f:'plan_list_late', when:'no'}}
     ]},
     { en:'3 · Production queue', am:'3 · የምርት ተራ', fields:[
@@ -1437,8 +1437,8 @@ const REPORTS = [
       {id:'plan_block', en:'What could stop this plan, and what support is needed, from whom?', am:'ይህን ዕቅድ ምን ሊያቆመው ይችላል? ምን ድጋፍ ያስፈልጋል? ከማን?', t:'area', opt:1}
     ]},
     { en:'6 · Confirmation', am:'6 · ማረጋገጫ', fields:[
-      {id:'plan_rule', en:'Does every job in this plan have Finance’s written payment confirmation?',
-       am:'በዚህ ዕቅድ ያለው እያንዳንዱ ሥራ የፋይናንስ የጽሑፍ የክፍያ ማረጋገጫ አለው?', t:'yesno'},
+      {id:'plan_rule', en:'Does every job in this plan have Selam’s written payment confirmation?',
+       am:'በዚህ ዕቅድ ያለው እያንዳንዱ ሥራ የሰላም የጽሑፍ የክፍያ ማረጋገጫ አለው?', t:'yesno'},
       {id:'plan_rule_why', en:'Which job lacks it, and why is it in the plan? (–5,000 Birr per job)', am:'ማረጋገጫ የሌለው የትኛው ሥራ ነው? ለምን በዕቅዱ ገባ? (በሥራ –5,000 ብር)', t:'area', show:{f:'plan_rule', when:'no'}},
       {id:'plan_capacity', en:'Does the plan fit machine capacity and the materials available?',
        am:'ዕቅዱ ከማሽን አቅምና ካለው ዕቃ ጋር ይጣጣማል?', t:'yesno'},
@@ -1639,9 +1639,9 @@ const REPORTS = [
   sections:[
     { en:'1 · Groups watched today', am:'1 · ዛሬ የተከታተሏቸው ግሩፖች', fields:[
       {id:'pl_by', en:'Who prepared today\'s pulse?', am:'የዛሬውን ሪፖርት ያዘጋጀው ማን ነው?', t:'choice', opts:[
-        {v:'finance', en:'Finance', am:'ፋይናንስ'},
+        {v:'finance', en:'Selam', am:'ሰላም'},
         {v:'seble', en:'Seble', am:'ሰብለ'}]},
-      {id:'pl_by_checked', en:'Did Finance check Seble\'s work before it was sent?', am:'የሰብለ ሥራ ከመላኩ በፊት በፋይናንስ ተረጋግጧል?', t:'yesno', show:{f:'pl_by', when:'is', v:'seble'}},
+      {id:'pl_by_checked', en:'Did Selam check Seble\'s work before it was sent?', am:'የሰብለ ሥራ ከመላኩ በፊት በሰላም ተረጋግጧል?', t:'yesno', show:{f:'pl_by', when:'is', v:'seble'}},
       {id:'pl_groups', en:'How many customer groups are active?', am:'ስንት የደንበኛ ግሩፖች ንቁ ናቸው?', t:'num'},
       {id:'pl_checked', en:'How many groups were read today? (read / active)', am:'ዛሬ ስንት ግሩፖች ተነበቡ? (የተነበቡ / ንቁ)', t:'ratio'},
       {id:'pl_checked_why', en:'Which groups were not read, and when will they be?', am:'ያልተነበቡት የትኞቹ ግሩፖች ናቸው? መቼ ይነበባሉ?', t:'area', show:{f:'pl_checked', when:'short'}},
@@ -2043,7 +2043,7 @@ const REPORTS = [
 {
   id:'amaha-monthly', person:'amaha', cadence:'monthly', dueTime:'17:00',
   en:'Monthly Material Savings Report', am:'ወርሃዊ የቁሳቁስ ቁጠባ ሪፖርት',
-  toEn:'Mahelet + Finance', toAm:'ማህሌት + ፋይናንስ',
+  toEn:'Mahelet + Selam', toAm:'ማህሌት + ሰላም',
   dueEn:'1st of the following month', dueAm:'በሚቀጥለው ወር 1ኛ ቀን',
   penEn:'Your savings share is 10% – 25% of the total', penAm:'ከጠቅላላው ቁጠባ ድርሻዎ ከ10% – 25% ነው',
   sections:[
@@ -2291,7 +2291,7 @@ const REPORTS = [
 {
   id:'wude-monthly', person:'wude', cadence:'monthly', dueTime:'17:00',
   en:'Monthly Rework Report', am:'ወርሃዊ የዳግም ሥራ ሪፖርት',
-  toEn:'Mahelet + Finance', toAm:'ማህሌት + ፋይናንስ',
+  toEn:'Mahelet + Selam', toAm:'ማህሌት + ሰላም',
   dueEn:'1st of the following month', dueAm:'በሚቀጥለው ወር 1ኛ ቀን',
   penEn:'Failure to report rework cost –200 Birr', penAm:'የዳግም ሥራ ወጪ ካልተነገረ –200 ብር',
   sections:[
@@ -2323,7 +2323,7 @@ const REPORTS = [
         {id:'n',    en:'Rework count', am:'የዳግም ሥራ ብዛት', t:'num'},
         {id:'cost', en:'Total cost', am:'ጠቅላላ ወጪ', t:'money'}
       ]},
-      {id:'register_ok', en:'Did Mahelet and Finance check the Rework Register this month?', am:'ማህሌትና ፋይናንስ በዚህ ወር የዳግም ሥራ መዝገቡን አረጋግጠዋል?', t:'yesno'},
+      {id:'register_ok', en:'Did Mahelet and Selam check the Rework Register this month?', am:'ማህሌትና ሰላም በዚህ ወር የዳግም ሥራ መዝገቡን አረጋግጠዋል?', t:'yesno'},
       {id:'register_ok_why', en:'Why not, and when will they?', am:'ለምን? መቼ ያረጋግጣሉ?', t:'area', show:{f:'register_ok', when:'no'}}
     ]},
     { en:'4 · Quality verification', am:'4 · የጥራት ማረጋገጫ', fields:[
@@ -2338,7 +2338,7 @@ const REPORTS = [
       {id:'v_complaints_what', en:'Which customers, about what, and is each one closed?', am:'የትኞቹ ደንበኞች? ስለምን? እያንዳንዱ ተዘግቷል?', t:'area', show:{f:'v_complaints', when:'pos'}}
     ]},
     { en:'5 · Next month', am:'5 · የሚቀጥለው ወር', fields:[
-      {id:'m_need', en:'What do you need from Mahelet or Finance to bring rework down?', am:'ዳግም ሥራን ለመቀነስ ከማህሌት ወይም ከፋይናንስ ምን ያስፈልግዎታል?', t:'area', opt:1}
+      {id:'m_need', en:'What do you need from Mahelet or Selam to bring rework down?', am:'ዳግም ሥራን ለመቀነስ ከማህሌት ወይም ከሰላም ምን ያስፈልግዎታል?', t:'area', opt:1}
     ]}
   ]
 },
@@ -2734,7 +2734,7 @@ const SALES_DAILY = {
         ]},
       {id:'c_value', en:'What is the total value of today\'s contracts?', am:'የዛሬዎቹ ውሎች ጠቅላላ ዋጋ ስንት ነው?', t:'money'},
       {id:'c_adv', en:'How much advance did you collect today?', am:'ዛሬ ስንት ቅድመ ክፍያ ተሰበሰበ?', t:'money'},
-      {id:'c_told', en:'Was Finance told, so the deposit can be confirmed in the bank?', am:'ፋይናንስ ገንዘቡን በባንክ እንዲያረጋግጥ ተነግሯል?', t:'yesno', show:{f:'c_adv', when:'pos'}},
+      {id:'c_told', en:'Was Selam told, so the deposit can be confirmed in the bank?', am:'ሰላም ገንዘቡን በባንክ እንድታረጋግጥ ተነግሯታል?', t:'yesno', show:{f:'c_adv', when:'pos'}},
       {id:'c_banked', en:'Did all of it go to the bank the same day?', am:'ሁሉም በዕለቱ ባንክ ገብቷል?', t:'yesno'},
       {id:'c_banked_why', en:'Why not, where is the money now, and when will it be banked?', am:'ለምን አልገባም? ገንዘቡ አሁን የት ነው? መቼ ባንክ ይገባል?', t:'area', show:{f:'c_banked', when:'no'}}
     ]},
@@ -2777,7 +2777,7 @@ const SALES_DAILY = {
       {id:'problem', en:'What was the biggest problem today?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
       {id:'cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', opt:1},
       {id:'action', en:'What was done about it, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
-      {id:'need_help', en:'What do you need from design, production or Finance, and from whom?', am:'ከዲዛይን፣ ከምርት ወይም ከፋይናንስ ምን ያስፈልግዎታል? ከማን?', t:'area', opt:1},
+      {id:'need_help', en:'What do you need from design, production or Selam, and from whom?', am:'ከዲዛይን፣ ከምርት ወይም ከሰላም ምን ያስፈልግዎታል? ከማን?', t:'area', opt:1},
       {id:'need_lead', en:'Do you need a decision from Ephrata?', am:'የኤፍራታ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_lead_what', en:'What exactly should she decide (a discount beyond your window, a price change), and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? (ከፈቃድዎ በላይ ቅናሽ፣ የዋጋ ለውጥ) እስከ መቼ?', t:'area', show:{f:'need_lead', when:'yes'}}
     ]},
@@ -2929,10 +2929,10 @@ const DESIGN_DAILY = {
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'green', en:'Finance green light first', am:'ከፋይናንስ ፈቃድ ቀድሞ ነበር', t:'yesno'}
+          {id:'green', en:'Selam’s green light first', am:'ከሰላም ፈቃድ ቀድሞ ነበር', t:'yesno'}
         ]},
       {id:'m_fin_amend', en:'Did any final measurement change the price?', am:'የመጨረሻ ልኬት ዋጋውን የቀየረበት ሥራ አለ?', t:'yesno', show:{f:'m_fin', when:'pos'}},
-      {id:'m_fin_amend_what', en:'Which customer, by how much, and have the salesperson and Finance been told?', am:'የየትኛው ደንበኛ ነው? በስንት ብር? ለሻጩና ለፋይናንስ ተነግሯል?', t:'area', show:{f:'m_fin_amend', when:'yes'}},
+      {id:'m_fin_amend_what', en:'Which customer, by how much, and have the salesperson and Selam been told?', am:'የየትኛው ደንበኛ ነው? በስንት ብር? ለሻጩና ለሰላም ተነግሯል?', t:'area', show:{f:'m_fin_amend', when:'yes'}},
       {id:'m_fin_ontime', en:'How many were within 24 hours of the advance? (on time / done)', am:'ስንቱ ከቅድመ ክፍያ በ24 ሰዓት ውስጥ ተደረጉ? (በሰዓቱ / የተደረጉ)', t:'ratio',
         tgt:{op:'gte', v:100, en:'Late is –300 Birr and loses stage 4', am:'ዘግይቶ –300 ብር እና 4ኛ ደረጃን ያሳጣል'}},
       {id:'m_fin_ontime_why', en:'Which were late, and why?', am:'የዘገዩት የትኞቹ ናቸው? ለምን?', t:'area', show:{f:'m_fin_ontime', when:'short'}}

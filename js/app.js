@@ -468,7 +468,8 @@
     'Ephrata': ['ephrata'],
     'Betty': ['betty'],
     'Betelhem': ['betty'],
-    'Finance': ['betty'],   /* her name on the site for now */
+    'Finance': ['betty'],
+    'Selam': ['betty'],   /* her name on the site for now */
     'Elyas': ['elyas'],
     'Kidan': []          /* Kidan has no account — he has no letter either */
   };

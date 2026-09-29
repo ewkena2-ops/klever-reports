@@ -1087,7 +1087,7 @@ function weeklyFilings_(ctx, reportId, weeks) {
   return Object.keys(h).sort().reverse().map(function (d) { return { day: d, v: h[d].fields || {} }; });
 }
 
-/* ---- Finance: an assembler's payment released more than 3 days late ---- */
+/* ---- Selam: an assembler's payment released more than 3 days late ---- */
 EVAL_['betty-asm-late-release'] = { day: function (ctx) {
   var v = ctx.v('betty-daily');
   if (!v || Object.prototype.toString.call(v.asm_released_list) !== '[object Array]') return [];

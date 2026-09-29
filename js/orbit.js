@@ -100,7 +100,7 @@
       en: 'Customers', am: 'ደንበኞች',
       watchEn: 'What customers are saying, and who is still waiting for an answer.',
       watchAm: 'ደንበኞች የሚሉትን፣ እና ማን ገና መልስ እየጠበቀ እንደሆነ።',
-      reads: [['The customer pulse report', 'የደንበኛ ሪፖርት (ፋይናንስ)'], ['Elyas', 'ኤልያስ'], ['Ephrata', 'ኤፍራታ']]
+      reads: [['The customer pulse report', 'የደንበኛ ሪፖርት (ሰላም)'], ['Elyas', 'ኤልያስ'], ['Ephrata', 'ኤፍራታ']]
     },
     design: {
       en: 'Design', am: 'ዲዛይን',

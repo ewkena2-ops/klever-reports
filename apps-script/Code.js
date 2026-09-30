@@ -170,6 +170,8 @@ function doPost(e) {
 
   sh.appendRow(out);
   notify_(row, ss.getUrl());
+  /* and the agents read the day again, about a minute from now (Agents.js) */
+  readSoon_();
   return ContentService.createTextOutput('ok');
 }
 

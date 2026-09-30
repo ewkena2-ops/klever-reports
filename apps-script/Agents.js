@@ -1425,13 +1425,51 @@ function publishAnalysis_(results, d) {
    deleted first and on purpose: if the run then fails, it fails once rather
    than retrying every ten minutes for the rest of the day with a model that
    charges for each attempt. */
-function watchForRunRequest() {
+function watchForRunRequest() { watch_(1000); }
+
+/* A report has just arrived (Code.js doPost, the moment Send is pressed):
+   have the agents read the day about a minute from now, instead of at the
+   next ten-minute look. The reading cannot run inside doPost — the phone is
+   waiting for its answer, and sixteen readings take half a minute — so a
+   one-off trigger runs it straight after. One is ever pending: reports that
+   arrive together are read together, and the ten-minute watch still catches
+   anything this misses. Nothing here may cost the report its row, so every
+   failure is swallowed. */
+function readSoon_() {
+  try {
+    /* its own lock, not the reading's: a report that lands while a reading
+       is running must still be able to book the next one */
+    var lock = LockService.getUserLock();
+    if (!lock.tryLock(3000)) return;
+    try {
+      var pending = ScriptApp.getProjectTriggers().some(function (t) {
+        return t.getHandlerFunction() === 'readNow';
+      });
+      if (!pending) ScriptApp.newTrigger('readNow').timeBased().after(5 * 1000).create();
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (e) {
+    Logger.log('readSoon: %s', e.message);
+  }
+}
+/* the one-off trigger: take itself off the list, then read what is new. It
+   waits up to two minutes for a reading already running to finish, so a
+   report that arrived during that reading is not left to the ten-minute watch. */
+function readNow() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'readNow') ScriptApp.deleteTrigger(t);
+  });
+  watch_(120000);
+}
+
+function watch_(waitMs) {
   /* one at a time: a reading that outlasts ten minutes must not have a
      second one started on top of it */
   var lock = null;
   if (typeof LockService !== 'undefined') {
     lock = LockService.getScriptLock();
-    if (!lock.tryLock(1000)) return;
+    if (!lock.tryLock(waitMs)) return;
   }
   try {
     var token = fsToken_();

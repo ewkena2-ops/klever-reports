@@ -70,9 +70,12 @@
       hide: function () { tip.hidden = true; }
     };
   }
-  /* a mark he can point at, tap, or reach with the keyboard */
-  function hit(g, attrs, lines, tip, wrap, onOn, onOff) {
-    var r = sv('rect', Object.assign({ 'class': 'cg-hit', tabindex: '0', role: 'img',
+  /* A mark he can point at, tap, or reach with the keyboard. With `open`, a
+     tap (or Enter) opens what is behind it — the report itself — and the
+     hover words are the preview. */
+  function hit(g, attrs, lines, tip, wrap, onOn, onOff, open) {
+    var r = sv('rect', Object.assign({ 'class': 'cg-hit' + (open ? ' can-open' : ''), tabindex: '0',
+                                       role: open ? 'button' : 'img',
                                        'aria-label': lines.join(' — ') }, attrs), g);
     function on() {
       var b = r.getBoundingClientRect(), w = wrap.getBoundingClientRect();
@@ -85,6 +88,12 @@
     r.addEventListener('pointerleave', off);
     r.addEventListener('focus', on);
     r.addEventListener('blur', off);
+    if (open) {
+      r.addEventListener('click', function () { off(); open(r); });
+      r.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); off(); open(r); }
+      });
+    }
     return r;
   }
 
@@ -201,7 +210,7 @@
           sv('rect', { x: x, y: y, width: cell, height: cell, rx: 4, 'class': 'cg-sq' }, g);
           if (cell >= 14) stext(g, x + cell / 2, y + cell / 2 + 4, ICON[c.s], 'cg-ic', 'middle');
           hit(g, { x: x - 1, y: y - 1, width: cell + 2, height: cell + 2 }, c.tip, tip, wrap,
-              function () { g.classList.add('on'); }, function () { g.classList.remove('on'); });
+              function () { g.classList.add('on'); }, function () { g.classList.remove('on'); }, c.open);
         });
       });
     });
@@ -277,7 +286,7 @@
           }
         }
         hit(g, { x: L + band * i, y: T, width: band, height: ph + 2 }, lines, tip, wrap,
-            function () { g.classList.add('on'); }, function () { g.classList.remove('on'); });
+            function () { g.classList.add('on'); }, function () { g.classList.remove('on'); }, p.open);
       });
     });
 
@@ -342,7 +351,7 @@
                                 : [o.words.notRep, p.title];
         hit(g, { x: x(i) - band / 2, y: T, width: band, height: ph + 2 }, lines, tip, wrap,
             function () { cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible'); },
-            function () { cross.setAttribute('visibility', 'hidden'); });
+            function () { cross.setAttribute('visibility', 'hidden'); }, p.open);
       });
       /* the latest figure, said at its point */
       for (var k = n - 1; k >= 0; k--) {

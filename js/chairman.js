@@ -22,7 +22,7 @@ import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, getDoc, setDoc, addDoc, updateDoc, query, where, orderBy, limit,
+  collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, orderBy, limit,
   onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
@@ -807,6 +807,101 @@ import {
     return out;
   }
 
+  /* ---- a person's day, opened from a chart ----
+     Tapping a square in "who reported", or a bar, opens what that person
+     actually filed that day — the same card as the day's reports below, in
+     the words they typed, already open. A report that never came says so,
+     and when it was due. The panel is the observatory's: it rises from the
+     bottom, and closes on ×, a tap outside it, or Escape. */
+  var SHEET = null;
+  function closeSheet() {
+    if (!SHEET) return;
+    var s = SHEET;
+    SHEET = null;
+    s.veil.remove();
+    s.sheet.remove();
+    document.removeEventListener('keydown', s.key);
+    if (s.back && s.back.focus) { try { s.back.focus({ preventScroll: true }); } catch (e) {} }
+  }
+  function notFiledCard(r, s, day) {
+    var passed = day < DAY || (day === DAY && r && Date.now() >= deadline(r, DAY).getTime());
+    var waiting = s === 'wait' || (!s && !passed);
+    var card = el('div', 'chrow chnotfiled' + (waiting ? '' : ' late'));
+    var head = el('div', 'chnfh');
+    head.appendChild(el('span', 'chrr', r ? L(r) : ''));
+    head.appendChild(el('span', 'chrt', waiting ? t('chgWait') : t('chgMiss')));
+    card.appendChild(head);
+    if (r) card.appendChild(el('p', 'codenote', t('chgWasDue') + ' ' + L({ en: r.dueEn, am: r.dueAm })));
+    return card;
+  }
+  function openDay(personId, day, lines, back) {
+    closeSheet();
+    var veil = el('div', 'chsheet-veil');
+    var sheet = el('div', 'obs-sheet chsheet');
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.appendChild(el('div', 'obs-grab'));
+    var x = el('button', 'obs-close', '×');
+    x.type = 'button';
+    x.setAttribute('aria-label', t('chClose'));
+    x.onclick = closeSheet;
+    sheet.appendChild(x);
+    var p = personById(personId);
+    var title = el('h2', 'chsheet-t', p ? L(p) : personId);
+    title.id = 'chsheet-t';
+    sheet.setAttribute('aria-labelledby', title.id);
+    sheet.appendChild(title);
+    sheet.appendChild(el('p', 'chsheet-d', (day === DAY ? t('chgToday') + ' · ' : '') + prettyDay(day)));
+    var body = el('div', 'chsheet-b');
+    body.appendChild(el('p', 'codenote', t('chLoading')));
+    sheet.appendChild(body);
+    veil.onclick = closeSheet;
+    document.body.appendChild(veil);
+    document.body.appendChild(sheet);
+    var key = function (e) { if (e.key === 'Escape') closeSheet(); };
+    document.addEventListener('keydown', key);
+    SHEET = { veil: veil, sheet: sheet, back: back, key: key };
+    x.focus();
+
+    /* the week before as well: a weekly report may come in days early */
+    getDocs(query(collection(db, 'reports'), where('person', '==', personId),
+                  where('at', '>=', dayStart(addDays(day, -7))), where('at', '<', dayStart(addDays(day, 1)))))
+      .then(function (qs) {
+        if (!SHEET || SHEET.sheet !== sheet) return;
+        var filed = [];
+        qs.forEach(function (d) {
+          var f = d.data({ serverTimestamps: 'estimate' });
+          f.when = f.at && f.at.toDate ? f.at.toDate() : new Date();
+          filed.push(f);
+        });
+        filed.sort(function (a, b) { return a.when - b.when; });
+        body.innerHTML = '';
+        var seen = {};
+        lines.forEach(function (l) {
+          if (seen[l.rid]) return;
+          seen[l.rid] = true;
+          var r = reportById(l.rid);
+          var from = dayStart(addDays(day, -reach(r || { cadence: 'daily' }))).getTime();
+          var to = dayStart(addDays(day, 1)).getTime(), hit = null;
+          /* the last one counts: a correction is filed again */
+          filed.forEach(function (f) {
+            var tm = f.when.getTime();
+            if (f.report === l.rid && tm >= from && tm < to) hit = f;
+          });
+          if (hit) {
+            var card = rawCard(hit);
+            card.open = true;
+            body.appendChild(card);
+          } else {
+            body.appendChild(notFiledCard(r, l.s, day));
+          }
+        });
+      }, function (e) {
+        body.innerHTML = '';
+        body.appendChild(el('p', 'codeerr', errText(e)));
+      });
+  }
+
   function watchCharts(box) {
     var C = window.KleverCharts;
     if (!C) { box.innerHTML = ''; return; }
@@ -850,7 +945,7 @@ import {
           if (f.report === r.id && f.person === r.person && tm >= from && tm < end) hit = f;
         });
         var s = hit ? (isLate(hit) ? 'late' : 'ok') : (now < deadline(r, DAY).getTime() ? 'wait' : 'miss');
-        return { person: r.person, report: L(r), s: s, at: hit ? hit.when : null };
+        return { person: r.person, rid: r.id, report: L(r), s: s, at: hit ? hit.when : null };
       });
     }
 
@@ -881,7 +976,7 @@ import {
       var cols = days.map(function (d) {
         return { day: d.day, lines: (d.lines || []).map(function (l) {
           var at = l.at && l.at.toDate ? l.at.toDate() : null;
-          return { person: l.person, report: lineReport(l), s: sOf(l.status), at: at };
+          return { person: l.person, rid: l.report, report: lineReport(l), s: sOf(l.status), at: at };
         }).filter(function (l) { return l.s; }) };
       });
       var tc = todayCells();
@@ -898,7 +993,9 @@ import {
           var worst = mine.reduce(function (a, l) { return RANK[l.s] > RANK[a] ? l.s : a; }, 'wait');
           return { s: worst, tip: [L(p) + ' · ' + (c.today ? t('chgToday') : dayShort(c.day))].concat(mine.map(function (l) {
             return l.report + ' — ' + WORD[l.s] + (l.at ? ', ' + hhmm(l.at) : '');
-          })) };
+          })),
+            /* a tap opens what they filed that day, in their own words */
+            open: function (from) { openDay(p.id, c.day, mine, from); } };
         }) };
       });
       var colsOut = cols.map(function (c) {
@@ -942,14 +1039,19 @@ import {
         var v = fig((daily[d] || {}).bank_total), note = t('chgFromDaily');
         if (v == null) { v = fig((fc[d] || {}).cf7_bank); note = t('chgFromForecast'); }
         pts.push({ day: d, top: String(Number(d.slice(8))), bottom: (i === 27 || d.slice(8) === '01') ? monShort(d) : '',
-                   title: dayShort(d), v: v, note: v == null ? '' : note });
+                   title: dayShort(d), v: v, note: v == null ? '' : note,
+                   open: dow(d) === 0 ? null : (function (day) {
+                     return function (from) {
+                       openDay('betty', day, [{ rid: 'betty-forecast' }, { rid: 'betty-daily' }], from);
+                     };
+                   })(d) });
       }
       var lastP = pts.filter(function (p) { return p.v != null; }).pop();
       var status = !lastP ? { kind: 'none', icon: '–', text: t('chgBankNone') }
         : lastP.v < 6000000 ? { kind: 'bad', icon: '▼', text: tfill('chgBankBelow', { v: birr(lastP.v), day: dayShort(lastP.day) }) }
         : { kind: 'good', icon: '✓', text: tfill('chgBankAbove', { v: birr(lastP.v), day: dayShort(lastP.day) }) };
       return C.line({
-        title: t('chgBank'), sub: t('chgBankSub'), status: status, points: pts, joinGap: 2,
+        title: t('chgBank'), sub: t('chgBankSub') + ' ' + t('chgTapBar'), status: status, points: pts, joinGap: 2,
         ref: { v: 6000000, label: t('chgReserve'), good: 'above' },
         fmt: function (v) { return birr(v) + ' ' + t('unBirr'); }, tick: function (v) { return short(v); },
         lab: function (v) { return short(v); },
@@ -1001,8 +1103,10 @@ import {
       var rep = reportById(o.report), by = byDay(o.report), now = Date.now();
       var pts = workDays(DAY, 12).map(function (d) {
         var v = fig((by[d] || {})[o.field]);
+        var wait = v == null && d === DAY && rep && now < deadline(rep, DAY).getTime();
         return { day: d, top: WD[lang][dow(d)], bottom: String(Number(d.slice(8))), title: dayShort(d), v: v,
-                 wait: v == null && d === DAY && rep && now < deadline(rep, DAY).getTime() };
+                 wait: wait,
+                 open: rep ? function (from) { openDay(rep.person, d, [{ rid: o.report, s: wait ? 'wait' : null }], from); } : null };
       });
       var fmt = function (v) { return (Math.round(v * 10) / 10).toLocaleString('en-US') + o.unit; };
       var lastP = pts.filter(function (p) { return p.v != null; }).pop(), status;
@@ -1015,7 +1119,7 @@ import {
                                               how: tfill(good ? o.ok : o.bad, { d: gap.toLocaleString('en-US') }) }) };
       }
       return C[o.line ? 'line' : 'columns']({
-        title: o.title, sub: o.sub, status: status, points: pts, ref: o.ref, max: o.max, min: o.min, joinGap: 1, labelGap: 22,
+        title: o.title, sub: o.sub + ' ' + t('chgTapBar'), status: status, points: pts, ref: o.ref, max: o.max, min: o.min, joinGap: 1, labelGap: 22,
         fmt: fmt, tick: function (v) { return (Math.round(v * 10) / 10) + o.unit.trim().replace('m²', ''); },
         words: { notRep: t('chgNotRep'), notYet: t('chgNotYet'), none: t('chgNoneDays') },
         legend: [['is-good', t('chgLegendMet'), '✓'], ['is-bad', t('chgLegendShort'), '✕'], ['is-none', t('chgLegendNone'), '–']],
@@ -1051,10 +1155,23 @@ import {
       body.appendChild(el('p', 'codenote', t('chFiledBy') + ' ' + nameOf(f.by)));
     }
     body.appendChild(fieldTable(rep, f.values || {}));
-    if ((f.flags || []).length) {
+    /* The answers that cannot be right, checked again now (oddFigures in
+       forms.js): a report filed before the phone checked them carries none
+       in its flags, and the Chairman should see them all the same. */
+    var flags = (f.flags || []).slice();
+    if (rep && typeof oddFigures === 'function') {
+      oddFigures(rep, f.values || {}).forEach(function (o) {
+        var fd = null;
+        rep.sections.forEach(function (s) { s.fields.forEach(function (x) { if (x.id === o.f) fd = x; }); });
+        var q = fd ? L(fd).replace(/\s*\([^()]*\)\s*$/, '') : o.f;
+        var msg = (lang === 'am' ? o.am : o.en);
+        if (!flags.some(function (x) { return x.indexOf(msg) !== -1; })) flags.push(t('toCheck') + ': ' + q + ' — ' + msg);
+      });
+    }
+    if (flags.length) {
       var fl = el('div', 'chflags');
       fl.appendChild(el('div', 'chfl', t('flags')));
-      f.flags.forEach(function (x) { fl.appendChild(el('div', null, x)); });
+      flags.forEach(function (x) { fl.appendChild(el('div', null, x)); });
       body.appendChild(fl);
     }
     card.appendChild(body);
@@ -1062,58 +1179,98 @@ import {
   }
 
   /* every value the person typed, under the label they saw */
+  /* The report as the person saw it: section by section, question by
+     question, in the form's own order. It used to walk the stored answers in
+     the database's order, which is alphabetical — "3 · Pre-measurement" came
+     before "1 · Leads today", a two-box answer showed as two raw codes
+     (resp_1hr__a 11, resp_1hr__b 10), and a list nobody filled in still
+     showed its heading. Now a two-box answer is one line under its question,
+     yes/no and choices are words, money says Birr, a list is a line per row,
+     and what was left empty is left out (the flags say how much was). */
   function fieldTable(rep, values) {
     var wrap = el('div', 'chfields');
-    var labels = {};
-    if (rep) {
-      (rep.sections || []).forEach(function (s) {
-        (s.fields || []).forEach(function (f) {
-          labels[f.id] = { label: L(f), section: L(s), f: f };
-        });
-      });
+    var used = {};
+    function blank(v) { return v == null || String(v).trim() === ''; }
+    function optLabel(f, v) {
+      for (var i = 0; i < (f.opts || []).length; i++) if (f.opts[i].v === v) return L(f.opts[i]);
+      return String(v);
     }
-    var lastSection = null;
-    Object.keys(values).forEach(function (k) {
-      var meta = labels[k];
-      var v = values[k];
-      if (v === '' || v == null) return;
-
-      if (meta && meta.section !== lastSection) {
-        wrap.appendChild(el('div', 'chsec', meta.section));
-        lastSection = meta.section;
+    function show(f, v) {
+      if (f.t === 'yesno') return v === 'yes' ? t('yes') : v === 'no' ? t('no') : String(v);
+      if (f.t === 'choice') return optLabel(f, v);
+      if (f.t === 'money') {
+        var n = Number(String(v).replace(/[^0-9.\-]/g, ''));
+        return (String(v).replace(/[^0-9.\-]/g, '') === '' || isNaN(n) ? String(v) : birr(n)) + ' ' + t('unBirr');
       }
-      var row = el('div', 'chf');
-      row.appendChild(el('span', 'chfk', meta ? meta.label : k));
-      row.appendChild(el('span', 'chfv', flatten(v)));
-      wrap.appendChild(row);
-      /* a table that adds up a column shows its total, as the form did */
-      if (meta && meta.f.total && Object.prototype.toString.call(v) === '[object Array]') {
-        var sum = v.reduce(function (a, r) {
-          var x = Number(String((r || {})[meta.f.total] == null ? '' : r[meta.f.total]).replace(/[^0-9.\-]/g, ''));
-          return a + (isNaN(x) ? 0 : x);
-        }, 0);
-        var tr = el('div', 'chf chftotal');
-        tr.appendChild(el('span', 'chfk', lang === 'am' ? (meta.f.totalAm || 'ጠቅላላ') : (meta.f.totalEn || 'Total')));
-        tr.appendChild(el('span', 'chfv', birr(sum) + ' ' + t('unBirr')));
-        wrap.appendChild(tr);
+      if (f.t === 'pct') return String(v).replace(/%/g, '').trim() + '%';
+      return String(v);
+    }
+    function line(k, v, cls) {
+      var r = el('div', 'chf' + (cls ? ' ' + cls : ''));
+      r.appendChild(el('span', 'chfk', k));
+      if (v != null) r.appendChild(el('span', 'chfv', v));
+      return r;
+    }
+    function rowsOf(v) {
+      if (!v || typeof v !== 'object') return [];
+      return Object.prototype.toString.call(v) === '[object Array]' ? v : Object.keys(v).map(function (k) { return v[k]; });
+    }
+
+    ((rep && rep.sections) || []).forEach(function (s) {
+      var out = [];
+      (s.fields || []).forEach(function (f) {
+        if (f.t === 'ratio') {
+          var a = values[f.id + '__a'], b = values[f.id + '__b'];
+          used[f.id + '__a'] = used[f.id + '__b'] = true;
+          if (blank(a) && blank(b)) return;
+          out.push(line(L(f), (blank(a) ? '—' : a) + ' / ' + (blank(b) ? '—' : b)));
+          return;
+        }
+        var v = values[f.id];
+        used[f.id] = true;
+        if (f.t === 'table' || f.t === 'grid') {
+          var cols = f.cols || [];
+          var rows = rowsOf(v).map(function (r, i) {
+            if (!r || typeof r !== 'object') return blank(r) ? null : String(r);
+            var bits = cols.filter(function (c) { return !blank(r[c.id]); }).map(function (c) {
+              return c.t === 'choice' ? optLabel(c, r[c.id]) : c.t === 'money' ? show(c, r[c.id]) : String(r[c.id]);
+            });
+            if (!bits.length) return null;
+            /* a grid's rows have names of their own (the days of a plan) */
+            return (f.t === 'grid' && f.rows && f.rows[i] ? L(f.rows[i]) + ': ' : '') + bits.join(' · ');
+          }).filter(Boolean);
+          if (!rows.length) return;
+          var box = line(L(f), null, 'chftable');
+          var list = el('div', 'chflist');
+          rows.forEach(function (x) { list.appendChild(el('div', null, x)); });
+          box.appendChild(list);
+          out.push(box);
+          /* a table that adds up a column shows its total, as the form did */
+          if (f.total) {
+            var sum = rowsOf(v).reduce(function (acc, r) {
+              var x = Number(String((r || {})[f.total] == null ? '' : r[f.total]).replace(/[^0-9.\-]/g, ''));
+              return acc + (isNaN(x) ? 0 : x);
+            }, 0);
+            out.push(line(lang === 'am' ? (f.totalAm || 'ጠቅላላ') : (f.totalEn || 'Total'), birr(sum) + ' ' + t('unBirr'), 'chftotal'));
+          }
+          return;
+        }
+        if (blank(v)) return;
+        out.push(line(L(f), show(f, v)));
+      });
+      if (out.length) {
+        wrap.appendChild(el('div', 'chsec', L(s)));
+        out.forEach(function (x) { wrap.appendChild(x); });
       }
     });
+    /* anything filed that the form no longer asks — kept, under its own name */
+    var rest = Object.keys(values).filter(function (k) { return !used[k] && !blank(values[k]) && typeof values[k] !== 'object'; });
+    if (rest.length) {
+      wrap.appendChild(el('div', 'chsec', '—'));
+      rest.forEach(function (k) { wrap.appendChild(line(k, String(values[k]))); });
+    }
     if (!wrap.childNodes.length) wrap.appendChild(el('p', 'codenote', t('chNoValues')));
     return wrap;
-  }
-
-  /* a table or grid comes back as rows of columns; show it rather than [object] */
-  function flatten(v) {
-    if (v == null) return '';
-    if (typeof v !== 'object') return String(v);
-    var rows = Object.prototype.toString.call(v) === '[object Array]'
-      ? v : Object.keys(v).map(function (k) { return v[k]; });
-    return rows.map(function (r) {
-      if (r == null) return '';
-      if (typeof r !== 'object') return String(r);
-      return Object.keys(r).map(function (k) { return r[k]; })
-                    .filter(function (x) { return x !== '' && x != null; }).join(' · ');
-    }).filter(Boolean).join('   |   ');
   }
 
   /* ---------------- his instructions ---------------- */

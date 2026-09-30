@@ -867,6 +867,10 @@ body[data-page="chairman"] .codenote{font-size:12.5px;color:var(--dim);text-alig
 .chf{display:flex;gap:12px;padding:6px 0;border-bottom:1px solid var(--line);align-items:baseline}
 .chfk{font-size:13px;color:var(--mut);flex:1;min-width:0}
 .chfv{font-family:var(--mono);font-size:13px;color:var(--ink);text-align:right;word-break:break-word;max-width:60%}
+/* a list inside a report: the question on top, a line per row under it */
+.chf.chftable{display:block}
+.chflist{display:grid;gap:3px;margin-top:5px;font-size:13px;color:var(--ink);line-height:1.45}
+.chflist div{padding-left:10px;border-left:2px solid var(--line-2);overflow-wrap:anywhere}
 .chflags,.chmissing{
   margin-top:14px;padding:12px 14px;border-radius:var(--r);
   background:var(--coral-bg);border:1px solid var(--coral-line);font-size:13.5px;color:#f2b5a5;line-height:1.6;
@@ -940,6 +944,20 @@ g.on .cg-bar,g.on .cg-dot{filter:brightness(1.18)}
   padding:6px 9px;box-shadow:var(--shadow);max-width:250px;font-size:12px;line-height:1.4}
 .cg-tip-v{font-weight:600;font-size:13px;color:var(--ink)}
 .cg-tip-k{color:var(--ink-2)}
+.cg-hit.can-open{cursor:pointer}
+/* a person's day, opened from a chart: the observatory's panel, over a dimmed page */
+.chsheet-veil{position:fixed;inset:0;z-index:29;background:rgba(0,0,0,.5);animation:chVeil .2s ease-out}
+@keyframes chVeil{from{opacity:0}}
+.chsheet{max-height:min(82vh,760px)}
+.chsheet-t{font-size:19px;font-weight:700;margin:0;padding-right:44px;color:var(--ink);letter-spacing:-.01em}
+.chsheet-d{font-size:13px;color:var(--mut);margin:2px 0 12px}
+.chsheet-b{display:grid;gap:8px}
+.chsheet .chrow{margin:0}
+.chnotfiled{padding:12px 14px}
+.chnfh{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.chnotfiled .chrr{color:var(--ink-2)}
+.chnotfiled.late .chrt{color:var(--miss)}
+.chnotfiled .codenote{text-align:left;margin:6px 0 0}
 .cg-table{margin:10px 0 0}
 .cg-table summary{cursor:pointer;color:var(--mut);font-size:12.5px;padding:2px 0}
 .cg-table table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12.5px}

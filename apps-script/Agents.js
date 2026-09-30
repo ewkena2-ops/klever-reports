@@ -994,17 +994,21 @@ function dailyRun() {
 /* The Chairman's button: today so far. Nothing is written to the ledger —
    a charge is only final once the day has closed — and everything it sends
    says so. */
-function runAgents() {
+function runAgents(opts) {
   var c = closeDay_(todayAddis_(), { write: false, asOf: new Date() });
-  runOn_(c, true);
+  runOn_(c, true, opts);
 }
 
-function runOn_(c, provisional) {
+/* `quiet`: the reading goes to the Chairman's page and nowhere else — no
+   email, no Sheet rows. That is the run a new report sets off (runIfNew_):
+   twenty emails a day would bury the one he reads in the morning. */
+function runOn_(c, provisional, opts) {
+  var quiet = !!(opts && opts.quiet);
   var d = gather_(c, provisional);
   var results = askAll_(d);
-  writeAnalysis_(results, d);
+  if (!quiet) writeAnalysis_(results, d);
   publishAnalysis_(results, d);
-  mailAnalysis_(results, d);
+  if (!quiet) mailAnalysis_(results, d);
 }
 
 /* Writes nothing, sends nothing, spends nothing on the model. Use this to see
@@ -1422,19 +1426,67 @@ function publishAnalysis_(results, d) {
    than retrying every ten minutes for the rest of the day with a model that
    charges for each attempt. */
 function watchForRunRequest() {
-  var token = fsToken_();
-  var res = UrlFetchApp.fetch(fsBase_() + '/documents/control/run', {
-    headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true
-  });
-  if (res.getResponseCode() === 404) return;           /* nobody asked */
-  if (res.getResponseCode() !== 200) {
-    Logger.log('control/run unreadable: HTTP %s', res.getResponseCode());
-    return;
+  /* one at a time: a reading that outlasts ten minutes must not have a
+     second one started on top of it */
+  var lock = null;
+  if (typeof LockService !== 'undefined') {
+    lock = LockService.getScriptLock();
+    if (!lock.tryLock(1000)) return;
   }
-  UrlFetchApp.fetch(fsBase_() + '/documents/control/run', {
-    method: 'delete', headers: { Authorization: 'Bearer ' + token },
-    muteHttpExceptions: true
-  });
-  Logger.log('Run requested from the Chairman’s page — running now.');
-  runAgents();
+  try {
+    var token = fsToken_();
+    var res = UrlFetchApp.fetch(fsBase_() + '/documents/control/run', {
+      headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true
+    });
+    if (res.getResponseCode() === 200) {
+      UrlFetchApp.fetch(fsBase_() + '/documents/control/run', {
+        method: 'delete', headers: { Authorization: 'Bearer ' + token },
+        muteHttpExceptions: true
+      });
+      Logger.log('Run requested from the Chairman’s page — running now.');
+      /* this reading covers everything filed so far; the new-report check
+         need not run the same day again straight after it */
+      markSeen_(new Date());
+      runAgents();
+      return;
+    }
+    if (res.getResponseCode() !== 404) {            /* 404: nobody asked */
+      Logger.log('control/run unreadable: HTTP %s', res.getResponseCode());
+    }
+    runIfNew_();
+  } finally {
+    if (lock) lock.releaseLock();
+  }
+}
+
+/* Every time something new is filed, the agents read the day again.
+
+   The morning run reads yesterday, closed. This one reads today so far, and
+   it runs whenever a report has arrived since the last reading — checked in
+   the same ten-minute look as the Chairman's button, so a report is read
+   within ten minutes of arriving, and ten reports that land in the same ten
+   minutes are read once, together. Nothing is charged (the day is not
+   closed) and nothing is emailed: each report already emails him as it
+   arrives (Code.js), and the reading goes to his page, marked "today so
+   far". A quiet day costs one Firestore query every ten minutes and no
+   model call at all.
+
+   The newest filing already read is kept in Script Property AUTO_SEEN, and
+   moved on before the run starts — so a reading that fails is not retried
+   every ten minutes on the same report, paying the model each time. */
+function markSeen_(when) {
+  PropertiesService.getScriptProperties().setProperty('AUTO_SEEN', when.toISOString());
+}
+function runIfNew_() {
+  var today = todayAddis_();
+  var from = dayStart_(today);
+  var seen = prop_('AUTO_SEEN', '');
+  if (seen && new Date(seen).getTime() > from.getTime()) from = new Date(seen);
+  var fresh;
+  try { fresh = fsQuery_('reports', [['at', 'GREATER_THAN', from]], 'at'); }
+  catch (e) { Logger.log('new-report check failed: %s', e.message); return; }
+  if (!fresh.length) return;
+  markSeen_(fresh[fresh.length - 1].at);
+  Logger.log('%s new report(s) since %s — reading today again.', fresh.length, from.toISOString());
+  runAgents({ quiet: true });
 }

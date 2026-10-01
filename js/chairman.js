@@ -1575,6 +1575,8 @@ import {
         into.appendChild(el('p', 'skysub', t('chChargesDay') + ' · ' + prettyDay(last.day)));
         var lines = linesOf(last).filter(worthShowing).filter(pick);
         if (!lines.length) into.appendChild(el('p', 'codenote', empty));
+        var all = wholeDayRow(last.day, lines, waivers);
+        if (all) into.appendChild(all);
         grouped(lines).forEach(function (l) {
           into.appendChild(l.group ? groupRow(last.day, l.group, waivers)
                                    : chargeRow(last.day, l, waivers[last.day + '|' + l.report]));
@@ -1631,6 +1633,8 @@ import {
         var lines = linesOf(d).filter(worthShowing).filter(pick);
         if (!lines.length) return;
         det.appendChild(el('div', 'chsec', d.month ? t('chMonthClosed') + ' · ' + monthName(d.day) : prettyDay(d.day)));
+        var all = d.month ? null : wholeDayRow(d.day, lines, waivers);
+        if (all) det.appendChild(all);
         grouped(lines).forEach(function (l) {
           det.appendChild(l.group ? groupRow(d.day, l.group, waivers)
                                   : chargeRow(d.day, l, waivers[d.day + '|' + l.report]));
@@ -1721,6 +1725,53 @@ import {
       else out.push({ group: g });
     });
     return out;
+  }
+
+  /* A day nobody could file — the site was down, or the staff had no
+     sign-in yet — leaves a missing-report fine on everyone. One by one that
+     is twenty taps; this cancels every report fine of the day still standing,
+     with one reason, which each cancellation carries. Rule fines (for what
+     happened) are left alone: they are not about the day's filing. */
+  function wholeDayRow(day, lines, waivers) {
+    var open = lines.filter(function (l) {
+      return !l.rule && l.amount > 0 && !waivers[day + '|' + l.report];
+    });
+    if (open.length < 2) return null;
+    var sum = open.reduce(function (a, l) { return a + l.amount; }, 0);
+    var row = el('div', 'chchg penalty chall');
+    var head = el('div', 'chinsh');
+    head.appendChild(el('span', 'chrw', tfill('chCancelAllHead', { n: open.length })));
+    head.appendChild(el('span', 'chrt', signed(sum, 'penalty')));
+    row.appendChild(head);
+    row.appendChild(el('div', 'chinsn', t('chCancelAllNote')));
+    var btn = el('button', 'chmini', tfill('chCancelAll', { n: open.length }));
+    btn.type = 'button';
+    var box = el('div', 'chcancel');
+    box.hidden = true;
+    var why = el('input');
+    why.type = 'text';
+    why.id = 'cancel-all-' + day;
+    why.maxLength = 500;
+    why.placeholder = t('chCancelWhy');
+    var go = el('button', 'chmini bad', tfill('chCancelAllGo', { n: open.length }));
+    go.type = 'button';
+    box.appendChild(why);
+    box.appendChild(go);
+    btn.onclick = function () { btn.hidden = true; box.hidden = false; why.focus(); };
+    go.onclick = function () {
+      var reason = why.value.trim();
+      if (reason.length < 3) { why.focus(); return; }
+      go.disabled = true;
+      Promise.all(open.map(function (x) {
+        return addDoc(collection(db, 'waivers'), {
+          day: day, report: x.report, person: x.person, reason: reason,
+          amount: x.amount || 0, by: 'chairman', at: serverTimestamp()
+        });
+      }))['catch'](function () { go.disabled = false; toast(t('chSaveFailed')); });
+    };
+    row.appendChild(btn);
+    row.appendChild(box);
+    return row;
   }
 
   function groupRow(day, g, waivers) {

@@ -32,8 +32,15 @@
  *  Entry points                                                       *
  * ------------------------------------------------------------------ */
 
-/* The week ending yesterday — on a Sunday run, Sunday to Saturday. */
+/* The week ending yesterday — on a Sunday run, Sunday to Saturday.
+
+   A time-driven trigger calls these with an event object as the first
+   argument, not a day. Read as a day it made an invalid date, and both packs
+   threw "Invalid time value" before writing or sending anything — which is
+   why the Sunday 27 September summary never arrived. Only a 'yyyy-mm-dd'
+   (or 'yyyy-mm') string typed in the editor counts. */
 function weeklyPack(endDay) {
+  if (!isDay_(endDay)) endDay = null;
   var end = endDay || addDays_(todayAddis_(), -1);
   var P = packData_(addDays_(end, -6), end);
   var facts = weekFacts_(P);
@@ -44,6 +51,7 @@ function weeklyPack(endDay) {
 
 /* The calendar month before this one, or a month given as 'yyyy-mm'. */
 function monthlyPack(month) {
+  if (!/^\d{4}-\d{2}$/.test(typeof month === 'string' ? month : '')) month = null;
   var start = month ? month + '-01' : prevMonthStart_(todayAddis_());
   var end = monthEnd_(start);
   /* the rules that are judged on the whole month, closed first so the pay
@@ -62,10 +70,12 @@ function monthlyPack(month) {
 }
 
 function previewWeekly(endDay) {
+  if (!isDay_(endDay)) endDay = null;
   var end = endDay || addDays_(todayAddis_(), -1);
   Logger.log(JSON.stringify(weekFacts_(packData_(addDays_(end, -6), end)), null, 1));
 }
 function previewMonthly(month) {
+  if (!/^\d{4}-\d{2}$/.test(typeof month === 'string' ? month : '')) month = null;
   var start = month ? month + '-01' : prevMonthStart_(todayAddis_());
   var P = packData_(start, monthEnd_(start));
   P.monthDoc = closeMonth_(start.slice(0, 7), { write: false });
@@ -75,6 +85,8 @@ function previewMonthly(month) {
 /* ------------------------------------------------------------------ *
  *  Reading the period                                                 *
  * ------------------------------------------------------------------ */
+
+function isDay_(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v); }
 
 function prevMonthStart_(day) {
   var y = Number(day.slice(0, 4)), m = Number(day.slice(5, 7)) - 1;

@@ -1835,7 +1835,10 @@
          the sent report come back the next morning as an "unsent draft",
          with yesterday's figures in today's form. Refused, it is put back. */
       var sentDraft = JSON.stringify(values);
-      clearDrafts(report.id);
+      /* only where this browser can keep it: without IndexedDB, Firebase
+         holds an unsent filing in memory, and closing the app would lose
+         both it and the draft — there the draft waits for the answer */
+      if (IDB_OK) clearDrafts(report.id);
       drawStatus();
       window.FB.fileReport({
         person: report.person,
@@ -1873,6 +1876,17 @@
     bar.appendChild(inner);
     document.body.appendChild(bar);
   }
+
+  /* Can this browser keep an unsent filing after the app is closed? Firebase
+     keeps it in IndexedDB; with none (some private modes), only in memory. */
+  var IDB_OK = false;
+  try {
+    var idbReq = window.indexedDB && window.indexedDB.open('klever-idb-probe');
+    if (idbReq) {
+      idbReq.onsuccess = function () { IDB_OK = true; try { idbReq.result.close(); } catch (e) {} };
+      idbReq.onerror = function () { IDB_OK = false; };
+    }
+  } catch (e) { IDB_OK = false; }
 
   /* a sent report is not sent twice by accident */
   var sending = false, sentThisVisit = false;

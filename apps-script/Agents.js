@@ -985,20 +985,26 @@ function dailyRun_() {
   var caught = [];
   try { caught = catchUp_(day); }
   catch (e) { warn.push('Catching up missed days: ' + e.message); }
-  var c = closeDay_(day);
-  /* the month that waited for its monthly reports (1st a Sunday) */
-  if (monthlyWaits_(addDays_(todayAddis_(), -1))) {
-    try { ran_('month', function () { return monthlyPack_(prevMonthStart_(todayAddis_()).slice(0, 7)); }); }
-    catch (e) { warn.push('Month: ' + e.message); }
-  }
-  /* Last month's pay stays open to cancellation until the end of the 5th:
-     each morning from the 3rd to the 6th the Pay tab is written again from
-     the stored lines, so what he cancelled on the 4th is off by the 5th. */
+  /* Last month, from the 3rd to the 6th. Not closed yet — it waited for a
+     Sunday 1st, or its own run on the 2nd failed — it is closed now, and
+     again each morning until it is. Closed, its Pay tab is written again from
+     the stored lines, so what he cancelled on the 4th is off by the 5th.
+     Done before yesterday's close, so a failure there cannot cost the month. */
   var dom = Number(todayAddis_().slice(8));
   if (dom >= 3 && dom <= 6) {
-    try { refreshPay_(prevMonthStart_(todayAddis_()).slice(0, 7)); }
-    catch (e) { Logger.log('pay refresh: %s', e.message); warn.push('Pay tab: ' + e.message); }
+    var prevM = prevMonthStart_(todayAddis_()).slice(0, 7);
+    var monthDone = null;
+    try { monthDone = fsQuery_('months', [['month', 'EQUAL', prevM]], null).length > 0; }
+    catch (e) { warn.push('Month: ' + e.message); }
+    if (monthDone === false) {
+      try { ran_('month', function () { return monthlyPack_(prevM); }); }
+      catch (e) { warn.push('Month: ' + e.message); }
+    } else if (monthDone) {
+      try { refreshPay_(prevM); }
+      catch (e) { Logger.log('pay refresh: %s', e.message); warn.push('Pay tab: ' + e.message); }
+    }
   }
+  var c = closeDay_(day);
   /* the month's bonuses so far, for the Bonuses section of his page */
   try { bonusStanding_(day); }
   catch (e) { Logger.log('bonus standing: %s', e.message); warn.push('Bonuses so far: ' + e.message); }

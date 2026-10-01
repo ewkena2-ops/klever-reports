@@ -73,9 +73,10 @@ function monthlyPack_(month) {
   var end = monthEnd_(start);
   /* the rules that are judged on the whole month, closed first so the pay
      table below includes them */
-  var monthDoc;
-  try { monthDoc = closeMonth_(start.slice(0, 7)); }
-  catch (e) { monthDoc = { lines: [], errors: ['month: ' + e.message] }; }
+  /* If the month's own rules cannot be judged, nothing is written: a Pay
+     tab without them would pay no monthly bonus and look complete. The run
+     fails, says so, and the morning close tries the month again (3rd–6th). */
+  var monthDoc = closeMonth_(start.slice(0, 7));
   var P = packData_(start, end);
   P.monthDoc = monthDoc;
   var facts = monthFacts_(P);

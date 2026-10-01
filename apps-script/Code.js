@@ -97,7 +97,17 @@ function doPost(e) {
      junk tokens could otherwise switch the night's work off. */
   if (!tokenShape_(row.idToken)) return ContentService.createTextOutput('refused');
   if (flooded_()) return ContentService.createTextOutput('busy');
-  var poster = posterOf_(row.idToken);
+  var poster = knownToken_(row.idToken);
+  if (!poster) {
+    /* A token can be forged in shape, so lookups are counted: past 500
+       refused ones in a day, an unknown token is turned away without a call
+       to Google. Tokens Google has vouched for are remembered until they
+       expire, so the staff keep working through a flood. */
+    if (badTokensToday_() >= 500) return ContentService.createTextOutput('busy');
+    poster = posterOf_(row.idToken);
+    if (poster) rememberToken_(row.idToken, poster);
+    else countBadToken_();
+  }
   delete row.idToken;
   if (!poster || poster === 'ledger') return ContentService.createTextOutput('refused');
   var sched;
@@ -216,6 +226,32 @@ function jwtPart_(s) {
   }
   try { return JSON.parse(decodeURIComponent(escape(out))); } catch (e) { return null; }
 }
+/* the whole token, hashed: a cached identity is only ever found again by
+   the exact token Google vouched for */
+function tokenKey_(t) {
+  var d = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(t), Utilities.Charset.UTF_8);
+  return 'tok:' + Utilities.base64EncodeWebSafe(d);
+}
+function knownToken_(t) {
+  try { return CacheService.getScriptCache().get(tokenKey_(t)); } catch (e) { return null; }
+}
+function rememberToken_(t, who) {
+  try {
+    var p = jwtPart_(String(t).split('.')[1]) || {};
+    var secs = Math.floor((Number(p.exp) * 1000 - new Date().getTime()) / 1000);
+    if (secs > 30) CacheService.getScriptCache().put(tokenKey_(t), who, Math.min(secs, 21600));
+  } catch (e) {}
+}
+function badTokensToday_() {
+  try { return Number(CacheService.getScriptCache().get('badtok:' + todayAddis_()) || 0); } catch (e) { return 0; }
+}
+function countBadToken_() {
+  try {
+    var c = CacheService.getScriptCache(), k = 'badtok:' + todayAddis_();
+    c.put(k, String(Number(c.get(k) || 0) + 1), 21600);
+  } catch (e) {}
+}
+
 /* More posts in one minute than the whole staff could send at a deadline is
    someone else. Counted roughly (the cache is not a lock); good enough to
    stop a flood without ever stopping a real Friday at 17:30. */
@@ -386,7 +422,8 @@ function notify_(row, sheetUrl) {
   /* At most three mails for one report of one person in a day — a phone
      sending the same report again and again must not use up the day's mail,
      which the morning brief and the ALERTs need too. */
-  try {
+  /* An ALERT always goes. */
+  if (!alertsFor_(row).length) try {
     var c = CacheService.getScriptCache();
     var mk = 'mail:' + row.person + '|' + row.report + '|' + todayAddis_();
     var sent = Number(c.get(mk) || 0);

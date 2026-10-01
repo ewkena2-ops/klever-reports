@@ -352,7 +352,11 @@ function ruleLinesForDay_(day, filings, schedule) {
        judged — a blank is not a "no" — but it is not dropped in silence
        either: a person could otherwise leave the one question that fines
        them empty, every day. */
-    var blank = rule && rule.kind === 'penalty' && / — not answered$/.test(u.why || '');
+    /* a follow-up question (it has `show`) is only on screen when the answer
+       above it opens it; empty, it was most likely never shown — Mahelet
+       issuing nothing from the store is not a blank about approvals */
+    var def = u.ref && fieldDef_(schedule, u.ref.report, u.ref.field);
+    var blank = rule && rule.kind === 'penalty' && / — not answered$/.test(u.why || '') && !(def && def.show);
     if (!u.bad && !blank) return;
     got.errors.push((u.bad ? 'Not judged — ' : 'Left blank, so not judged — ') + (rule ? rule.en : u.rule) +
                     ' (' + (named[u.person] || u.person || 'team') + '): ' + (u.bad || u.why));
@@ -378,7 +382,9 @@ function ruleLinesForDay_(day, filings, schedule) {
     earlier[ev.day] = {};
     try {
       ledgersBetween_(ev.day, addDays_(ev.day, 1)).forEach(function (doc) {
-        (doc.ruleLines || []).forEach(function (l) { earlier[ev.day][l.rule + '|' + l.person] = true; });
+        (doc.ruleLines || []).forEach(function (l) {
+          if ((l.day || doc.day) === ev.day) earlier[ev.day][l.rule + '|' + l.person] = true;
+        });
       });
     } catch (e) { got.errors.push('ledger ' + ev.day + ': ' + e.message); }
   });
@@ -658,7 +664,7 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
     }
     if (spec.when) {
       var ok = cond_(J, spec.when);
-      if (ok === null) { unjudged.push({ rule: rule.id, person: p, bad: J.bad || null, why: J.missing || 'a report it needs was not filed' }); return; }
+      if (ok === null) { unjudged.push({ rule: rule.id, person: p, bad: J.bad || null, ref: J.missingRef || null, why: J.missing || 'a report it needs was not filed' }); return; }
       /* judged and not met — kept, with the figures, for "not on track" */
       if (!ok) { if (missed) missed.push({ rule: rule.id, person: p, why: J.said.join('; ') }); return; }
     }
@@ -667,7 +673,7 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
 
     if (spec.rows) {
       var rs = rowsOf_(J, spec.rows.of);
-      if (rs === null) { unjudged.push({ rule: rule.id, person: p, bad: J.bad || null, why: J.missing || 'not filed' }); return; }
+      if (rs === null) { unjudged.push({ rule: rule.id, person: p, bad: J.bad || null, ref: J.missingRef || null, why: J.missing || 'not filed' }); return; }
       var n = 0;
       rs.forEach(function (row) {
         if (spec.rows.where && !rowCond_(row.r, spec.rows.where)) return;
@@ -693,7 +699,7 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
     if (spec.count) {
       J.said = [];
       var c = val_(J, spec.count);
-      if (c === null) { unjudged.push({ rule: rule.id, person: p, bad: J.bad || null, why: J.missing || 'not filed' }); return; }
+      if (c === null) { unjudged.push({ rule: rule.id, person: p, bad: J.bad || null, ref: J.missingRef || null, why: J.missing || 'not filed' }); return; }
       c = Math.floor(c);
       if (c <= 0) return;
       base.count = c;
@@ -783,6 +789,13 @@ function split_(J, ref) {
   return out;
 }
 
+function fieldDef_(schedule, report, field) {
+  var rep = reportOf_(schedule, report), base = String(field).replace(/__[ab]$/, ''), def = null;
+  if (rep) (rep.sections || []).forEach(function (sec) {
+    (sec.fields || []).forEach(function (f) { if (f.id === base) def = f; });
+  });
+  return def;
+}
 function fieldLabel_(J, report, field) {
   var rep = reportOf_(J.schedule, report);
   var base = field.replace(/__[ab]$/, ''), label = field;
@@ -847,7 +860,11 @@ function val_(J, ref) {
     var f = filingFor_(J, r.report);
     if (!f) { J.missing = r.report + ' not filed'; return null; }
     var raw = f[r.field];
-    if (raw === '' || raw == null) { J.missing = fieldLabel_(J, r.report, r.field) + ' — not answered'; return null; }
+    if (raw === '' || raw == null) {
+      J.missing = fieldLabel_(J, r.report, r.field) + ' — not answered';
+      J.missingRef = { report: r.report, field: r.field };
+      return null;
+    }
     /* Every two-box answer is part / whole. With the first box bigger (25
        posted of 20 required) "20 less 25" is below zero and the fine was
        simply never charged, and "all called" read as met — an answer that

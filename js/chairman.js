@@ -753,10 +753,11 @@ import {
       filed.forEach(function (f) {
         var r = reportById(f.report);
         var from = dayStart(addDays(DAY, -reach(r || { cadence: 'daily' }))).getTime();
-        var first = null;
+        var first = null, due = r ? dueDayFor(r, addisYmd(f.when)) : null;
         all.forEach(function (g) {
           var tm = g.when.getTime();
-          if (!first && g.report === f.report && g.person === f.person && tm >= from) first = g;
+          if (!first && g.report === f.report && g.person === f.person && tm >= from &&
+              (!r || dueDayFor(r, addisYmd(g.when)) === due)) first = g;
         });
         into.appendChild(rawCard(f, first));
       });

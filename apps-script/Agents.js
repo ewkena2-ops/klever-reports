@@ -973,22 +973,63 @@ var AGENTS = [
 /* The morning trigger: close yesterday, have the agents read it, send one
    email. On a Monday that is Sunday, when nobody owes anything, and it does
    nothing at all. */
-function dailyRun() {
+function dailyRun() { return ran_('daily', dailyRun_); }
+function dailyRun_() {
   var day = addDays_(todayAddis_(), -1);
+  var warn = [];
+  /* A day whose close failed (forms.js unreadable, Firestore down, a quota)
+     was never closed again: no fines, no rule lines, and no history for next
+     week's "twice in a row". Each morning closes any of the last seven days
+     that was owed something and has no ledger, oldest first, before
+     yesterday. */
+  var caught = [];
+  try { caught = catchUp_(day); }
+  catch (e) { warn.push('Catching up missed days: ' + e.message); }
   var c = closeDay_(day);
+  /* the month that waited for its monthly reports (1st a Sunday) */
+  if (monthlyWaits_(addDays_(todayAddis_(), -1))) {
+    try { ran_('month', function () { return monthlyPack_(prevMonthStart_(todayAddis_()).slice(0, 7)); }); }
+    catch (e) { warn.push('Month: ' + e.message); }
+  }
   /* Last month's pay stays open to cancellation until the end of the 5th:
      each morning from the 3rd to the 6th the Pay tab is written again from
      the stored lines, so what he cancelled on the 4th is off by the 5th. */
   var dom = Number(todayAddis_().slice(8));
   if (dom >= 3 && dom <= 6) {
     try { refreshPay_(prevMonthStart_(todayAddis_()).slice(0, 7)); }
-    catch (e) { Logger.log('pay refresh: %s', e.message); }
+    catch (e) { Logger.log('pay refresh: %s', e.message); warn.push('Pay tab: ' + e.message); }
   }
   /* the month's bonuses so far, for the Bonuses section of his page */
   try { bonusStanding_(day); }
-  catch (e) { Logger.log('bonus standing: %s', e.message); }
-  if (!c.due.length) return;
+  catch (e) { Logger.log('bonus standing: %s', e.message); warn.push('Bonuses so far: ' + e.message); }
+  var owed = c.ledger.reduce(function (s, l) { return s + (l.amount || 0); }, 0);
+  var done = { period: day, warn: warn,
+               note: (c.due.length ? c.due.length + ' due, ' + c.filed.length + ' filed, ' +
+                                     fmt_(owed) + ' Birr in report fines'
+                                   : 'nothing was due') +
+                     (caught.length ? '; also closed ' + caught.join(', ') + ', which had been missed' : '') };
+  if (!c.due.length) return done;
   runOn_(c, false);
+  return done;
+}
+
+/* The days in the week before `day` that were owed a report, could be
+   charged (on or after LEDGER_START) and have no ledger — closed now. */
+function catchUp_(day) {
+  var start = prop_('LEDGER_START', '');
+  var from = addDays_(day, -7);
+  if (start && from < start) from = start;
+  if (from >= day) return [];
+  var have = {};
+  ledgersBetween_(from, day).forEach(function (d) { have[d.day] = true; });
+  var schedule = loadSchedule_();
+  var done = [];
+  for (var d = from; d < day; d = addDays_(d, 1)) {
+    if (have[d] || !dueOn_(schedule, d).length) continue;
+    closeDay_(d);
+    done.push(d);
+  }
+  return done;
 }
 
 /* The Chairman's button: today so far. Nothing is written to the ledger —
@@ -1210,7 +1251,7 @@ function writeAnalysis_(results, d) {
     sh.setFrozenRows(1);
   }
   var day = d.day + (d.provisional ? ' (so far)' : '');
-  var rows = results.map(function (r) { return [day, r.en, r.text]; });
+  var rows = results.map(function (r) { return [day, r.en, cell_(r.text)]; });
   if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 3).setValues(rows);
 }
 
@@ -1485,7 +1526,7 @@ function watch_(waitMs) {
       /* this reading covers everything filed so far; the new-report check
          need not run the same day again straight after it */
       markSeen_(new Date());
-      runAgents();
+      ran_('reading', function () { runAgents(); return { note: 'asked for from his page' }; });
       return;
     }
     if (res.getResponseCode() !== 404) {            /* 404: nobody asked */
@@ -1526,5 +1567,8 @@ function runIfNew_() {
   if (!fresh.length) return;
   markSeen_(fresh[fresh.length - 1].at);
   Logger.log('%s new report(s) since %s — reading today again.', fresh.length, from.toISOString());
-  runAgents({ quiet: true });
+  ran_('reading', function () {
+    runAgents({ quiet: true });
+    return { note: fresh.length + ' new report' + (fresh.length === 1 ? '' : 's') };
+  });
 }

@@ -1333,8 +1333,10 @@
     } catch (e) {}
   }
 
+  /* a calendar date made at noon UTC (see gridRowLabel): read in UTC, so a
+     phone set to New York does not call 5 October the 4th */
   function shortDate(d) {
-    return d.getDate() + ' ' + monShort(d.getMonth());
+    return d.getUTCDate() + ' ' + monShort(d.getUTCMonth());
   }
 
   /* repeating rows: t:'table' (person adds rows) and t:'grid' (fixed rows) */
@@ -1709,6 +1711,13 @@
   }
 
   function buildBar() {
+    /* Signing in on a form's own page draws the form twice (the sign-in
+       listener routes, and so does the sign-in itself). Without this the
+       second bar sat on top of the first, and the count the person saw was
+       the one nothing updated. */
+    Array.prototype.forEach.call(document.querySelectorAll('body > .bar'), function (b) {
+      b.parentNode.removeChild(b);
+    });
     var bar = el('div', 'bar'), inner = el('div', 'bar-in');
     var count = el('button', 'count'); count.id = 'count'; count.type = 'button';
     var copy = el('button', 'btn ghost', t('copy'));
@@ -1820,6 +1829,13 @@
         toast(t('savedNotReceived'));
       }, 6000);
       var pendKey = addPending(report);
+      /* The draft goes the moment Send is pressed, not when the server
+         answers. Firebase keeps an unanswered filing and sends it later by
+         itself; a person who left on a slow line before the answer came had
+         the sent report come back the next morning as an "unsent draft",
+         with yesterday's figures in today's form. Refused, it is put back. */
+      var sentDraft = JSON.stringify(values);
+      clearDrafts(report.id);
       drawStatus();
       window.FB.fileReport({
         person: report.person,
@@ -1840,6 +1856,7 @@
         drawStatus();
       })['catch'](function (e) {
         clearTimeout(slow);
+        store.set(draftKey, sentDraft);
         dropPending(pendKey);
         drawStatus();
         sending = false;
@@ -1868,6 +1885,9 @@
     if (txt.length <= max) return [txt];
     var parts = [], cur = '';
     txt.split('\n').forEach(function (line) {
+      /* what came before an overlong line goes first, or the answer arrives
+         as part 1 and the report's own header as part 2 */
+      if (line.length > max && cur) { parts.push(cur); cur = ''; }
       while (line.length > max) { parts.push(line.slice(0, max)); line = line.slice(max); }
       if ((cur + '\n' + line).length > max) { parts.push(cur); cur = line; }
       else cur = cur ? cur + '\n' + line : line;
@@ -2129,8 +2149,8 @@
   function gridRowLabel(f, i) {
     var base = L(f.rows[i]);
     if (f.dateFrom && has(values[f.dateFrom])) {
-      var d = new Date(values[f.dateFrom]);
-      if (!isNaN(d.getTime())) { d.setDate(d.getDate() + i); base += ' ' + shortDate(d); }
+      var d = new Date(values[f.dateFrom] + 'T12:00:00Z');
+      if (!isNaN(d.getTime())) { d.setUTCDate(d.getUTCDate() + i); base += ' ' + shortDate(d); }
     }
     return base;
   }

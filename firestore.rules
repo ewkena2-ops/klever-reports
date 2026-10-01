@@ -221,6 +221,16 @@ service cloud.firestore {
       allow create, update: if isLedger();
       allow delete: if false;
     }
+    /* Whether each scheduled job last worked — the morning close, the
+       weekly and monthly summaries, the readings. One document per job,
+       rewritten by the ledger account each time the job ends, read on his
+       page so a job that failed in the night does not fail in silence. */
+    match /health/{job} {
+      allow get, list: if isChairman() || isLedger();
+      allow create, update: if isLedger()
+                            && job in ['daily', 'week', 'month', 'reading'];
+      allow delete: if false;
+    }
 
     /* ---------------------------------------------------------------- *
      *  A charge the Chairman cancels                                     *

@@ -221,11 +221,16 @@ function monthCtx_(month, filings, ledgers, schedule) {
       return ks.length ? (m[ks[ks.length - 1]].fields || {}) : null;
     },
     /* every line already charged this month (report lines and rule lines) */
+    /* `day` is the day it happened (a recorded line keeps its own); `closed`
+       is the close that charged it — the day a cancellation names. Reading
+       the cancellation by `day` missed every recorded line cancelled on his
+       page, so a cancelled fine still cost a bonus or counted toward a
+       warning. */
     lines: function (person) {
       var out = [];
       ledgers.forEach(function (doc) {
         (doc.lines || []).concat(doc.ruleLines || []).forEach(function (l) {
-          if (!person || l.person === person) out.push(Object.assign({ day: doc.day }, l));
+          if (!person || l.person === person) out.push(Object.assign({ day: doc.day }, l, { closed: doc.day }));
         });
       });
       return out;
@@ -342,10 +347,15 @@ function ruleLinesForDay_(day, filings, schedule) {
   var named = {};
   (schedule.people || []).forEach(function (p) { named[p.id] = p.en; });
   (got.unjudged || []).forEach(function (u) {
-    if (!u.bad) return;
     var rule = R.byId[u.rule];
-    got.errors.push('Not judged — ' + (rule ? rule.en : u.rule) + ' (' + (named[u.person] || u.person || 'team') +
-                    '): ' + u.bad);
+    /* A fine whose question was left blank in a report that WAS sent is not
+       judged — a blank is not a "no" — but it is not dropped in silence
+       either: a person could otherwise leave the one question that fines
+       them empty, every day. */
+    var blank = rule && rule.kind === 'penalty' && / — not answered$/.test(u.why || '');
+    if (!u.bad && !blank) return;
+    got.errors.push((u.bad ? 'Not judged — ' : 'Left blank, so not judged — ') + (rule ? rule.en : u.rule) +
+                    ' (' + (named[u.person] || u.person || 'team') + '): ' + (u.bad || u.why));
   });
 
   /* What the Chairman recorded goes into the close of the day he recorded
@@ -358,10 +368,29 @@ function ruleLinesForDay_(day, filings, schedule) {
     events = fsQuery_('events', [['at', 'GREATER_THAN_OR_EQUAL', dayStart_(day)],
                                  ['at', 'LESS_THAN', dayStart_(addDays_(day, 1))]], 'at');
   } catch (e) { got.errors.push('events: ' + e.message); }
+  /* A rule counted once per day, recorded for a day whose own close already
+     charged it from the report, is the same occurrence: it is not charged a
+     second time, and the email says so. */
+  var earlier = {};
+  events.forEach(function (ev) {
+    var rule = R.byId[ev.rule];
+    if (!rule || rule.per !== 'day' || !ev.day || ev.day >= day || earlier[ev.day]) return;
+    earlier[ev.day] = {};
+    try {
+      ledgersBetween_(ev.day, addDays_(ev.day, 1)).forEach(function (doc) {
+        (doc.ruleLines || []).forEach(function (l) { earlier[ev.day][l.rule + '|' + l.person] = true; });
+      });
+    } catch (e) { got.errors.push('ledger ' + ev.day + ': ' + e.message); }
+  });
   var seq = {};
   events.forEach(function (ev) {
     var rule = R.byId[ev.rule];
     if (!rule) { got.errors.push('recorded event ' + ev._id + ' names an unknown rule ' + ev.rule); return; }
+    if (rule.per === 'day' && ev.day && earlier[ev.day] && earlier[ev.day][ev.rule + '|' + ev.person]) {
+      got.errors.push('Not charged twice — ' + rule.en + ' (' + (ev.name || ev.person) + ') was recorded for ' +
+                      ev.day + ', and that day’s close had already charged it from the report.');
+      return;
+    }
     var k = ev.rule + '|' + ev.person;
     seq[k] = (seq[k] || 0) + 1;
     var line = ruleLine_(rule, {
@@ -865,7 +894,7 @@ function val_(J, ref) {
     var want = (ref.reportLines || ref.ruleLines).map(function (x) { return String(x).replace('{p}', J.p || ''); });
     var status = ref.status || ['LATE', 'MISSING'];
     var cnt = J.ctx.lines(who).filter(function (l) {
-      if (J.ctx.cancelled && J.ctx.cancelled[l.day + '|' + l.report]) return false;
+      if (J.ctx.cancelled && J.ctx.cancelled[(l.closed || l.day) + '|' + l.report]) return false;
       if (ref.reportLines) return !l.rule && (want[0] === '*' || want.indexOf(l.report) !== -1) && status.indexOf(l.status) !== -1;
       return l.rule && want.indexOf(l.rule) !== -1;
     }).length;
@@ -1077,14 +1106,26 @@ function filedEveryDue_(ctx, schedule, reportId) {
 function countedPenalty_(ctx, l, alsoPending) {
   if (l.kind !== 'penalty' && l.rule) return false;
   if (!l.rule && !(l.amount > 0)) return false;           /* a report on time, or free */
-  if (ctx.cancelled && ctx.cancelled[l.day + '|' + l.report]) return false;
+  if (ctx.cancelled && ctx.cancelled[(l.closed || l.day) + '|' + l.report]) return false;
   return l.amount > 0 || (alsoPending && l.wouldBe > 0);
 }
 
-/* the weekly filings of one report, newest first: [{day, v}] */
+/* The weekly filings of one report, newest first: [{day, v}], one per week.
+   `day` is the due day the filing counts toward — the ledger's rule: a
+   weekly report filed in the six days before its due day is that week's —
+   and a week sent twice (Thursday, then corrected on Friday) is its last
+   filing. Keyed by the day sent, a correction made a second week, and a
+   salesperson's first report sent twice was charged "two weeks in a row
+   below the floor". */
 function weeklyFilings_(ctx, reportId, weeks) {
   var h = ctx.history(weeks * 7 + 6)[reportId] || {};
-  return Object.keys(h).sort().reverse().map(function (d) { return { day: d, v: h[d].fields || {} }; });
+  var rep = reportOf_(ctx.schedule, reportId);
+  var byDue = {};
+  Object.keys(h).sort().forEach(function (d) {
+    var due = rep && rep.dueDay != null ? addDays_(d, (rep.dueDay - dow_(d) + 7) % 7) : d;
+    byDue[due] = h[d];
+  });
+  return Object.keys(byDue).sort().reverse().map(function (d) { return { day: d, v: byDue[d].fields || {} }; });
 }
 
 /* ---- Selam: an assembler's payment released more than 3 days late ---- */
@@ -1108,7 +1149,7 @@ EVAL_['liu-wa-repeat-kpi-cancel'] = { month: function (ctx) {
   var byWeek = {};
   ctx.lines('liu').forEach(function (l) {
     if (rules.indexOf(l.rule) === -1) return;
-    if (ctx.cancelled && ctx.cancelled[l.day + '|' + l.report]) return;
+    if (ctx.cancelled && ctx.cancelled[(l.closed || l.day) + '|' + l.report]) return;
     var d = l.day, dow = dow_(d);
     var monday = addDays_(d, dow === 0 ? -6 : 1 - dow);
     byWeek[monday] = (byWeek[monday] || 0) + (l.count || 1);

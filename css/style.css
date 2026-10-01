@@ -1456,3 +1456,20 @@ svg.sky .node text{font-size:11px}
 /* a table's added-up column */
 .reptotal{margin:8px 6px 0;font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--teal-hi);text-align:right}
 .chf.chftotal .chfk,.chf.chftotal .chfv{color:var(--teal-hi);font-weight:600}
+/* the night's jobs: did each one work */
+.chalarm{margin:14px 0 0;padding:12px 14px;border:1px solid var(--coral-line);border-left:4px solid var(--coral);
+  background:var(--coral-bg);border-radius:var(--r-s);color:var(--ink);font-size:14px;line-height:1.5}
+.chalarm[hidden]{display:none}
+.chalarm p{margin:0;overflow-wrap:anywhere}
+.chalarm p + p{margin-top:6px}
+.chhealth{display:flex;flex-direction:column;gap:8px}
+.chhrow{padding:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-s)}
+.chhtop{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.chhk{font-weight:600;color:var(--ink)}
+.chhv{font-family:var(--mono);font-size:12.5px;color:var(--mut);white-space:nowrap}
+.chhrow.ok .chhv{color:var(--teal-hi)}
+.chhrow.bad,.chhrow.late{border-color:var(--coral-line)}
+.chhrow.bad .chhv,.chhrow.late .chhv{color:var(--coral)}
+.chhw{font-size:12.5px;color:var(--dim);margin-top:3px;overflow-wrap:anywhere}
+.chhe{font-family:var(--mono);font-size:12px;color:var(--coral);margin-top:5px;overflow-wrap:anywhere}
+.chhe.warn{color:var(--gold)}

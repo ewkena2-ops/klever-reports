@@ -41,17 +41,34 @@
    (or 'yyyy-mm') string typed in the editor counts. */
 function weeklyPack(endDay) {
   if (!isDay_(endDay)) endDay = null;
+  return ran_('week', function () { return weeklyPack_(endDay); });
+}
+function weeklyPack_(endDay) {
   var end = endDay || addDays_(todayAddis_(), -1);
   var P = packData_(addDays_(end, -6), end);
   var facts = weekFacts_(P);
   var text = askPack_(WEEK_ASK_, facts, P);
-  savePack_('week-' + end, 'week', P, facts, text);
+  var warn = savePack_('week-' + end, 'week', P, facts, text);
   mailPack_('week', P, facts, text);
+  return { period: P.start + ' to ' + end, warn: warn,
+           note: (facts.reporting.on_time_pct == null ? 'no reports' : facts.reporting.on_time_pct + '% on time') };
 }
 
 /* The calendar month before this one, or a month given as 'yyyy-mm'. */
 function monthlyPack(month) {
   if (!/^\d{4}-\d{2}$/.test(typeof month === 'string' ? month : '')) month = null;
+  return ran_('month', function () { return monthlyPack_(month); });
+}
+function monthlyPack_(month) {
+  /* The month's own reports are due on the 1st — on the 2nd when the 1st is
+     a Sunday. Closed at 8:00 on that 2nd, the month would be judged before
+     they could arrive, and every rule that reads them would be lost for good
+     (November 2026 is the first: 1 November is a Sunday). So on such a 2nd
+     the trigger waits, and the morning close of the 3rd runs the month. */
+  if (!month && monthlyWaits_(todayAddis_())) {
+    return { period: prevMonthStart_(todayAddis_()).slice(0, 7),
+             note: 'Waiting until tomorrow morning: the 1st was a Sunday, so the monthly reports are due today.' };
+  }
   var start = month ? month + '-01' : prevMonthStart_(todayAddis_());
   var end = monthEnd_(start);
   /* the rules that are judged on the whole month, closed first so the pay
@@ -65,8 +82,10 @@ function monthlyPack(month) {
   writeDeductionsTab_(start.slice(0, 7), facts.deductions);
   writePayTab_(start.slice(0, 7), facts.pay);
   var text = askPack_(MONTH_ASK_, facts, P);
-  savePack_('month-' + start.slice(0, 7), 'month', P, facts, text);
+  var warn = savePack_('month-' + start.slice(0, 7), 'month', P, facts, text);
   mailPack_('month', P, facts, text);
+  return { period: start.slice(0, 7), warn: warn.concat((monthDoc.errors || []).map(function (e) { return 'Month rules: ' + e; })),
+           note: fmt_(facts.reporting.birr_owed || 0) + ' Birr in report deductions; Pay tab written' };
 }
 
 function previewWeekly(endDay) {
@@ -85,6 +104,11 @@ function previewMonthly(month) {
 /* ------------------------------------------------------------------ *
  *  Reading the period                                                 *
  * ------------------------------------------------------------------ */
+
+/* the 2nd of a month whose 1st was a Sunday */
+function monthlyWaits_(today) {
+  return today.slice(8) === '02' && dow_(addDays_(today, -1)) === 0;
+}
 
 function isDay_(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v); }
 
@@ -457,7 +481,9 @@ function savePack_(id, kind, P, facts, text) {
     });
   } catch (e) {
     Logger.log('Could not save the pack: %s', e.message);   /* the email still goes */
+    return ['Not saved to his page: ' + e.message];
   }
+  return [];
 }
 
 /* The deductions, as a tab payroll can work from. Rewritten whole on each
@@ -473,10 +499,10 @@ function writeDeductionsTab_(month, deductions) {
   var rows = [['Person', 'Late', 'Missing', 'Charged (Birr)', 'Cancelled (Birr)', 'Owed (Birr)',
                'Cancelled because']];
   deductions.forEach(function (p) {
-    rows.push([p.name, p.late, p.missing, p.charged, p.cancelled, p.owed,
-               p.cancellations.map(function (c) {
+    rows.push([cell_(p.name), p.late, p.missing, p.charged, p.cancelled, p.owed,
+               cell_(p.cancellations.map(function (c) {
                  return c.day + ' ' + c.report + ': ' + c.reason;
-               }).join('; ')]);
+               }).join('; '))]);
   });
   sh.getRange(1, 1, rows.length, 7).setValues(rows);
   sh.setFrozenRows(1);
@@ -514,9 +540,9 @@ function writePayTab_(month, pay) {
                'Bonuses (Birr)', 'Fines cancelled (Birr)', 'Bonuses cancelled (Birr)',
                'Net change to pay (Birr)', 'Warnings and suspensions', 'Cancelled because']];
   (pay || []).forEach(function (p) {
-    rows.push([p.name, p.late, p.missing, p.reportFines, p.otherFines, p.bonuses,
-               p.finesCancelled, p.bonusesCancelled, p.net, p.notes.join('; '),
-               p.cancelled.map(function (c) { return c.day + ' ' + c.what + ': ' + c.reason; }).join('; ')]);
+    rows.push([cell_(p.name), p.late, p.missing, p.reportFines, p.otherFines, p.bonuses,
+               p.finesCancelled, p.bonusesCancelled, p.net, cell_(p.notes.join('; ')),
+               cell_(p.cancelled.map(function (c) { return c.day + ' ' + c.what + ': ' + c.reason; }).join('; '))]);
   });
   sh.getRange(1, 1, rows.length, 11).setValues(rows);
   sh.setFrozenRows(1);

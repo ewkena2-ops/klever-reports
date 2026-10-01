@@ -90,6 +90,13 @@ function doPost(e) {
      looked up with Google; the report's name and owner come from the
      schedule; the time and whether it is late come from this server's clock.
      What the phone says about any of those is not read. */
+  /* Before anything costs a call to Google: a token that is not even shaped
+     like one of this project's sign-ins is refused here, and so is a flood.
+     Each lookup spends one of the account's daily outgoing requests, which
+     the ledger, the agents and the morning close share — a stranger posting
+     junk tokens could otherwise switch the night's work off. */
+  if (!tokenShape_(row.idToken)) return ContentService.createTextOutput('refused');
+  if (flooded_()) return ContentService.createTextOutput('busy');
   var poster = posterOf_(row.idToken);
   delete row.idToken;
   if (!poster || poster === 'ledger') return ContentService.createTextOutput('refused');
@@ -138,7 +145,14 @@ function doPost(e) {
   }
 
   var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-  var values = row.values || {};
+  /* An answer is put under its own name — never under one of the columns
+     this server fills (an answer called "Status" used to overwrite it, so a
+     late row could read "On time"), and never as a formula. */
+  var values = {};
+  Object.keys(row.values || {}).forEach(function (k) {
+    var col = SERVER_COLS_.indexOf(k) !== -1 ? 'answer: ' + k : k;
+    values[cell_(String(col))] = row.values[k];
+  });
 
   /* any field this tab has not seen before becomes a new column */
   Object.keys(values).forEach(function (k) {
@@ -163,16 +177,56 @@ function doPost(e) {
   out[3] = row.due || '';
   Object.keys(values).forEach(function (k) {
     var v = values[k];
-    out[head.indexOf(k)] = (v && typeof v === 'object') ? JSON.stringify(v) : v;
+    out[head.indexOf(k)] = cell_((v && typeof v === 'object') ? JSON.stringify(v) : v);
   });
   out[head.indexOf('Filed by')] = row.byName || row.by || '';
-  out[head.indexOf('Message')] = row.text || '';
+  out[head.indexOf('Message')] = cell_(String(row.text || ''));
 
   sh.appendRow(out);
   notify_(row, ss.getUrl());
   /* and the agents read the day again, about a minute from now (Agents.js) */
   readSoon_();
   return ContentService.createTextOutput('ok');
+}
+
+var SERVER_COLS_ = ['Sent at', 'Person', 'Status', 'Due', 'Filed by', 'Message'];
+
+/* Shaped like a sign-in token of this project, not yet expired, for a
+   klever.local account. Only the shape is checked here — Google checks the
+   signature in posterOf_. */
+function tokenShape_(t) {
+  if (typeof t !== 'string' || t.length > 4096) return false;
+  var parts = t.split('.');
+  if (parts.length !== 3) return false;
+  var p = jwtPart_(parts[1]);
+  var proj = prop_('FIREBASE_PROJECT', 'klever-26ad1');
+  return !!p && p.aud === proj && p.iss === 'https://securetoken.google.com/' + proj &&
+         Number(p.exp) * 1000 > new Date().getTime() - 300000 &&
+         /@klever\.local$/.test(String(p.email || '').toLowerCase());
+}
+function jwtPart_(s) {
+  var A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  var bits = 0, n = 0, out = '';
+  for (var i = 0; i < s.length; i++) {
+    var v = A.indexOf(s.charAt(i));
+    if (v < 0) { if (s.charAt(i) === '=') break; return null; }
+    bits = ((bits << 6) | v) & 0xffffff;
+    n += 6;
+    if (n >= 8) { n -= 8; out += String.fromCharCode((bits >> n) & 255); }
+  }
+  try { return JSON.parse(decodeURIComponent(escape(out))); } catch (e) { return null; }
+}
+/* More posts in one minute than the whole staff could send at a deadline is
+   someone else. Counted roughly (the cache is not a lock); good enough to
+   stop a flood without ever stopping a real Friday at 17:30. */
+function flooded_() {
+  try {
+    var c = CacheService.getScriptCache();
+    var k = 'posts:' + Math.floor(new Date().getTime() / 60000);
+    var n = Number(c.get(k) || 0) + 1;
+    c.put(k, String(n), 120);
+    return n > 90;
+  } catch (e) { return false; }
 }
 
 /* Who a Firebase sign-in token belongs to — 'betty' for betty@klever.local —
@@ -329,6 +383,16 @@ function reportPdf_(row) {
 function notify_(row, sheetUrl) {
   var to = Session.getEffectiveUser().getEmail();
   if (!to) return;
+  /* At most three mails for one report of one person in a day — a phone
+     sending the same report again and again must not use up the day's mail,
+     which the morning brief and the ALERTs need too. */
+  try {
+    var c = CacheService.getScriptCache();
+    var mk = 'mail:' + row.person + '|' + row.report + '|' + todayAddis_();
+    var sent = Number(c.get(mk) || 0);
+    if (sent >= 3) return;
+    c.put(mk, String(sent + 1), 21600);
+  } catch (e) { /* no cache, no limit */ }
 
   var who = row.personName || row.person || 'Someone';
   var what = row.reportName || 'Report';

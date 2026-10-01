@@ -293,6 +293,11 @@ import {
     tiles.appendChild(tBonus.box);
     root.appendChild(tiles);
 
+    /* a night job that failed or never ran says so here, above everything */
+    var sysAlarm = el('div', 'chalarm');
+    sysAlarm.hidden = true;
+    root.appendChild(sysAlarm);
+
     /* --- at a glance: the same figures, drawn --- */
     root.appendChild(el('p', 'eyebrow', t('chGlance')));
     var charts = el('div', 'chcharts');
@@ -386,6 +391,12 @@ import {
     raw.appendChild(el('p', 'codenote', t('chLoading')));
     root.appendChild(raw);
 
+    /* --- whether the night's jobs worked --- */
+    root.appendChild(el('p', 'eyebrow', t('chSystem')));
+    var sys = el('div', 'chhealth');
+    sys.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(sys);
+
     watchAnalysis(analysis);
     watchInstructions(ins);
     watchCharges({ fines: charges, bonus: bonusBox, pay: payBox }, tOwed, tBonus);
@@ -394,6 +405,7 @@ import {
     watchWeek(week);
     watchReports(raw, tFiled, tMissing);
     watchCharts(charts);
+    watchHealth(sys, sysAlarm);
   }
 
   function tile(label, value, full) {
@@ -736,7 +748,18 @@ import {
       if (!filed.length) {
         into.appendChild(el('p', 'codenote', t('chNothingFiled')));
       }
-      filed.forEach(function (f) { into.appendChild(rawCard(f)); });
+      /* a second filing of the same report is a correction: it says so,
+         and on time or late stays the first one's, as in the ledger */
+      filed.forEach(function (f) {
+        var r = reportById(f.report);
+        var from = dayStart(addDays(DAY, -reach(r || { cadence: 'daily' }))).getTime();
+        var first = null;
+        all.forEach(function (g) {
+          var tm = g.when.getTime();
+          if (!first && g.report === f.report && g.person === f.person && tm >= from) first = g;
+        });
+        into.appendChild(rawCard(f, first));
+      });
       into.appendChild(owedBox);
       drawOwed();
     }, failInto(into));
@@ -882,14 +905,15 @@ import {
           seen[l.rid] = true;
           var r = reportById(l.rid);
           var from = dayStart(addDays(day, -reach(r || { cadence: 'daily' }))).getTime();
-          var to = dayStart(addDays(day, 1)).getTime(), hit = null;
-          /* the last one counts: a correction is filed again */
+          var to = dayStart(addDays(day, 1)).getTime(), hit = null, first = null;
+          /* the answers are the last filing's — a correction is filed again —
+             and on time or late is the first one's, as the ledger has it */
           filed.forEach(function (f) {
             var tm = f.when.getTime();
-            if (f.report === l.rid && tm >= from && tm < to) hit = f;
+            if (f.report === l.rid && tm >= from && tm < to) { hit = f; if (!first) first = f; }
           });
           if (hit) {
-            var card = rawCard(hit);
+            var card = rawCard(hit, first);
             card.open = true;
             body.appendChild(card);
           } else {
@@ -939,10 +963,14 @@ import {
       if (!all) return [];
       var end = dayStart(addDays(DAY, 1)).getTime(), now = Date.now();
       return dueOn(DAY).map(function (r) {
+        /* on time or late is the FIRST filing, as the ledger judges it
+           (settle_ in Agent.js): a correction sent after the deadline does
+           not turn a report that came in on time into a late one */
         var from = dayStart(addDays(DAY, -reach(r))).getTime(), hit = null;
         all.forEach(function (f) {
           var tm = f.when.getTime();
-          if (f.report === r.id && f.person === r.person && tm >= from && tm < end) hit = f;
+          if (f.report === r.id && f.person === r.person && tm >= from && tm < end &&
+              (!hit || tm < hit.when.getTime())) hit = f;
         });
         var s = hit ? (isLate(hit) ? 'late' : 'ok') : (now < deadline(r, DAY).getTime() ? 'wait' : 'miss');
         return { person: r.person, rid: r.id, report: L(r), s: s, at: hit ? hit.when : null };
@@ -1042,7 +1070,9 @@ import {
                    title: dayShort(d), v: v, note: v == null ? '' : note,
                    open: dow(d) === 0 ? null : (function (day) {
                      return function (from) {
-                       openDay('betty', day, [{ rid: 'betty-forecast' }, { rid: 'betty-daily' }], from);
+                       /* her daily report is not owed on Fridays */
+                       var owed = dueOn(day).some(function (r) { return r.id === 'betty-daily'; });
+                       openDay('betty', day, [{ rid: 'betty-forecast' }].concat(owed ? [{ rid: 'betty-daily' }] : []), from);
                      };
                    })(d) });
       }
@@ -1139,18 +1169,22 @@ import {
     return m;
   }
 
-  function rawCard(f) {
+  function rawCard(f, first) {
     var rep = reportById(f.report);
-    var late = isLate(f);
+    var corrected = first && first !== f;
+    var late = isLate(corrected ? first : f);
 
     var card = el('details', 'chrow' + (late ? ' late' : ''));
     var head = el('summary');
     head.appendChild(el('span', 'chrw', nameOf(f.person)));
     head.appendChild(el('span', 'chrr', rep ? L(rep) : f.report));
-    head.appendChild(el('span', 'chrt', hhmm(f.when) + (late ? ' · ' + t('late') : '')));
+    head.appendChild(el('span', 'chrt', hhmm(f.when) + (corrected ? ' · ' + t('chCorrection') : late ? ' · ' + t('late') : '')));
     card.appendChild(head);
 
     var body = el('div', 'chrbody');
+    if (corrected) {
+      body.appendChild(el('p', 'codenote', tfill('chCorrected', { a: hhmm(first.when), b: hhmm(f.when) })));
+    }
     if (f.by && f.by !== f.person) {
       body.appendChild(el('p', 'codenote', t('chFiledBy') + ' ' + nameOf(f.by)));
     }
@@ -1974,6 +2008,78 @@ import {
       f.appendChild(el('div', 'chft', w.text || ''));
       into.appendChild(f);
     }, failInto(into));
+  }
+
+  /* ---------------- did the night's jobs work ---------------- */
+
+  /* Each scheduled job leaves one line in /health when it ends (ran_ in
+     apps-script/Agent.js). A job that threw used to stop in silence — the
+     weekly summary failed every Sunday and nothing said so. A line that says
+     it failed, or a job whose time has come and gone with no line at all,
+     goes in red at the top of the page as well as in the list. */
+  var HEALTH_FROM = '2026-10-02';   /* the log starts here; nothing earlier is expected */
+  var JOBS = [['daily', 'chSysDaily'], ['week', 'chSysWeek'], ['month', 'chSysMonth'],
+              ['reading', 'chSysReading']];
+  /* the Addis day each job should have run on by now: the morning close by
+     8:00 every day, the week by 10:00 on Sunday, the month by 10:00 on the 2nd */
+  function slotOf(job) {
+    var now = new Date(Date.now() + 3 * 3600e3), h = now.getUTCHours();
+    var d = utcYmd(now), s = null;
+    if (job === 'daily') s = h >= 8 ? d : addDays(d, -1);
+    if (job === 'week') {
+      s = addDays(d, -dow(d));
+      if (s === d && h < 10) s = addDays(s, -7);
+    }
+    if (job === 'month') {
+      s = d.slice(0, 8) + '02';
+      if (d < s || (d === s && h < 10)) {
+        var m = new Date(s + 'T12:00:00Z');
+        m.setUTCMonth(m.getUTCMonth() - 1);
+        s = utcYmd(m);
+      }
+    }
+    return s && s >= HEALTH_FROM ? s : null;
+  }
+  function watchHealth(into, alarm) {
+    var docs = {};
+    function draw() {
+      into.innerHTML = '';
+      alarm.innerHTML = '';
+      var bad = [];
+      JOBS.forEach(function (j) {
+        var h = docs[j[0]], name = t(j[1]);
+        var at = h && h.at && h.at.toDate ? h.at.toDate() : null;
+        var slot = slotOf(j[0]);
+        var late = !!slot && (!at || addisYmd(at) < slot);
+        var state = h && h.ok === false ? 'bad' : late ? 'late' : h ? 'ok' : 'none';
+        var row = el('div', 'chhrow ' + state);
+        var top = el('div', 'chhtop');
+        top.appendChild(el('span', 'chhk', name));
+        top.appendChild(el('span', 'chhv',
+          state === 'bad' ? t('chSysFailed') : state === 'late' ? t('chSysLate')
+            : state === 'ok' ? t('chSysOk') : t('chSysNever')));
+        row.appendChild(top);
+        if (at) {
+          row.appendChild(el('div', 'chhw', prettyDay(addisYmd(at)) + ' · ' + hhmm(at) +
+                                            (h.note ? ' · ' + h.note : '')));
+        }
+        if (h && h.ok === false && h.error) row.appendChild(el('div', 'chhe', h.error));
+        ((h && h.warn) || []).forEach(function (w) { row.appendChild(el('div', 'chhe warn', w)); });
+        into.appendChild(row);
+        if (state === 'bad') bad.push(tfill('chSysAlarm', { job: name, why: h.error || '' }));
+        else if (state === 'late') bad.push(tfill('chSysAlarmLate', { job: name, when: prettyDay(slot) }));
+      });
+      into.appendChild(el('p', 'codenote', t('chSysNote')));
+      alarm.hidden = !bad.length;
+      bad.forEach(function (b) { alarm.appendChild(el('p', null, b)); });
+    }
+    onSnapshot(collection(db, 'health'), function (qs) {
+      docs = {};
+      qs.forEach(function (d) { docs[d.id] = d.data(); });
+      draw();
+    }, failInto(into));
+    /* a job's hour can pass with the page open */
+    setInterval(function () { if (into.isConnected) draw(); }, 5 * 60000);
   }
 
   function toast(msg) {

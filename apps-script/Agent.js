@@ -183,6 +183,68 @@ function setupTriggers() {
    does the right thing. */
 function dailyLedger() { dailyRun(); }
 
+/* ------------------------------------------------------------------ *
+ *  Did it run                                                         *
+ * ------------------------------------------------------------------ *
+   A scheduled job that throws stops without a word: the Sunday 27 September
+   weekly summary failed on every run and nothing anywhere said so. So each
+   job — the morning close, the weekly and monthly summaries, the readings —
+   leaves one line in /health/{job} when it ends, saying whether it worked,
+   and the Chairman's page reads those lines. A failed close, summary or
+   month also emails him at once, because a page is only read when opened.
+   The error is thrown on afterwards, so Google's own failure notice still
+   goes out as well. */
+var JOB_NAMES_ = {
+  daily:   'the morning close (yesterday’s fines and the agents’ reading)',
+  week:    'the weekly summary',
+  month:   'the monthly summary (the Pay tab for payroll)',
+  reading: 'a reading of the day'
+};
+function ran_(job, fn) {
+  var t0 = new Date();
+  var out;
+  try {
+    out = fn() || {};
+  } catch (e) {
+    var msg = String((e && e.message) || e).substring(0, 500);
+    health_(job, { ok: false, error: msg, ms: new Date().getTime() - t0.getTime() });
+    if (job !== 'reading') failMail_(job, msg);
+    throw e;
+  }
+  health_(job, { ok: true, ms: new Date().getTime() - t0.getTime(),
+                 note: String(out.note || '').substring(0, 300),
+                 warn: (out.warn || []).map(function (w) { return String(w).substring(0, 300); }),
+                 period: out.period || '' });
+  return out;
+}
+function health_(job, o) {
+  o.job = job;
+  o.at = new Date();
+  try { fsPut_('health/' + job, o); }
+  catch (e) { Logger.log('health %s: %s', job, e.message); }
+}
+function failMail_(job, msg) {
+  try {
+    MailApp.sendEmail({
+      to: Session.getEffectiveUser().getEmail(),
+      subject: 'FAILED - Klever - ' + (JOB_NAMES_[job] || job),
+      htmlBody:
+        '<div style="font-family:Helvetica,Arial,sans-serif;max-width:620px;color:#141b1a">' +
+        '<h2 style="font-size:17px;color:#8f3020;margin:0 0 10px">' + esc_(JOB_NAMES_[job] || job) +
+        ' did not finish</h2>' +
+        '<p style="font-size:14px;line-height:1.6">It stopped at ' +
+        esc_(Utilities.formatDate(new Date(), tz_(), 'EEE d MMM, HH:mm')) + ' with this error:</p>' +
+        '<pre style="background:#f3f4f1;padding:12px;white-space:pre-wrap;font-size:12.5px">' +
+        esc_(msg) + '</pre>' +
+        '<p style="font-size:13px;line-height:1.6;color:#66716d">Nothing it would have written can be ' +
+        'trusted for this run. It can be run again by hand from the script editor ' +
+        '(choose the function, press Run). The same line is on your page, under “System”.</p></div>'
+    });
+  } catch (e) {
+    Logger.log('failure mail: %s', e.message);
+  }
+}
+
 /* Writes nothing and sends nothing — for trying it out. Pass a day
    ('2026-10-01') or leave it empty for yesterday. */
 function previewLedger(day) {
@@ -480,10 +542,22 @@ function settle_(report, day, filings, asOf) {
 
    `before` is the ledger of the days leading up to this one, needed only for
    the two charges that depend on the previous occurrence. */
-function charge_(due, filings, day, before, asOf, names) {
+function charge_(due, filings, day, before, asOf, names, waivers) {
+  var start = prop_('LEDGER_START', '');
+  /* The previous miss counts toward "twice in a row" only if it could itself
+     have been charged — on or after LEDGER_START — and the Chairman has not
+     cancelled it. Without this, a plan missed in the week before anyone was
+     told the system was running made the first real miss cost double
+     (Mahelet: 10,000 instead of 5,000), and cancelling the first miss did
+     not stop the second from being doubled. */
+  var off = {};
+  (waivers || []).forEach(function (w) { off[w.day + '|' + w.report] = true; });
   var prev = {};
   (before || []).forEach(function (doc) {
-    (doc.lines || []).forEach(function (l) { prev[doc.day + '|' + l.report] = l.status; });
+    if (start && doc.day < start) return;
+    (doc.lines || []).forEach(function (l) {
+      if (!off[doc.day + '|' + l.report]) prev[doc.day + '|' + l.report] = l.status;
+    });
   });
 
   var ledger = due.map(function (r) {
@@ -519,7 +593,6 @@ function charge_(due, filings, day, before, asOf, names) {
      had been told the system existed. Set LEDGER_START to that day
      (yyyy-mm-dd) and the figures are still calculated and still emailed —
      they simply cost nobody anything until then. */
-  var start = prop_('LEDGER_START', '');
   if (start && day < start) {
     ledger.forEach(function (l) {
       if (l.amount > 0) {
@@ -547,7 +620,9 @@ function closeDay_(day, opts) {
   /* a week back, because a weekly report may have been filed early */
   var filings = filedBetween_(addDays_(day, -7), addDays_(day, 1));
   var before = ledgersBetween_(addDays_(day, -7), day);
-  var ledger = charge_(due, filings, day, before, opts.asOf || null, names);
+  var waivers = tryQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', addDays_(day, -7)],
+                                      ['day', 'LESS_THAN', day]], 'day');
+  var ledger = charge_(due, filings, day, before, opts.asOf || null, names, waivers);
 
   /* Every other rule in the letters — the fines for what happened, the
      bonuses — from Rules.js. Kept apart from `ledger`, which the agents
@@ -632,7 +707,8 @@ function writeRulesTab_(lines, day) {
       sh.setFrozenRows(1);
     }
     var rows = mine.map(function (l) {
-      return [day, l.name, l.reportName, l.kind === 'consequence' ? '' : l.amount, l.wouldBe || '', l.why, l.src];
+      return [day, cell_(l.name), l.reportName, l.kind === 'consequence' ? '' : l.amount, l.wouldBe || '',
+              cell_(l.why), l.src];
     });
     sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
   });
@@ -651,6 +727,14 @@ function tz_() {
 }
 function fmt_(n) {
   return Number(n).toLocaleString('en-US');
+}
+/* A cell written into the Sheet from something a person (or the model)
+   typed. A leading = + @ makes Sheets read it as a formula — a HYPERLINK to
+   anywhere, or worse — so such a value is stored as text. A minus is left
+   alone in front of a number, which is just a negative figure. */
+function cell_(v) {
+  if (typeof v !== 'string') return v;
+  return /^[=+@\t\r]/.test(v) || /^-[^0-9.\s]/.test(v) ? "'" + v : v;
 }
 function esc_(v) {
   return String(v == null ? '' : v)

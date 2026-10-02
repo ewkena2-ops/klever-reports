@@ -317,6 +317,32 @@ function reportHtml_(row) {
   var br = function (v) {
     return esc(v).replace(new RegExp(String.fromCharCode(10), 'g'), '<br>');
   };
+  /* a list from the form as a small table: a heading per column, figures right */
+  var listOk = function (d) {
+    return Array.isArray(d.head) && Array.isArray(d.num) && Array.isArray(d.rows) && d.rows.length &&
+      d.rows.every(function (x) { return Array.isArray(x) && x.length === d.head.length; });
+  };
+  var listTable = function (d) {
+    var cell = 'padding:4px 8px 4px 0;vertical-align:top;border-bottom:1px solid ' + RULE + ';';
+    var t = ['<table width="100%" cellpadding="0" cellspacing="0" style="font-size:8.5pt;margin-top:5px">'];
+    t.push('<tr>' + d.head.map(function (x, i) {
+      return '<td' + (d.num[i] ? ' align="right"' : '') + ' style="' + cell +
+        'border-bottom:1px solid ' + MUTE + ';font-size:7.5pt;font-weight:bold;color:' + MUTE + '">' +
+        esc(x) + '</td>';
+    }).join('') + '</tr>');
+    d.rows.forEach(function (row) {
+      t.push('<tr>' + row.map(function (x, i) {
+        return '<td' + (d.num[i] ? ' align="right"' : '') + ' style="' + cell + 'color:' + (i ? INK : A) +
+          (i === 0 || d.num[i] ? ';white-space:nowrap' : '') + '">' + esc(x) + '</td>';
+      }).join('') + '</tr>');
+    });
+    if (d.total) {
+      t.push('<tr><td colspan="' + d.head.length + '" align="right" style="padding:5px 0 0;' +
+        'font-weight:bold;color:' + INK + '">' + esc(d.total) + '</td></tr>');
+    }
+    t.push('</table>');
+    return t.join('');
+  };
   var h = [];
   var F = 'font-family:Helvetica,Arial,sans-serif';
 
@@ -369,6 +395,22 @@ function reportHtml_(row) {
     h.push('<table width="100%" cellpadding="0" cellspacing="0" style="font-size:10pt">');
     s.rows.forEach(function (r) {
       if (r[1] === '' || r[1] == null) return;
+      /* the site marks a list (r[2].head) and a long answer (r[2].long): both
+         go across the page under their question. Rows without the mark — an
+         older phone's — print as before. */
+      var how = r[2] && typeof r[2] === 'object' ? r[2] : null;
+      var full = 'border-bottom:1px solid ' + RULE + ';padding:7px 10px 9px 10px;color:' + INK2;
+      if (how && listOk(how)) {
+        h.push('<tr><td colspan="2" style="' + full + '">' + esc(r[0]) + listTable(how) + '</td></tr>');
+        return;
+      }
+      if (how && (how.long || how.head)) {
+        h.push('<tr><td colspan="2" style="' + full + '">' +
+          '<div style="margin-bottom:4px">' + esc(r[0]) + '</div>' +
+          '<div style="color:' + INK + ';border-left:2px solid ' + RULE + ';padding-left:10px">' +
+            br(r[1]) + '</div></td></tr>');
+        return;
+      }
       h.push('<tr>' +
         '<td style="border-bottom:1px solid ' + RULE + ';padding:6px 14px 6px 10px;' +
           'width:56%;color:' + INK2 + '">' + esc(r[0]) + '</td>' +

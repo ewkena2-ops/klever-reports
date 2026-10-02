@@ -1422,7 +1422,8 @@ const REPORTS = [
     ]},
     { en:'4 · Daily production target', am:'4 · የዕለት ተዕለት የምርት ዒላማ', fields:[
       {id:'plan_days', en:'How many m² are planned for each day, and on which jobs?', am:'በየቀኑ ስንት ካሬ ሜትር ታቅዷል? በየትኞቹ ሥራዎች?',
-       t:'grid', dateFrom:'plan_start',
+       /* 15 working days: Klever works Monday to Saturday (Chairman, 2 Oct 2026) */
+       t:'grid', dateFrom:'plan_start', workDays:true,
        rows: Array.from({length:15}, function (_, i) {
          return {en:'Day ' + (i+1), am:'ቀን ' + (i+1)};
        }),

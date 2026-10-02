@@ -387,7 +387,16 @@
     inp.classList.add('dnative');
     box.appendChild(inp);
     function paint() {
-      show.textContent = inp.value ? prettyDate(inp.value, true) : t('pickDate');
+      /* each calendar in its own span, so a narrow phone breaks the line
+         between the two dates and never inside one */
+      show.textContent = '';
+      var s = inp.value ? prettyDate(inp.value, true) : t('pickDate'), cut = s.indexOf(' · ');
+      /* the space stays between the spans: inside a no-wrap span it is no
+         place to break */
+      (cut < 0 ? [s] : [s.slice(0, cut), s.slice(cut + 1)]).forEach(function (part, i) {
+        if (i) show.appendChild(document.createTextNode(' '));
+        show.appendChild(el('span', null, part));
+      });
       box.classList.toggle('empty', !inp.value);
     }
     function pick() { try { if (inp.showPicker && !inp.disabled) inp.showPicker(); } catch (e) { /* the browser opens its own */ } }
@@ -1384,7 +1393,9 @@
         card.appendChild(head);
 
         f.cols.forEach(function (c) {
-          var cell = el('div', 'cell');
+          /* words go under their label at full width; numbers and pick-lists
+             stay beside it */
+          var cell = el('div', 'cell' + (c.t === 'text' ? ' wide' : ''));
           var cl = el('label', null, L(c));
           cell.appendChild(cl);
           var inp;
@@ -1612,14 +1623,19 @@
       var rows = [];
       sec.fields.forEach(function (fl) {
         if (!shown(fl)) return;
+        /* A row is [question, answer as text]. A third entry says how a
+           document should lay it out: a list as a real table, a long answer
+           in full under its question. Readers that only know the first two
+           (an older Sheet script) still get the text. */
         if (fl.t === 'table' || fl.t === 'grid') {
           var tl = tableLines(fl);
-          if (tl.length) rows.push([L(fl), tl.join(String.fromCharCode(10))]);
+          if (tl.length) rows.push([L(fl), tl.join(String.fromCharCode(10)), tableData(fl)]);
           return;
         }
         var v = fmt(fl);
         if (!has(v) || v === '— / —') return;
-        rows.push([(fl.i || fl.show ? '· ' : '') + L(fl), v]);
+        var lab = (fl.i || fl.show ? '· ' : '') + L(fl);
+        rows.push(fl.t === 'area' || String(v).length > 60 ? [lab, v, { long: true }] : [lab, v]);
       });
       if (rows.length) doc.push({ sec: L(sec), rows: rows });
     });
@@ -1635,6 +1651,28 @@
       if (targetMiss(fl)) out.push(said(L(fl)) + ' ' + fmt(fl) + ' — ' + (lang === 'am' ? fl.tgt.am : fl.tgt.en));
     });
     return out;
+  }
+
+  function printTable(d) {
+    var t2 = el('table', 'pd-sub');
+    var hr = el('tr');
+    d.head.forEach(function (h, i) { hr.appendChild(el('th', d.num[i] ? 'n' : null, h)); });
+    var thead = el('thead');
+    thead.appendChild(hr);
+    t2.appendChild(thead);
+    var tb = el('tbody');
+    d.rows.forEach(function (row) {
+      var tr = el('tr');
+      row.forEach(function (c, i) { tr.appendChild(el('td', i === 0 ? 'k' : (d.num[i] ? 'n' : null), c)); });
+      tb.appendChild(tr);
+    });
+    t2.appendChild(tb);
+    if (d.total) {
+      var ft = el('tfoot'), fr = el('tr'), fc = el('td', 'n', d.total);
+      fc.colSpan = d.head.length;
+      fr.appendChild(fc); ft.appendChild(fr); t2.appendChild(ft);
+    }
+    return t2;
   }
 
   function buildPrintDoc() {
@@ -1682,9 +1720,19 @@
       doc.appendChild(el('h2', 'pd-sec', s.sec));
       var tbl = el('table', 'pd-tbl');
       s.rows.forEach(function (r) {
-        var tr = el('tr');
-        tr.appendChild(el('th', null, r[0]));
-        tr.appendChild(el('td', null, r[1]));
+        var tr = el('tr'), how = r[2];
+        if (how && (how.long || how.head)) {
+          /* a list or a long answer takes the page's full width, under its question */
+          var td = el('td', how.head ? 'pd-full pd-list' : 'pd-full');
+          td.colSpan = 2;
+          td.appendChild(el('div', 'pd-q', r[0]));
+          if (how.head) td.appendChild(printTable(how));
+          else td.appendChild(el('div', 'pd-long', r[1]));
+          tr.appendChild(td);
+        } else {
+          tr.appendChild(el('th', null, r[0]));
+          tr.appendChild(el('td', null, r[1]));
+        }
         tbl.appendChild(tr);
       });
       doc.appendChild(tbl);
@@ -2164,7 +2212,21 @@
     var base = L(f.rows[i]);
     if (f.dateFrom && has(values[f.dateFrom])) {
       var d = new Date(values[f.dateFrom] + 'T12:00:00Z');
-      if (!isNaN(d.getTime())) { d.setUTCDate(d.getUTCDate() + i); base += ' ' + shortDate(d); }
+      if (!isNaN(d.getTime())) {
+        if (f.workDays) {
+          /* Monday to Saturday: Sundays are stepped over, a Sunday start too */
+          if (d.getUTCDay() === 0) d.setUTCDate(d.getUTCDate() + 1);
+          for (var k = 0; k < i; k++) {
+            d.setUTCDate(d.getUTCDate() + 1);
+            if (d.getUTCDay() === 0) d.setUTCDate(d.getUTCDate() + 1);
+          }
+        } else {
+          d.setUTCDate(d.getUTCDate() + i);
+        }
+        /* "Day 1 · Fri 2 Oct" — "Day 1 2 Oct" read as one number */
+        var wd = (lang === 'am' ? DAYS_AM : DAYS_EN)[d.getUTCDay()];
+        base += ' · ' + (lang === 'am' ? wd : wd.slice(0, 3)) + ' ' + shortDate(d);
+      }
     }
     return base;
   }
@@ -2199,6 +2261,25 @@
     });
     if (any && f.total) out.push(totalLine(f));
     return any ? out : [];
+  }
+
+  /* the same rows as a table for the printed report: a heading per column,
+     figures marked so they line up on the right */
+  function tableData(f) {
+    var data = Array.isArray(values[f.id]) ? values[f.id] : [];
+    var grid = f.t === 'grid';
+    var out = {
+      head: [grid ? '' : '#'].concat(f.cols.map(function (c) { return L(c); })),
+      num: [false].concat(f.cols.map(function (c) { return /^(num|money|pct)$/.test(c.t || ''); })),
+      rows: []
+    };
+    data.forEach(function (row, i) {
+      if (!rowHasData(row, f.cols)) return;
+      out.rows.push([grid ? gridRowLabel(f, i) : String(i + 1)]
+        .concat(f.cols.map(function (c) { return colText(c, row[c.id]); })));
+    });
+    if (out.rows.length && f.total) out.total = totalLine(f);
+    return out;
   }
 
   /* a question already ends in its own mark; "Why?:" reads as a typo */

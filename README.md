@@ -6,7 +6,7 @@ One link the team opens on a phone to file the daily reports their terms letters
 
 Pick your name → pick the report → fill it → **Send**. It is filed, and delivered to the people
 the report is addressed to — into their channel, not into a group somebody has to remember to
-choose. There is also **Copy** and **PDF**.
+choose. There is also **PDF**.
 
 ## What it does
 

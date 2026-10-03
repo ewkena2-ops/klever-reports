@@ -1768,13 +1768,6 @@
     });
     var bar = el('div', 'bar'), inner = el('div', 'bar-in');
     var count = el('button', 'count'); count.id = 'count'; count.type = 'button';
-    var copy = el('button', 'btn ghost', t('copy'));
-    copy.type = 'button';
-    copy.onclick = function () {
-      var txt = buildMessage();
-      if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () { toast(t('copied')); });
-      else { window.prompt(t('copy'), txt); }
-    };
     var pdf = el('button', 'btn ghost', t('printBtn'));
     pdf.type = 'button';
     pdf.onclick = function () { window.print(); };
@@ -1918,7 +1911,7 @@
       /* delivery goes at once too: offline, it waits with the filing */
       deliver();
     };
-    inner.appendChild(count); inner.appendChild(pdf); inner.appendChild(copy);
+    inner.appendChild(count); inner.appendChild(pdf);
     inner.appendChild(retry);
     inner.appendChild(send);
     bar.appendChild(inner);

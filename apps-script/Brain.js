@@ -1,5 +1,12 @@
 /* Klever — which model reads the day.
 
+   CLAUDE IS ON HOLD (3 Oct 2026). The Chairman bought Gemini credit, so every
+   run reads with Gemini and the Claude | Gemini switch is off his page. With
+   BRAIN_CLAUDE_ON_HOLD true, nothing below picks Claude: not his saved choice,
+   not AI_PROVIDER, not the missing-key fallback. To bring Claude back, set it
+   to false, add CLAUDE_KEY, and restore the switch in chairman.js (removed in
+   the commit "Hold Claude: Gemini reads the day, switch off the page").
+
    Two are wired in and neither is torn out: Claude (Anthropic) and Gemini
    (Google). The Chairman chooses on his own page, which writes one document,
    /control/ai { provider: 'claude' | 'gemini' }. Each run reads that choice
@@ -22,6 +29,7 @@
    Keys live in Script Properties and in Klever-Access-Codes.txt, never in
    this file: this file is in a public repository.                         */
 
+var BRAIN_CLAUDE_ON_HOLD = true;
 var BRAIN_DEFAULT_CLAUDE = 'claude-sonnet-5';
 var BRAIN_ANTHROPIC_VERSION = '2023-06-01';
 var BRAIN_ = null;   /* resolved once per run */
@@ -30,7 +38,8 @@ var BRAIN_ = null;   /* resolved once per run */
 function brain_() {
   if (BRAIN_) return BRAIN_;
   var chosen = '';
-  try {
+  if (BRAIN_CLAUDE_ON_HOLD) chosen = 'gemini';
+  else try {
     var res = UrlFetchApp.fetch(fsBase_() + '/documents/control/ai', {
       headers: { Authorization: 'Bearer ' + fsToken_() }, muteHttpExceptions: true
     });
@@ -46,7 +55,7 @@ function brain_() {
 
   var keys = { claude: prop_('CLAUDE_KEY', ''), gemini: prop_('GEMINI_KEY', '') };
   var use = chosen, note = '';
-  if (!keys[use]) {
+  if (!keys[use] && !BRAIN_CLAUDE_ON_HOLD) {
     var other = use === 'claude' ? 'gemini' : 'claude';
     if (keys[other]) {
       note = (use === 'claude' ? 'Claude' : 'Gemini') + ' was chosen but its key is not set, so ' +

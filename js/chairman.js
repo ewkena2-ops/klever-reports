@@ -311,29 +311,6 @@ import {
     runBtn.onclick = function () { askForRun(runBtn); };
     root.appendChild(runBtn);
 
-    /* --- who reads the day: Claude or Gemini, his to choose --- */
-    var brain = el('div', 'chbrain');
-    brain.appendChild(el('span', 'chbrain-k', t('chBrain')));
-    var seg = el('div', 'chbrain-seg');
-    seg.setAttribute('role', 'group');
-    seg.setAttribute('aria-label', t('chBrain'));
-    var brainNote = el('span', 'chbrain-d', t('chBrainDefault'));
-    brainNote.hidden = true;
-    var brainBtns = {};
-    [['claude', 'Claude'], ['gemini', 'Gemini']].forEach(function (o) {
-      var b = el('button', null, o[1]);
-      b.type = 'button';
-      b.setAttribute('aria-pressed', 'false');
-      b.onclick = function () { chooseBrain(o[0], brainBtns, brainNote); };
-      brainBtns[o[0]] = b;
-      seg.appendChild(b);
-    });
-    brain.appendChild(seg);
-    brain.appendChild(brainNote);
-    root.appendChild(brain);
-    root.appendChild(el('p', 'chbrain-n', t('chBrainNote')));
-    watchBrain(brainBtns, brainNote);
-
     var analysis = el('div', 'chanalysis');
     analysis.appendChild(el('p', 'codenote', t('chNoAnalysis')));
     root.appendChild(analysis);
@@ -655,28 +632,6 @@ import {
         (d.model ? ' · ' + t('chReadBy') + ' ' + d.model : '')));
       if (d.modelNote) into.appendChild(el('p', 'codenote', d.modelNote));
     }, failInto(into));
-  }
-
-  /* The choice lives in one document the morning run reads first. With no
-     document the script falls back to its own AI_PROVIDER setting, which
-     this page cannot see — so neither button is lit, and it says so, rather
-     than naming one that may not be the one in use. */
-  function showBrain(btns, p, note) {
-    Object.keys(btns).forEach(function (k) { btns[k].setAttribute('aria-pressed', k === p ? 'true' : 'false'); });
-    note.hidden = !!p;
-  }
-  function watchBrain(btns, note) {
-    Object.keys(btns).forEach(function (k) { btns[k].setAttribute('aria-pressed', 'false'); });
-    onSnapshot(doc(db, 'control', 'ai'), function (d) {
-      var p = d.exists() ? String(d.data().provider || '') : '';
-      showBrain(btns, p === 'gemini' || p === 'claude' ? p : null, note);
-    }, function () {});
-  }
-  function chooseBrain(p, btns, note) {
-    showBrain(btns, p, note);
-    setDoc(doc(db, 'control', 'ai'), { provider: p, at: serverTimestamp(), by: me })
-      .then(function () { toast(t('chBrainSaved')); })
-      ['catch'](function () { toast(t('chSaveFailed')); });
   }
 
   function askForRun(btn) {

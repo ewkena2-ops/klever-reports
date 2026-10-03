@@ -787,19 +787,6 @@ body[data-page="chat"] .wrap{padding-bottom:110px}
 }
 .skysub{font-size:12.5px;color:var(--mut);text-align:center;margin:2px 0 6px;line-height:1.5}
 
-/* which model reads the day */
-.chbrain{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-  margin:12px 0 6px;padding:10px 12px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);
-}
-.chbrain-k{font-size:13.5px;font-weight:600;color:var(--ink-2)}
-.chbrain-seg{display:flex;padding:3px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line-2)}
-.chbrain-seg button{
-  min-height:34px;padding:0 14px;border:0;border-radius:9px;background:transparent;cursor:pointer;
-  font-family:var(--sans);font-size:13px;font-weight:700;color:var(--mut);
-}
-.chbrain-seg button[aria-pressed="true"]{background:var(--teal-hi);color:var(--teal-ink)}
-.chbrain-n{font-size:12px;color:var(--mut);margin:0 2px 12px;line-height:1.45}
 svg.sky{display:block;width:100%;height:auto;touch-action:manipulation}
 svg.sky .node{cursor:pointer}
 svg.sky .node circle.hit{fill:transparent}
@@ -1376,7 +1363,6 @@ svg.sky .node text{font-size:11px}
 .chchip.h2{border-color:var(--coral-line);background:var(--coral-bg)} .chchip.h2 .chchip-h{color:var(--coral)}
 .chchip.brief{border-color:var(--teal-line);background:var(--teal-bg);color:var(--teal-hi)}
 .chchip:focus-visible{outline:2px solid var(--teal-hi);outline-offset:2px}
-.chbrain-d{flex-basis:100%;font-size:12px;color:var(--mut);text-align:right}
 .chlater{margin-top:8px;padding:12px 14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);font-size:13.5px;color:var(--mut);line-height:1.6}
 .chlater .chfl{color:var(--dim);margin-bottom:6px;font-size:10.5px}
 .chinsrow.cancelled .chinst{color:var(--mut);text-decoration:line-through}

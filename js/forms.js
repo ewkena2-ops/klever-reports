@@ -1097,14 +1097,26 @@ const REPORTS = [
       {id:'seble_err', en:'Did any work delegated to Seble need correcting this week?', am:'በዚህ ሳምንት ለሰብለ የተሰጠ ሥራ ማስተካከያ አስፈልጎታል?', t:'yesno'},
       {id:'seble_err_what', en:'What was wrong, how often, and what has been done so it does not happen again?', am:'ምን ተሳስቶ ነበር? ስንት ጊዜ? እንዳይደገም ምን ተደረገ?', t:'area', show:{f:'seble_err', when:'yes'}}
     ]},
-    { en:'7 · Problems and solutions', am:'7 · ችግሮችና መፍትሔዎች', fields:[
+    { en:'7 · Money spent this week', am:'7 · በዚህ ሳምንት የወጣ ገንዘብ', fields:[
+      {id:'sp_sup', en:'How much was paid to suppliers this week — board and materials?', am:'በዚህ ሳምንት ለአቅራቢዎች — ለቦርድና ለዕቃዎች — ስንት ብር ተከፈለ?', t:'money'},
+      {id:'sp_sal', en:'How much was paid in salaries and wages this week?', am:'በዚህ ሳምንት ለደመወዝ ስንት ብር ተከፈለ?', t:'money'},
+      {id:'sp_asm', en:'How much was paid to assemblers this week?', am:'በዚህ ሳምንት ለገጣጣሚዎች ስንት ብር ተከፈለ?', t:'money'},
+      {id:'sp_food', en:'How much was spent on staff food this week?', am:'በዚህ ሳምንት ለሠራተኞች ምግብ ስንት ብር ወጣ?', t:'money'},
+      {id:'sp_meals', en:'How many meals did that pay for?', am:'ይህ ገንዘብ ለስንት ምግብ ተከፈለ?', t:'num', show:{f:'sp_food', when:'pos'}},
+      {id:'sp_trans', en:'How much was spent on transport and fuel this week?', am:'በዚህ ሳምንት ለትራንስፖርትና ለነዳጅ ስንት ብር ወጣ?', t:'money'},
+      {id:'sp_rent', en:'How much rent was paid this week?', am:'በዚህ ሳምንት ስንት ብር ኪራይ ተከፈለ?', t:'money'},
+      {id:'sp_util', en:'How much was paid for power and water this week?', am:'በዚህ ሳምንት ለመብራትና ለውሃ ስንት ብር ተከፈለ?', t:'money'},
+      {id:'sp_other', en:'How much else went out this week?', am:'በዚህ ሳምንት ሌላ ስንት ብር ወጣ?', t:'money'},
+      {id:'sp_other_what', en:'What was it spent on?', am:'ምን ላይ ወጣ?', t:'area', show:{f:'sp_other', when:'pos'}}
+    ]},
+    { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
       {id:'w_problem', en:'What was the biggest problem this week, and what caused it?', am:'የዚህ ሳምንት ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
       {id:'w_action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
       {id:'w_support', en:'What do you need from the Chairman or another department, and from whom?', am:'ከሊቀመንበሩ ወይም ከሌላ ክፍል ምን ያስፈልግዎታል? ከማን?', t:'area', opt:1},
       {id:'need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_chair_what', en:'What exactly should the Chairman decide, what are the options, and by when?', am:'ሊቀመንበሩ በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_chair', when:'yes'}}
     ]},
-    { en:'8 · Next week', am:'8 · የሚቀጥለው ሳምንት', fields:[
+    { en:'9 · Next week', am:'9 · የሚቀጥለው ሳምንት', fields:[
       {id:'next_week', en:'What are your top 3 priorities next week — including any tax or statutory payment falling due?', am:'በሚቀጥለው ሳምንት ዋና ሦስት ሥራዎች ምንድን ናቸው? — የሚደርስ የግብር ወይም የሕግ ክፍያ ካለ ጨምሮ', t:'area'}
     ]}
   ]

@@ -1734,12 +1734,13 @@
       var job = toDeliver, names = lang === 'am' ? report.toAm : report.toEn;
       retry.hidden = true;
       if (!job.chan || !window.FB || !window.FB.live()) { retry.hidden = false; toast(t('sendNotDelivered')); return; }
-      var parts = splitForChat(job.text, 3900), i = 0;
+      /* cut and numbered once: a retry sends the parts still owed as they
+         were, rather than cutting the numbered text again ("(1/2) (1/2)") */
+      var parts = job.parts || (job.parts = splitForChat(job.text, 3900)), i = job.sent || 0;
       (function next() {
         if (i >= parts.length) { toDeliver = null; toast(t('sentTo').replace('{who}', names)); return; }
-        window.FB.deliverReport(job.chan, parts[i]).then(function () { i++; next(); })['catch'](function (e) {
+        window.FB.deliverReport(job.chan, parts[i]).then(function () { i++; job.sent = i; next(); })['catch'](function (e) {
           /* keep the parts not yet delivered, and offer to try those again */
-          job.text = parts.slice(i).join('\n');
           retry.hidden = false;
           toast((e && e.code === 'permission-denied') ? t('sendRefused') : t('sendNotDelivered'));
         });

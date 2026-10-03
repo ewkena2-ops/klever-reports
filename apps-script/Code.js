@@ -110,6 +110,10 @@ function doPost(e) {
   }
   delete row.idToken;
   if (!poster || poster === 'ledger') return ContentService.createTextOutput('refused');
+  /* a question from the Chairman's page (Ask.js) — his, and nobody else's */
+  if (row.kind === 'ask') {
+    return ContentService.createTextOutput(poster === 'chairman' ? askPost_(row.k) : 'refused');
+  }
   var sched;
   try { sched = loadSchedule_(); } catch (err) { return ContentService.createTextOutput('no schedule'); }
   var rep = sched.reports.filter(function (r) { return r.id === row.report; })[0];

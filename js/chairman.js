@@ -315,6 +315,11 @@ import {
     analysis.appendChild(el('p', 'codenote', t('chNoAnalysis')));
     root.appendChild(analysis);
 
+    /* --- his own questions, answered from the reports (apps-script/Ask.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('aiAskTitle')));
+    var asks = el('div', 'chask');
+    root.appendChild(asks);
+
     /* the full sky, and the whole company, each on its own page */
     var NS = 'http://www.w3.org/2000/svg';
     function wayIn(href, d, label) {
@@ -362,6 +367,12 @@ import {
     week.appendChild(el('p', 'codenote', t('chNoWeek')));
     root.appendChild(week);
 
+    /* --- where the week's money went, read by the CFO (apps-script/Cfo.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('cfoTitle')));
+    var cfo = el('div', 'chcfo');
+    cfo.appendChild(el('p', 'codenote', t('cfoNone')));
+    root.appendChild(cfo);
+
     /* --- and the day it was made of --- */
     root.appendChild(el('p', 'eyebrow', t('chRaw')));
     var raw = el('div', 'chraw');
@@ -379,7 +390,8 @@ import {
     watchCharges({ fines: charges, bonus: bonusBox, pay: payBox }, tOwed, tBonus);
     watchStanding(standing);
     watchEvents(record);
-    watchWeek(week);
+    watchWeek(week, cfo);
+    watchAsks(asks);
     watchReports(raw, tFiled, tMissing);
     watchCharts(charts);
     watchHealth(sys, sysAlarm);
@@ -1995,12 +2007,13 @@ import {
 
   /* ---------------- the week ---------------- */
 
-  function watchWeek(into) {
+  function watchWeek(into, cfoInto) {
     onSnapshot(query(collection(db, 'packs'), orderBy('end', 'desc'), limit(4)), function (qs) {
       var packs = [];
       qs.forEach(function (d) { packs.push(d.data()); });
       var w = packs.filter(function (p) { return p.kind === 'week'; })[0];
       into.innerHTML = '';
+      drawCfo(cfoInto, w);
       if (!w) { into.appendChild(el('p', 'codenote', t('chNoWeek'))); return; }
 
       into.appendChild(el('p', 'skysub', prettyDay(w.start) + ' – ' + prettyDay(w.end)));
@@ -2014,7 +2027,130 @@ import {
       var f = el('div', 'chfind brief');
       f.appendChild(el('div', 'chft', w.text || ''));
       into.appendChild(f);
-    }, failInto(into));
+    }, function (e) { failInto(into)(e); failInto(cfoInto)(e); });
+  }
+
+  /* The CFO's week: three figures, the reading, and each spending line
+     against its recent average. Every figure was worked out in Cfo.js; a
+     null is a line Selam did not fill in, shown as a dash, never a 0. */
+  function drawCfo(into, w) {
+    into.innerHTML = '';
+    if (!w || !w.cfoText) { into.appendChild(el('p', 'codenote', t('cfoNone'))); return; }
+    var dash = function (x) { return x == null ? '—' : short(x); };
+    var tiles = el('div', 'chtiles');
+    tiles.appendChild(tile(t('cfoSpent'), dash(w.cfoSpent), w.cfoSpent == null ? null : exact(w.cfoSpent)).box);
+    tiles.appendChild(tile(t('cfoIn'), dash(w.cfoIn), w.cfoIn == null ? null : exact(w.cfoIn)).box);
+    tiles.appendChild(tile(t('cfoWeeks'), w.cfoWeeksLeft == null ? '—' : String(w.cfoWeeksLeft),
+                           w.cfoWeeksNote || null).box);
+    into.appendChild(tiles);
+    var f = el('div', 'chfind cfo');
+    f.appendChild(el('div', 'chft', w.cfoText));
+    into.appendChild(f);
+    var lines = (w.cfoLines || []).filter(function (l) { return l.birr != null || l.avg != null; });
+    if (!lines.length) return;
+    var tbl = el('div', 'chcfo-lines');
+    var head = el('div', 'chf chcfo-head');
+    head.appendChild(el('span', 'chfk', t('cfoLine')));
+    head.appendChild(el('span', 'chfv', t('cfoThisWeek') + ' · ' + t('cfoAvg')));
+    tbl.appendChild(head);
+    lines.forEach(function (l) {
+      var r = el('div', 'chf');
+      r.appendChild(el('span', 'chfk', L(l)));
+      var v = el('span', 'chfv');
+      v.appendChild(document.createTextNode(l.birr == null ? '—' : birr(l.birr)));
+      v.appendChild(el('span', 'chcfo-avg', ' · ' + (l.avg == null ? '—' : birr(l.avg))));
+      r.appendChild(v);
+      tbl.appendChild(r);
+    });
+    if (w.cfoSpent != null) {
+      var tot = el('div', 'chf chftotal');
+      tot.appendChild(el('span', 'chfk', t('cfoTotal')));
+      tot.appendChild(el('span', 'chfv', birr(w.cfoSpent)));
+      tbl.appendChild(tot);
+    }
+    into.appendChild(tbl);
+  }
+
+  /* ---------------- his questions to the AI ---------------- */
+
+  /* The question goes into /asks first — the rules let only him write one —
+     and then its id goes to the script's web app with his sign-in token,
+     which answers it onto the same document (apps-script/Ask.js). If that
+     post is lost, the script's ten-minute watch answers it instead. The
+     answer appears here by itself: this page watches the collection. */
+  function askAI(q) {
+    var id = 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    return setDoc(doc(db, 'asks', id), { q: q, at: serverTimestamp(), by: me, status: 'asked' })
+      .then(function () {
+        var u = auth.currentUser;
+        return u ? u.getIdToken() : null;
+      })
+      .then(function (tok) {
+        if (tok && window.ARCHIVE && window.ARCHIVE.on()) {
+          window.ARCHIVE.post({ kind: 'ask', k: id, idToken: tok })['catch'](function () {});
+        }
+      });
+  }
+
+  function askCard(a) {
+    var box = el('div', 'chask-item');
+    box.appendChild(el('div', 'chask-q', a.q || ''));
+    var when = a.at && a.at.toDate ? a.at.toDate() : null;
+    if (a.status === 'answered') {
+      var ans = el('div', 'chft', a.a || '');      /* 'chft' alone turns "* " into bullets */
+      ans.classList.add('chask-a');
+      box.appendChild(ans);
+      box.appendChild(el('div', 'chask-meta', (when ? hhmm(when) + ' · ' : '') +
+                         (a.model ? t('chReadBy') + ' ' + a.model : '')));
+    } else if (a.status === 'failed') {
+      box.appendChild(el('div', 'chask-a chask-fail', t('aiAskCouldNot') + ' ' + (a.error || '')));
+      var again = el('button', 'chask-again', t('aiAskAgain'));
+      again.type = 'button';
+      again.onclick = function () {
+        again.disabled = true;
+        askAI(a.q)['catch'](function () { again.disabled = false; toast(t('aiAskFailed')); });
+      };
+      box.appendChild(again);
+    } else {
+      box.appendChild(el('div', 'chask-a chask-wait', t('aiAskThinking')));
+    }
+    return box;
+  }
+
+  function watchAsks(into) {
+    var form = el('form', 'chask-form');
+    var q = el('textarea');
+    q.rows = 2;
+    q.maxLength = 1000;
+    q.placeholder = t('aiAskHint');
+    q.setAttribute('aria-label', t('aiAskTitle'));
+    var go = el('button', 'seed', t('aiAskBtn'));
+    go.type = 'submit';
+    form.appendChild(q);
+    form.appendChild(go);
+    into.appendChild(form);
+    into.appendChild(el('p', 'chask-note', t('aiAskNote')));
+    var list = el('div', 'chask-list');
+    into.appendChild(list);
+
+    form.onsubmit = function (e) {
+      e.preventDefault();
+      var text = q.value.trim();
+      if (!text) { q.focus(); return; }
+      go.disabled = true;
+      askAI(text).then(function () {
+        q.value = '';
+        go.disabled = false;
+      }, function () {
+        go.disabled = false;
+        toast(t('aiAskFailed'));
+      });
+    };
+
+    onSnapshot(query(collection(db, 'asks'), orderBy('at', 'desc'), limit(10)), function (qs) {
+      list.innerHTML = '';
+      qs.forEach(function (d) { list.appendChild(askCard(d.data({ serverTimestamps: 'estimate' }))); });
+    }, failInto(list));
   }
 
   /* ---------------- did the night's jobs work ---------------- */

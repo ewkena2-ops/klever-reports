@@ -13,7 +13,8 @@
                   who did not, the week's production, quality, money and
                   sales, whether last week's forecasts came true, what the
                   Chairman asked for and got — then the weekly reports and the
-                  week's daily briefs for the model to read.
+                  week's daily briefs for the model to read. With it, the
+                  CFO's reading of where the week's money went (Cfo.js).
      monthlyPack  the 2nd, on the month just ended. The same, plus the
                   deductions: every person's penalties for the month, less
                   any the Chairman cancelled, as a table and a Sheet tab that
@@ -48,8 +49,18 @@ function weeklyPack_(endDay) {
   var P = packData_(addDays_(end, -6), end);
   var facts = weekFacts_(P);
   var text = askPack_(WEEK_ASK_, facts, P);
-  var warn = savePack_('week-' + end, 'week', P, facts, text);
-  mailPack_('week', P, facts, text);
+  /* the CFO's reading of the week's money (Cfo.js) — if it fails, the
+     summary still goes, and says so */
+  var cfo = null, cfoText = '', cfoWarn = [];
+  try {
+    cfo = cfoFacts_(P, facts.operations);
+    cfoText = cfoRead_(cfo, P);
+  } catch (e) {
+    cfo = null;
+    cfoWarn.push('CFO: ' + e.message);
+  }
+  var warn = savePack_('week-' + end, 'week', P, facts, text, cfoSaved_(cfo, cfoText)).concat(cfoWarn);
+  mailPack_('week', P, facts, text, cfo, cfoText);
   return { period: P.start + ' to ' + end, warn: warn,
            note: (facts.reporting.on_time_pct == null ? 'no reports' : facts.reporting.on_time_pct + '% on time') };
 }
@@ -469,9 +480,9 @@ function askPack_(ask, facts, P) {
  *  Output                                                             *
  * ------------------------------------------------------------------ */
 
-function savePack_(id, kind, P, facts, text) {
+function savePack_(id, kind, P, facts, text, extra) {
   try {
-    fsPut_('packs/' + id, {
+    var doc = {
       kind: kind, start: P.start, end: P.end, ranAt: new Date(), text: String(text || ''),
       onTimePct: facts.reporting.on_time_pct,
       owed: facts.reporting.birr_owed,
@@ -479,7 +490,9 @@ function savePack_(id, kind, P, facts, text) {
       m2Target: facts.operations.production.m2_target,
       collected: facts.operations.sales.collected,
       overdue: facts.instructions.still_open_past_their_date.length
-    });
+    };
+    Object.keys(extra || {}).forEach(function (k) { doc[k] = extra[k]; });
+    fsPut_('packs/' + id, doc);
   } catch (e) {
     Logger.log('Could not save the pack: %s', e.message);   /* the email still goes */
     return ['Not saved to his page: ' + e.message];
@@ -549,7 +562,7 @@ function writePayTab_(month, pay) {
   sh.setFrozenRows(1);
 }
 
-function mailPack_(kind, P, facts, text) {
+function mailPack_(kind, P, facts, text, cfo, cfoText) {
   var rep = facts.reporting, ops = facts.operations, ins = facts.instructions;
   var title = kind === 'week' ? 'Klever — the week' : 'Klever — ' + facts.month;
   var cell = 'padding:5px 8px;border-bottom:1px solid #e4e7e3';
@@ -566,6 +579,9 @@ function mailPack_(kind, P, facts, text) {
     '</tr></table>' +
     '<div style="background:#f3f4f1;border-left:3px solid #0f5c54;padding:14px 16px;' +
       'margin-bottom:24px;font-size:14px;line-height:1.65;white-space:pre-wrap">' + esc_(text) + '</div>';
+
+  /* the week's money, read by the CFO (Cfo.js) */
+  if (kind === 'week' && cfo) html += cfoMailHtml_(cfo, cfoText);
 
   /* the forecasts, judged in code */
   if (facts.forecasts) {

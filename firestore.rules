@@ -204,6 +204,23 @@ service cloud.firestore {
       allow create, update: if isLedger();
       allow delete: if false;
     }
+    /* His questions to the AI (apps-script/Ask.js). He writes the question,
+       only as one waiting to be answered; the script, signed in as the
+       ledger, writes the answer onto it. Nobody else reads them — they are
+       about the company's money. */
+    match /asks/{id} {
+      allow get, list: if isChairman() || isLedger();
+      allow create: if isChairman()
+                    && request.resource.data.keys().hasOnly(['q', 'at', 'by', 'status'])
+                    && request.resource.data.q is string
+                    && request.resource.data.q.size() > 0
+                    && request.resource.data.q.size() <= 1000
+                    && request.resource.data.at == request.time
+                    && request.resource.data.by == 'chairman'
+                    && request.resource.data.status == 'asked';
+      allow update: if isLedger();
+      allow delete: if false;
+    }
     /* The month, closed: the bonuses and penalties that can only be
        judged on a whole month (waste for the month, a month with no
        complaint, the third penalty that brings a suspension). Written by

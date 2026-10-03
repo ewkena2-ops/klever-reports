@@ -234,6 +234,32 @@ because Amaha's and Wude's monthly reports are due on the 1st.
 Every figure is code; the model writes only the reading on top. `previewWeekly()` and
 `previewMonthly()` log the figures and write nothing.
 
+## The CFO
+
+`apps-script/Cfo.js`, inside the Sunday week. Selam's Friday report has **7 · Money spent this
+week** (suppliers, salaries, assemblers, staff food and how many meals it paid for, transport,
+rent, power and water, other). From it, in code: each line against its average of the four
+weeks before, food per meal and per working day against who was present (Amaha's and Elyas's
+counts), what cash instead of food would cost a month (`CFO_FOOD_CASH`, 4,000 Birr a person
+unless the Script Property says otherwise — before tax and pension), money in against out,
+weeks above the 6,000,000 floor at this rate, and her own 4-week projection against what went
+out. The model reads the finished figures and writes the CFO's note — on his page under the
+week, and in the Sunday email. A week with no spending filled in says so and pays no model.
+
+## Ask your AI
+
+On his page, under the agents' reading. A question goes to `/asks` (only he may write one,
+only as "asked"), then its id goes to the web app with his sign-in token, which reads the
+question back from Firestore and answers onto it (`apps-script/Ask.js`); his page shows the
+answer when it lands. A lost post is answered by the ten-minute watch after two minutes. The
+model gets the latest filing of every report from four weeks back, three weeks added up, the
+bank and production by day, the CFO's last week and the recent briefs — and is told to name
+the report and day behind every figure, to say "not reported" instead of guessing, and to show
+any sum in one line. 100 questions a day at most. Nobody else can read `/asks`.
+
+**Claude is on hold (3 Oct 2026):** `BRAIN_CLAUDE_ON_HOLD` in `Brain.js` keeps every reading,
+pack and answer on Gemini. The Claude code is kept.
+
 ## The Chairman's instructions
 
 On his page: what, to whom, by when. It appears on that person's home screen above their

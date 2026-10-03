@@ -1519,6 +1519,8 @@ function watch_(waitMs) {
     if (!lock.tryLock(waitMs)) return;
   }
   try {
+    /* a question of his still waiting — the post from his page never came */
+    answerWaiting_();
     var token = fsToken_();
     var res = UrlFetchApp.fetch(fsBase_() + '/documents/control/run', {
       headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true

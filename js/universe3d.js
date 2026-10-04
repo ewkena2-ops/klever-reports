@@ -122,7 +122,8 @@ const WATCH = {
   attendance: 'production', production: 'production', quality: 'production', store: 'finance',
   purchasing: 'finance', finance: 'finance', margin: 'finance', commercial: 'commercial',
   design: 'commercial', customer: 'commercial', site: 'site', compliance: 'chairman',
-  penalties: 'chairman', contradictions: 'chairman', decide: 'chairman', brief: 'chairman'
+  penalties: 'chairman', contradictions: 'chairman', decide: 'chairman', brief: 'chairman',
+  rovestone: 'chairman'
 };
 
 /* The camera looks at Klever from the side away from its galaxy's core, so

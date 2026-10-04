@@ -22,6 +22,12 @@ const PEOPLE = [
      work and needs to be reachable, not because the paperwork caught up. */
   { id:'seble', en:'Seble Mulugeta', am:'ሰብለ ሙሉጌታ', roleEn:'Finance Assistant', roleAm:'የፋይናንስ ረዳት', grp:'finance' },
 
+  /* Rovestone, the sister company under the same Chairman (4 Oct 2026: one
+     person reports for it, for now). Not Klever staff: `company` keeps her
+     out of Klever's own channels, and her reports carry no fines — she has no
+     terms letter (noFine on each report). */
+  { id:'frewoyni', en:'Frewoyni', am:'ፍሬወይኒ', roleEn:'Rovestone Operations Lead', roleAm:'የሮቭስቶን ኦፕሬሽን ኃላፊ', grp:'rovestone', company:'rovestone', from:'2026-10-05' },
+
   /* The 22 production workers, from the September payroll sheet. Ashenafi
      Girma on that sheet is Ashenafi Germa the Site Helper, listed above — he
      is not a production worker and must not appear twice.

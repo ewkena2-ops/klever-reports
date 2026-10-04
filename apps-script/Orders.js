@@ -139,6 +139,14 @@ var ORDER_DUTIES_ = {
     'the 2,000,000 Birr weekly collection target'],
     covers: [] }
 };
+/* Rovestone, the sister company (the Rovestone Internal Order Policy) */
+ORDER_DUTIES_.frewoyni = { reportsTo: null, duties: [
+  'Rovestone’s own operations — she is Rovestone’s Operations Lead, not Klever staff',
+  'sending Klever Rovestone’s order requests: job, material codes, m², completion date, delivery site, drawings',
+  'Rovestone’s side of an order: accepting Klever’s internal price, receiving deliveries, its own installers',
+  'what Rovestone owes Klever, and paying it (50% before production, 50% on delivery)'],
+  covers: ['Rovestone’s staff', 'Kalkidan (Rovestone General Manager, no account)'] };
+
 /* the five designers, one letter (Klever-Designer-Terms) — a task for
    "the designer" of a job goes to the one he names */
 ['yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w'].forEach(function (id) {

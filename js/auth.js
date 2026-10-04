@@ -43,7 +43,7 @@ var AUTH = {
 
      A password changed, or a person added? Re-make this map from the
      private list with who_tags.py (kept outside the repository). */
-  WHO: /* WHO-TAGS */ { '196': ['liu'], '1cf': ['chairman'], '326': ['ashenafi'], '32f': ['teklweld'], '33f': ['tsega'], '3c3': ['amaha'], '43f': ['yohannis'], '4c4': ['wude'], '599': ['yonas'], '821': ['biruktayet'], '825': ['yordanos'], '827': ['ephrata'], '896': ['abrham-g'], '8fb': ['abrham-w'], '963': ['seble'], 'a4f': ['betty'], 'b60': ['elyas'], 'f2a': ['getachew'] },
+  WHO: /* WHO-TAGS */ { '196': ['liu'], '1cf': ['chairman'], '326': ['ashenafi'], '32f': ['teklweld'], '33f': ['tsega'], '3c3': ['amaha'], '43f': ['yohannis'], '4c4': ['wude'], '599': ['yonas'], '821': ['biruktayet'], '825': ['yordanos'], '827': ['ephrata'], '896': ['abrham-g'], '8fb': ['abrham-w'], '963': ['seble'], 'a4f': ['betty'], 'b60': ['elyas'], 'd5e': ['frewoyni'], 'f2a': ['getachew'] },
 
   /* the ids a password could belong to, most likely first */
   whoIs: function (password) {

@@ -668,8 +668,9 @@ function charge_(due, filings, day, before, asOf, names, waivers) {
 
   var ledger = due.map(function (r) {
     var s = settle_(r, day, filings, asOf);
-    var rule = penaltyFor_(r.id);
-    var amount = 0, why = rule ? rule.src : 'No penalty for this report in this person’s letter';
+    var rule = r.noFine ? null : penaltyFor_(r.id);
+    var amount = 0, why = r.noFine ? 'Reporting only — no fines: this person has no terms letter'
+                       : rule ? rule.src : 'No penalty for this report in this person’s letter';
     /* the day it was due — for a weekly report closed with its week, its own
        day in that week, not the Sunday */
     var dueDay = r.cadence === 'weekly' ? dueInWeek_(r, sundayOf_(day)) : day;
@@ -735,10 +736,18 @@ function charge_(due, filings, day, before, asOf, names, waivers) {
 var WEEK_FROM_ = '2026-10-11';             /* the first Sunday that closes a week */
 function owedOn_(schedule, day) {
   var newWay = sundayOf_(day) >= WEEK_FROM_;
+  /* someone who joined later (`from` on their entry in forms.js) owes
+     nothing before that day — a weekly report from the week they start */
+  var from = {};
+  (schedule.people || []).forEach(function (p) { if (p.from) from[p.id] = p.from; });
+  var started = function (r) {
+    var due = r.cadence === 'weekly' && dow_(day) === 0 ? dueInWeek_(r, day) : day;
+    return !from[r.person] || due >= from[r.person];
+  };
   if (dow_(day) === 0) {
-    return newWay ? schedule.reports.filter(function (r) { return r.cadence === 'weekly'; }) : [];
+    return newWay ? schedule.reports.filter(function (r) { return r.cadence === 'weekly' && started(r); }) : [];
   }
-  return dueOn_(schedule, day).filter(function (r) { return !newWay || r.cadence !== 'weekly'; });
+  return dueOn_(schedule, day).filter(function (r) { return (!newWay || r.cadence !== 'weekly') && started(r); });
 }
 
 /* Close one day: who owed what, what arrived, what it costs. With

@@ -30,7 +30,9 @@ const CHAT_ACCOUNTS = [
   'ephrata', 'liu', 'betty', 'seble', 'getachew', 'yordanos',
   'amaha', 'wude', 'elyas', 'ashenafi',
   'tsega', 'biruktayet',
-  'yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w'
+  'yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w',
+  /* Rovestone, the sister company (4 Oct 2026) */
+  'frewoyni'
 ];
 
 function hasChat(id) { return id === CHAIRMAN || CHAT_ACCOUNTS.indexOf(id) !== -1; }
@@ -80,7 +82,8 @@ var CHANNELS = {
     var ids = [CHAIRMAN];
     if (def.ids) ids = ids.concat(def.ids);
     if (def.grp === '*') {
-      ids = ids.concat(PEOPLE.map(function (p) { return p.id; }));
+      /* Klever's whole staff — a sister company's people are not in it */
+      ids = ids.concat(PEOPLE.filter(function (p) { return !p.company; }).map(function (p) { return p.id; }));
     } else if (def.grp) {
       ids = ids.concat(PEOPLE.filter(function (p) { return p.grp === def.grp; })
                              .map(function (p) { return p.id; }));

@@ -114,6 +114,12 @@
       watchAm: 'የተካዮቹ ጥፋት ባልሆነ ነገር የጠፋ የተከላ ጊዜ — ልኬቱ የማን እንደነበረ።',
       reads: [['Elyas’s daily site report', 'የኤልያስ ዕለታዊ የቦታ ሪፖርት'], ['Ashenafi', 'አሸናፊ']]
     },
+    rovestone: {
+      en: 'Rovestone', am: 'ሮቭስቶን',
+      watchEn: 'The sister company’s day: its orders to Klever, what it owes, and what it needs from you.',
+      watchAm: 'የእህት ኩባንያው ቀን፦ ለክሌቨር የሚልካቸው ትዕዛዞች፣ ዕዳው፣ እና ከእርስዎ የሚፈልገው።',
+      reads: [['Frewoyni’s daily Rovestone report', 'የፍሬወይኒ ዕለታዊ የሮቭስቶን ሪፖርት']]
+    },
     attendance: {
       en: 'Attendance', am: 'መገኘት',
       watchEn: 'Who was absent or late, and how much of the day that really explains.',
@@ -129,7 +135,7 @@
     { en: 'The factory', am: 'ፋብሪካው', rel: 0.66, period: 140, start: 1.3,
       rgb: [95, 224, 198], ids: ['production', 'quality', 'store', 'purchasing', 'margin'] },
     { en: 'Money, customers, people', am: 'ገንዘብ፣ ደንበኞችና ሰዎች', rel: 0.96, period: 200, start: 2.2,
-      rgb: [226, 204, 132], ids: ['finance', 'commercial', 'customer', 'design', 'site', 'attendance'] }
+      rgb: [226, 204, 132], ids: ['finance', 'commercial', 'customer', 'design', 'site', 'attendance', 'rovestone'] }
   ];
   var ORDER = ['brief'].concat(RINGS[0].ids, RINGS[1].ids, RINGS[2].ids);
 

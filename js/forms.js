@@ -28,6 +28,12 @@ const PEOPLE = [
      work and needs to be reachable, not because the paperwork caught up. */
   { id:'seble', en:'Seble Mulugeta', am:'ሰብለ ሙሉጌታ', roleEn:'Finance Assistant', roleAm:'የፋይናንስ ረዳት', grp:'finance' },
 
+  /* Rovestone, the sister company under the same Chairman (4 Oct 2026: one
+     person reports for it, for now). Not Klever staff: `company` keeps her
+     out of Klever's own channels, and her reports carry no fines — she has no
+     terms letter (noFine on each report). */
+  { id:'frewoyni', en:'Frewoyni', am:'ፍሬወይኒ', roleEn:'Rovestone Operations Lead', roleAm:'የሮቭስቶን ኦፕሬሽን ኃላፊ', grp:'rovestone', company:'rovestone', from:'2026-10-05' },
+
   /* The 22 production workers, from the September payroll sheet. Ashenafi
      Girma on that sheet is Ashenafi Germa the Site Helper, listed above — he
      is not a production worker and must not appear twice.
@@ -2660,6 +2666,94 @@ const REPORTS = [
     { en:"7 · Tomorrow", am:'7 · ነገ', fields:[
       {id:'n_sites', en:'Which sites are you assigned to tomorrow?', am:'ነገ የተመደቡባቸው ቦታዎች የትኞቹ ናቸው?', t:'text', opt:1},
       {id:'n_support', en:'What do you need for tomorrow, and from whom?', am:'ለነገ ምን ያስፈልግዎታል? ከማን?', t:'text', opt:1}
+    ]}
+  ]
+},
+
+/* ---------------- Rovestone: one person reports, for now ----------------
+   Frewoyni, Rovestone's Operations Lead (4 Oct 2026). Drafted from the
+   Rovestone Internal Order Policy (what Rovestone sends Klever, what it pays)
+   and the questions every lead here answers; no letter sets fines for her,
+   so none are charged (noFine). */
+{
+  id:'frewoyni-daily', person:'frewoyni', cadence:'daily', dueTime:'17:30', noFine:1,
+  en:'Rovestone Daily Report', am:'የሮቭስቶን ዕለታዊ ሪፖርት',
+  toEn:'Chairman', toAm:'ሊቀመንበር',
+  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
+  penEn:'No fines — reporting only', penAm:'ቅጣት የለም — ሪፖርት ብቻ',
+  derived:1,
+  sections:[
+    { en:'1 · Today’s work', am:'1 · የዛሬ ሥራ', fields:[
+      {id:'w_done', en:'What did Rovestone get done today?', am:'ሮቭስቶን ዛሬ ምን ሠራ?', t:'area'},
+      {id:'w_jobs', en:'Which jobs are open, and where does each stand?', am:'ክፍት የሆኑት ሥራዎች የትኞቹ ናቸው? እያንዳንዱ የት ደርሷል?', t:'table',
+        addEn:'Add a job', addAm:'ሥራ ጨምር', opt:1, cols:[
+          {id:'job', en:'Job or site', am:'ሥራ ወይም ቦታ', t:'text'},
+          {id:'stage', en:'Where it stands', am:'ያለበት ደረጃ', t:'text'},
+          {id:'next', en:'Next step', am:'ቀጣይ እርምጃ', t:'text'},
+          {id:'due', en:'Due', am:'የሚያልቅበት', t:'text'}
+        ]},
+      {id:'w_people', en:'How many people worked for Rovestone today?', am:'ዛሬ ለሮቭስቶን ስንት ሰው ሠራ?', t:'num', opt:1}
+    ]},
+    { en:'2 · Orders with Klever', am:'2 · ከክሌቨር ጋር ያሉ ትዕዛዞች', fields:[
+      {id:'k_new', en:'Did Rovestone send Klever a new order request today?', am:'ሮቭስቶን ዛሬ ለክሌቨር አዲስ የትዕዛዝ ጥያቄ ልኳል?', t:'yesno'},
+      {id:'k_new_list', en:'Which orders?', am:'የትኞቹ ትዕዛዞች?', t:'table', addEn:'Add an order', addAm:'ትዕዛዝ ጨምር',
+        show:{f:'k_new', when:'yes'}, cols:[
+          {id:'job', en:'Job', am:'ሥራ', t:'text'},
+          {id:'m2', en:'m²', am:'ሜ²', t:'num'},
+          {id:'need', en:'Needed by', am:'የሚፈለግበት ቀን', t:'text'},
+          {id:'site', en:'Delivery site', am:'የማስረከቢያ ቦታ', t:'text'},
+          {id:'drawings', en:'Drawings ready, or a Klever designer needed?', am:'ንድፍ ዝግጁ ነው ወይስ የክሌቨር ዲዛይነር ያስፈልጋል?', t:'text'}
+        ]},
+      {id:'k_waiting', en:'Is Rovestone waiting on anything from Klever? What, and since when?', am:'ሮቭስቶን ከክሌቨር የሚጠብቀው ነገር አለ? ምን? ከመቼ ጀምሮ?', t:'area', opt:1},
+      {id:'k_quality', en:'Was there any problem with work Klever delivered?', am:'ክሌቨር ባስረከበው ሥራ ላይ ችግር ነበር?', t:'yesno'},
+      {id:'k_quality_what', en:'Which job, what is wrong, and has Klever been told?', am:'የትኛው ሥራ? ምን ችግር አለ? ለክሌቨር ተነግሯል?', t:'area', show:{f:'k_quality', when:'yes'}}
+    ]},
+    { en:'3 · Money', am:'3 · ገንዘብ', fields:[
+      {id:'m_in', en:'How much money came in to Rovestone today?', am:'ዛሬ ወደ ሮቭስቶን ስንት ብር ገባ?', t:'money'},
+      {id:'m_out', en:'How much did Rovestone pay out today?', am:'ሮቭስቶን ዛሬ ስንት ብር ከፈለ?', t:'money'},
+      {id:'m_klever', en:'How much of it was paid to Klever?', am:'ከዚህ ውስጥ ለክሌቨር የተከፈለው ስንት ነው?', t:'money', opt:1}
+    ]},
+    { en:'4 · Problems and decisions', am:'4 · ችግሮችና ውሳኔዎች', fields:[
+      {id:'p_problem', en:'What went wrong today, and what is being done about it?', am:'ዛሬ ምን ችግር ተፈጠረ? ምን እየተደረገ ነው?', t:'area', opt:1},
+      {id:'p_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
+      {id:'p_chair_what', en:'What exactly should he decide, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? እስከ መቼ?', t:'area', show:{f:'p_chair', when:'yes'}}
+    ]},
+    { en:'5 · Tomorrow', am:'5 · ነገ', fields:[
+      {id:'t_plan', en:'What is the plan for tomorrow?', am:'የነገው ዕቅድ ምንድን ነው?', t:'area'}
+    ]}
+  ]
+},
+{
+  id:'frewoyni-weekly', person:'frewoyni', cadence:'weekly', dueTime:'17:00', dueDay:5, noFine:1,
+  en:'Rovestone Weekly Summary', am:'የሮቭስቶን ሳምንታዊ ማጠቃለያ',
+  toEn:'Chairman', toAm:'ሊቀመንበር',
+  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  penEn:'No fines — reporting only', penAm:'ቅጣት የለም — ሪፖርት ብቻ',
+  derived:1,
+  sections:[
+    { en:'1 · The week’s work', am:'1 · የሳምንቱ ሥራ', fields:[
+      {id:'w_summary', en:'What did Rovestone achieve this week?', am:'ሮቭስቶን በዚህ ሳምንት ምን አሳካ?', t:'area'},
+      {id:'w_done', en:'How many jobs were finished this week?', am:'በዚህ ሳምንት ስንት ሥራ ተጠናቀቀ?', t:'num'},
+      {id:'w_open', en:'How many jobs are still open?', am:'ስንት ሥራ አሁንም ክፍት ነው?', t:'num'},
+      {id:'w_behind', en:'How many of them are behind schedule?', am:'ከእነዚህ ስንቱ ከጊዜው ወደኋላ ቀርቷል?', t:'num'},
+      {id:'w_behind_why', en:'Which, by how much, and why?', am:'የትኞቹ? በምን ያህል? ለምን?', t:'area', show:{f:'w_behind', when:'pos'}}
+    ]},
+    { en:'2 · Klever', am:'2 · ክሌቨር', fields:[
+      {id:'o_sent', en:'How many order requests did Rovestone send Klever this week?', am:'ሮቭስቶን በዚህ ሳምንት ለክሌቨር ስንት የትዕዛዝ ጥያቄ ላከ?', t:'num'},
+      {id:'o_got', en:'How many Klever deliveries did Rovestone receive this week?', am:'ሮቭስቶን በዚህ ሳምንት ከክሌቨር ስንት ርክክብ ተቀበለ?', t:'num'},
+      {id:'o_issues', en:'Any delay or quality problem with Klever’s work? Which job, and what?', am:'በክሌቨር ሥራ መዘግየት ወይም የጥራት ችግር ነበር? የትኛው ሥራ? ምን?', t:'area', opt:1},
+      {id:'o_owed', en:'How much does Rovestone owe Klever now?', am:'ሮቭስቶን አሁን ለክሌቨር ስንት ብር ዕዳ አለበት?', t:'money', opt:1}
+    ]},
+    { en:'3 · Money', am:'3 · ገንዘብ', fields:[
+      {id:'f_in', en:'How much came in to Rovestone this week?', am:'በዚህ ሳምንት ወደ ሮቭስቶን ስንት ብር ገባ?', t:'money'},
+      {id:'f_out', en:'How much did Rovestone pay out this week?', am:'ሮቭስቶን በዚህ ሳምንት ስንት ብር ከፈለ?', t:'money'},
+      {id:'f_cash', en:'How much cash and bank does Rovestone hold at the end of the week?', am:'በሳምንቱ መጨረሻ ሮቭስቶን በጥሬ ገንዘብና በባንክ ስንት ብር አለው?', t:'money', opt:1}
+    ]},
+    { en:'4 · Next week', am:'4 · የሚቀጥለው ሳምንት', fields:[
+      {id:'n_plan', en:'What is the plan for next week?', am:'የሚቀጥለው ሳምንት ዕቅድ ምንድን ነው?', t:'area'},
+      {id:'n_need', en:'What do you need from Klever or the Chairman?', am:'ከክሌቨር ወይም ከሊቀመንበሩ ምን ያስፈልግዎታል?', t:'area', opt:1},
+      {id:'n_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
+      {id:'n_chair_what', en:'What exactly should he decide, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? እስከ መቼ?', t:'area', show:{f:'n_chair', when:'yes'}}
     ]}
   ]
 },

@@ -796,6 +796,34 @@ var AGENTS = [
       'that appears in two places is one unhappy customer, not two — say which. Silence from '+
       'a customer mid-job is not good news.' },
 
+{ id:'rovestone', en:'Rovestone', am:'ሮቭስቶን',
+  facts: function (d) {
+    var f = got_(d.filed, 'frewoyni-daily');
+    if (!f) return { filed_today: false, note: 'Frewoyni (Rovestone Operations Lead) did not file her daily report.' };
+    var v = f.fields || {};
+    return {
+      filed_today: true,
+      from: 'Frewoyni, Rovestone Operations Lead — Rovestone is the sister company under the same Chairman',
+      done_today: v.w_done || '',
+      open_jobs: rows_(v.w_jobs),
+      new_orders_to_klever: yes_(v.k_new) ? rows_(v.k_new_list) : [],
+      waiting_on_klever: v.k_waiting || '',
+      problem_with_klever_work: ay_(v, 'k_quality') ? (v.k_quality_what || 'yes') : null,
+      money_in: a_(v, 'm_in'),
+      money_out: a_(v, 'm_out'),
+      paid_to_klever: a_(v, 'm_klever'),
+      money_in_last_7_days: series_(d, 'frewoyni-daily', 'm_in'),
+      problem: v.p_problem || '',
+      decision_needed_from_the_chairman: yes_(v.p_chair) ? (v.p_chair_what || 'yes') : null,
+      plan_for_tomorrow: v.t_plan || '',
+      klever_rules_for_rovestone: 'Rovestone pays Klever 50% before production and 50% on delivery; every ' +
+        'Rovestone order needs the Chairman’s approval; Rovestone work comes after fully paid external jobs.'
+    };
+  },
+  ask:'Read Rovestone’s day. Say what the Chairman must act on: a decision she asked for, an order '+
+      'sent to Klever that needs his approval or Klever’s capacity, money owed to Klever, a problem '+
+      'with Klever’s work. If nothing needs him, say so in one line.' },
+
 { id:'compliance', en:'Who reported and who did not', am:'ማን ሪፖርት አደረገ ማን አላደረገም',
   facts: function (d) {
     var missing = [], late = [], ontime = [];

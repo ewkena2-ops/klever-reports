@@ -1542,6 +1542,22 @@ function publishAnalysis_(results, d) {
    charges for each attempt. */
 function watchForRunRequest() { watch_(1000); }
 
+/* The Chairman restarted reporting on 3 October 2026: the fines of 1–2 October
+   were cancelled and everything counts from Monday 5 October. LEDGER_START is
+   moved there once, if it is still earlier — RESTART_APPLIED then says it
+   was done, so a later choice of his is never overridden. */
+var RESTART_START_ = '2026-10-05';
+function startFromRestart_() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    if (props.getProperty('RESTART_APPLIED')) return;
+    var now = prop_('LEDGER_START', '');
+    if (!now || now < RESTART_START_) props.setProperty('LEDGER_START', RESTART_START_);
+    props.setProperty('RESTART_APPLIED', new Date().toISOString());
+    Logger.log('LEDGER_START %s -> %s (the restart of 3 Oct)', now || 'nothing', prop_('LEDGER_START', ''));
+  } catch (e) { Logger.log('restart start: %s', e.message); }
+}
+
 /* A report has just arrived (Code.js doPost, the moment Send is pressed):
    have the agents read the day about a minute from now, instead of at the
    next ten-minute look. The reading cannot run inside doPost — the phone is
@@ -1587,6 +1603,8 @@ function watch_(waitMs) {
     if (!lock.tryLock(waitMs)) return;
   }
   try {
+    /* the restart of 3 Oct 2026: reporting counts from Monday 5 October */
+    startFromRestart_();
     /* a question of his still waiting — the post from his page never came */
     answerWaiting_();
     /* and an order of his, for the AI to find who does it (Orders.js) */

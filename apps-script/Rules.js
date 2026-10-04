@@ -983,6 +983,8 @@ function val_(J, ref) {
     var status = ref.status || ['LATE', 'MISSING'];
     var cnt = J.ctx.lines(who).filter(function (l) {
       if (J.ctx.cancelled && J.ctx.cancelled[(l.closed || l.day) + '|' + l.report]) return false;
+      /* a day before LEDGER_START counts for nothing — not against a bonus either */
+      if (beforeStart_(l)) return false;
       if (ref.reportLines) return !l.rule && (want[0] === '*' || want.indexOf(l.report) !== -1) && status.indexOf(l.status) !== -1;
       return l.rule && want.indexOf(l.rule) !== -1;
     }).length;
@@ -1191,7 +1193,17 @@ function filedEveryDue_(ctx, schedule, reportId) {
 
 /* A penalty line that counted: it cost money, or would have under paper not
    yet signed, and the Chairman did not cancel it. */
+/* A line from a day before LEDGER_START: nothing then counts, for pay,
+   bonuses or warnings. The days of 1–3 October 2026, before the restart,
+   are full of "missing" lines — some charged at 0 — that would otherwise
+   have cost everyone October's "no report late or missing" bonuses. */
+function beforeStart_(l) {
+  var start = prop_('LEDGER_START', '');
+  return !!start && String(l.dueDay || l.day || '') < start;
+}
+
 function countedPenalty_(ctx, l, alsoPending) {
+  if (beforeStart_(l)) return false;
   if (l.kind !== 'penalty' && l.rule) return false;
   if (!l.rule && !(l.amount > 0)) return false;           /* a report on time, or free */
   if (ctx.cancelled && ctx.cancelled[(l.closed || l.day) + '|' + l.report]) return false;

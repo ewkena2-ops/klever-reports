@@ -535,12 +535,38 @@ const REPORTS = [
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'item', en:'Material', am:'ዕቃ', t:'text'},
+          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
+          {id:'paid', en:'Cheque given, or on credit?', am:'ቼክ ተሰጥቷል ወይስ በዱቤ?', t:'choice', opts:[
+            {v:'cheque', en:'Cheque given', am:'ቼክ ተሰጥቷል'},
+            {v:'credit', en:'On credit — no cheque yet', am:'በዱቤ — ቼክ ገና አልተሰጠም'}]},
+          {id:'chq', en:'Cheque no., if given', am:'የቼክ ቁጥር (ከተሰጠ)', t:'text'},
+          {id:'due', en:'If on credit: pay by', am:'በዱቤ ከሆነ፦ የሚከፈልበት ቀን', t:'text'},
           {id:'date', en:'Promised delivery', am:'ቃል የተገባው ርክክብ', t:'text'}
         ]},
       {id:'ord_suppliers', en:'With which suppliers?', am:'ከየትኞቹ አቅራቢዎች?', t:'text', opt:1},
       {id:'ord_dates', en:'For how many of today\'s orders is the delivery date confirmed?', am:'ከዛሬዎቹ ትዕዛዞች ስንቱ የርክክብ ቀን ተረጋግጧል?', t:'num'}
     ]},
-    { en:'4 · Deliveries', am:'4 · ርክክብ', fields:[
+    { en:'4 · Supplier credit', am:'4 · የአቅራቢ ዱቤ', fields:[
+      {id:'cr_owed', en:'How much does Klever owe suppliers on credit right now, in total?', am:'ክሌቨር አሁን ለአቅራቢዎች በዱቤ በጠቅላላ ስንት ብር አለበት?', t:'money', parts:{of:['cr_overdue']}},
+      {id:'cr_paid', en:'How much earlier credit did you pay back today, by cheque?', am:'ዛሬ ቀድሞ የተወሰደ ዱቤ ስንት ብር በቼክ ተከፈለ?', t:'money', opt:1},
+      {id:'cr_paid_list', en:'Which suppliers were paid, and with which cheque?', am:'የትኞቹ አቅራቢዎች ተከፈላቸው? በየትኛው ቼክ?', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
+        show:{f:'cr_paid', when:'pos'}, cols:[
+          {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
+          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
+          {id:'chq', en:'Cheque no.', am:'የቼክ ቁጥር', t:'text'}
+        ]},
+      {id:'cr_overdue', en:'How much of what we owe is past the date we promised to pay?', am:'ካለብን ዕዳ ውስጥ ለመክፈል ቃል የገባንበት ቀን ያለፈው ስንት ነው?', t:'money',
+        tgt:{op:'lte', v:0, en:'Should be 0 — a supplier owed past the date can stop delivering',
+             am:'ዜሮ መሆን አለበት — ቀኑ ያለፈበት አቅራቢ ዕቃ ማቅረብ ሊያቆም ይችላል'}},
+      {id:'cr_overdue_list', en:'Which suppliers are owed past the date, how much, and why not paid?', am:'ቀኑ ያለፈባቸው አቅራቢዎች እነማን ናቸው? ስንት ብር? ለምን አልተከፈለም?', t:'table', addEn:'Add a supplier', addAm:'አቅራቢ ጨምር',
+        show:{f:'cr_overdue', when:'miss'}, cols:[
+          {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
+          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
+          {id:'due', en:'Was due', am:'የሚከፈልበት ቀን', t:'text'},
+          {id:'why', en:'Why not paid', am:'ለምን አልተከፈለም', t:'text'}
+        ]}
+    ]},
+    { en:'5 · Deliveries', am:'5 · ርክክብ', fields:[
       {id:'del_recv', en:'How many deliveries reached the store today?', am:'ዛሬ ስንት ርክክብ መጋዘን ደረሰ?', t:'num'},
       {id:'del_rej', en:'How many materials did the store reject?', am:'መጋዘኑ ስንት ዕቃ አልተቀበለም?', t:'num'},
       {id:'del_rej_list', en:'What was rejected, and what happens next?', am:'ምን ውድቅ ተደረገ? ቀጥሎ ምን ይሆናል?', t:'table', addEn:'Add a rejected item', addAm:'ዕቃ ጨምር',
@@ -554,7 +580,7 @@ const REPORTS = [
         ]},
       {id:'del_repl', en:'Has the supplier been asked for a replacement or refund?', am:'አቅራቢው ምትክ ወይም ተመላሽ እንዲሰጥ ተጠይቋል?', t:'yesno', opt:1}
     ]},
-    { en:'5 · Documents to Selam', am:'5 · ለሰላም የተላኩ ሰነዶች', fields:[
+    { en:'6 · Documents to Selam', am:'6 · ለሰላም የተላኩ ሰነዶች', fields:[
       {id:'doc_24', en:'How many purchase documents reached Selam within 24 hours? (on time / all due)', am:'ስንት የግዥ ሰነዶች በ24 ሰዓት ውስጥ ለሰላም ደረሱ? (በሰዓቱ / መድረስ የነበረባቸው)', t:'ratio'},
       {id:'doc_missing', en:'How many documents are still outstanding?', am:'እስካሁን ያልቀረቡ ሰነዶች ስንት ናቸው?', t:'num',
         tgt:{op:'lte', v:0, en:'–200 Birr per document', am:'በሰነድ –200 ብር'}},
@@ -572,7 +598,7 @@ const REPORTS = [
           {id:'when', en:'Expected by', am:'የሚደርስበት ቀን', t:'text'}
         ]}
     ]},
-    { en:'6 · Supplier issues', am:'6 · የአቅራቢ ችግሮች', fields:[
+    { en:'7 · Supplier issues', am:'7 · የአቅራቢ ችግሮች', fields:[
       {id:'sup_delay', en:'How many supplier delays were there today?', am:'ዛሬ ስንት የአቅራቢ መዘግየት ነበር?', t:'num'},
       {id:'sup_delay_list', en:'Which deliveries are late?', am:'የዘገዩት የትኞቹ ርክክቦች ናቸው?', t:'table', addEn:'Add a delay', addAm:'መዘግየት ጨምር',
         show:{f:'sup_delay', when:'pos'},
@@ -591,7 +617,7 @@ const REPORTS = [
       {id:'sup_reported', en:'Were Mahelet and Selam told of every issue the same day?', am:'እያንዳንዱ ችግር ለማህሌትና ለሰላም በዚያው ቀን ተነግሯል?', t:'yesno'},
       {id:'sup_reported_why', en:'Which issue was not reported, and why?', am:'ያልተነገረው የትኛው ችግር ነው? ለምን?', t:'area', show:{f:'sup_reported', when:'no'}}
     ]},
-    { en:'7 · What we paid, against last time', am:'7 · ካለፈው ጋር ሲነጻጸር የከፈልነው', fields:[
+    { en:'8 · What we paid, against last time', am:'8 · ካለፈው ጋር ሲነጻጸር የከፈልነው', fields:[
       {id:'p_rows', en:'List each material bought today, with its price against last time', am:'ዛሬ የተገዛውን እያንዳንዱን ዕቃ ከቀድሞው ዋጋው ጋር ይዘርዝሩ',
        t:'table', addEn:'Add material', addAm:'ዕቃ ጨምር', cols:[
         {id:'pitem', en:'Material', am:'ዕቃ', t:'text'},
@@ -611,14 +637,14 @@ const REPORTS = [
       {id:'p_sub_what', en:'What was swapped for what, on which job, and why?', am:'ምን በምን ተተካ? በየትኛው ሥራ? ለምን?', t:'area', show:{f:'p_sub', when:'yes'}},
       {id:'p_subok', en:'If yes, did Wude approve it before it was bought?', am:'አዎ ከሆነ ውዱ ከመገዛቱ በፊት አጽድቃለች?', t:'yesno', opt:1, i:1}
     ]},
-    { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
+    { en:'9 · Problems and solutions', am:'9 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'What was the biggest problem today, and what caused it?', am:'የዛሬው ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
       {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
       {id:'need_help', en:'What do you need from Mahelet, Selam or the store, and by when?', am:'ከማህሌት፣ ከሰላም ወይም ከመጋዘን ምን ያስፈልግዎታል? እስከ መቼ?', t:'area', opt:1},
       {id:'need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_chair_what', en:'What exactly should he decide, what are the options, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_chair', when:'yes'}}
     ]},
-    { en:'9 · Tomorrow', am:'9 · ነገ', fields:[
+    { en:'10 · Tomorrow', am:'10 · ነገ', fields:[
       {id:'tomorrow', en:'What must be bought or chased tomorrow, and for which jobs?', am:'ነገ ምን መገዛት ወይም መከታተል አለበት? ለየትኞቹ ሥራዎች?', t:'area'}
     ]}
   ]
@@ -1234,7 +1260,23 @@ const REPORTS = [
       {id:'g_saving_how', en:'On which purchases, and how was the saving made?', am:'በየትኞቹ ግዥዎች? ቁጠባው እንዴት ተገኘ?', t:'area', show:{f:'g_saving', when:'pos'}},
       {id:'g_best', en:'Which supplier served us best this week, and why?', am:'በዚህ ሳምንት በጣም ጥሩ ያገለገለን የትኛው አቅራቢ ነው? ለምን?', t:'area', opt:1}
     ]},
-    { en:'4 · Documents to Selam', am:'4 · ለሰላም የተላኩ ሰነዶች', fields:[
+    { en:'4 · Supplier credit', am:'4 · የአቅራቢ ዱቤ', fields:[
+      {id:'g_cr_new', en:'How much did you buy on credit this week — no cheque given yet?', am:'በዚህ ሳምንት በዱቤ — ቼክ ሳይሰጥ — ስንት ብር ገዙ?', t:'money'},
+      {id:'g_cr_paid', en:'How much earlier credit did you pay this week, by cheque?', am:'በዚህ ሳምንት ቀድሞ የተወሰደ ዱቤ ስንት ብር በቼክ ተከፈለ?', t:'money'},
+      {id:'g_cr_owed', en:'How much does Klever owe suppliers in total now?', am:'ክሌቨር አሁን ለአቅራቢዎች በጠቅላላ ስንት ብር አለበት?', t:'money', parts:{of:['g_cr_overdue', 'g_cr_next']}},
+      {id:'g_cr_list', en:'Who is owed, how much, and by when?', am:'ለማን ዕዳ አለ? ስንት? እስከ መቼ?', t:'table', addEn:'Add a supplier', addAm:'አቅራቢ ጨምር', opt:1, cols:[
+          {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
+          {id:'amount', en:'Owed', am:'ዕዳ', t:'money'},
+          {id:'due', en:'Pay by', am:'የሚከፈልበት ቀን', t:'text'}
+        ]},
+      {id:'g_cr_next', en:'How much of it falls due next week?', am:'ከዚህ ውስጥ በሚቀጥለው ሳምንት የሚደርሰው ስንት ነው?', t:'money', opt:1},
+      {id:'g_cr_overdue', en:'How much is already past the date we promised?', am:'ቃል የገባንበት ቀን ያለፈው ስንት ነው?', t:'money',
+        tgt:{op:'lte', v:0, en:'Should be 0 — a supplier owed past the date can stop delivering',
+             am:'ዜሮ መሆን አለበት — ቀኑ ያለፈበት አቅራቢ ዕቃ ማቅረብ ሊያቆም ይችላል'}},
+      {id:'g_cr_overdue_why', en:'Which suppliers, and why are they not paid?', am:'የትኞቹ አቅራቢዎች? ለምን አልተከፈላቸውም?', t:'area', show:{f:'g_cr_overdue', when:'miss'}},
+      {id:'g_cr_risk', en:'Is any supplier refusing to deliver until paid, or stopping our credit?', am:'እስኪከፈለው ዕቃ ላለማቅረብ የሚል ወይም ዱቤ ያቆመ አቅራቢ አለ?', t:'area', opt:1}
+    ]},
+    { en:'5 · Documents to Selam', am:'5 · ለሰላም የተላኩ ሰነዶች', fields:[
       {id:'g_doc24', en:'How many documents reached Selam within 24 hours? (on time / all due)', am:'ስንት ሰነዶች በ24 ሰዓት ውስጥ ለሰላም ደረሱ? (በሰዓቱ / መድረስ የነበረባቸው)', t:'ratio'},
       {id:'g_doc_missing', en:'How many documents are still outstanding?', am:'እስካሁን ያልቀረቡ ሰነዶች ስንት ናቸው?', t:'num',
         tgt:{op:'lte', v:0, en:'–200 Birr per document', am:'በሰነድ –200 ብር'}},
@@ -1252,7 +1294,7 @@ const REPORTS = [
           {id:'when', en:'Expected by', am:'የሚደርስበት ቀን', t:'text'}
         ]}
     ]},
-    { en:'5 · Problems and solutions', am:'5 · ችግሮችና መፍትሔዎች', fields:[
+    { en:'6 · Problems and solutions', am:'6 · ችግሮችና መፍትሔዎች', fields:[
       {id:'w_problem', en:'What was the biggest problem this week, and what caused it?', am:'የዚህ ሳምንት ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
       {id:'w_action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
       {id:'w_need', en:'What do you need from Mahelet, Selam or the store next week?', am:'በሚቀጥለው ሳምንት ከማህሌት፣ ከሰላም ወይም ከመጋዘን ምን ያስፈልግዎታል?', t:'area', opt:1},

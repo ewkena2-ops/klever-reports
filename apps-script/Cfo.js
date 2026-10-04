@@ -169,7 +169,29 @@ function cfoFacts_(P, ops) {
       }
     },
     plan_vs_actual: plan,
-    plan_note: plan ? null : 'Selam did not file a 4-week cash projection the week before'
+    plan_note: plan ? null : 'Selam did not file a 4-week cash projection the week before',
+    /* what Klever owes suppliers, from Getachew's weekly report — money the
+       bank will have to find */
+    supplier_credit: supplierCredit_(P)
+  };
+}
+
+/* Getachew's weekly report of the same week: bought on credit, paid back,
+   owed now, due next week, past its date. Nulls when not reported. */
+function supplierCredit_(P) {
+  var f = filingOfWeek_(P.filings, 'getachew-weekly', weekOfP_(P));
+  if (!f) return { reported: false, note: 'Getachew did not file his weekly report' };
+  var v = f.fields || {};
+  return {
+    reported: true,
+    bought_on_credit_this_week: a_(v, 'g_cr_new'),
+    paid_back_this_week: a_(v, 'g_cr_paid'),
+    owed_to_suppliers_now: a_(v, 'g_cr_owed'),
+    due_next_week: a_(v, 'g_cr_next'),
+    past_its_date: a_(v, 'g_cr_overdue'),
+    who_is_owed: rows_(v.g_cr_list).map(function (r) {
+      return { supplier: r.sup || '', owed: n_(r.amount) || null, pay_by: r.due || '' };
+    })
   };
 }
 
@@ -180,7 +202,8 @@ var CFO_ASK_ =
   'per meal, whether more meals were paid for than people came, and what paying '+
   'cash_instead would cost and save a month (say it is before tax and pension). Then money '+
   'in against money out, and how many weeks the bank stays above the 6,000,000 floor at this '+
-  'rate. Then whether Selam’s own plan held. Quote the figures as given.';
+  'rate. Then whether Selam’s own plan held. Then supplier credit: what Klever owes suppliers, '+
+  'what falls due next week and anything past its date, against the bank. Quote the figures as given.';
 
 function cfoRead_(facts, P) {
   if (!facts.spending_reported) {

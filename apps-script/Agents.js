@@ -649,6 +649,18 @@ var AGENTS = [
       supplier_delays: a_(purch, 'sup_delay'),
       supplier_quality_issues: a_(purch, 'sup_quality'),
       cheque_value: a_(purch, 'chq_value'),
+      /* each order today: did the supplier get a cheque, or is it on credit */
+      orders_today_and_how_paid: rows_(purch.ord_list).map(function (r) {
+        return { supplier: r.sup || '', job: r.code || '', material: r.item || '', amount: n_(r.amount) || null,
+                 how_paid: r.paid === 'cheque' ? 'cheque given' + (r.chq ? ' (no. ' + r.chq + ')' : '')
+                         : r.paid === 'credit' ? 'on credit, no cheque yet' + (r.due ? ' — to pay by ' + r.due : '')
+                         : 'not said' };
+      }),
+      credit_owed_to_suppliers_now: a_(purch, 'cr_owed'),
+      credit_paid_back_today: a_(purch, 'cr_paid'),
+      credit_past_its_date: a_(purch, 'cr_overdue'),
+      credit_past_its_date_list: rows_(purch.cr_overdue_list),
+      credit_owed_last_7_days: series_(d, 'getachew-daily', 'cr_owed'),
       margin_floor_birr_per_m2: 6000,
       materials_up_10pct_last_7_days: series_(d, 'getachew-daily', 'p_up'),
       supplier_delays_last_7_days: series_(d, 'getachew-daily', 'sup_delay')
@@ -657,7 +669,9 @@ var AGENTS = [
   ask:'Is anything we buy getting more expensive in a way that will eat the 6,000 Birr/m² '+
       'floor. A rise has to reach Ephrata before the next quote goes out, not after. '+
       'If a cheaper material was substituted without Wude approving it first, say so — '+
-      'that is how a saving becomes a warranty claim.' },
+      'that is how a saving becomes a warranty claim. Say which suppliers were given a cheque '+
+      'today and which are on credit with no cheque yet, how much Klever owes suppliers, and '+
+      'anything past the date promised — a supplier owed too long stops delivering.' },
 
 { id:'finance', en:'Finance', am:'ፋይናንስ',
   facts: function (d) {

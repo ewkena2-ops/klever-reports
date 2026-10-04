@@ -1547,6 +1547,8 @@ function watch_(waitMs) {
   try {
     /* a question of his still waiting — the post from his page never came */
     answerWaiting_();
+    /* and an order of his, for the AI to find who does it (Orders.js) */
+    planWaiting_();
     /* Sunday after 9 PM: the week is over — settle it, send its summary */
     weekEndFromWatch_();
     var token = fsToken_();

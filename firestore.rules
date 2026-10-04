@@ -221,6 +221,36 @@ service cloud.firestore {
       allow update: if isLedger();
       allow delete: if false;
     }
+    /* His orders, for the AI to find who does each part (apps-script/
+       Orders.js). He writes one as "asked"; the script writes the plan onto
+       it; he sends it — the instructions themselves are written in the same
+       batch, under the rule for /instructions — or drops it. He can only
+       move a planned order to sent or dropped: the plan the script wrote
+       stays as it was, beside what he actually sent. */
+    match /orders/{id} {
+      allow get, list: if isChairman() || isLedger();
+      allow create: if isChairman()
+                    && request.resource.data.keys().hasOnly(['q', 'at', 'by', 'status'])
+                    && request.resource.data.q is string
+                    && request.resource.data.q.size() > 0
+                    && request.resource.data.q.size() <= 1000
+                    && request.resource.data.at == request.time
+                    && request.resource.data.by == 'chairman'
+                    && request.resource.data.status == 'asked';
+      allow update: if isLedger()
+                    || (isChairman()
+                        && resource.data.status == 'planned'
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['status', 'sentAt', 'sent'])
+                        && ((request.resource.data.status == 'sent'
+                             && request.resource.data.sentAt == request.time
+                             && request.resource.data.sent is list
+                             && request.resource.data.sent.size() > 0
+                             && request.resource.data.sent.size() <= 6)
+                            || (request.resource.data.status == 'dropped'
+                                && request.resource.data.sentAt == request.time)));
+      allow delete: if false;
+    }
     /* The month, closed: the bonuses and penalties that can only be
        judged on a whole month (waste for the month, a month with no
        complaint, the third penalty that brings a suspension). Written by

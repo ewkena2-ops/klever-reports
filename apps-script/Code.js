@@ -114,6 +114,10 @@ function doPost(e) {
   if (row.kind === 'ask') {
     return ContentService.createTextOutput(poster === 'chairman' ? askPost_(row.k) : 'refused');
   }
+  /* an order from his page, for the AI to find who does it (Orders.js) */
+  if (row.kind === 'order') {
+    return ContentService.createTextOutput(poster === 'chairman' ? orderPost_(row.k) : 'refused');
+  }
   var sched;
   try { sched = loadSchedule_(); } catch (err) { return ContentService.createTextOutput('no schedule'); }
   var rep = sched.reports.filter(function (r) { return r.id === row.report; })[0];

@@ -23,7 +23,7 @@ import { getAuth, onAuthStateChanged }
 import {
   initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, orderBy, limit,
-  onSnapshot, serverTimestamp
+  onSnapshot, serverTimestamp, writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 (function () {
@@ -375,6 +375,11 @@ import {
     wayIn('agents.html', 'M12 9.6a2.4 2.4 0 1 1 0 4.8a2.4 2.4 0 0 1 0-4.8zM2.8 12c0-2.3 4.1-4.2 9.2-4.2s9.2 1.9 9.2 4.2-4.1 4.2-9.2 4.2-9.2-1.9-9.2-4.2z', t('obOpen'));
     wayIn('universe.html', 'M12 10.4a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 0 1 0-3.2zM12 4.5c4.4 0 7.5 3.2 7.5 7 0 3-2.4 5-5.2 5M12 19.5c-4.4 0-7.5-3.2-7.5-7 0-3 2.4-5 5.2-5', t('unOpen'));
 
+    /* --- an order in a sentence; the AI finds who does it (apps-script/Orders.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('ordTitle')));
+    var orders = el('div', 'chask chorders');
+    root.appendChild(orders);
+
     /* --- what he asked for, and whether it happened --- */
     root.appendChild(el('p', 'eyebrow', t('chIns')));
     var ins = el('div', 'chins');
@@ -423,6 +428,7 @@ import {
     root.appendChild(sys);
 
     watchAnalysis(analysis);
+    watchOrders(orders);
     watchInstructions(ins);
     watchCharges({ fines: charges, bonus: bonusBox, pay: payBox }, tOwed, tBonus);
     watchStanding(standing);
@@ -2215,6 +2221,244 @@ import {
     onSnapshot(query(collection(db, 'asks'), orderBy('at', 'desc'), limit(10)), function (qs) {
       list.innerHTML = '';
       qs.forEach(function (d) { list.appendChild(askCard(d.data({ serverTimestamps: 'estimate' }))); });
+    }, failInto(list));
+  }
+
+  /* ---------------- his orders, routed by the AI ---------------- */
+
+  /* He writes an order in a sentence; the script (apps-script/Orders.js)
+     reads each person's duties and plans who does what, by when. Nothing is
+     sent until he presses Send: he can change the person, the words or the
+     date, or take a task out, first. Send writes the instructions — the same
+     ones he can give by hand below — and marks the order sent, in one batch,
+     so either all of them are given or none is. Then a line goes into each
+     person's private chat with him, and a WhatsApp button is there for each. */
+  function orderAI(q) {
+    var id = 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    return setDoc(doc(db, 'orders', id), { q: q, at: serverTimestamp(), by: me, status: 'asked' })
+      .then(function () {
+        var u = auth.currentUser;
+        return u ? u.getIdToken() : null;
+      })
+      .then(function (tok) {
+        if (tok && window.ARCHIVE && window.ARCHIVE.on()) {
+          window.ARCHIVE.post({ kind: 'order', k: id, idToken: tok })['catch'](function () {});
+        }
+      });
+  }
+
+  /* the words that go to the person, in both languages, with where to close it */
+  function orderMessageFor(task) {
+    return 'Instruction from the Chairman · ከሊቀመንበሩ የተሰጠ መመሪያ — ' +
+           (lang === 'am' ? 'እስከ ' : 'by ') + dayShort(task.due) + '\n\n' + task.what + '\n\n' +
+           t('ordMsgClose') + '\n' + location.origin + location.pathname.replace(/chairman\.html.*$/, '');
+  }
+
+  function sendOrder(o, tasks) {
+    var b = writeBatch(db), sent = [];
+    tasks.forEach(function (task) {
+      var ref = doc(collection(db, 'instructions'));
+      b.set(ref, { to: task.to, text: task.what, due: task.due, by: 'chairman', status: 'open', at: serverTimestamp() });
+      sent.push({ to: task.to, what: task.what, due: task.due, ins: ref.id });
+    });
+    b.update(doc(db, 'orders', o.id), { status: 'sent', sentAt: serverTimestamp(), sent: sent });
+    return b.commit().then(function () {
+      /* a line in each person's private chat with him — the instruction
+         stands without it, so a failure here is not his to deal with */
+      tasks.forEach(function (task) {
+        try {
+          addDoc(collection(db, 'channels', 'direct-' + task.to, 'messages'),
+                 { who: me, text: orderMessageFor(task), lang: lang, at: serverTimestamp() })['catch'](function () {});
+        } catch (e) {}
+      });
+    });
+  }
+
+  function orderTaskRow(task, rows, redraw) {
+    var row = el('div', 'chord-row');
+    var who = el('select');
+    who.setAttribute('aria-label', t('chInsTo'));
+    (typeof CHAT_ACCOUNTS !== 'undefined' ? CHAT_ACCOUNTS : []).forEach(function (id) {
+      var op = el('option', null, nameOf(id));
+      op.value = id;
+      if (id === task.to) op.selected = true;
+      who.appendChild(op);
+    });
+    who.onchange = function () { task.to = who.value; };
+    var what = el('textarea');
+    what.rows = 3;
+    what.maxLength = 1000;
+    what.value = task.what;
+    what.setAttribute('aria-label', t('chInsWhat'));
+    what.oninput = function () { task.what = what.value; };
+    var due = el('input');
+    due.type = 'date';
+    due.value = task.due;
+    due.min = DAY;
+    due.setAttribute('aria-label', t('chInsDue'));
+    due.onchange = function () { task.due = due.value; };
+
+    var top = el('div', 'chord-top');
+    top.appendChild(who);
+    var x = el('button', 'chmini', '×');
+    x.type = 'button';
+    x.title = t('ordRemove');
+    x.setAttribute('aria-label', t('ordRemove'));
+    x.onclick = function () { rows.splice(rows.indexOf(task), 1); redraw(); };
+    top.appendChild(x);
+    row.appendChild(top);
+    row.appendChild(what);
+    var r2 = el('label', 'chinsf');
+    r2.appendChild(el('span', null, t('chInsDue')));
+    r2.appendChild(window.KLEVER && window.KLEVER.dressDate ? window.KLEVER.dressDate(due) : due);
+    row.appendChild(r2);
+    if (task.why) row.appendChild(el('div', 'chord-why', t('ordWhy') + ': ' + task.why));
+    return row;
+  }
+
+  function orderCard(o) {
+    var box = el('div', 'chask-item chord');
+    box.appendChild(el('div', 'chask-q', o.q || ''));
+    var when = o.at && o.at.toDate ? o.at.toDate() : null;
+
+    if (o.status === 'planned') {
+      var rows = (o.tasks || []).map(function (x) { return { to: x.to, what: x.what, due: x.due, why: x.why }; });
+      var list = el('div', 'chord-list');
+      box.appendChild(list);
+      if (o.why) box.appendChild(el('div', 'chask-meta', o.why));
+      var bar = el('div', 'chord-bar');
+      var send = el('button', 'seed', '');
+      send.type = 'button';
+      var drop = el('button', 'chask-again', t('ordDrop'));
+      drop.type = 'button';
+      bar.appendChild(send);
+      bar.appendChild(drop);
+      box.appendChild(bar);
+      box.appendChild(el('div', 'chask-meta', (when ? hhmm(when) + ' · ' : '') +
+                         (o.model ? t('chReadBy') + ' ' + o.model : '')));
+      var redraw = function () {
+        list.innerHTML = '';
+        rows.forEach(function (task) { list.appendChild(orderTaskRow(task, rows, redraw)); });
+        send.textContent = tfill('ordSend', { n: rows.length });
+        send.disabled = !rows.length;
+      };
+      redraw();
+      send.onclick = function () {
+        var bad = rows.filter(function (task) {
+          return !task.to || !String(task.what || '').trim() || !/^\d{4}-\d{2}-\d{2}$/.test(task.due || '');
+        });
+        if (bad.length || !rows.length) { toast(t('ordIncomplete')); return; }
+        rows.forEach(function (task) { task.what = String(task.what).trim().slice(0, 1000); });
+        send.disabled = drop.disabled = true;
+        sendOrder(o, rows)['catch'](function () {
+          send.disabled = drop.disabled = false;
+          toast(t('ordFailed'));
+        });
+      };
+      drop.onclick = function () {
+        send.disabled = drop.disabled = true;
+        updateDoc(doc(db, 'orders', o.id), { status: 'dropped', sentAt: serverTimestamp() })['catch'](function () {
+          send.disabled = drop.disabled = false;
+          toast(t('ordFailed'));
+        });
+      };
+    } else if (o.status === 'sent') {
+      var sentAt = o.sentAt && o.sentAt.toDate ? o.sentAt.toDate() : null;
+      box.appendChild(el('div', 'chord-sent', t('ordSent') + (sentAt ? ' · ' + hhmm(sentAt) : '')));
+      (o.sent || []).forEach(function (task) {
+        var r = el('div', 'chord-done');
+        r.appendChild(el('div', 'chord-to', nameOf(task.to) + ' · ' + t('chInsDue') + ' ' + dayShort(task.due)));
+        r.appendChild(el('div', 'chord-what', task.what));
+        var wa = el('a', 'chask-again chord-wa', t('ordWhatsApp'));
+        wa.href = 'https://wa.me/?text=' + encodeURIComponent(orderMessageFor(task));
+        wa.target = '_blank';
+        wa.rel = 'noopener';
+        r.appendChild(wa);
+        box.appendChild(r);
+      });
+      box.appendChild(el('div', 'chask-meta', t('ordSentNote')));
+    } else if (o.status === 'dropped') {
+      box.appendChild(el('div', 'chask-a chask-wait', t('ordDropped')));
+    } else if (o.status === 'unclear') {
+      box.appendChild(el('div', 'chord-ask', t('ordAsks') + ' ' + (o.question || '')));
+      var more = el('textarea');
+      more.rows = 2;
+      more.maxLength = 500;
+      more.setAttribute('aria-label', t('ordAnswer'));
+      box.appendChild(more);
+      var ans = el('button', 'chask-again', t('ordAnswer'));
+      ans.type = 'button';
+      ans.onclick = function () {
+        var a = more.value.trim();
+        if (!a) { more.focus(); return; }
+        ans.disabled = true;
+        orderAI(String(o.q || '').slice(0, 480) + ' — ' + a.slice(0, 500))['catch'](function () {
+          ans.disabled = false;
+          toast(t('ordFailed'));
+        });
+      };
+      box.appendChild(ans);
+    } else if (o.status === 'failed') {
+      box.appendChild(el('div', 'chask-a chask-fail', t('ordCouldNot') + ' ' + (o.error || '')));
+      var again = el('button', 'chask-again', t('ordAgain'));
+      again.type = 'button';
+      again.onclick = function () {
+        again.disabled = true;
+        orderAI(o.q)['catch'](function () { again.disabled = false; toast(t('ordFailed')); });
+      };
+      box.appendChild(again);
+    } else {
+      box.appendChild(el('div', 'chask-a chask-wait', t('ordThinking')));
+    }
+    return box;
+  }
+
+  function watchOrders(into) {
+    var form = el('form', 'chask-form');
+    var q = el('textarea');
+    q.rows = 2;
+    q.maxLength = 1000;
+    q.placeholder = t('ordHint');
+    q.setAttribute('aria-label', t('ordTitle'));
+    var go = el('button', 'seed', t('ordBtn'));
+    go.type = 'submit';
+    form.appendChild(q);
+    form.appendChild(go);
+    into.appendChild(form);
+    into.appendChild(el('p', 'chask-note', t('ordNote')));
+    var list = el('div', 'chask-list');
+    into.appendChild(list);
+
+    form.onsubmit = function (e) {
+      e.preventDefault();
+      var text = q.value.trim();
+      if (!text) { q.focus(); return; }
+      go.disabled = true;
+      orderAI(text).then(function () {
+        q.value = '';
+        go.disabled = false;
+      }, function () {
+        go.disabled = false;
+        toast(t('ordFailed'));
+      });
+    };
+
+    /* A card he is working on — a plan he is changing, an answer he is
+       typing — is kept as it is while other orders come and go; a card is
+       drawn again only when its own order moves on. */
+    var cards = {};
+    onSnapshot(query(collection(db, 'orders'), orderBy('at', 'desc'), limit(8)), function (qs) {
+      var seen = {};
+      list.innerHTML = '';
+      qs.forEach(function (d) {
+        var o = d.data({ serverTimestamps: 'estimate' });
+        o.id = d.id;
+        seen[d.id] = true;
+        var c = cards[d.id];
+        if (!c || c.status !== o.status) c = cards[d.id] = { status: o.status, el: orderCard(o) };
+        list.appendChild(c.el);
+      });
+      Object.keys(cards).forEach(function (k) { if (!seen[k]) delete cards[k]; });
     }, failInto(list));
   }
 

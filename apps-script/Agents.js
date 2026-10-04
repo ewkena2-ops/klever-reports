@@ -372,29 +372,6 @@ var DECISIONS = [
                                     '. From then everyone else in the same position pays and he still would not.');
   } },
 
-{ id:'weekly-missing', what:'What a weekly report costs when it never arrives',
-  yours:true,
-  detail:'Every letter sets 500 Birr for a weekly report filed late. Most set nothing for one '+
-         'that never arrives. The exceptions are Ephrata’s weekly report (–500) and projection '+
-         '(–500, –1,000 the second time running) and Selam’s 4-week projection (–1,000) and '+
-         'job list (–500). Mahelet’s 15-day plan costs 5,000 late and nothing missing, unless it '+
-         'is missed two weeks running. So for most weekly reports filing an hour late costs 500 '+
-         'and not filing costs nothing, which is the wrong way round and is what the ledger '+
-         'charges, because it charges what the paper says. A weekly report still missing at '+
-         'midnight on its due day counts as missing.',
-  blocks:'Every letter with a weekly report in it — Ephrata, Mahelet, Selam, Amaha, Wude, '+
-         'Elyas, Getachew, Yordanos, both salespeople, all five designers',
-  bites: function (d) {
-    var n = 0;
-    d.ledger.forEach(function (l) {
-      if (l.status === 'MISSING' && /Weekly|Summary|Projection|Plan/i.test(l.report) &&
-          l.amount === 0) n++;
-    });
-    return n ? n + ' weekly report' + (n > 1 ? 's' : '') + ' never arrived today and cost '+
-               'nobody anything, while filing one an hour late would have cost 500 Birr each.'
-             : null;
-  } },
-
 { id:'rework-band', what:'The 2–5% rework dead band',
   detail:'Wude earns a bonus below 2% and is fined above 5%. Between the two, nothing in her '+
          'letter reacts at all.',
@@ -822,14 +799,22 @@ var AGENTS = [
 { id:'compliance', en:'Who reported and who did not', am:'ማን ሪፖርት አደረገ ማን አላደረገም',
   facts: function (d) {
     var missing = [], late = [], ontime = [];
+    var waiting = [];
     d.ledger.forEach(function (l) {
       var row = { person:l.person, report:l.report, due:l.due };
       if (l.status === 'MISSING') missing.push(row);
       else if (l.status === 'LATE') late.push(row);
+      else if (l.status === 'NOT IN YET') waiting.push(row);
       else ontime.push(row);
     });
     return { due_today: d.ledger.length, on_time: ontime.length,
              late: late, missing: missing,
+             weekly_reports_not_in_yet: waiting.concat(d.weekWaiting || []),
+             weekly_rule: 'A weekly report counts for the week it is sent in. The week closes on Sunday at ' +
+                          '9 PM: sent after its deadline but before then, it is late; not in by then, it is ' +
+                          'missing. (Selam’s Monday customer summary is about the week before; its week turns ' +
+                          'at the start of Sunday.) So a weekly report not in yet is not missing yet — say it ' +
+                          'is still to come.',
              more_than_once_this_week: repeats_(d) };
   },
   ask:'Who did not report. This is the list nobody was keeping before, so be exact and '+
@@ -971,8 +956,8 @@ var AGENTS = [
  * ------------------------------------------------------------------ */
 
 /* The morning trigger: close yesterday, have the agents read it, send one
-   email. On a Monday that is Sunday, when nobody owes anything, and it does
-   nothing at all. */
+   email. On a Monday that is Sunday — the close of the week, done at 9 PM
+   by the watch; this only finishes what the watch did not. */
 function dailyRun() { return ran_('daily', dailyRun_); }
 function dailyRun_() {
   var day = addDays_(todayAddis_(), -1);
@@ -1004,6 +989,24 @@ function dailyRun_() {
       catch (e) { Logger.log('pay refresh: %s', e.message); warn.push('Pay tab: ' + e.message); }
     }
   }
+  /* Yesterday was Sunday: the week. The watch closed it at 9 PM and sent
+     its summary if all went well; whatever it did not do is done now. The
+     week's summary is its reading — the agents read working days. */
+  if (dow_(day) === 0 && day >= WEEK_FROM_) {
+    var wk = weekEnd_(day);
+    try { bonusStanding_(day); }
+    catch (e) { Logger.log('bonus standing: %s', e.message); warn.push('Bonuses so far: ' + e.message); }
+    return { period: day, warn: warn.concat(wk.warn),
+             note: (wk.closed ? 'closed the week' : 'the week was already closed') +
+                   (wk.pack ? '; weekly summary sent' : '') +
+                   (caught.length ? '; also closed ' + caught.join(', ') + ', which had been missed' : '') };
+  }
+  /* a week whose close or summary failed is mended on the mornings after */
+  var lastSun = addDays_(day, -dow_(day));
+  if (lastSun >= WEEK_FROM_) {
+    try { warn = warn.concat(weekEnd_(lastSun).warn); }
+    catch (e) { warn.push('Closing the week to ' + lastSun + ': ' + e.message); }
+  }
   var c = closeDay_(day);
   /* the month's bonuses so far, for the Bonuses section of his page */
   try { bonusStanding_(day); }
@@ -1027,11 +1030,13 @@ function catchUp_(day) {
   if (start && from < start) from = start;
   if (from >= day) return [];
   var have = {};
-  ledgersBetween_(from, day).forEach(function (d) { have[d.day] = true; });
+  ledgersBetween_(from, day).forEach(function (d) { have[d.day] = d; });
   var schedule = loadSchedule_();
   var done = [];
   for (var d = from; d < day; d = addDays_(d, 1)) {
-    if (have[d] || !dueOn_(schedule, d).length) continue;
+    /* a Sunday whose week was closed at 9 PM and whose day was never finished */
+    if (have[d] && have[d].dayOpen) { closeDay_(d, { part: 'day', doc: have[d] }); done.push(d); continue; }
+    if (have[d] || !owedOn_(schedule, d).length) continue;
     closeDay_(d);
     done.push(d);
   }
@@ -1095,6 +1100,7 @@ function gather_(c, provisional) {
     ledger: ledger,
     ruleLines: c.ruleLines || [],
     ruleErrors: c.ruleErrors || [],
+    weekWaiting: c.weekWaiting || [],
     instructions: instructionsOn_(c.day, c.names)
   };
 }
@@ -1338,6 +1344,26 @@ function mailAnalysis_(results, d) {
             fmt_(owed) + '</td></tr></table>';
   }
 
+  /* weekly reports past their deadline and not in: not charged yet — they
+     count, as late, until the week closes on Sunday at 9 PM */
+  var waiting = d.ledger.filter(function (l) { return l.status === 'NOT IN YET'; })
+    .map(function (l) { return { person: l.person, report: l.report, due: l.due }; })
+    .concat(d.weekWaiting || []);
+  if (waiting.length) {
+    html += '<h3 style="font-size:13.5px;margin:22px 0 6px;color:#8a6d1f">Weekly reports not in yet</h3>' +
+            '<p style="font-size:12px;color:#66716d;margin:0 0 6px">Not charged yet. Each still counts for ' +
+            'this week, as late, until its week closes — Sunday 9 PM (Selam’s Monday summary: the end of ' +
+            'Saturday); after that it is missing.</p>' +
+            '<table width="100%" cellpadding="0" cellspacing="0" style="font-size:12.5px">';
+    waiting.forEach(function (l) {
+      html += '<tr><td style="padding:5px 8px;border-bottom:1px solid #e4e7e3">' + esc_(l.person) +
+              '</td><td style="padding:5px 8px;border-bottom:1px solid #e4e7e3;color:#66716d">' +
+              esc_(l.report) + '</td><td style="padding:5px 8px;border-bottom:1px solid #e4e7e3;' +
+              'color:#66716d;white-space:nowrap">due ' + esc_(l.due) + '</td></tr>';
+    });
+    html += '</table>';
+  }
+
   /* the rest of the rulebook, in two places: fines (with the warnings and
      suspensions that go with them), then bonuses */
   var shown = (d.ruleLines || []).filter(function (l) {
@@ -1521,6 +1547,8 @@ function watch_(waitMs) {
   try {
     /* a question of his still waiting — the post from his page never came */
     answerWaiting_();
+    /* Sunday after 9 PM: the week is over — settle it, send its summary */
+    weekEndFromWatch_();
     var token = fsToken_();
     var res = UrlFetchApp.fetch(fsBase_() + '/documents/control/run', {
       headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true

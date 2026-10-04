@@ -51,12 +51,20 @@ import {
 
   /* Late the way the ledger judges it (apps-script/Agent.js, settle_): the
      server's time against the letter's deadline on the due day the report
-     answers to — for a weekly one the next due day within six days, for a
-     monthly one the 1st (the 2nd when the 1st is a Sunday) within seven,
-     or the one just gone. The phone's own "late" flag is not read. */
+     answers to — for a weekly one its own day in the week it was sent in
+     (the week closes on Sunday at 9 PM, so on Saturday a Friday report is
+     late, for that Friday), for a monthly one the 1st (the 2nd when the 1st
+     is a Sunday) within seven, or the one just gone. The phone's own "late"
+     flag is not read. */
   function monthlyDueOn(day) {
     var dd = day.slice(8);
     return (dd === '01' && dow(day) !== 0) || (dd === '02' && dow(day) === 1);
+  }
+  /* Selam's Monday summary (about the week just ended) turns at the start of Sunday */
+  function weekClose(at, id) {
+    var day = addisYmd(at), sun = addDays(day, (7 - dow(day)) % 7);
+    var cut = id === 'betty-weekly-cx' ? 'T00:00:00' : 'T21:00:00';
+    return at.getTime() >= new Date(sun + cut + ADDIS).getTime() ? addDays(sun, 7) : sun;
   }
   function dueDayFor(r, day) {
     var i, d;
@@ -72,7 +80,10 @@ import {
     var r = null;
     for (var i = 0; i < REPORTS.length; i++) if (REPORTS[i].id === reportId) { r = REPORTS[i]; break; }
     if (!r) return false;
-    return at.getTime() > deadline(r, dueDayFor(r, addisYmd(at))).getTime();
+    /* from the week to Sunday 11 October 2026 (the ledger's WEEK_FROM_) */
+    var due = r.cadence === 'weekly' && weekClose(at, r.id) >= '2026-10-11' ? addDays(weekClose(at, r.id), r.dueDay - 7)
+            : dueDayFor(r, addisYmd(at));
+    return at.getTime() > deadline(r, due).getTime();
   }
 
   var app, auth, db;

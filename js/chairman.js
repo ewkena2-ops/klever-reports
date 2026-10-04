@@ -125,6 +125,21 @@ import {
   /* 0 Sunday .. 6 Saturday, of the date itself */
   function dow(day) { return new Date(day + 'T12:00:00Z').getUTCDay(); }
   function deadline(r, day) { return new Date(day + 'T' + (r.dueTime || '17:30') + ':00' + ADDIS); }
+  /* THE WEEK (apps-script/Agent.js): a weekly report belongs to the week it
+     is sent in, which closes on Sunday at 9 PM. weekClose is the Sunday whose
+     9 PM closes the week a moment falls in. */
+  /* Selam's Monday summary is about the week just ended: its week turns at
+     the start of Sunday, not at 9 PM */
+  var WEEK_BEFORE = { 'betty-weekly-cx': true };
+  function weekCut(sun, id) { return new Date(sun + 'T' + (WEEK_BEFORE[id] ? '00:00' : '21:00') + ':00' + ADDIS); }
+  /* the first week under this rule (the ledger's WEEK_FROM_); a week before
+     it was settled the old way — six days early to the end of its day */
+  var WEEK_FROM = '2026-10-11';
+  function sundayOf(day) { return addDays(day, (7 - dow(day)) % 7); }
+  function weekClose(when, id) {
+    var sun = sundayOf(addisYmd(when));
+    return when.getTime() >= weekCut(sun, id).getTime() ? addDays(sun, 7) : sun;
+  }
   /* a time on the Addis clock */
   function hhmm(d) {
     var a = new Date(d.getTime() + 3 * 3600e3);
@@ -167,9 +182,25 @@ import {
     });
   }
   /* How many days before its due day a report may be handed in and still
-     count: a daily one only on the day, a weekly one from six days before
-     (Thursday for Friday is early, not missing), a monthly one from seven. */
-  function reach(r) { return r.cadence === 'weekly' ? 6 : (r.cadence === 'monthly' ? 7 : 0); }
+     count: a daily one only on the day, a monthly one from seven. */
+  function reach(r) { return r.cadence === 'monthly' ? 7 : 0; }
+  /* The time in which a filing counts for a report owed on `day`: a daily
+     one that day, a monthly one from a week before; a weekly one its whole
+     week, Sunday 9 PM to Sunday 9 PM — on Saturday a Friday report is still
+     that Friday's, late. `day` may be its due day or the week's Sunday. */
+  function windowOf(r, day) {
+    if (r && r.cadence === 'weekly' && sundayOf(day) >= WEEK_FROM) {
+      var sun = sundayOf(day), from = weekCut(addDays(sun, -7), r.id).getTime();
+      /* the first week also keeps what the old rule counted early for it */
+      if (sun === WEEK_FROM) from = Math.min(from, dayStart(addDays(addDays(sun, r.dueDay - 7), -6)).getTime());
+      return { from: from, to: weekCut(sun, r.id).getTime() };
+    }
+    if (r && r.cadence === 'weekly') {
+      return { from: dayStart(addDays(day, -6)).getTime(), to: dayStart(addDays(day, 1)).getTime() };
+    }
+    return { from: dayStart(addDays(day, -reach(r || { cadence: 'daily' }))).getTime(),
+             to: dayStart(addDays(day, 1)).getTime() };
+  }
   /* The due day a report filed on `day` answers to — the first one within
      its reach. A monthly one filed after its day answers to the day just
      gone, and is late for it. */
@@ -186,10 +217,16 @@ import {
   /* Late by the server's time against the letter's deadline. The flag the
      phone sent is not read: a phone's clock is whatever its owner set it
      to, and the ledger does not trust it either. */
+  /* the due day a filing answers to — a weekly one, its own day in the week
+     it was sent in */
+  function dueFor(r, when) {
+    if (r.cadence === 'weekly' && weekClose(when, r.id) >= WEEK_FROM) return addDays(weekClose(when, r.id), r.dueDay - 7);
+    return dueDayFor(r, addisYmd(when));
+  }
   function isLate(f) {
     var r = reportById(f.report);
     if (!r || !f.when) return false;
-    return f.when.getTime() > deadline(r, dueDayFor(r, addisYmd(f.when))).getTime();
+    return f.when.getTime() > deadline(r, dueFor(r, f.when)).getTime();
   }
   function byDueTime(list) {
     return list.sort(function (a, b) { return (a.dueTime || '').localeCompare(b.dueTime || ''); });
@@ -682,19 +719,37 @@ import {
        apart, and not counted. Drawn again every minute, because a deadline
        passing changes the answer without any new report arriving. */
     function drawOwed() {
-      var now = Date.now(), missing = [], later = [];
+      var now = Date.now(), missing = [], later = [], open = [];
       dueOn(DAY).forEach(function (r) {
-        var from = dayStart(addDays(DAY, -reach(r))).getTime();
+        var w = windowOf(r, DAY);
         var hit = all.some(function (f) {
           var tm = f.when.getTime();
-          return f.report === r.id && f.person === r.person && tm >= from && tm < end;
+          return f.report === r.id && f.person === r.person && tm >= w.from && tm < w.to;
         });
         if (hit) return;
-        (now < deadline(r, DAY).getTime() ? later : missing).push(r);
+        if (now < deadline(r, DAY).getTime()) later.push(r);
+        /* a weekly report can still come, late, until its week closes */
+        else if (r.cadence === 'weekly' && sundayOf(DAY) >= WEEK_FROM) open.push(r);
+        else missing.push(r);
+      });
+      /* and on the days after, this week's weekly reports still not in —
+         Friday's on Saturday and Sunday — until the week closes */
+      if (sundayOf(DAY) >= WEEK_FROM) REPORTS.forEach(function (r) {
+        if (r.cadence !== 'weekly') return;
+        var dd = addDays(sundayOf(DAY), r.dueDay - 7);
+        if (dd >= DAY) return;
+        var w = windowOf(r, dd);
+        if (now >= w.to) return;
+        var hit = all.some(function (f) {
+          var tm = f.when.getTime();
+          return f.report === r.id && f.person === r.person && tm >= w.from && tm < w.to;
+        });
+        if (!hit) open.push(r);
       });
       tMissing.set(String(missing.length));
       owedBox.innerHTML = '';
       if (missing.length) owedBox.appendChild(owedList('chmissing', t('chMissingList'), byDueTime(missing)));
+      if (open.length) owedBox.appendChild(owedList('chmissing', t('chWeekOpenList'), byDueTime(open)));
       if (later.length) owedBox.appendChild(owedList('chlater', t('chNotDueYet'), byDueTime(later)));
     }
 
@@ -719,12 +774,12 @@ import {
          and on time or late stays the first one's, as in the ledger */
       filed.forEach(function (f) {
         var r = reportById(f.report);
-        var from = dayStart(addDays(DAY, -reach(r || { cadence: 'daily' }))).getTime();
-        var first = null, due = r ? dueDayFor(r, addisYmd(f.when)) : null;
+        var from = windowOf(r, r && r.cadence === 'weekly' ? dueFor(r, f.when) : DAY).from;
+        var first = null, due = r ? dueFor(r, f.when) : null;
         all.forEach(function (g) {
           var tm = g.when.getTime();
           if (!first && g.report === f.report && g.person === f.person && tm >= from &&
-              (!r || dueDayFor(r, addisYmd(g.when)) === due)) first = g;
+              (!r || dueFor(r, g.when) === due)) first = g;
         });
         into.appendChild(rawCard(f, first));
       });
@@ -856,7 +911,7 @@ import {
 
     /* the week before as well: a weekly report may come in days early */
     getDocs(query(collection(db, 'reports'), where('person', '==', personId),
-                  where('at', '>=', dayStart(addDays(day, -7))), where('at', '<', dayStart(addDays(day, 1)))))
+                  where('at', '>=', dayStart(addDays(day, -8))), where('at', '<', dayStart(addDays(day, 1)))))
       .then(function (qs) {
         if (!SHEET || SHEET.sheet !== sheet) return;
         var filed = [];
@@ -872,8 +927,7 @@ import {
           if (seen[l.rid]) return;
           seen[l.rid] = true;
           var r = reportById(l.rid);
-          var from = dayStart(addDays(day, -reach(r || { cadence: 'daily' }))).getTime();
-          var to = dayStart(addDays(day, 1)).getTime(), hit = null, first = null;
+          var w = windowOf(r, day), from = w.from, to = w.to, hit = null, first = null;
           /* the answers are the last filing's — a correction is filed again —
              and on time or late is the first one's, as the ledger has it */
           filed.forEach(function (f) {
@@ -934,14 +988,17 @@ import {
         /* on time or late is the FIRST filing, as the ledger judges it
            (settle_ in Agent.js): a correction sent after the deadline does
            not turn a report that came in on time into a late one */
-        var from = dayStart(addDays(DAY, -reach(r))).getTime(), hit = null;
+        var from = windowOf(r, DAY).from, hit = null;
         all.forEach(function (f) {
           var tm = f.when.getTime();
           if (f.report === r.id && f.person === r.person && tm >= from && tm < end &&
               (!hit || tm < hit.when.getTime())) hit = f;
         });
-        var s = hit ? (isLate(hit) ? 'late' : 'ok') : (now < deadline(r, DAY).getTime() ? 'wait' : 'miss');
-        return { person: r.person, rid: r.id, report: L(r), s: s, at: hit ? hit.when : null };
+        /* a weekly report past its deadline is not in yet — it counts, late,
+           until Sunday 9 PM — not missing */
+        var open = !hit && r.cadence === 'weekly' && sundayOf(DAY) >= WEEK_FROM && now >= deadline(r, DAY).getTime();
+        var s = hit ? (isLate(hit) ? 'late' : 'ok') : (now < deadline(r, DAY).getTime() || open ? 'wait' : 'miss');
+        return { person: r.person, rid: r.id, report: L(r), s: s, w: open ? t('chNotInYet') : null, at: hit ? hit.when : null };
       });
     }
 
@@ -967,7 +1024,10 @@ import {
     function whoChart() {
       var WORD = { ok: t('chgOn'), late: t('chgLate'), miss: t('chgMiss'), wait: t('chgWait') };
       var RANK = { miss: 4, late: 3, ok: 2, wait: 1 };
-      function sOf(status) { return status === 'MISSING' ? 'miss' : status === 'LATE' ? 'late' : status === 'On time' ? 'ok' : null; }
+      function sOf(status) {
+        return status === 'MISSING' ? 'miss' : status === 'LATE' ? 'late' : status === 'On time' ? 'ok'
+             : status === 'NOT IN YET' ? 'wait' : null;
+      }
       var days = ledgers.filter(function (d) { return d.day < DAY && (d.lines || []).length; }).slice(-10);
       var cols = days.map(function (d) {
         return { day: d.day, lines: (d.lines || []).map(function (l) {
@@ -988,7 +1048,7 @@ import {
           if (!mine.length) return null;
           var worst = mine.reduce(function (a, l) { return RANK[l.s] > RANK[a] ? l.s : a; }, 'wait');
           return { s: worst, tip: [L(p) + ' · ' + (c.today ? t('chgToday') : dayShort(c.day))].concat(mine.map(function (l) {
-            return l.report + ' — ' + WORD[l.s] + (l.at ? ', ' + hhmm(l.at) : '');
+            return l.report + ' — ' + (l.w || WORD[l.s]) + (l.at ? ', ' + hhmm(l.at) : '');
           })),
             /* a tap opens what they filed that day, in their own words */
             open: function (from) { openDay(p.id, c.day, mine, from); } };
@@ -1446,7 +1506,8 @@ import {
      out by the ledger from each person's letter; the only arithmetic here is
      taking away what he cancelled, the same subtraction the monthly pack
      does. */
-  var STATUS = { 'On time': 'onTime', 'LATE': 'late', 'MISSING': 'chNotFiled', 'NOT DUE YET': 'chNotDueYet' };
+  var STATUS = { 'On time': 'onTime', 'LATE': 'late', 'MISSING': 'chNotFiled', 'NOT DUE YET': 'chNotDueYet',
+                 'NOT IN YET': 'chNotInYet' };
   function statusText(s) { return STATUS[s] ? t(STATUS[s]) : s; }
   function lineWho(l) { var p = personById(l.person); return p ? L(p) : (l.name || l.person); }
   function lineReport(l) { var r = reportById(l.report); return r ? L(r) : (l.reportName || l.report); }
@@ -1798,8 +1859,12 @@ import {
     var row = el('div', 'chchg ' + k + (waiver ? ' off' : '') + (pending ? ' pending' : ''));
     var head = el('div', 'chinsh');
     head.appendChild(el('span', 'chrw', lineWho(l)));
+    /* a line of another day — a weekly report closed with its week on the
+       Sunday, or something recorded later — says its own day */
+    var own = l.dueDay || (l.day && l.day !== day ? l.day : null);
     head.appendChild(el('span', 'chrr', lineWhat(l) + ' · ' +
-      (l.rule ? t(KIND_WORD[k]) : statusText(l.status)) + (l.count > 1 ? ' ×' + l.count : '')));
+      (l.rule ? t(KIND_WORD[k]) : statusText(l.status)) + (l.count > 1 ? ' ×' + l.count : '') +
+      (own ? ' · ' + dayShort(own) : '')));
     head.appendChild(el('span', 'chrt', pending ? '(' + signed(l.wouldBe, k) + ')' : signed(l.amount, k)));
     row.appendChild(head);
     if (l.rule && l.why) row.appendChild(el('div', 'chinsn', l.why));
@@ -2164,14 +2229,15 @@ import {
   var JOBS = [['daily', 'chSysDaily'], ['week', 'chSysWeek'], ['month', 'chSysMonth'],
               ['reading', 'chSysReading']];
   /* the Addis day each job should have run on by now: the morning close by
-     8:00 every day, the week by 10:00 on Sunday, the month by 10:00 on the 2nd */
+     8:00 every day, the week (it closes Sunday 9 PM) by 8:00 on Monday — the
+     job's day is the Sunday — the month by 10:00 on the 2nd */
   function slotOf(job) {
     var now = new Date(Date.now() + 3 * 3600e3), h = now.getUTCHours();
     var d = utcYmd(now), s = null;
     if (job === 'daily') s = h >= 8 ? d : addDays(d, -1);
     if (job === 'week') {
       s = addDays(d, -dow(d));
-      if (s === d && h < 10) s = addDays(s, -7);
+      if (s === d || (dow(d) === 1 && h < 8)) s = addDays(s, -7);
     }
     if (job === 'month') {
       s = d.slice(0, 8) + '02';

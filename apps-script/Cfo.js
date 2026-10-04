@@ -43,27 +43,28 @@ function sumOrNull_(xs) {
 }
 
 /* Selam's weekly reports of the weeks before this one, one per week (the
-   last filed in a week counts — a second one is a correction). Read by
-   person, which the person+at index serves, rather than every report filed
-   in a month. */
+   last filed in a week counts — a second one is a correction), by the week
+   each counted for: sent late on Saturday, a report is still its own week's
+   (THE WEEK, Agent.js). Read by person, which the person+at index serves,
+   rather than every report filed in a month. */
 function cfoHistory_(P) {
-  var from = addDays_(P.start, -7 * CFO_HISTORY_WEEKS_);
+  var week = weekOfP_(P);
   var rows = tryQuery_('reports', [['person', 'EQUAL', 'betty'],
-                                   ['at', 'GREATER_THAN_OR_EQUAL', dayStart_(from)],
-                                   ['at', 'LESS_THAN', dayStart_(P.start)]], 'at');
+                                   ['at', 'GREATER_THAN_OR_EQUAL', weekCut_(addDays_(week, -7 * (CFO_HISTORY_WEEKS_ + 1)))],
+                                   ['at', 'LESS_THAN', weekCut_(addDays_(week, -7))]], 'at');
   var byWeek = {};
   rows.forEach(function (f) {
     if (f.report !== 'betty-weekly' || !f.at) return;
-    var day = dayOf_(f.at);
-    byWeek[addDays_(day, -dow_(day))] = { day: day, v: f.values || {} };
+    byWeek[weekOf_(f.at)] = { day: dayOf_(f.at), v: f.values || {} };
   });
   return Object.keys(byWeek).sort().map(function (k) { return byWeek[k]; });
 }
 
 function cfoFacts_(P, ops) {
   ops = ops || operations_(P);
-  var wk = daysOf_(P, 'betty-weekly');
-  var now = wk.length ? wk[wk.length - 1] : null;
+  /* her report of this week — the one that counted for it, the last if sent twice */
+  var mine = filingOfWeek_(P.filings, 'betty-weekly', weekOfP_(P));
+  var now = mine ? { day: mine.day, v: mine.fields || {} } : null;
   var v = now ? now.v : {};
   var hist = cfoHistory_(P);
 
@@ -112,12 +113,10 @@ function cfoFacts_(P, ops) {
   var people = mealsPerDay !== null ? Math.round(mealsPerDay) : null;
   var cashMonth = people !== null ? people * cash : null;
 
-  /* Selam's own plan: the "Week 1" of the 4-week projection she filed the
-     week before is this week (the same reading forecasts_ in Packs.js uses) */
-  var cf = null;
-  P.filings.forEach(function (f) {
-    if (f.report === 'betty-cashflow' && f.day < P.start && f.day >= addDays_(P.start, -7)) cf = f;
-  });
+  /* Selam's own plan: the "Week 1" of the 4-week projection that counted
+     for the week before is this week (the same reading forecasts_ in
+     Packs.js uses) */
+  var cf = filingOfWeek_(P.filings, 'betty-cashflow', addDays_(weekOfP_(P), -7));
   var planRow = cf ? (rows_((cf.fields || {}).cf_out)[0] || null) : null;
   var plan = null;
   if (planRow) {

@@ -288,10 +288,19 @@ function posterOf_(token) {
 
 /* How a report sent now stands — the same rule the ledger closes the day
    with, and the phone shows: late only on its due day after its deadline;
-   a weekly or monthly one sent ahead counts for its coming due day. */
+   a monthly one sent ahead counts for its coming due day. A weekly one
+   counts for the week it is sent in, which closes on Sunday at 9 PM (THE
+   WEEK, Agent.js): after its deadline and before then it is late, for its
+   own day; after 9 PM on Sunday it is next week's, early. */
 function standingNow_(sched, rep) {
   var today = todayAddis_(), now = new Date().getTime();
-  var back = rep.cadence === 'daily' ? 0 : (rep.cadence === 'weekly' ? 6 : 7);
+  if (rep.cadence === 'weekly' && weekOf_(new Date(), rep.id) >= WEEK_FROM_) {
+    var d = dueInWeek_(rep, weekOf_(new Date(), rep.id));
+    var label = Utilities.formatDate(new Date(d + 'T12:00:00' + ADDIS_), tz_(), 'EEE d MMM');
+    if (now > deadline_(rep, d).getTime()) return { late: true, text: d === today ? 'LATE' : 'LATE, for ' + label };
+    return { late: false, text: d === today ? 'On time' : 'Early, for ' + label };
+  }
+  var back = rep.cadence === 'daily' ? 0 : 7;
   for (var k = 0; k <= back; k++) {
     var d = addDays_(today, k);
     if (dueOn_(sched, d).indexOf(rep) === -1) continue;

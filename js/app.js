@@ -86,19 +86,44 @@
     return !(r.skipDays && r.skipDays.indexOf(dow) >= 0);
   }
   /* how many days ahead of its due day a filing still counts (the ledger's
-     window): a daily report only on the day, a weekly one up to six days
-     early, a monthly one up to seven */
-  function windowDays(r) { return r.cadence === 'daily' ? 0 : (r.cadence === 'weekly' ? 6 : 7); }
+     window): a daily report only on the day, a monthly one up to seven */
+  function windowDays(r) { return r.cadence === 'daily' ? 0 : 7; }
+
+  /* THE WEEK (apps-script/Agent.js): a weekly report belongs to the week it
+     is sent in, and the week closes on Sunday at 9 PM. Sent after its own
+     deadline but before then, it is late, for its own day in that week; after
+     9 PM on Sunday it is the next week's. weekClose() is the Sunday whose
+     9 PM closes the week a moment falls in. */
+  var WEEK_CUT = '21:00';
+  /* the first week under this rule closes on Sunday 11 October 2026 (the
+     ledger's WEEK_FROM_); a week before it was settled the old way */
+  var WEEK_FROM = '2026-10-11';
+  /* Selam's Monday customer summary is about the week just ended: sent on
+     Sunday it is for the coming Monday, so its week turns at the start of
+     Sunday, not at 9 PM */
+  var WEEK_BEFORE = { 'betty-weekly-cx': true };
+  function cutOf(id) { return WEEK_BEFORE[id] ? '00:00' : WEEK_CUT; }
+  function weekClose(ms, id) {
+    var day = ymdOf(addis(ms)), sun = addDays(day, (7 - dowOf(day)) % 7);
+    return ms >= deadlineOf(sun, cutOf(id)) ? addDays(sun, 7) : sun;
+  }
 
   /* The due day a filing sent now would count toward, and how it stands:
        due   — it is that day and the deadline has not passed
        late  — it is that day and the deadline has passed
        early — a later day within reach (a weekly or monthly report sent ahead)
        none  — nothing: not a due day, and no due day within reach
+     A weekly report is late from its deadline until its week closes, Sunday
+     9 PM: on Saturday a Friday report is late, for that Friday.
      This is the same answer the ledger will give when it closes the day, so
      the phone, the email, the Sheet and the fines all say the same thing. */
   function periodNow(r) {
     var d0 = stamp(), now = Date.now();
+    var wsun = r.cadence === 'weekly' ? weekClose(now, r.id) : null;
+    if (wsun && wsun >= WEEK_FROM) {
+      var wd = addDays(wsun, r.dueDay - 7), wdl = deadlineOf(wd, r.dueTime);
+      return { day: wd, deadline: wdl, state: now > wdl ? 'late' : (wd === d0 ? 'due' : 'early') };
+    }
     for (var k = 0; k <= windowDays(r); k++) {
       var d = addDays(d0, k);
       if (!dueOn(r, d)) continue;
@@ -119,6 +144,10 @@
     if (pd.state === 'none') {
       var nx = nextDueDay(r);
       return nx ? t('nextDue') + ' ' + dayLabel(nx) : '';
+    }
+    /* a weekly report past its deadline still counts, as late, until Sunday 9 PM */
+    if (r.cadence === 'weekly' && pd.state === 'late') {
+      return t('countsFor') + ' ' + dayLabel(pd.day) + ' · ' + t(WEEK_BEFORE[r.id] ? 'weekOpenTillSat' : 'weekOpenTill');
     }
     return t('countsFor') + ' ' + dayLabel(pd.day);
   }
@@ -166,6 +195,16 @@
   function filingFor(r, day) {
     if (!day) return null;
     var from = dayStartMs(addDays(day, -windowDays(r))), to = dayStartMs(addDays(day, 1));
+    /* a weekly report: anything sent in its week, Sunday 9 PM to Sunday 9 PM
+       (a week before the rule: six days early to the end of its day) */
+    if (r.cadence === 'weekly' && addDays(day, 7 - r.dueDay) < WEEK_FROM) from = dayStartMs(addDays(day, -6));
+    else if (r.cadence === 'weekly') {
+      var sun = addDays(day, 7 - r.dueDay);
+      from = deadlineOf(addDays(sun, -7), cutOf(r.id));
+      to = deadlineOf(sun, cutOf(r.id));
+      /* the first week also keeps what the old rule counted early for it */
+      if (sun === WEEK_FROM) from = Math.min(from, dayStartMs(addDays(day, -6)));
+    }
     var best = null;
     FILINGS.forEach(function (f) {
       if (f.report !== r.id || f.person !== r.person) return;
@@ -460,6 +499,13 @@
       if (m < 0) late.push(r);
       else if (m < soonMins) { soonMins = m; soon = r; }
     });
+    /* a weekly report from an earlier day of this week, not sent: it still
+       counts, as late, until the week closes on Sunday at 9 PM */
+    REPORTS.forEach(function (r) {
+      if (r.cadence !== 'weekly' || (pid && r.person !== pid) || list.indexOf(r) !== -1) return;
+      var pd = periodNow(r);
+      if (pd.state === 'late' && pd.day !== d && !filingFor(r, pd.day)) late.push(r);
+    });
     return { all: list, late: late, next: soon, mins: soon ? soonMins : null, sent: sent };
   }
 
@@ -634,8 +680,12 @@
     wrap.appendChild(dial);
 
     wrap.appendChild(el('p', 'deck-w', L(r)));
+    /* a weekly report from an earlier day: its day, and until when it counts */
+    var pdr = r.cadence === 'weekly' ? periodNow(r) : null;
+    var earlier = late && pdr && pdr.day !== stamp();
     wrap.appendChild(el('p', 'deck-t',
-      hhmm(r.dueTime) + '  ·  ' + (lang === 'am' ? r.toAm : r.toEn)));
+      (earlier ? dayLabel(pdr.day) + ' ' : '') + hhmm(r.dueTime) + '  ·  ' +
+      (earlier ? t(WEEK_BEFORE[r.id] ? 'weekOpenTillSat' : 'weekOpenTill') : (lang === 'am' ? r.toAm : r.toEn))));
 
     var go = el('a', 'deck-go' + (late ? ' late' : ''), t('fillItIn'));
     go.href = 'form.html?r=' + encodeURIComponent(r.id);

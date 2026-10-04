@@ -740,7 +740,7 @@ const REPORTS = [
   en:'Weekly Commercial Report', am:'ሳምንታዊ የንግድ ሪፖርት',
   toEn:'Chairman', toAm:'ሊቀመንበር',
   dueEn:'Friday 4:00 PM', dueAm:'ዓርብ ከቀኑ 10፡00 (4:00 PM)',
-  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Sales performance', am:'1 · የሽያጭ አፈጻጸም', fields:[
       {id:'w_contracts', en:'How many contracts were signed this week?', am:'በዚህ ሳምንት ስንት ውል ተፈረመ?', t:'num'},
@@ -869,7 +869,7 @@ const REPORTS = [
   en:'Weekly Production & Delivery Summary', am:'ሳምንታዊ የምርትና የማድረስ ሪፖርት',
   toEn:'Chairman', toAm:'ሊቀመንበር',
   dueEn:'Friday 3:00 PM', dueAm:'ዓርብ ከቀኑ 9፡00 (3:00 PM)',
-  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Production performance', am:'1 · የምርት አፈጻጸም', fields:[
       {id:'p_total', en:'How many m² did the factory produce this week?', am:'ፋብሪካው በዚህ ሳምንት ስንት ካሬ ሜትር አመረተ?', t:'num',
@@ -1008,8 +1008,8 @@ const REPORTS = [
   en:'Weekly Finance Report', am:'ሳምንታዊ የፋይናንስ ሪፖርት',
   toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
   dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
-  penEn:'Late –500 Birr · Wrong information –500 to –1,000 Birr',
-  penAm:'ዘግይቶ –500 ብር · የተሳሳተ መረጃ –500 እስከ –1,000 ብር',
+  penEn:'Late or not sent –500 Birr · Wrong information –500 to –1,000 Birr',
+  penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር · የተሳሳተ መረጃ –500 እስከ –1,000 ብር',
   derived:1,
   sections:[
     { en:'1 · Collections this week', am:'1 · የዚህ ሳምንት ገቢ', fields:[
@@ -1128,7 +1128,7 @@ const REPORTS = [
   en:'Weekly Customer Experience Summary', am:'ሳምንታዊ የደንበኛ አገልግሎት ሪፖርት',
   toEn:'Chairman + Ephrata + Kidan', toAm:'ሊቀመንበር + ኤፍራታ + ኪዳን',
   dueEn:'Monday 11:00 AM', dueAm:'ሰኞ ከጠዋቱ 5፡00 (11:00 AM)',
-  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   derived:1,
   sections:[
     { en:'1 · Customer pulse last week', am:'1 · ያለፈው ሳምንት የደንበኛ ስሜት', fields:[
@@ -1186,7 +1186,7 @@ const REPORTS = [
   en:'Weekly Purchasing Summary', am:'ሳምንታዊ የግዥ ሪፖርት',
   toEn:'Chairman, copied to Mahelet and Selam', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለሰላም',
   dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
-  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   derived:1,
   sections:[
     { en:'1 · Purchase requests', am:'1 · የግዥ ጥያቄዎች', fields:[
@@ -1929,7 +1929,7 @@ const REPORTS = [
   en:'Weekly Production Summary', am:'ሳምንታዊ የምርት ማጠቃለያ',
   toEn:'Mahelet + Ephrata', toAm:'ማህሌት + ኤፍራታ',
   dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
-  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Production performance', am:'1 · የምርት አፈጻጸም', fields:[
       {id:'w_total', en:'How many m² did the factory produce this week?', am:'ፋብሪካው በዚህ ሳምንት ስንት ካሬ ሜትር አመረተ?', t:'num',
@@ -2220,7 +2220,7 @@ const REPORTS = [
   en:'Weekly QC Summary', am:'ሳምንታዊ የጥራት ቁጥጥር ማጠቃለያ',
   toEn:'Mahelet + Ephrata', toAm:'ማህሌት + ኤፍራታ',
   dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
-  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Inspection performance', am:'1 · የፍተሻ አፈጻጸም', fields:[
       {id:'w_inspected', en:'How many jobs did you inspect this week?', am:'በዚህ ሳምንት ስንት ሥራ መረመሩ?', t:'num'},
@@ -2499,7 +2499,7 @@ const REPORTS = [
   en:'Weekly Site Summary', am:'ሳምንታዊ የተከላ ማጠቃለያ',
   toEn:'Mahelet + Ephrata', toAm:'ማህሌት + ኤፍራታ',
   dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
-  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Installation performance', am:'1 · የተከላ አፈጻጸም', fields:[
       {id:'w_sched', en:'How many jobs were scheduled this week?', am:'በዚህ ሳምንት ስንት ሥራዎች ታቅደው ነበር?', t:'num'},
@@ -2808,7 +2808,7 @@ const SALES_WEEKLY = {
   toEn:'Ephrata', toAm:'ኤፍራታ',
   dueEn:'Friday 3:30 PM — Ephrata needs it for her 4:00 PM report',
   dueAm:'ዓርብ ከቀኑ 9፡30 (3:30 PM)',
-  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Sales performance', am:'1 · የሽያጭ አፈጻጸም', fields:[
       {id:'s_contracts', en:'How many contracts did you sign this week?', am:'በዚህ ሳምንት ስንት ውል ተፈረመ?', t:'num'},
@@ -3063,7 +3063,7 @@ const DESIGN_WEEKLY = {
   en:'Weekly Design Summary', am:'ሳምንታዊ የዲዛይን ማጠቃለያ',
   toEn:'Ephrata', toAm:'ኤፍራታ',
   dueEn:'Friday 4:00 PM', dueAm:'ዓርብ ከቀኑ 10፡00 (4:00 PM)',
-  penEn:'Late –500 Birr', penAm:'ዘግይቶ –500 ብር',
+  penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Measurements', am:'1 · ልኬቶች', fields:[
       {id:'wm_pre', en:'How many pre-measurements did you do this week?', am:'በዚህ ሳምንት ስንት ቅድመ ልኬቶችን አደረጉ?', t:'num'},

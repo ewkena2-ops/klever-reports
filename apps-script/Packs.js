@@ -9,7 +9,8 @@
 
    So, twice:
 
-     weeklyPack   Sunday morning, on the seven days just ended. Who filed and
+     weeklyPack   Sunday after 9 PM, when the week closes (weekEnd_ in
+                  Agent.js), on Monday to Sunday just ended. Who filed and
                   who did not, the week's production, quality, money and
                   sales, whether last week's forecasts came true, what the
                   Chairman asked for and got — then the weekly reports and the
@@ -33,20 +34,37 @@
  *  Entry points                                                       *
  * ------------------------------------------------------------------ */
 
-/* The week ending yesterday — on a Sunday run, Sunday to Saturday.
+/* The week that closed last — Monday to Sunday, closed at 9 PM on Sunday
+   (THE WEEK, Agent.js) — or the week ending on a Sunday given as
+   'yyyy-mm-dd'. It is sent by weekEnd_ once the week has closed.
 
    A time-driven trigger calls these with an event object as the first
    argument, not a day. Read as a day it made an invalid date, and both packs
    threw "Invalid time value" before writing or sending anything — which is
    why the Sunday 27 September summary never arrived. Only a 'yyyy-mm-dd'
-   (or 'yyyy-mm') string typed in the editor counts. */
+   (or 'yyyy-mm') string typed in the editor counts. An old Sunday-morning
+   trigger for this one now does nothing: at 8 AM on Sunday the week is not
+   over. */
 function weeklyPack(endDay) {
-  if (!isDay_(endDay)) endDay = null;
+  if (!isDay_(endDay)) {
+    Logger.log('The weekly summary goes when the week closes, Sunday 9 PM — nothing to do now.');
+    return { note: 'the week closes on Sunday at 9 PM' };
+  }
   return ran_('week', function () { return weeklyPack_(endDay); });
 }
+/* the Sunday that closes the week a pack reads */
+function weekOfP_(P) { return P.week || sundayOf_(P.end); }
+/* the Sunday whose week closed last */
+function lastClosedSunday_() {
+  var today = todayAddis_();
+  var sun = addDays_(today, -dow_(today));
+  return new Date().getTime() >= weekCut_(sun).getTime() ? sun : addDays_(sun, -7);
+}
 function weeklyPack_(endDay) {
-  var end = endDay || addDays_(todayAddis_(), -1);
+  /* a week is Monday to Sunday: a day given is read as the week it is in */
+  var end = endDay ? sundayOf_(endDay) : lastClosedSunday_();
   var P = packData_(addDays_(end, -6), end);
+  P.week = end;
   var facts = weekFacts_(P);
   var text = askPack_(WEEK_ASK_, facts, P);
   /* the CFO's reading of the week's money (Cfo.js) — if it fails, the
@@ -102,8 +120,10 @@ function monthlyPack_(month) {
 
 function previewWeekly(endDay) {
   if (!isDay_(endDay)) endDay = null;
-  var end = endDay || addDays_(todayAddis_(), -1);
-  Logger.log(JSON.stringify(weekFacts_(packData_(addDays_(end, -6), end)), null, 1));
+  var end = endDay ? sundayOf_(endDay) : lastClosedSunday_();
+  var P = packData_(addDays_(end, -6), end);
+  P.week = end;
+  Logger.log(JSON.stringify(weekFacts_(P), null, 1));
 }
 function previewMonthly(month) {
   if (!/^\d{4}-\d{2}$/.test(typeof month === 'string' ? month : '')) month = null;
@@ -153,10 +173,11 @@ function packData_(start, end) {
     schedule: schedule,
     names: names,
     ledgers: ledgersBetween_(start, after),
-    /* a week before the start too: last week's forecasts are judged against
-       this week's money. And a day past the end, because a month's own
-       reports are due on the 1st of the next one. */
-    filings: filedBetween_(addDays_(start, -7), addDays_(end, 2)),
+    /* a week before the start too — from the close of the week before that,
+       Sunday 9 PM — because last week's forecasts are judged against this
+       week's money. And a day past the end, because a month's own reports
+       are due on the 1st of the next one. */
+    filings: filedBetween_(addDays_(start, -8), addDays_(end, 2)),
     waivers: tryQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start],
                                    ['day', 'LESS_THAN', after]], 'day'),
     analysis: tryQuery_('analysis', [['day', 'GREATER_THAN_OR_EQUAL', start],
@@ -217,7 +238,8 @@ function reporting_(P) {
       /* which reports, not only how many — the first live week called two
          daily reports and a 15-day plan "three daily reports" */
       if (l.status === 'LATE' || l.status === 'MISSING') {
-        p.which.push({ day: doc.day, report: l.reportName || l.report, status: l.status });
+        /* a weekly line sits in its week's Sunday; it was due on its own day */
+        p.which.push({ day: l.dueDay || doc.day, report: l.reportName || l.report, status: l.status });
       }
       p.birr_charged += l.amount || 0;
       var w = cancelled[doc.day + '|' + l.report];
@@ -318,14 +340,11 @@ function operations_(P) {
    4-week cash projection are both filed at the end of one week about the
    next; their “Week 1” is this week. The blueprint Klever was shown asks for
    forecasts within 10% — this is where that gets measured, and it can only
-   be measured in code. */
+   be measured in code. "Last week's" is the one that counted for last week
+   — sent by its Sunday 9 PM, the last one if sent twice. */
 function forecasts_(P) {
   function lastBefore(reportId) {
-    var hit = null;
-    P.filings.forEach(function (f) {
-      if (f.report === reportId && f.day < P.start && f.day >= addDays_(P.start, -7)) hit = f;
-    });
-    return hit;
+    return filingOfWeek_(P.filings, reportId, addDays_(weekOfP_(P), -7));
   }
   function judge(projected, actual, what) {
     if (projected == null) return { what: what, projected: null, actual: actual,
@@ -381,6 +400,18 @@ function instructionsIn_(P) {
 function reportsOfCadence_(P, cadence) {
   var ids = {};
   P.schedule.reports.forEach(function (r) { if (r.cadence === cadence) ids[r.id] = r; });
+  /* The weekly reports of this week: each one's last filing between the
+     close of last week and this Sunday 9 PM — the week it counts for, which
+     is said beside it, so a late one is this week's and one sent after 9 PM
+     on Sunday is not. */
+  if (cadence === 'weekly') {
+    return P.schedule.reports.filter(function (r) { return ids[r.id]; }).map(function (r) {
+      var f = filingOfWeek_(P.filings, r.id, weekOfP_(P));
+      if (!f) return null;
+      return Object.assign({ who: P.names[f.person] || f.person, report: r.en, filed: f.day },
+                           weekOfFiling_(r, f.at), { values: f.fields });
+    }).filter(Boolean);
+  }
   var from = cadence === 'monthly' ? addDays_(P.end, -6) : P.start;
   var to = cadence === 'monthly' ? addDays_(P.end, 2) : addDays_(P.end, 1);
   return P.filings.filter(function (f) {
@@ -448,6 +479,8 @@ var WEEK_ASK_ =
   'than 10% is a forecast he cannot plan on, and whose it was matters. Name anyone who '+
   'missed or was late with the same report more than once: that is a conversation, not a '+
   'fine. Read the weekly reports’ written fields for anything the figures do not show. '+
+  'Each weekly report says the week it counts for; where it also gives about_week, it '+
+  'describes that earlier week — say so if you use it, never present it as this week. '+
   'If the week was ordinary, say so in one line.';
 
 var MONTH_ASK_ =

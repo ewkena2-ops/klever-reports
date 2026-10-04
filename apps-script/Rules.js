@@ -17,6 +17,9 @@
 
    THREE WAYS A LINE IS MADE
      day    decided each morning, from yesterday's reports     (EVAL_[id].day)
+     week   decided when the week closes, Sunday 9 PM, on the weekly
+            reports as they finally stand — kept on their due day
+                                                                (EVAL_[id].week)
      month  decided on the 2nd, from the whole month            (EVAL_[id].month)
      event  recorded by the Chairman on his page, in /events    (no test here)
    Every line carries the amount from the catalogue — never from a model, and
@@ -182,6 +185,27 @@ function dayCtx_(day, filings, schedule) {
   return ctx;
 }
 
+/* What a week's tests are handed: the due day's context, plus each weekly
+   report as its week finally stood — the last filing between the close of
+   the week before and Sunday 9 PM — and, for the rules that run across weeks,
+   the filings as they arrived (`filings`). */
+function weekCtx_(day, filings, schedule) {
+  var ctx = dayCtx_(day, filings, schedule);
+  var sun = sundayOf_(day);
+  ctx.week = function (reportId) {
+    var f = filingOfWeek_(filings, reportId, sun);
+    return f ? (f.fields || {}) : null;
+  };
+  ctx.filings = function (days) {
+    if (!ctx._raw || ctx._rawDays < days) {
+      ctx._raw = filedBetween_(addDays_(day, -days), addDays_(sun, 1));
+      ctx._rawDays = days;
+    }
+    return ctx._raw;
+  };
+  return ctx;
+}
+
 /* What a month's tests are handed: every working day of it, each report's
    answers day by day, and the daily lines already charged — for the rules
    that count ("three penalties in a month"). */
@@ -199,6 +223,11 @@ function monthCtx_(month, filings, ledgers, schedule) {
     workingDays: days.filter(function (x) { return dow_(x) !== 0; }),
     /* [{day, v}] for every day this report was filed in the month */
     series: function (reportId) {
+      /* a weekly report: once a week — the last sent in its week — in the
+         month its week ends in, where its lines are. By the day sent, a
+         report corrected the next day was counted twice. */
+      var rep = reportOf_(schedule, reportId);
+      if (rep && rep.cadence === 'weekly') return weekSeries_(filings, rep, start, end);
       var m = by[reportId] || {};
       return Object.keys(m).filter(function (x) { return x >= start && x <= end; }).sort()
         .map(function (x) { return { day: x, v: m[x].fields || {} }; });
@@ -241,12 +270,30 @@ function monthCtx_(month, filings, ledgers, schedule) {
     },
     /* the month before, read only when a test asks ("two months running") */
     previousSeries: function (reportId) {
-      if (!ctx._prev) ctx._prev = byReportDay_(filedBetween_(addDays_(start, -1).slice(0, 8) + '01', start));
+      var prevStart = addDays_(start, -1).slice(0, 8) + '01';
+      var rep = reportOf_(schedule, reportId);
+      if (rep && rep.cadence === 'weekly') {
+        if (!ctx._prevRaw) ctx._prevRaw = filedBetween_(addDays_(prevStart, -7), start);
+        return weekSeries_(ctx._prevRaw, rep, prevStart, addDays_(start, -1));
+      }
+      if (!ctx._prev) ctx._prev = byReportDay_(filedBetween_(prevStart, start));
       var m = ctx._prev[reportId] || {};
       return Object.keys(m).sort().map(function (x) { return { day: x, v: m[x].fields || {} }; });
     }
   };
   return ctx;
+}
+
+/* One weekly report's weeks that end between `from` and `to` (Sundays,
+   inclusive), oldest first: [{day, week, v}] — `day` its due day in the
+   week, `v` the last filing sent in the week (THE WEEK, Agent.js). */
+function weekSeries_(filings, rep, from, to) {
+  var byWeek = {};
+  (filings || []).forEach(function (f) {
+    if (f.report === rep.id && f.at) byWeek[weekOf_(f.at, rep.id)] = f;
+  });
+  return Object.keys(byWeek).filter(function (w) { return w >= from && w <= to; }).sort()
+    .map(function (w) { return { day: dueInWeek_(rep, w), week: w, v: byWeek[w].fields || {} }; });
 }
 
 /* ------------------------------------------------------------------ *
@@ -314,8 +361,7 @@ function runTests_(which, ctx, day, schedule, only) {
   var R = loadRules_(), lines = [], errors = [], unjudged = [], missed = [];
   R.list.forEach(function (rule) {
     var t = EVAL_[rule.id];
-    var spec = rule.test && (which === 'month' ? rule.test.at === 'month'
-                                               : rule.test.at === 'day' || rule.test.at === 'week');
+    var spec = rule.test && rule.test.at === which;
     if (!(t && t[which]) && !spec) return;
     if (only && only.indexOf(rule.id) === -1) return;
     var hits;
@@ -344,23 +390,7 @@ function runTests_(which, ctx, day, schedule, only) {
 function ruleLinesForDay_(day, filings, schedule) {
   var R = loadRules_();
   var got = runTests_('day', dayCtx_(day, filings, schedule), day, schedule);
-  var named = {};
-  (schedule.people || []).forEach(function (p) { named[p.id] = p.en; });
-  (got.unjudged || []).forEach(function (u) {
-    var rule = R.byId[u.rule];
-    /* A fine whose question was left blank in a report that WAS sent is not
-       judged — a blank is not a "no" — but it is not dropped in silence
-       either: a person could otherwise leave the one question that fines
-       them empty, every day. */
-    /* a follow-up question (it has `show`) is only on screen when the answer
-       above it opens it; empty, it was most likely never shown — Mahelet
-       issuing nothing from the store is not a blank about approvals */
-    var def = u.ref && fieldDef_(schedule, u.ref.report, u.ref.field);
-    var blank = rule && rule.kind === 'penalty' && / — not answered$/.test(u.why || '') && !(def && def.show);
-    if (!u.bad && !blank) return;
-    got.errors.push((u.bad ? 'Not judged — ' : 'Left blank, so not judged — ') + (rule ? rule.en : u.rule) +
-                    ' (' + (named[u.person] || u.person || 'team') + '): ' + (u.bad || u.why));
-  });
+  unjudgedSaid_(got, schedule);
 
   /* What the Chairman recorded goes into the close of the day he recorded
      it, whatever day it happened: something from Tuesday written down on
@@ -418,11 +448,48 @@ function ruleLinesForDay_(day, filings, schedule) {
     seen[k] = true;
     return true;
   });
-  got.lines.sort(function (a, b) {
+  sortRuleLines_(got.lines);
+  return got;
+}
+
+/* What a test could not judge, said beside the lines rather than dropped. */
+function unjudgedSaid_(got, schedule) {
+  var R = loadRules_();
+  var named = {};
+  (schedule.people || []).forEach(function (p) { named[p.id] = p.en; });
+  (got.unjudged || []).forEach(function (u) {
+    var rule = R.byId[u.rule];
+    /* A fine whose question was left blank in a report that WAS sent is not
+       judged — a blank is not a "no" — but it is not dropped in silence
+       either: a person could otherwise leave the one question that fines
+       them empty, every day. */
+    /* a follow-up question (it has `show`) is only on screen when the answer
+       above it opens it; empty, it was most likely never shown — Mahelet
+       issuing nothing from the store is not a blank about approvals */
+    var def = u.ref && fieldDef_(schedule, u.ref.report, u.ref.field);
+    var blank = rule && rule.kind === 'penalty' && / — not answered$/.test(u.why || '') && !(def && def.show);
+    if (!u.bad && !blank) return;
+    got.errors.push((u.bad ? 'Not judged — ' : 'Left blank, so not judged — ') + (rule ? rule.en : u.rule) +
+                    ' (' + (named[u.person] || u.person || 'team') + '): ' + (u.bad || u.why));
+  });
+}
+
+/* fines first, then bonuses, then notes; heaviest first within each */
+function sortRuleLines_(lines) {
+  return lines.sort(function (a, b) {
     var ka = a.kind === 'penalty' ? 0 : a.kind === 'bonus' ? 1 : 2;
     var kb = b.kind === 'penalty' ? 0 : b.kind === 'bonus' ? 1 : 2;
     return ka - kb || (b.amount || 0) - (a.amount || 0);
   });
+}
+
+/* The rules read from the weekly reports due on `day`, judged once their
+   week has closed (Sunday 9 PM). `filings` reaches to that Sunday. The lines
+   carry the due day and go into that day's document (closeWeek_). */
+function ruleLinesForWeek_(day, filings, schedule) {
+  var got = runTests_('week', weekCtx_(day, filings, schedule), day, schedule);
+  unjudgedSaid_(got, schedule);
+  sortRuleLines_(got.lines);
   return got;
 }
 
@@ -840,6 +907,10 @@ function filingFor_(J, report) {
   var ctx = J.ctx;
   if (J.which === 'month') return ctx.monthly(report);
   if (J.spec.at === 'week') {
+    /* a weekly report as its week finally stood — sent late on Saturday,
+       or corrected, it is still this week's */
+    var rep = reportOf_(J.schedule, report);
+    if (rep && rep.cadence === 'weekly' && ctx.week) return ctx.week(report);
     for (var k = 0; k <= 6; k++) {
       var v = ctx.vOn(report, addDays_(ctx.day, -k));
       if (v) return v;
@@ -1127,22 +1198,28 @@ function countedPenalty_(ctx, l, alsoPending) {
   return l.amount > 0 || (alsoPending && l.wouldBe > 0);
 }
 
-/* The weekly filings of one report, newest first: [{day, v}], one per week.
-   `day` is the due day the filing counts toward — the ledger's rule: a
-   weekly report filed in the six days before its due day is that week's —
-   and a week sent twice (Thursday, then corrected on Friday) is its last
-   filing. Keyed by the day sent, a correction made a second week, and a
-   salesperson's first report sent twice was charged "two weeks in a row
-   below the floor". */
+/* The weekly filings of one report, newest first: [{day, week, v}], one per
+   week. `week` is the Sunday that closed it and `day` the due day in that
+   week — the ledger's rule: a weekly report belongs to the week it is sent
+   in, which closes on Sunday at 9 PM — and a week sent twice (Thursday, then
+   corrected on Saturday) is its last filing. Keyed by the day sent, a
+   correction made a second week, and a salesperson's first report sent
+   twice was charged "two weeks in a row below the floor". Nothing after the
+   week of the due day being judged is read: a report sent early for the
+   next week is not this one's. Read in a week's context (weekCtx_). */
 function weeklyFilings_(ctx, reportId, weeks) {
-  var h = ctx.history(weeks * 7 + 6)[reportId] || {};
   var rep = reportOf_(ctx.schedule, reportId);
-  var byDue = {};
-  Object.keys(h).sort().forEach(function (d) {
-    var due = rep && rep.dueDay != null ? addDays_(d, (rep.dueDay - dow_(d) + 7) % 7) : d;
-    byDue[due] = h[d];
+  if (!rep || rep.cadence !== 'weekly') throw new Error(reportId + ' is not a weekly report');
+  var thisWeek = sundayOf_(ctx.day);
+  var byWeek = {};
+  ctx.filings(weeks * 7 + 7).forEach(function (f) {
+    if (f.report !== reportId || !f.at) return;
+    var wk = weekOf_(f.at, reportId);
+    if (wk <= thisWeek) byWeek[wk] = f;            /* oldest first: the last of a week wins */
   });
-  return Object.keys(byDue).sort().reverse().map(function (d) { return { day: d, v: byDue[d].fields || {} }; });
+  return Object.keys(byWeek).sort().reverse().map(function (w) {
+    return { day: dueInWeek_(rep, w), week: w, v: byWeek[w].fields || {} };
+  });
 }
 
 /* ---- Selam: an assembler's payment released more than 3 days late ---- */
@@ -1205,13 +1282,13 @@ function ephrataBelow_(ctx, threshold, what) {
   return [{ person: 'ephrata', why: '4-week total ' + fmt_(a) + ' (block to ' + ctx.day + ') and ' + fmt_(b) +
             ' (block to ' + prevDay + ') — both below ' + fmt_(threshold) + ': ' + what }];
 }
-EVAL_['ephrata-rolling-review'] = { day: function (ctx) {
+EVAL_['ephrata-rolling-review'] = { week: function (ctx) {
   return ephrataBelow_(ctx, 12000000, 'formal performance review');
 } };
-EVAL_['ephrata-rolling-removal'] = { day: function (ctx) {
+EVAL_['ephrata-rolling-removal'] = { week: function (ctx) {
   return ephrataBelow_(ctx, 10000000, 'removal from the role');
 } };
-EVAL_['ephrata-zero-mkt-leads'] = { day: function (ctx) {
+EVAL_['ephrata-zero-mkt-leads'] = { week: function (ctx) {
   var rep = reportOf_(ctx.schedule, 'ephrata-weekly');
   if (!rep || rep.dueDay !== ctx.dow) return [];
   var f = weeklyFilings_(ctx, 'ephrata-weekly', 2);
@@ -1241,19 +1318,19 @@ function salesStreak_(ctx, p) {
   }
   return { n: n, why: n + ' weeks in a row below the floor: ' + seen.join(', ') };
 }
-EVAL_['sales-2-weeks-below-2m'] = { day: function (ctx, rule) {
+EVAL_['sales-2-weeks-below-2m'] = { week: function (ctx, rule) {
   return membersOf_(rule.who, ctx.schedule).map(function (p) {
     var s = salesStreak_(ctx, p);
     return s && s.n === 2 ? { person: p, why: s.why } : null;
   }).filter(Boolean);
 } };
-EVAL_['sales-3-weeks-below-2m'] = { day: function (ctx, rule) {
+EVAL_['sales-3-weeks-below-2m'] = { week: function (ctx, rule) {
   return membersOf_(rule.who, ctx.schedule).map(function (p) {
     var s = salesStreak_(ctx, p);
     return s && s.n >= 3 ? { person: p, why: s.why + ' — charged in place of the two-week 1,000' } : null;
   }).filter(Boolean);
 } };
-EVAL_['sales-4-weeks-removal'] = { day: function (ctx, rule) {
+EVAL_['sales-4-weeks-removal'] = { week: function (ctx, rule) {
   return membersOf_(rule.who, ctx.schedule).map(function (p) {
     var s = salesStreak_(ctx, p);
     return s && s.n >= 4 ? { person: p, why: s.why } : null;

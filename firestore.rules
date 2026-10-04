@@ -251,6 +251,32 @@ service cloud.firestore {
                                 && request.resource.data.sentAt == request.time)));
       allow delete: if false;
     }
+    /* Phones that get notifications (js/fb.js, apps-script/Push.js): one
+       document per phone, named for its person, holding that phone's
+       Firebase Cloud Messaging address. A person writes and removes only
+       their own; the script (the ledger account) reads them to send, and
+       removes an address that no longer works. Nobody else sees them. */
+    match /pushTokens/{tid} {
+      allow get, list: if isLedger() || (signedIn() && resource.data.person == me());
+      allow create, update: if signedIn() && !isLedger()
+                    && tid.matches(me() + '_[0-9a-f]{8}')
+                    && request.resource.data.keys().hasOnly(['person', 't', 'at', 'ua'])
+                    && request.resource.data.person == me()
+                    && request.resource.data.t is string
+                    && request.resource.data.t.size() > 20
+                    && request.resource.data.t.size() <= 4096
+                    && request.resource.data.ua is string
+                    && request.resource.data.ua.size() <= 300
+                    && request.resource.data.at == request.time;
+      allow delete: if isLedger() || (signedIn() && resource.data.person == me());
+    }
+    /* Which instruction went to which person's phones, and how many arrived:
+       written by the script, so each is sent once; read on his page. */
+    match /pushlog/{id} {
+      allow get, list: if isChairman() || isLedger();
+      allow create, update: if isLedger();
+      allow delete: if false;
+    }
     /* The month, closed: the bonuses and penalties that can only be
        judged on a whole month (waste for the month, a month with no
        complaint, the third penalty that brings a suspension). Written by

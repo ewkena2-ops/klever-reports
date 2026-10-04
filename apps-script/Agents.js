@@ -1549,6 +1549,8 @@ function watch_(waitMs) {
     answerWaiting_();
     /* and an order of his, for the AI to find who does it (Orders.js) */
     planWaiting_();
+    /* and an instruction of his that has not reached its person's phone (Push.js) */
+    notifyWaiting_();
     /* Sunday after 9 PM: the week is over — settle it, send its summary */
     weekEndFromWatch_();
     var token = fsToken_();

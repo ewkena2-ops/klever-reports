@@ -463,6 +463,18 @@ input.miss,textarea.miss,select.miss{
 
 /* ---------- what the Chairman asked for, on the person's own home ---------- */
 .inswrap:empty{display:none}
+/* notifications on this phone */
+.pushcard{margin:0 0 18px;padding:14px 16px;background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
+.pushcard:empty{display:none}
+.pushcard.on{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 14px}
+.pushhead{font-size:14.5px;font-weight:700;color:var(--ink);margin:0 0 4px}
+.pushline{font-size:13.5px;color:var(--teal-hi);margin:0;flex:1;min-width:160px}
+.pushnote{font-size:13px;color:var(--mut);line-height:1.5;margin:4px 0 0;width:100%}
+.pushnote.bad{color:var(--coral)}
+.pushbtn{margin-top:10px;min-height:44px;padding:0 18px;border-radius:var(--r-s);border:0;font-weight:700;font-size:14px;cursor:pointer;
+  background:linear-gradient(180deg,var(--teal-hi),var(--teal));color:var(--teal-ink)}
+.pushbtn.ghost{margin-top:0;min-height:38px;background:transparent;border:1px solid var(--line-2);color:var(--ink-2);font-weight:600}
+.pushbtn:disabled{opacity:.6}
 .ins{
   position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);
   padding:16px 16px 14px 20px;margin:0 0 10px;overflow:hidden;

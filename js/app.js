@@ -964,6 +964,60 @@
     return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000);
   }
 
+  /* ---------------- notifications on this phone ---------------- */
+
+  /* The Chairman's instructions reach the phone as a notification, even with
+     the site closed (js/fb.js, firebase-messaging-sw.js, apps-script/Push.js).
+     Each person turns it on once, on each phone they use. When it is on, the
+     card is one line and a button that sends a test, so they can see it work. */
+  function pushCard(opts) {
+    opts = opts || {};
+    var box = el('div', 'pushcard');
+    if (!window.FB || !window.FB.pushState) return box;
+    function draw(state) {
+      box.innerHTML = '';
+      box.className = 'pushcard ' + state;
+      if (state === 'on') {
+        box.appendChild(el('p', 'pushline', t('pushOn')));
+        var test = el('button', 'pushbtn ghost', t('pushTest'));
+        test.type = 'button';
+        test.onclick = function () {
+          test.disabled = true;
+          window.FB.token().then(function (tok) {
+            if (!tok || typeof ARCHIVE === 'undefined' || !ARCHIVE.on()) throw new Error('offline');
+            return ARCHIVE.post({ kind: 'pushTest', idToken: tok });
+          }).then(function () {
+            box.appendChild(el('p', 'pushnote', t('pushTestSent')));
+          }, function () {
+            test.disabled = false;
+            box.appendChild(el('p', 'pushnote bad', t('pushFailed')));
+          });
+        };
+        box.appendChild(test);
+        return;
+      }
+      box.appendChild(el('p', 'pushhead', opts.title || t('pushTitle')));
+      if (state === 'iphone') { box.appendChild(el('p', 'pushnote', t('pushIphone'))); return; }
+      if (state === 'unsupported') { box.appendChild(el('p', 'pushnote', t('pushNoSupport'))); return; }
+      if (state === 'denied') { box.appendChild(el('p', 'pushnote', t('pushDenied'))); return; }
+      box.appendChild(el('p', 'pushnote', opts.note || t('pushOffNote')));
+      var go = el('button', 'pushbtn', t('pushTurnOn'));
+      go.type = 'button';
+      go.onclick = function () {
+        go.disabled = true;
+        go.textContent = t('pushWorking');
+        window.FB.pushEnable().then(draw, function () {
+          go.disabled = false;
+          go.textContent = t('pushTurnOn');
+          box.appendChild(el('p', 'pushnote bad', t('pushFailed')));
+        });
+      };
+      box.appendChild(go);
+    }
+    window.FB.ready.then(function () { return window.FB.pushState(); }).then(draw, function () {});
+    return box;
+  }
+
   function insRow(i) {
     var row = el('div', 'ins');
     var over = daysFrom(i.due, stamp());
@@ -1128,6 +1182,7 @@
     var st = standing(p.id);
     root.appendChild(deck(p, st));
     root.appendChild(instructionsCard());
+    if (!AUTH.isChairman()) root.appendChild(pushCard());
 
     var tl = timeline(p.id);
     if (tl) {
@@ -2369,6 +2424,8 @@
     /* the same clear dates, for the Chairman's page */
     prettyDate: prettyDate,
     dressDate: dressDate,
+    /* notifications on this phone, for his page too */
+    pushCard: pushCard,
     /* Addis time, and the ledger's rule for what is owed when */
     today: stamp,
     dayStart: dayStartMs,

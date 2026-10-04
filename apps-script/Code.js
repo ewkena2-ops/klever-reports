@@ -118,6 +118,14 @@ function doPost(e) {
   if (row.kind === 'order') {
     return ContentService.createTextOutput(poster === 'chairman' ? orderPost_(row.k) : 'refused');
   }
+  /* his new instructions, to the people's phones (Push.js) */
+  if (row.kind === 'notify') {
+    return ContentService.createTextOutput(poster === 'chairman' ? notifyPost_(row.k) : 'refused');
+  }
+  /* "Send me a test", from anyone's own page — to their own phones only */
+  if (row.kind === 'pushTest') {
+    return ContentService.createTextOutput(pushTestPost_(poster));
+  }
   var sched;
   try { sched = loadSchedule_(); } catch (err) { return ContentService.createTextOutput('no schedule'); }
   var rep = sched.reports.filter(function (r) { return r.id === row.report; })[0];

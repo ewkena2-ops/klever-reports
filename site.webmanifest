@@ -3,7 +3,7 @@
   "short_name": "Klever",
   "start_url": "./index.html",
   "scope": "./",
-  "display": "browser",
+  "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0f5c54",
   "icons": [

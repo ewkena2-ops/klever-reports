@@ -427,6 +427,12 @@ import {
     sys.appendChild(el('p', 'codenote', t('chLoading')));
     root.appendChild(sys);
 
+    /* --- notifications on his own phone: to test that they reach a phone --- */
+    if (window.KLEVER && window.KLEVER.pushCard) {
+      root.appendChild(el('p', 'eyebrow', t('pushChTitle')));
+      root.appendChild(window.KLEVER.pushCard({ title: t('pushChTitle'), note: t('pushChNote') }));
+    }
+
     watchAnalysis(analysis);
     watchOrders(orders);
     watchInstructions(ins);
@@ -1384,7 +1390,8 @@ import {
       addDoc(collection(db, 'instructions'), {
         to: to.value, text: text, due: due.value,
         by: 'chairman', status: 'open', at: serverTimestamp()
-      }).then(function () {
+      }).then(function (ref) {
+        notifyPhones([ref.id]);
         what.value = '';
         give.disabled = false;
       })['catch'](function () {
@@ -2254,6 +2261,18 @@ import {
            t('ordMsgClose') + '\n' + location.origin + location.pathname.replace(/chairman\.html.*$/, '');
   }
 
+  /* The script sends each new instruction to its person's phone (apps-script/
+     Push.js). If this post is lost, its ten-minute watch sends them anyway. */
+  function notifyPhones(ids) {
+    if (!ids || !ids.length) return;
+    var u = auth.currentUser;
+    (u ? u.getIdToken() : Promise.resolve(null)).then(function (tok) {
+      if (tok && window.ARCHIVE && window.ARCHIVE.on()) {
+        window.ARCHIVE.post({ kind: 'notify', k: ids.join(','), idToken: tok })['catch'](function () {});
+      }
+    })['catch'](function () {});
+  }
+
   function sendOrder(o, tasks) {
     var b = writeBatch(db), sent = [];
     tasks.forEach(function (task) {
@@ -2263,6 +2282,7 @@ import {
     });
     b.update(doc(db, 'orders', o.id), { status: 'sent', sentAt: serverTimestamp(), sent: sent });
     return b.commit().then(function () {
+      notifyPhones(sent.map(function (s) { return s.ins; }));
       /* a line in each person's private chat with him — the instruction
          stands without it, so a failure here is not his to deal with */
       tasks.forEach(function (task) {

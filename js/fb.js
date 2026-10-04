@@ -228,6 +228,98 @@
         note: String(note || '').slice(0, 1000),
         doneAt: F.serverTimestamp()
       });
+    },
+
+    /* PHONE NOTIFICATIONS. Where this phone stands:
+         unsupported — its browser cannot show them
+         iphone      — an iPhone, where only a site added to the home screen can
+         denied      — the person blocked them for this site
+         off         — not turned on here yet
+         on          — turned on, and this phone's address is saved
+       The address (a Firebase Cloud Messaging token) goes into /pushTokens
+       under the person's own name — the rules allow nothing else — and the
+       script on the server (apps-script/Push.js) sends to it. */
+    pushState: function () {
+      if (iphoneNotInstalled()) return Promise.resolve('iphone');
+      if (!pushSupported()) return Promise.resolve('unsupported');
+      if (Notification.permission === 'denied') return Promise.resolve('denied');
+      if (Notification.permission !== 'granted') return Promise.resolve('off');
+      var saved = null;
+      try { saved = localStorage.getItem(PUSH_KEY); } catch (e) {}
+      return Promise.resolve(saved && user && saved.indexOf(idOf(user) + '_') === 0 ? 'on' : 'off');
+    },
+
+    /* Ask once, register the service worker, save this phone's address.
+       `quiet`: no question asked — only refresh an address already allowed
+       (a phone's address can change, and each page load keeps it current). */
+    pushEnable: function (quiet) {
+      if (iphoneNotInstalled()) return Promise.resolve('iphone');
+      if (!pushSupported()) return Promise.resolve('unsupported');
+      return ready.then(function () {
+        if (!db || !user) throw new Error('not signed in');
+        var asked = quiet ? Promise.resolve(Notification.permission) : Notification.requestPermission();
+        return asked;
+      }).then(function (p) {
+        if (p !== 'granted') return p === 'denied' ? 'denied' : 'off';
+        return navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './' })
+          .then(function (reg) {
+            return messaging().then(function (x) { return x.m.getToken(x.msg, { serviceWorkerRegistration: reg }); });
+          })
+          .then(function (token) {
+            if (!token) throw new Error('no address for this phone');
+            var me = idOf(user), id = me + '_' + fnv8(token);
+            var saved = null;
+            try { saved = localStorage.getItem(PUSH_KEY); } catch (e) {}
+            if (quiet && saved === id) return 'on';
+            return F.setDoc(F.doc(db, 'pushTokens', id), {
+              person: me, t: token, at: F.serverTimestamp(),
+              ua: String(navigator.userAgent || '').slice(0, 300)
+            }).then(function () {
+              try { localStorage.setItem(PUSH_KEY, id); } catch (e) {}
+              return 'on';
+            });
+          });
+      });
     }
   };
+
+  var PUSH_KEY = 'klever.push';          /* this phone's address id, once saved */
+  function pushSupported() {
+    return 'serviceWorker' in navigator && typeof window.PushManager !== 'undefined' &&
+           typeof window.Notification !== 'undefined';
+  }
+  /* an iPhone shows a site's notifications only once it is added to the home
+     screen and opened from there */
+  function iphoneNotInstalled() {
+    var ios = /iPhone|iPad|iPod/.test(navigator.userAgent || '');
+    var standalone = window.navigator.standalone === true ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    return ios && !standalone;
+  }
+  /* a short, steady name for one address: the same phone saves over itself */
+  function fnv8(s) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return ('0000000' + h.toString(16)).slice(-8);
+  }
+  var MSG = null;
+  function messaging() {
+    if (MSG) return MSG;
+    MSG = import(SDK + 'firebase-messaging.js').then(function (m) {
+      return m.isSupported().then(function (ok) {
+        if (!ok) throw new Error('unsupported');
+        return { m: m, msg: m.getMessaging(app) };
+      });
+    });
+    MSG['catch'](function () { MSG = null; });
+    return MSG;
+  }
+  /* a phone that already allowed them keeps its address current, quietly */
+  ready.then(function () {
+    try {
+      if (user && pushSupported() && Notification.permission === 'granted' && localStorage.getItem(PUSH_KEY)) {
+        window.FB.pushEnable(true)['catch'](function () {});
+      }
+    } catch (e) {}
+  });
 })();

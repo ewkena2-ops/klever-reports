@@ -130,6 +130,24 @@ function notFiled_(d) {
   return d.ledger.filter(function (l) { return l.status === 'MISSING'; })
                  .map(function (l) { return l.person + ' — ' + l.report; });
 }
+/* Mid-day: how many are in, which are past their deadline, and which are
+   still to come. The list used to be only those past their deadline, under
+   "not in yet"; with one name on it the model took everyone else as filed. */
+function soFar_(d) {
+  var filed = 0, notDue = [], week = [];
+  d.ledger.forEach(function (l) {
+    if (l.status === 'On time' || l.status === 'LATE') filed++;
+    else if (l.status === 'NOT DUE YET') notDue.push(l.person + ' — ' + l.report);
+    else if (l.status === 'NOT IN YET') week.push(l.person + ' — ' + l.report);
+  });
+  return [
+    'Filed so far: ' + filed + ' of the ' + d.ledger.length + ' reports due today.',
+    'Past their deadline and not in: ' + (notFiled_(d).join('; ') || 'none'),
+    'Not due yet — the deadline is later today, so not filed, and not late or missing either: ' +
+      (notDue.join('; ') || 'none')
+  ].concat(week.length ? ['Weekly, past its day but still to come this week (not missing yet): ' +
+                          week.join('; ')] : []).join('\n');
+}
 /* Reports that arrived with questions left empty, and how many. The phone
    counts them when it sends ("18 not answered" among the flags); a report
    sent before that count existed says nothing and is taken as complete. */
@@ -235,10 +253,19 @@ function series_(d, reportId, field) {
       }
     });
     if (v === null && rep && !dueOn_({ reports: [rep] }, day).length) v = 'not due';
-    else if (v === null && i > 0 && !kept[day]) v = 'not tracked';
+    else if (v === null && i > 0 && (!kept[day] || beforeReadStart_(d, day))) v = 'not tracked';
     out.push(v);
   }
   return out;
+}
+/* The restart of 3 Oct 2026: a reading of a day on or after LEDGER_START
+   does not reach back before it. The days before were cancelled, so a miss
+   on one of them is not "the sixth day running" — which is what the first
+   reading after the restart said of Selam. A reading of a day before the
+   start (the practice days) still sees its week as it was. */
+function beforeReadStart_(d, day) {
+  var start = prop_('LEDGER_START', '');
+  return !!start && d.day >= start && day < start;
 }
 function isNum_(x) { return typeof x === 'number'; }
 function avgKnown_(xs) {
@@ -303,7 +330,10 @@ function repeats_(d) {
   /* the ledger reads a day further back than a week, for "second Friday
      running"; a week here is today and the six days before it */
   var days = (d.before || []).filter(function (doc) { return doc.day >= from; }).map(function (doc) {
-    return { day: doc.day, lines: (doc.lines || []).map(function (l) {
+    return { day: doc.day, lines: (doc.lines || []).filter(function (l) {
+      /* a weekly line sits in its week's Sunday; it was due on its own day */
+      return !beforeReadStart_(d, l.dueDay || doc.day);
+    }).map(function (l) {
       return { person: l.name || l.person, report: l.reportName || l.report, status: l.status };
     }) };
   });
@@ -841,16 +871,22 @@ var AGENTS = [
 { id:'compliance', en:'Who reported and who did not', am:'ማን ሪፖርት አደረገ ማን አላደረገም',
   facts: function (d) {
     var missing = [], late = [], ontime = [];
-    var waiting = [];
+    var waiting = [], notDue = [];
     d.ledger.forEach(function (l) {
       var row = { person:l.person, report:l.report, due:l.due };
       if (l.status === 'MISSING') missing.push(row);
       else if (l.status === 'LATE') late.push(row);
       else if (l.status === 'NOT IN YET') waiting.push(row);
+      /* mid-day, a report whose deadline is still to come. It was counted
+         as on time: the first reading after the restart, with one report
+         in of nineteen, said "almost the entire team filed on time today" */
+      else if (l.status === 'NOT DUE YET') notDue.push(row);
       else ontime.push(row);
     });
-    return { due_today: d.ledger.length, on_time: ontime.length,
+    return { due_today: d.ledger.length, filed_so_far: ontime.length + late.length,
+             on_time: ontime.length,
              late: late, missing: missing,
+             not_due_yet: notDue,
              weekly_reports_not_in_yet: waiting.concat(d.weekWaiting || []),
              weekly_rule: 'A weekly report counts for the week it is sent in. The week closes on Sunday at ' +
                           '9 PM: sent after its deadline but before then, it is late; not in by then, it is ' +
@@ -1236,7 +1272,8 @@ function promptFor_(agent, facts, d) {
     'A list of seven values runs oldest to newest; the days are ' + weekLabels_(d) + '.',
     'null in it is a day that report was owed and not filed; "not answered" is a day it',
     'came with this question blank; "not due" is a day nobody owed it (a Sunday, or a day',
-    'the letter excuses); "not tracked" is a day before the ledger began keeping count.',
+    'the letter excuses); "not tracked" is a day before the ledger began keeping count, or',
+    'before the restart — nothing then counts against anyone.',
     'Only null is a miss. When you count days in a row, count only those. Use the week only',
     'where it changes what today means — a third day running, a slide that started on Monday.',
     'Name a day by the label above, not by counting back.',
@@ -1244,9 +1281,9 @@ function promptFor_(agent, facts, d) {
     'YOUR QUESTION: ' + agent.ask,
     '',
     '--- ' + d.dayLabel + (d.provisional ? ' — SO FAR TODAY, the day is not over' : '') + ' ---',
-    (d.provisional ? 'Reports not in yet (some are not due yet, and are not late): '
-                   : 'Reports that were due today and never arrived: ') +
-      (notFiled_(d).join('; ') || 'none — everything was filed'),
+    d.provisional ? soFar_(d)
+                  : 'Reports that were due today and never arrived: ' +
+                    (notFiled_(d).join('; ') || 'none — everything was filed'),
     'Reports that came in with questions left blank: ' +
       (leftBlank_(d).join('; ') || 'none'),
     oddBlock_(d),

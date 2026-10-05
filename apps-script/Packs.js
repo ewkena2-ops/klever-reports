@@ -223,9 +223,13 @@ function reporting_(P) {
   P.waivers.forEach(function (w) { cancelled[w.day + '|' + w.report] = w; });
 
   var people = {}, tot = { due: 0, on_time: 0, late: 0, missing: 0 };
+  /* October's pack runs from the 1st; the days before the restart of 5 Oct
+     were cancelled and are not anyone's record */
+  var start = prop_('LEDGER_START', '');
   P.ledgers.forEach(function (doc) {
     (doc.lines || []).forEach(function (l) {
       if (l.status === 'NOT DUE YET') return;
+      if (start && P.end >= start && (l.dueDay || doc.day) < start) return;
       var p = people[l.person] || (people[l.person] = {
         id: l.person, name: l.name || P.names[l.person] || l.person,
         due: 0, on_time: 0, late: 0, missing: 0,

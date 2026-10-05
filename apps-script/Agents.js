@@ -1822,6 +1822,66 @@ function startFromRestart_() {
   } catch (e) { Logger.log('restart start: %s', e.message); }
 }
 
+/* The Sheet, once, at the reset of 5 Oct 2026 evening — "reset everything,
+   reporting starts tomorrow". Every row dated before the start comes off the
+   report tabs and the ledger's own tabs (Penalty Ledger, Penalties, Daily
+   Analysis), and the "ZZ TEST" tabs of 15 Sep go. A copy of the whole Sheet
+   was saved to Drive first ("Klever Reports — copy before the reset of
+   5 Oct 2026"). Firestore was reset the same evening, from a backup. */
+var SHEET_RESETS_ = [{ before: '2026-10-06', flag: 'SHEET_RESET_2026_10_05' }];
+function sheetReset_() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    SHEET_RESETS_.forEach(function (z) {
+      if (props.getProperty(z.flag)) return;
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var tabs = {};
+      (loadSchedule_().reports || []).forEach(function (r) { tabs[String(r.en).substring(0, 90)] = true; });
+      ['Penalty Ledger', 'Penalties', ANALYSIS_TAB_].forEach(function (t) { tabs[t] = true; });
+      var rows = 0, gone = [];
+      ss.getSheets().forEach(function (sh) {
+        var name = sh.getName();
+        if (/^ZZ TEST/.test(name)) { ss.deleteSheet(sh); gone.push(name); return; }
+        if (tabs[name]) rows += dropRowsBefore_(sh, z.before);
+      });
+      props.setProperty(z.flag, new Date().toISOString() + ' — ' + rows + ' rows, ' + gone.length + ' tabs');
+      Logger.log('Sheet reset: %s rows before %s, tabs %s', rows, z.before, gone.join(', '));
+    });
+  } catch (e) { Logger.log('sheet reset: %s', e.message); }
+}
+/* Rows 2.. whose first column is a day before `before`, removed in runs from
+   the bottom up so the row numbers above do not move. A tab left with only
+   its header keeps one empty row: Sheets will not delete every row under a
+   frozen header, and the next row filed lands in it. */
+function dropRowsBefore_(sh, before) {
+  var last = sh.getLastRow();
+  if (last < 2) return 0;
+  var vals = sh.getRange(2, 1, last - 1, 1).getValues();
+  var drop = vals.map(function (v) { var d = dayOfCell_(v[0]); return !!d && d < before; });
+  var n = drop.filter(Boolean).length;
+  if (!n) return 0;
+  if (n === vals.length) {
+    sh.getRange(2, 1, last - 1, Math.max(1, sh.getLastColumn())).clearContent();
+    if (last > 2) sh.deleteRows(3, last - 2);
+    return n;
+  }
+  for (var i = drop.length - 1; i >= 0; i--) {
+    if (!drop[i]) continue;
+    var j = i;
+    while (j > 0 && drop[j - 1]) j--;
+    sh.deleteRows(j + 2, i - j + 1);
+    i = j;
+  }
+  return n;
+}
+/* the day of a Sheet cell: a date the Sheet made of "Sent at", or a
+   yyyy-mm-dd at the start of the text ("2026-10-05 (so far)") */
+function dayOfCell_(v) {
+  if (v && typeof v.getTime === 'function') return Utilities.formatDate(v, tz_(), 'yyyy-MM-dd');
+  var m = /^(\d{4}-\d{2}-\d{2})/.exec(String(v == null ? '' : v));
+  return m ? m[1] : '';
+}
+
 /* A report has just arrived (Code.js doPost, the moment Send is pressed):
    have the agents read the day about a minute from now, instead of at the
    next ten-minute look. The reading cannot run inside doPost — the phone is
@@ -1869,6 +1929,8 @@ function watch_(waitMs) {
   try {
     /* the restart of 3 Oct 2026: reporting counts from Monday 5 October */
     startFromRestart_();
+    /* and the Sheet, once (the reset of 5 Oct 2026) */
+    sheetReset_();
     /* a question of his still waiting — the post from his page never came */
     answerWaiting_();
     /* and an order of his, for the AI to find who does it (Orders.js) */

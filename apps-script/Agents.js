@@ -250,6 +250,77 @@ function saidBlock_(agent, d) {
    Klever forms ask "Do you need a decision from the Chairman?", and
    Rovestone's asks it too; until 5 Oct 2026 only the Rovestone reader saw
    the answer, and none of them reached his brief. */
+/* A rule broken today, or someone pushing to break one: the answers that
+   say so, found in code, with the person's own words. They always go in the
+   Chairman's brief (his decision, 5 Oct 2026) — the full-day test had Amaha
+   asking Wude to pass a chipped door, and the brief, choosing by money, left
+   it out. These are about whether the work and the reports can be trusted.
+   kit/facts_audit.js checks every question here is still on its form. */
+var BROKEN_ = [
+  { r:'wude-daily', f:'pr_any', is:'yes', say:['pr_what'], named:'pr_who', what:'Someone pressured QC to pass a defective product' },
+  { r:'wude-daily', f:'d_released', pos:true, say:['d_released_what'], what:'Defective items got into finished goods' },
+  { r:'wude-daily', f:'i_all', is:'no', say:['i_all_why'], what:'Jobs were released without a full QC inspection' },
+  { r:'liu-daily', f:'resist', is:'yes', say:['resist_what'], what:'Someone refused or worked around an operations rule' },
+  { r:'liu-daily', f:'mat_out_signed', is:'no', say:['mat_out_unsigned'], what:'Material left the store without approval' },
+  { r:'yordanos-daily', f:'iss_approved', is:'no', say:['iss_approved_why'], what:'Material was issued without Mahelet\u2019s signed approval' },
+  { r:'yordanos-daily', f:'sec_theft', is:'yes', say:['sec_theft_what'], what:'Something was stolen or taken out without permission' },
+  { r:'amaha-daily', f:'u_any', is:'yes', say:['u_what'], what:'Something was made or sent out without all four confirmations' },
+  { r:'amaha-daily', f:'ws_thrown', is:'yes', say:['ws_thrown_what'], what:'Reusable material was thrown away without being recorded' },
+  { r:'amaha-daily', f:'mp_safety', is:'yes', say:['mp_safety_what'], what:'Someone was hurt, or worked without safety gear' },
+  { r:'getachew-daily', f:'chq_confirmed', is:'no', say:['chq_confirmed_why'], what:'A cheque went out before Selam confirmed the funds' },
+  { r:'getachew-daily', f:'chq_match', is:'no', say:['chq_match_why'], what:'A cheque was not for the approved amount or supplier' },
+  { r:'getachew-daily', f:'p_subok', is:'no', when:'p_sub', say:['p_sub_what'], what:'Material was swapped for a cheaper one without Wude\u2019s approval' },
+  { r:'betty-daily', f:'discrepancy', is:'yes', say:['discrepancy_what'], what:'Cash did not match' },
+  { r:'betty-daily', f:'zz_confirmed', is:'no', say:['zz_confirmed_why'], what:'A cheque was written before its funds were confirmed' },
+  { r:'betty-daily', f:'zz_disc', pos:true, say:['zz_disc_what'], what:'A ZamZam payment did not match' }
+];
+function rulesBroken_(d) {
+  var out = [];
+  var last = {};
+  latestFiled_(d).forEach(function (f) { last[f.report] = f; });
+  BROKEN_.forEach(function (b) {
+    var f = last[b.r];
+    if (!f) return;
+    var v = f.fields || {};
+    if (b.when && !yes_(v[b.when])) return;
+    var hit = b.pos ? (a_(v, b.f) || 0) > 0
+                    : !blank_(v[b.f]) && String(v[b.f]).trim().toLowerCase() === b.is;
+    if (!hit) return;
+    var words = (b.say || []).filter(function (k) { return !blank_(v[k]); })
+                             .map(function (k) { return String(v[k]).trim(); });
+    var hit2 = { what: b.what, reported_by: (d.names && d.names[f.person]) || f.person,
+                 report: reportName_(d, b.r), their_words: words.join(' — ') || 'no detail given' };
+    /* the person they name, apart from their words — appended, a name read
+       as the speaker ("… I refused and failed it. — Amaha") */
+    if (b.named && !blank_(v[b.named])) hit2.person_named = String(v[b.named]).trim();
+    out.push(hit2);
+  });
+  return out;
+}
+/* What each person wrote about waiting on, or needing, someone else — every
+   report, every department, and Rovestone. Read side by side, two people
+   waiting on each other over the same thing show; in the full-day test
+   Rovestone waited on Klever's drawings and Klever's designer on Rovestone's
+   signed changes, both since 28 Sep, and nothing put the two together. */
+var WAIT_FIELDS_ = ['need_help', 'n_support', 'k_waiting', 'd_waiting_who', 'cp_48_why', 'quotes_late_why',
+                    'visits_late_why', 'b_short_what', 'shortage_hit', 'sh_flagged_who', 'pl_open_why',
+                    'need_lead_what', 'need_elyas_what', 'need_chair_what', 'p_chair_what'];
+function waitsOn_(d) {
+  var out = [];
+  latestFiled_(d).forEach(function (f) {
+    var v = f.fields || {}, rep = null;
+    ((d.schedule && d.schedule.reports) || []).forEach(function (r) { if (r.id === f.report) rep = r; });
+    if (!rep) return;
+    (rep.sections || []).forEach(function (sec) {
+      (sec.fields || []).forEach(function (q) {
+        if (WAIT_FIELDS_.indexOf(q.id) === -1 || blank_(v[q.id])) return;
+        out.push({ who: (d.names && d.names[f.person]) || f.person, report: rep.en,
+                   asked: q.en, wrote: String(v[q.id]).trim() });
+      });
+    });
+  });
+  return out;
+}
 function askedOfChair_(d) {
   var out = [];
   latestFiled_(d).forEach(function (f) {
@@ -1092,7 +1163,9 @@ var AGENTS = [
       mismatches_found_in_code: contradictions_(d),
       /* and inside one report: a part bigger than its whole, sources that do
          not add up to their total (oddFigures in forms.js) */
-      cannot_be_right_within_one_report: oddIn_(d)
+      cannot_be_right_within_one_report: oddIn_(d),
+      /* what each person says they wait on or need from someone else */
+      who_is_waiting_on_whom: waitsOn_(d)
     };
   },
   ask:'These figures come from different people describing the same day. Where two of them '+
@@ -1102,7 +1175,11 @@ var AGENTS = [
       'filed — that is a gap, not a disagreement, and you must never describe it as somebody '+
       'having recorded zero. Do not reach: a small difference is rounding or timing. A '+
       'production figure that disagrees with the operations figure, or a factory stopped for '+
-      'a board the store says it had, is worth the Chairman’s time.' },
+      'a board the store says it had, is worth the Chairman’s time. '+
+      'who_is_waiting_on_whom is what each person wrote about waiting on, or needing, someone '+
+      'else — every department, and Rovestone. Read them side by side: two people each waiting '+
+      'on the other over the same job or order, or one saying a thing was sent and the other '+
+      'that it never came, is a job nobody is moving. Name both people, the thing, and since when.' },
 
 { id:'decide', en:'What to decide', am:'ምን መወሰን እንዳለበት', last:true,
   facts: function (d) {
@@ -1131,7 +1208,8 @@ var AGENTS = [
 { id:'brief', en:'The Chairman’s brief', am:'የሊቀመንበሩ ማጠቃለያ', last:true,
   facts: function (d) {
     return { date: d.dayLabel, instructions: d.instructions,
-             asked_of_the_chairman_today: askedOfChair_(d) };
+             asked_of_the_chairman_today: askedOfChair_(d),
+             rules_broken_today: rulesBroken_(d) };
   },
   ask:'Below is what the other agents found today. Write the Chairman five lines at most. '+
       'Lead with the thing that costs the most money or will if nobody moves. Do not '+
@@ -1142,7 +1220,11 @@ var AGENTS = [
       'Every decision someone asked of him in today\u2019s reports (asked_of_the_chairman_today) '+
       'goes in the brief as well, on top of the five lines: who asks, what, the options they '+
       'give and by when. Do not choose for him. '+
-      'Do not join two findings into one cause unless a report says that is the cause.' }
+      'Do not join two findings into one cause unless a report says that is the cause. '+
+      'Everything in rules_broken_today goes in the brief too, every time, on top of the five '+
+      'lines — one line each: what happened, who, in their words. It is not about today\u2019s '+
+      'money; it is about whether the work and the reports can be trusted. And where the '+
+      'readers found two people each waiting on the other, that job goes in: nobody is moving it.' }
 ];
 
 /* ------------------------------------------------------------------ *

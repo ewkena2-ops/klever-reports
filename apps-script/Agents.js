@@ -181,6 +181,89 @@ function reportName_(d, id) {
   ((d.schedule && d.schedule.reports) || []).forEach(function (r) { if (r.id === id) hit = r.en; });
   return hit;
 }
+/* What people wrote, as well as the figures. Every reader used to be handed
+   numbers only: the first full report read (5 Oct 2026) asked the Chairman
+   for a decision, left 100,000 Birr in cash in the safe overnight and named
+   a 12% rise in a supplier's price — all written down, none of it a figure,
+   and the AI said nothing of any of it. Each reader now also gets the
+   written answers, the yes/no answers and the tables of the reports it
+   covers (`said` on the agent), each answer beside its question. A follow-up
+   that was not shown never arrives: the form drops it when it sends. */
+function saidIn_(d, ids) {
+  var out = [];
+  latestFiled_(d).forEach(function (f) {
+    if (ids.indexOf(f.report) === -1) return;
+    var rep = null;
+    ((d.schedule && d.schedule.reports) || []).forEach(function (r) { if (r.id === f.report) rep = r; });
+    if (!rep) return;
+    var v = f.fields || {}, lines = [];
+    (rep.sections || []).forEach(function (sec) {
+      (sec.fields || []).forEach(function (q) {
+        var x = v[q.id];
+        if (q.t === 'area' || q.t === 'text') {
+          if (!blank_(x)) lines.push(q.en + ' — ' + String(x).trim());
+        } else if (q.t === 'yesno' || q.t === 'choice') {
+          if (!blank_(x)) lines.push(q.en + ' — ' + said_(q, x));
+        } else if (q.t === 'table') {
+          var rows = [];
+          rows_(x).forEach(function (row) {
+            var cells = [], typed = false;
+            (q.cols || []).forEach(function (c) {
+              if (!row || blank_(row[c.id])) return;
+              cells.push(c.en + ': ' + said_(c, row[c.id]));
+              /* a row with only a choice picked in it is a row not filled in */
+              if (c.t !== 'choice' && c.t !== 'yesno') typed = true;
+            });
+            if (typed) rows.push(cells.join(', '));
+          });
+          if (rows.length) lines.push(q.en + ' — ' + rows.join(' | '));
+        }
+      });
+    });
+    if (lines.length) {
+      out.push(((d.names && d.names[f.person]) || f.person) + ' — ' + rep.en + ':\n' +
+               lines.map(function (l) { return '- ' + l; }).join('\n'));
+    }
+  });
+  return out;
+}
+/* an answer as the person saw it: the words of the option they picked, Birr
+   with its thousands */
+function said_(q, x) {
+  var hit = null;
+  (q.opts || []).forEach(function (o) { if (o.v === x) hit = o.en; });
+  if (hit) return hit;
+  if (q.t === 'money' && !isNaN(Number(x)) && String(x).trim() !== '') return fmt_(Number(x)) + ' Birr';
+  return String(x).trim();
+}
+function saidBlock_(agent, d) {
+  var said = agent.said ? saidIn_(d, agent.said) : [];
+  if (!said.length) return '';
+  return '\nWHAT THEY WROTE — the written answers in the reports you cover, in their own words. ' +
+    'Read them as closely as the figures: a problem they name, money not banked, a price that ' +
+    'moved, help they need from someone, a customer kept waiting. Say what it means for your ' +
+    'subject; do not copy it out, and leave what belongs to another subject alone. Words are ' +
+    'not checked the way figures are — where words and a figure disagree, say so.\n\n' +
+    said.join('\n\n');
+}
+/* Decisions asked of the Chairman in today's reports, word for word. Ten
+   Klever forms ask "Do you need a decision from the Chairman?", and
+   Rovestone's asks it too; until 5 Oct 2026 only the Rovestone reader saw
+   the answer, and none of them reached his brief. */
+function askedOfChair_(d) {
+  var out = [];
+  latestFiled_(d).forEach(function (f) {
+    var v = f.fields || {};
+    Object.keys(v).forEach(function (k) {
+      /* Frewoyni's Rovestone form names it p_chair_what */
+      if (/(need_chair_what|p_chair_what)$/.test(k) && !blank_(v[k])) {
+        out.push({ who: (d.names && d.names[f.person]) || f.person,
+                   report: reportName_(d, f.report), asks: String(v[k]).trim() });
+      }
+    });
+  });
+  return out;
+}
 /* Answers that cannot be right as written, found in code by the same check
    the form runs (oddFigures in forms.js) — 11 called within the hour out of
    10 new leads, sources adding up to 33 under a total of 25. A model handed
@@ -547,6 +630,7 @@ function decisionsBiting_(d) {
 var AGENTS = [
 
 { id:'attendance', en:'Who was absent today', am:'ዛሬ ማን እንደቀረ',
+  said:['amaha-daily', 'elyas-daily', 'liu-daily'],
   facts: function (d) {
     var amaha = vals_(d.filed, 'amaha-daily');
     var elyas = vals_(d.filed, 'elyas-daily');
@@ -581,6 +665,7 @@ var AGENTS = [
       'say so.' },
 
 { id:'production', en:'Production', am:'ምርት',
+  said:['amaha-daily', 'liu-daily', 'amaha-weekly', 'liu-weekly', 'liu-plan', 'amaha-monthly'],
   facts: function (d) {
     var amaha = vals_(d.filed, 'amaha-daily');
     var stage = rows_(amaha.w_stage);
@@ -615,6 +700,7 @@ var AGENTS = [
       'that is the drop the Chairman wants to hear about the same day.' },
 
 { id:'quality', en:'Quality', am:'ጥራት',
+  said:['wude-daily', 'wude-weekly', 'wude-monthly'],
   facts: function (d) {
     var wude = vals_(d.filed, 'wude-daily');
     return {
@@ -641,6 +727,7 @@ var AGENTS = [
       'If anyone pressured Wude to pass a defect, that is the headline.' },
 
 { id:'store', en:'Store and stock', am:'መጋዘንና ክምችት',
+  said:['yordanos-daily', 'yordanos-weekly'],
   facts: function (d) {
     var yord = vals_(d.filed, 'yordanos-daily');
     return {
@@ -666,6 +753,7 @@ var AGENTS = [
       'factory is paying for board it already owns.' },
 
 { id:'purchasing', en:'Purchasing and prices', am:'ግዥና ዋጋ',
+  said:['getachew-daily', 'getachew-weekly'],
   facts: function (d) {
     var purch = vals_(d.filed, 'getachew-daily');
     return {
@@ -704,6 +792,7 @@ var AGENTS = [
       'anything past the date promised — a supplier owed too long stops delivering.' },
 
 { id:'finance', en:'Finance', am:'ፋይናንስ',
+  said:['betty-daily', 'betty-forecast', 'betty-weekly', 'betty-cashflow', 'betty-joblist'],
   facts: function (d) {
     var fin = vals_(d.filed, 'betty-daily');
     return {
@@ -736,6 +825,7 @@ var AGENTS = [
       'even when today’s report is missing — the last thing known is that the floor was broken.' },
 
 { id:'commercial', en:'Sales and commercial', am:'ሽያጭና ንግድ',
+  said:['ephrata-daily', 'tsega-sales-daily', 'biruktayet-sales-daily', 'ephrata-weekly', 'ephrata-projection'],
   facts: function (d) {
     var ephrata = vals_(d.filed, 'ephrata-daily');
     var tsega = vals_(d.filed, 'tsega-sales-daily');
@@ -751,7 +841,10 @@ var AGENTS = [
       collected_today: a_(ephrata, 'collected_today'),
       week_to_date: a_(ephrata, 'week_total'),
       weekly_floor: 3000000,
-      unanswered_whatsapp: a_(ephrata, 'wa_unanswered'),
+      /* the question is how many waited over 2 hours for an answer — late,
+         not still waiting; "Ephrata must answer the pending message" was
+         said of one answered that morning */
+      whatsapp_answered_late_over_2_hours: a_(ephrata, 'wa_unanswered'),
       complaints_in_groups: a_(ephrata, 'wa_complaints'),
       tsega_filed: !!got_(d.filed, 'tsega-sales-daily'),
       biruktayet_filed: !!got_(d.filed, 'biruktayet-sales-daily'),
@@ -772,10 +865,13 @@ var AGENTS = [
       'payment that keeps sliding to next week is a customer who is not paying. '+
       'Is the week going to reach 3,000,000 Birr, and if not say it now rather than on '+
       'Friday. Look at where leads came from against which ones converted — if one source '+
-      'produces volume and no contracts, that is money being spent for nothing. Unanswered '+
-      'WhatsApp is a lost customer nobody has noticed yet.' },
+      'produces volume and no contracts, that is money being spent for nothing. A WhatsApp '+
+      'message that waited over 2 hours is a customer kept waiting; the figure counts messages '+
+      'answered late, not messages still unanswered — the written answer says whether they '+
+      'have been answered since.' },
 
 { id:'design', en:'Design', am:'ዲዛይን',
+  said:['yohannis-design-daily', 'yonas-design-daily', 'abrham-g-design-daily', 'teklweld-design-daily', 'abrham-w-design-daily'],
   facts: function (d) {
     var ids = ['yohannis','yonas','abrham-g','teklweld','abrham-w'];
     var out = { designers: [], filed: 0, missing: [] };
@@ -792,6 +888,7 @@ var AGENTS = [
       'hidden cost in this trade.' },
 
 { id:'site', en:'Installation and site', am:'ተከላና ቦታ',
+  said:['elyas-daily', 'ashenafi-daily', 'elyas-weekly'],
   facts: function (d) {
     var elyas = vals_(d.filed, 'elyas-daily');
     var ashen = vals_(d.filed, 'ashenafi-daily');
@@ -820,6 +917,7 @@ var AGENTS = [
       'being handed to him already broken.' },
 
 { id:'customer', en:'Customers', am:'ደንበኞች',
+  said:['betty-pulse', 'elyas-daily', 'ephrata-daily', 'betty-weekly-cx'],
   facts: function (d) {
     var pulse = vals_(d.filed, 'betty-pulse');
     var elyas = vals_(d.filed, 'elyas-daily');
@@ -830,7 +928,7 @@ var AGENTS = [
       complaints_in_whatsapp: a_(ephrata, 'wa_complaints'),
       acceptances_signed: a_(elyas, 'ac_signed'),
       customers_called_before_arrival: pair_(elyas, 'ac_called'),
-      unanswered_messages: a_(ephrata, 'wa_unanswered'),
+      whatsapp_answered_late_over_2_hours: a_(ephrata, 'wa_unanswered'),
       pulse_filed: !!got_(d.filed, 'betty-pulse'),
       site_complaints_last_7_days: series_(d, 'elyas-daily', 'ac_complaints'),
       whatsapp_complaints_last_7_days: series_(d, 'ephrata-daily', 'wa_complaints')
@@ -927,6 +1025,7 @@ var AGENTS = [
       'conversation.' },
 
 { id:'margin', en:'Margin watch', am:'የትርፍ ክትትል',
+  said:['ephrata-daily', 'amaha-daily', 'getachew-daily'],
   facts: function (d) {
     var ephrata = vals_(d.filed, 'ephrata-daily');
     var amaha = vals_(d.filed, 'amaha-daily');
@@ -955,6 +1054,7 @@ var AGENTS = [
       'directions. Say which one is moving, not all four.' },
 
 { id:'contradictions', en:'Reports that disagree', am:'የሚጋጩ ሪፖርቶች',
+  said:['amaha-daily', 'yordanos-daily', 'liu-daily', 'wude-daily', 'elyas-daily', 'ephrata-daily', 'getachew-daily'],
   facts: function (d) {
     var N = function (rid, f) { return nOrNull_(d.filed, rid, f); };
     var amaha = vals_(d.filed, 'amaha-daily');
@@ -1003,7 +1103,8 @@ var AGENTS = [
   facts: function (d) {
     return {
       open_decisions: decisionsBiting_(d),
-      note: 'cost_today is null where today was not one of the days this one costs anything'
+      note: 'cost_today is null where today was not one of the days this one costs anything',
+      asked_of_the_chairman_today: askedOfChair_(d)
     };
   },
   ask:'These are decisions the Chairman has not made. Do not list them all back — he wrote '+
@@ -1017,16 +1118,25 @@ var AGENTS = [
       'document holds which number backwards is worse than saying nothing. '+
       'Where a decision blocks documents from being printed, say that first: time spent not '+
       'deciding it is the only cost here that compounds. At most 150 words. If nothing bit '+
-      'today, name the decision nearest to biting and stop.' },
+      'today, name the decision nearest to biting and stop. '+
+      'People also asked him for decisions in today\u2019s reports (asked_of_the_chairman_today): '+
+      'give each one its own line — who asks, what, the options they give and by when — and '+
+      'do not pick a side.' },
 
 { id:'brief', en:'The Chairman’s brief', am:'የሊቀመንበሩ ማጠቃለያ', last:true,
-  facts: function (d) { return { date: d.dayLabel, instructions: d.instructions }; },
+  facts: function (d) {
+    return { date: d.dayLabel, instructions: d.instructions,
+             asked_of_the_chairman_today: askedOfChair_(d) };
+  },
   ask:'Below is what the other agents found today. Write the Chairman five lines at most. '+
       'Lead with the thing that costs the most money or will if nobody moves. Do not '+
       'summarise everything — leave out what is merely normal. If the day was ordinary, '+
       'say so in one line and stop. Name people only where a person has to act. '+
       'An instruction from the Chairman that is past its date and still open belongs in the '+
-      'brief — name who has it and how many days over it is.' }
+      'brief — name who has it and how many days over it is. '+
+      'Every decision someone asked of him in today\u2019s reports (asked_of_the_chairman_today) '+
+      'goes in the brief as well, on top of the five lines: who asks, what, the options they '+
+      'give and by when. Do not choose for him.' }
 ];
 
 /* ------------------------------------------------------------------ *
@@ -1240,7 +1350,7 @@ function askAll_(d) {
   if (brief) {
     var digest = out.map(function (r) { return '## ' + r.en + '\n' + r.text; }).join('\n\n');
     out.push({ id:brief.id, en:brief.en, am:brief.am, facts:{}, last:true,
-               text:aiAsk_(promptFor_(brief, { date: d.dayLabel }, d) + '\n\n' + digest, 2000) });
+               text:aiAsk_(promptFor_(brief, brief.facts(d), d) + '\n\n' + digest, 2000) });
   }
   return out;
 }
@@ -1288,7 +1398,8 @@ function promptFor_(agent, facts, d) {
       (leftBlank_(d).join('; ') || 'none'),
     oddBlock_(d),
     '',
-    JSON.stringify(facts, null, 1)
+    JSON.stringify(facts, null, 1),
+    saidBlock_(agent, d)
   ].join('\n');
 }
 

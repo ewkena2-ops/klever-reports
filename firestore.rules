@@ -30,7 +30,11 @@ service cloud.firestore {
       return id in ['chairman', 'ledger',
                     'ephrata', 'liu', 'betty', 'seble', 'getachew', 'yordanos',
                     'amaha', 'wude', 'elyas', 'ashenafi', 'tsega', 'biruktayet',
-                    'yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w'];
+                    'yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w',
+                    /* Rovestone's Operations Lead, added 4 Oct 2026 — and
+                       left out of this list until the 5 Oct live test found
+                       every report of hers refused */
+                    'frewoyni'];
     }
 
     function signedIn() {

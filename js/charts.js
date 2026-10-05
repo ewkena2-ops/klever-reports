@@ -185,31 +185,36 @@
       Array.prototype.slice.call(wrap.querySelectorAll('svg')).forEach(function (s) { s.remove(); });
       var nameW = Math.min(96, Math.max(70, Math.round(W * 0.24)));
       var n = o.cols.length, gap = 3;
-      var cell = Math.max(14, Math.min(24, Math.floor((W - nameW - 4) / n) - gap));
+      /* The columns share the whole width, so the grid reaches the right edge
+         on a wide screen too; a cell is never taller than 26, so on a
+         computer the days become wide cells rather than huge squares. On a
+         phone the two come out the same and the cells stay square. */
+      var cw = Math.max(14, Math.min(72, Math.floor((W - nameW - 4) / n) - gap));
+      var cell = Math.max(14, Math.min(26, cw));
       var headH = 30, H = headH + o.rows.length * (cell + gap) + 2;
       var svg = sv('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, 'class': 'cg-svg',
                             role: 'group', 'aria-label': o.title });
       wrap.insertBefore(svg, tip.el || wrap.firstChild);
       var x0 = nameW;
       o.cols.forEach(function (c, j) {
-        var cx = x0 + j * (cell + gap) + cell / 2;
+        var cx = x0 + j * (cw + gap) + cw / 2;
         stext(svg, cx, 11, c.top, 'cg-tick' + (c.today ? ' cg-today' : ''), 'middle');
         stext(svg, cx, 24, c.bottom, 'cg-tick' + (c.today ? ' cg-today' : ''), 'middle');
-        if (c.tip) hit(svg, { x: cx - cell / 2 - 1, y: 0, width: cell + 2, height: headH - 2 }, c.tip, tip, wrap);
+        if (c.tip) hit(svg, { x: cx - cw / 2 - 1, y: 0, width: cw + 2, height: headH - 2 }, c.tip, tip, wrap);
       });
       o.rows.forEach(function (r, i) {
         var y = headH + i * (cell + gap);
         stext(svg, 0, y + cell / 2 + 4, r.name, 'cg-name');
         r.cells.forEach(function (c, j) {
-          var x = x0 + j * (cell + gap);
+          var x = x0 + j * (cw + gap);
           if (!c || !c.s) {
-            sv('rect', { x: x + cell / 2 - 1.5, y: y + cell / 2 - 1.5, width: 3, height: 3, rx: 1.5, 'class': 'cg-none' }, svg);
+            sv('rect', { x: x + cw / 2 - 1.5, y: y + cell / 2 - 1.5, width: 3, height: 3, rx: 1.5, 'class': 'cg-none' }, svg);
             return;
           }
           var g = sv('g', { 'class': 'cg-cell s-' + c.s }, svg);
-          sv('rect', { x: x, y: y, width: cell, height: cell, rx: 4, 'class': 'cg-sq' }, g);
-          if (cell >= 14) stext(g, x + cell / 2, y + cell / 2 + 4, ICON[c.s], 'cg-ic', 'middle');
-          hit(g, { x: x - 1, y: y - 1, width: cell + 2, height: cell + 2 }, c.tip, tip, wrap,
+          sv('rect', { x: x, y: y, width: cw, height: cell, rx: 4, 'class': 'cg-sq' }, g);
+          if (cell >= 14) stext(g, x + cw / 2, y + cell / 2 + 4, ICON[c.s], 'cg-ic', 'middle');
+          hit(g, { x: x - 1, y: y - 1, width: cw + 2, height: cell + 2 }, c.tip, tip, wrap,
               function () { g.classList.add('on'); }, function () { g.classList.remove('on'); }, c.open);
         });
       });

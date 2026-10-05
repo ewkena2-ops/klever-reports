@@ -412,14 +412,20 @@ function series_(d, reportId, field) {
   }
   return out;
 }
-/* The restart of 3 Oct 2026: a reading of a day on or after LEDGER_START
-   does not reach back before it. The days before were cancelled, so a miss
-   on one of them is not "the sixth day running" — which is what the first
-   reading after the restart said of Selam. A reading of a day before the
-   start (the practice days) still sees its week as it was. */
+/* A reading never reaches back past a start it has passed — LEDGER_START, or
+   any of the moves in STARTS_ (the restart of 3 Oct). The days before were
+   cancelled, so a miss on one of them is not "the sixth day running" — which
+   is what the first reading after the restart said of Selam. When the start
+   moved on to Tue 6 Oct, Monday became a day before it, and its reading said
+   everyone "missed five straight days from 29 Sep": it had passed the
+   restart, not the start. A reading of a day before every start (the
+   practice days of September) still sees its week as it was. */
 function beforeReadStart_(d, day) {
-  var start = prop_('LEDGER_START', '');
-  return !!start && d.day >= start && day < start;
+  var cut = '';
+  STARTS_.map(function (s) { return s.day; }).concat([prop_('LEDGER_START', '')]).forEach(function (m) {
+    if (m && m <= d.day && m > cut) cut = m;
+  });
+  return !!cut && day < cut;
 }
 function isNum_(x) { return typeof x === 'number'; }
 function avgKnown_(xs) {

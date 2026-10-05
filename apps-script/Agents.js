@@ -510,7 +510,7 @@ var DECISIONS = [
     var e = vals_(d.filed, 'elyas-daily');
     var why = [];
     if (yes_(w.pr_any)) why.push('someone pressured Wude to pass a defect today');
-    if (n_(e.q_rework) > 0) why.push('work was refused and reworked at site');
+    if (yes_(e.q_rework)) why.push('work was refused and reworked at site');
     return why.length
       ? why.join('; ') + '. Wude is covered. Nobody else who did the same thing would be.'
       : null;
@@ -607,7 +607,9 @@ function contradictions_(d) {
   cmp('defects — Amaha against Wude', 'amaha-daily','qc_defects', 'wude-daily','d_total');
   cmp('defects — Wude against Mahelet', 'wude-daily','d_total', 'liu-daily','defects');
   cmp('waste % — Amaha against Mahelet', 'amaha-daily','w_pct', 'liu-daily','waste');
-  cmp('m² installed — Elyas against Mahelet', 'elyas-daily','j_m2', 'liu-daily','installed');
+  /* jobs against jobs: Elyas's m² against Mahelet's count of jobs (6 against
+     1) was reported as a disagreement */
+  cmp('jobs installed — Elyas against Mahelet', 'elyas-daily','j_done', 'liu-daily','installed');
   return out;
 }
 
@@ -796,12 +798,15 @@ var AGENTS = [
   facts: function (d) {
     var fin = vals_(d.filed, 'betty-daily');
     return {
-      cash_in: a_(fin, 'cash_in'), cash_banked: a_(fin, 'cash_banked'), cash_in_hand: a_(fin, 'cash_hand'),
+      /* a yes/no: read as a number it was 0 whatever she answered */
+      cash_in: a_(fin, 'cash_in'), all_cash_banked_today: ay_(fin, 'cash_banked'), cash_in_hand: a_(fin, 'cash_hand'),
       bank_total: a_(fin, 'bank_total'), reserve_floor: 6000000,
       below_6m_reported: ay_(fin, 'below6_reported'),
       discrepancy: ay_(fin, 'discrepancy'),
       payments_approved: a_(fin, 'pay_approved'), payment_value: a_(fin, 'pay_value'),
-      kidan_approved_above_50k: ay_(fin, 'pay_kidan'),
+      /* a count, not a yes/no — "1" was read as "no Kidan approval", and the
+         reader called her own words "Kidan approved" a contradiction */
+      payments_over_50k_sent_to_kidan: a_(fin, 'pay_kidan'),
       zamzam_transferred: a_(fin, 'zz_transfer'), zamzam_confirmed: ay_(fin, 'zz_confirmed'),
       zamzam_discrepancy: a_(fin, 'zz_disc'),
       advance_received: a_(fin, 'adv_in'), final_received: a_(fin, 'final_in'),
@@ -904,7 +909,7 @@ var AGENTS = [
       photographed_first: ay_(elyas, 'r_photo'),
       acceptances_signed: a_(elyas, 'ac_signed'),
       complaints: a_(elyas, 'ac_complaints'),
-      rework_at_site: a_(elyas, 'q_rework'),
+      rework_at_site: ay_(elyas, 'q_rework'),
       customer_property_damaged: ay_(elyas, 'cl_damage'),
       ashenafi_filed: !!got_(d.filed, 'ashenafi-daily'),
       m2_installed_last_7_days: series_(d, 'elyas-daily', 'j_m2'),
@@ -1079,7 +1084,7 @@ var AGENTS = [
       yordanos_which: yord.sh_what || '',
       wude_pass_rate: N('wude-daily','i_rate'),
       mahelet_qc_pass: N('liu-daily','qc_pass'), mahelet_qc_fail: N('liu-daily','qc_fail'),
-      elyas_installed_m2: N('elyas-daily','j_m2'), mahelet_installed: N('liu-daily','installed'),
+      elyas_jobs_finished: N('elyas-daily','j_done'), mahelet_jobs_installed: N('liu-daily','installed'),
       offcut_m2_received_by_store: N('yordanos-daily','k_offin'),
       offcut_m2_sent_by_factory: sentOut,
       /* already checked in code: pairs that differ by more than a tenth, where
@@ -1136,7 +1141,8 @@ var AGENTS = [
       'brief — name who has it and how many days over it is. '+
       'Every decision someone asked of him in today\u2019s reports (asked_of_the_chairman_today) '+
       'goes in the brief as well, on top of the five lines: who asks, what, the options they '+
-      'give and by when. Do not choose for him.' }
+      'give and by when. Do not choose for him. '+
+      'Do not join two findings into one cause unless a report says that is the cause.' }
 ];
 
 /* ------------------------------------------------------------------ *

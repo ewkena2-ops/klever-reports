@@ -1289,6 +1289,17 @@ function dailyRun_() {
     try { warn = warn.concat(weekEnd_(lastSun).warn); }
     catch (e) { warn.push('Closing the week to ' + lastSun + ': ' + e.message); }
   }
+  /* A day before counting starts is nobody's: it is not closed, not read and
+     not mailed. 5 Oct 2026: the cards were not out, nobody could report, and
+     the morning would have closed Monday and mailed him "19 due, 0 filed"
+     for it. Before, a day before LEDGER_START was closed at no charge — the
+     practice weeks of September, when the team was being shown the system. */
+  var start = prop_('LEDGER_START', '');
+  if (start && day < start) {
+    return { period: day, warn: warn,
+             note: 'before counting starts (' + start + ') — not closed' +
+                   (caught.length ? '; also closed ' + caught.join(', ') + ', which had been missed' : '') };
+  }
   var c = closeDay_(day);
   /* the month's bonuses so far, for the Bonuses section of his page */
   try { bonusStanding_(day); }

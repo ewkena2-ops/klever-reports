@@ -1778,19 +1778,30 @@ function publishAnalysis_(results, d) {
    charges for each attempt. */
 function watchForRunRequest() { watch_(1000); }
 
-/* The Chairman restarted reporting on 3 October 2026: the fines of 1–2 October
-   were cancelled and everything counts from Monday 5 October. LEDGER_START is
-   moved there once, if it is still earlier — RESTART_APPLIED then says it
-   was done, so a later choice of his is never overridden. */
-var RESTART_START_ = '2026-10-05';
+/* Moves of the day counting starts (LEDGER_START), each done once by the
+   watch, each only ever later — a flag says it was done, so a later choice
+   of his is never overridden, and a start already later is never moved back.
+   - 3 Oct 2026: the Chairman restarted reporting; the fines of 1–2 October
+     were cancelled and everything counts from Monday 5 October.
+   - 5 Oct 2026, evening: the sign-in cards had not been handed out and
+     nobody had filed, so the close at 06:44 would have charged all nineteen
+     for Monday. Counting starts Tuesday 6 October; he names the day the cards
+     go out, and it moves again to that. */
+var STARTS_ = [
+  { day: '2026-10-05', flag: 'RESTART_APPLIED', why: 'the restart of 3 Oct' },
+  { day: '2026-10-06', flag: 'START_MOVED_2026_10_06', why: 'cards not handed out on Mon 5 Oct' }
+];
+var RESTART_START_ = STARTS_[0].day;
 function startFromRestart_() {
   try {
     var props = PropertiesService.getScriptProperties();
-    if (props.getProperty('RESTART_APPLIED')) return;
-    var now = prop_('LEDGER_START', '');
-    if (!now || now < RESTART_START_) props.setProperty('LEDGER_START', RESTART_START_);
-    props.setProperty('RESTART_APPLIED', new Date().toISOString());
-    Logger.log('LEDGER_START %s -> %s (the restart of 3 Oct)', now || 'nothing', prop_('LEDGER_START', ''));
+    STARTS_.forEach(function (s) {
+      if (props.getProperty(s.flag)) return;
+      var now = prop_('LEDGER_START', '');
+      if (!now || now < s.day) props.setProperty('LEDGER_START', s.day);
+      props.setProperty(s.flag, new Date().toISOString());
+      Logger.log('LEDGER_START %s -> %s (%s)', now || 'nothing', prop_('LEDGER_START', ''), s.why);
+    });
   } catch (e) { Logger.log('restart start: %s', e.message); }
 }
 

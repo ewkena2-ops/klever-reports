@@ -31,6 +31,14 @@ const PEOPLE = [
      person reports for it, for now). Not Klever staff: `company` keeps her
      out of Klever's own channels, and her reports carry no fines — she has no
      terms letter (noFine on each report). */
+  /* Group Finance, the holding over Klever and Rovestone (6 Oct 2026: "the
+     finance from Rovestone, called Kidan"). Eight Klever reports are
+     addressed "… + Kidan" and payments over 50,000 Birr go to Kidan for
+     approval; until now Kidan had no account, so none of it arrived. Kidan
+     files nothing here and has no terms letter. `company` keeps Kidan out of
+     Klever's "All staff"; the Group Finance room (js/channels.js) is where
+     the reports land. */
+  { id:'kidan', en:'Kidan', am:'ኪዳን', roleEn:'Group Finance Controller', roleAm:'የቡድኑ ፋይናንስ ተቆጣጣሪ', grp:'groupfinance', company:'rovestone', noLetter:1 },
   { id:'frewoyni', en:'Frewoyni', am:'ፍሬወይኒ', roleEn:'Rovestone Operations Lead', roleAm:'የሮቭስቶን ኦፕሬሽን ኃላፊ', grp:'rovestone', company:'rovestone', from:'2026-10-05' },
 
   /* The 22 production workers, from the September payroll sheet. Ashenafi

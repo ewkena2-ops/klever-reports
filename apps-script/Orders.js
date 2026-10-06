@@ -147,6 +147,16 @@ ORDER_DUTIES_.frewoyni = { reportsTo: null, duties: [
   'what Rovestone owes Klever, and paying it (50% before production, 50% on delivery)'],
   covers: ['Rovestone’s staff', 'Kalkidan (Rovestone General Manager, no account)'] };
 
+/* Group Finance, over Klever and Rovestone (6 Oct 2026). From Klever's own
+   letters: payments over 50,000 Birr go to Kidan for approval, and Selam,
+   Mahelet and Ephrata address reports to Kidan. Kidan has no letter. */
+ORDER_DUTIES_.kidan = { reportsTo: null, duties: [
+  'group finance over Klever and Rovestone — Kidan is the Group Finance Controller, not Klever staff',
+  'approving payments over 50,000 Birr that Selam sends up',
+  'reading Selam’s daily, weekly, cash-flow and cash-forecast reports, Mahelet’s 15-day plan and Ephrata’s projection',
+  'being told the same day of a cash discrepancy or a posting error'],
+  covers: [] };
+
 /* the six designers, one letter (Klever-Designer-Terms; Ermiyas, from 6 Oct
    2026, has none yet) — a task for "the designer" of a job goes to the one
    he names */

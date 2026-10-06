@@ -526,7 +526,8 @@
     'Finance': ['betty'],
     'Selam': ['betty'],   /* her name on the site for now */
     'Elyas': ['elyas'],
-    'Kidan': []          /* Kidan has no account — he has no letter either */
+    'Kidan': ['kidan']   /* an account since 6 Oct 2026 (no letter); the
+                            Group Finance room is where these land */
   };
 
   function recipientsOf(report) {
@@ -575,6 +576,9 @@
          in front of forty people including twenty-two men on the factory
          floor. A report going to three people should not be a broadcast. */
       if (ch.id === 'all') return;
+      /* a room kept for one person's reports (Group Finance, for Kidan's)
+         takes nothing that is not addressed to them */
+      if (ch.onlyFor && to.indexOf(ch.onlyFor) === -1) return;
       var holdsAll = to.every(function (id) { return ch.members.indexOf(id) !== -1; });
       if (!holdsAll) return;
       if (!best || ch.members.length < best.members.length) best = ch;

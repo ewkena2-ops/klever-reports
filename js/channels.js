@@ -32,7 +32,9 @@ const CHAT_ACCOUNTS = [
   'tsega', 'biruktayet',
   'yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w', 'ermiyas',
   /* Rovestone, the sister company (4 Oct 2026) */
-  'frewoyni'
+  'frewoyni',
+  /* Group Finance (6 Oct 2026) */
+  'kidan'
 ];
 
 function hasChat(id) { return id === CHAIRMAN || CHAT_ACCOUNTS.indexOf(id) !== -1; }
@@ -73,7 +75,23 @@ const CHANNEL_DEFS = [
        Betelhem". Without her here there is no room holding all three
        recipients that either man belongs to, and their reports would be
        delivered somewhere two of the three people named could not read them. */
-    ids:['liu'] }
+    ids:['liu'] },
+
+  /* The Chairman's choice, 6 Oct 2026. Eight reports are addressed to Kidan:
+     Selam's daily, weekly, cash-flow and cash-forecast reports and her two
+     to "Chairman + Ephrata + Kidan", Mahelet's 15-day plan and Ephrata's
+     projection. A report goes to the smallest room holding everyone it is
+     addressed to (channelFor in js/app.js), so this one room, smaller than
+     Finance, is where all eight land. The three leads see each other's
+     reports to Kidan; nobody outside these five does. `onlyFor`: it carries
+     reports addressed to Kidan and nothing else — without it, Selam's job
+     list (to Mahelet alone) moved here from Finance only because this room
+     is smaller. */
+  { id:'groupfinance', kind:'team', en:'Group Finance', am:'የቡድኑ ፋይናንስ',
+    descEn:'Kidan, Group Finance — with Selam, Mahelet and Ephrata, whose reports go to Kidan.',
+    descAm:'ኪዳን፣ የቡድኑ ፋይናንስ — ከሰላም፣ ማህሌት እና ኤፍራታ ጋር፤ ሪፖርቶቻቸው ለኪዳን ይደርሳሉ።',
+    grp:'groupfinance', onlyFor:'kidan',
+    ids:['betty','liu','ephrata'] }
 ];
 
 var CHANNELS = {
@@ -99,7 +117,8 @@ var CHANNELS = {
     var out = CHANNEL_DEFS.filter(function (d) {
       return CHANNELS.membersOf(d).indexOf(id) !== -1;
     }).map(function (d) {
-      return { id:d.id, kind:d.kind, en:d.en, am:d.am,
+      /* onlyFor is for routing on the phone; the seed (all() below) leaves it out */
+      return { id:d.id, kind:d.kind, en:d.en, am:d.am, onlyFor:d.onlyFor || null,
                descEn:d.descEn, descAm:d.descAm, members:CHANNELS.membersOf(d) };
     });
 

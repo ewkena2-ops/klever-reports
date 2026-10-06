@@ -10,10 +10,16 @@
    it with what was done (the cheque number). Left open past its day, it is
    in his list as overdue, and in the morning brief.
 
-   A credit is paid when a later payment row in Getachew's report (section
-   4, cr_paid_list) names the same supplier for the same amount; each
-   payment pays one credit. A part payment, or one cheque for several
-   credits, does not match: the reminder goes, and they close it saying so.
+   PAID. Getachew writes each payment in his report (section 4,
+   cr_paid_list: supplier, amount, cheque). A supplier's payments go to its
+   credits, the soonest due first, each payment only to credits bought on
+   or before its day — so one cheque can pay two credits, and two cheques
+   one. A credit paid in full gets no reminder; one already sent is closed
+   by the script (creditSettle_), with the cheque in its note, a minute or
+   two after his report arrives (Agents.js runIfNew_) and again each
+   morning. Supplier names are compared without case, spaces, punctuation
+   or "PLC"/"trading". A credit whose amount was not written is never
+   counted paid: its reminders go, and they close them by hand.
    A credit with no pay-by date gets one reminder to Getachew to agree one.
 
    Each reminder is written once (its id comes from the filing and the row),
@@ -36,7 +42,13 @@ function creditFilings_(today) {
   return Object.keys(byDay).sort().map(function (d) { return byDay[d]; });
 }
 
-function creditName_(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+/* "Alemu Wood PLC", "alemu  wood", "Alemu-Wood" are one supplier */
+function creditName_(s) {
+  return String(s || '').toLowerCase()
+    .replace(/[.,;:'’"()\[\]\/\\&_\-–—።፣፤]/g, ' ')
+    .replace(/\b(p ?l ?c|s ?c|share company|trading|the)\b/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
 function creditDate_(s) {
   var t = String(s || '').trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(t) && dayOf_(new Date(t + 'T12:00:00' + ADDIS_)) === t ? t : '';
@@ -59,20 +71,86 @@ function creditsOwed_(filings) {
                       chq: String(r.chq || '').trim(), used: false });
     });
   });
-  /* the soonest due is paid first */
-  credits.sort(function (a, b) { return (a.due || '9999') < (b.due || '9999') ? -1 : 1; });
+  /* the soonest due is paid first; then the oldest bought */
+  credits.sort(function (a, b) {
+    var x = a.due || '9999', y = b.due || '9999';
+    return x !== y ? (x < y ? -1 : 1) : (a.day < b.day ? -1 : a.day > b.day ? 1 : 0);
+  });
+  credits.forEach(function (c) { c.left = c.amount > 0 ? c.amount : null; c.cheques = []; });
+  /* each payment, oldest first, to its supplier's credits bought by then */
+  payments.forEach(function (p) {
+    var money = p.amount;
+    credits.forEach(function (c) {
+      if (money <= 0 || c.left == null || c.left <= 1 || c.day > p.day || creditName_(c.sup) !== p.sup) return;
+      var take = Math.min(money, c.left);
+      c.left -= take;
+      money -= take;
+      c.cheques.push({ chq: p.chq, day: p.day, amount: take });
+    });
+  });
   credits.forEach(function (c) {
-    var p = payments.filter(function (x) {
-      return !x.used && x.day >= c.day && x.sup === creditName_(c.sup) && Math.abs(x.amount - c.amount) <= 1;
-    })[0];
-    if (p) { p.used = true; c.paidOn = p.day; c.chq = p.chq; }
+    if (c.left != null && c.left <= 1) {
+      c.paidOn = c.cheques[c.cheques.length - 1].day;
+      c.chq = c.cheques.map(function (x) { return x.chq; }).filter(Boolean).join(', ');
+    }
   });
   return credits;
 }
 
+/* One document, only the named fields changed (the rest kept). */
+function fsUpdate_(path, obj) {
+  var fields = {}, mask = [];
+  Object.keys(obj).forEach(function (k) {
+    fields[k] = fsEncode_(obj[k]);
+    mask.push('updateMask.fieldPaths=' + encodeURIComponent(k));
+  });
+  var res = UrlFetchApp.fetch(fsBase_() + '/documents/' + path + '?' + mask.join('&') +
+                              '&currentDocument.exists=true', {
+    method: 'patch', contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + fsToken_() },
+    muteHttpExceptions: true,
+    payload: JSON.stringify({ fields: fields })
+  });
+  if (res.getResponseCode() !== 200) {
+    throw new Error('Could not update ' + path + ' (HTTP ' + res.getResponseCode() + '): ' +
+                    res.getContentText().substring(0, 300));
+  }
+}
+
+/* The reminders of credits now paid in full, closed with what paid them.
+   From runIfNew_ when Getachew's report comes in, and each morning.
+   Returns the ids it closed. */
+function creditSettle_(today, credits) {
+  credits = credits || creditsOwed_(creditFilings_(today));
+  var open = {};
+  tryQuery_('instructions', [['status', 'EQUAL', 'open']], null).forEach(function (i) {
+    if (i.by === 'reminder') open[i._id] = i;
+  });
+  var closed = [];
+  credits.forEach(function (c) {
+    if (!c.paidOn) return;
+    var how = c.cheques.map(function (x) {
+      return (x.chq ? 'cheque ' + x.chq : 'no cheque number written') + ', ' + fmt_(x.amount) + ' Birr, ' + pushDay_(x.day);
+    }).join('; ');
+    ['cr-' + c.key + '-s', 'cr-' + c.key + '-g', 'crd-' + c.key].forEach(function (id) {
+      if (!open[id]) return;
+      fsUpdate_('instructions/' + id, {
+        status: 'done', doneAt: new Date(),
+        note: ('Paid (' + how + '), as Getachew reported. Closed by the system.\n' +
+               'ተከፍሏል (' + how + ')፣ ጌታቸው እንደዘገበው። በሲስተሙ ተዘግቷል።').substring(0, 1000)
+      });
+      closed.push(id);
+    });
+  });
+  return closed;
+}
+
 /* The reminders one credit needs today: [{id, to, text, due}], or none. */
 function creditRemindersFor_(c, today) {
-  var what = c.sup + ', ' + fmt_(c.amount) + ' Birr' +
+  var birr = !(c.amount > 0) ? 'amount not written'
+           : c.left != null && c.left < c.amount ? fmt_(c.left) + ' Birr still owed of ' + fmt_(c.amount)
+           : fmt_(c.amount) + ' Birr';
+  var what = c.sup + ', ' + birr +
              (c.item || c.code ? ' (' + [c.item, c.code ? 'job ' + c.code : ''].filter(Boolean).join(', ') + ')' : '');
   var taken = pushDay_(c.day);
   if (!c.due) {
@@ -106,7 +184,12 @@ function creditRemindersFor_(c, today) {
    the phones. Returns what it did, for the run log. */
 function creditReminders_(today) {
   var start = prop_('LEDGER_START', '');
-  var credits = creditsOwed_(creditFilings_(today)).filter(function (c) {
+  var all = creditsOwed_(creditFilings_(today));
+  /* what was paid since: its reminders closed first — a failure there does
+     not stop the reminders, and is said to the run after them */
+  var closed = [], settleErr = null;
+  try { closed = creditSettle_(today, all); } catch (e) { settleErr = e; }
+  var credits = all.filter(function (c) {
     return !c.paidOn && (!start || c.day >= start);
   });
   var sent = [];
@@ -119,5 +202,6 @@ function creditReminders_(today) {
       try { notifyInstruction_(r.id); } catch (e) { Logger.log('credit push %s: %s', r.id, e.message); }
     });
   });
-  return { unpaid: credits.length, reminders: sent };
+  if (settleErr) throw new Error('closing paid reminders: ' + settleErr.message);
+  return { unpaid: credits.length, reminders: sent, closed: closed };
 }

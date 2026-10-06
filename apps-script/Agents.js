@@ -1996,6 +1996,11 @@ function runIfNew_() {
   catch (e) { Logger.log('new-report check failed: %s', e.message); return; }
   if (!fresh.length) return;
   markSeen_(fresh[fresh.length - 1].at);
+  /* Getachew's report in: a supplier credit it says is paid has its
+     reminders closed now, not tomorrow morning (Credit.js) */
+  if (fresh.some(function (f) { return f.report === 'getachew-daily'; })) {
+    try { creditSettle_(today); } catch (e) { Logger.log('credit settle: %s', e.message); }
+  }
   Logger.log('%s new report(s) since %s — reading today again.', fresh.length, from.toISOString());
   ran_('reading', function () {
     runAgents({ quiet: true });

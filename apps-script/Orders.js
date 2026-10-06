@@ -147,9 +147,10 @@ ORDER_DUTIES_.frewoyni = { reportsTo: null, duties: [
   'what Rovestone owes Klever, and paying it (50% before production, 50% on delivery)'],
   covers: ['Rovestone’s staff', 'Kalkidan (Rovestone General Manager, no account)'] };
 
-/* the five designers, one letter (Klever-Designer-Terms) — a task for
-   "the designer" of a job goes to the one he names */
-['yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w'].forEach(function (id) {
+/* the six designers, one letter (Klever-Designer-Terms; Ermiyas, from 6 Oct
+   2026, has none yet) — a task for "the designer" of a job goes to the one
+   he names */
+['yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w', 'ermiyas'].forEach(function (id) {
   ORDER_DUTIES_[id] = { reportsTo: 'ephrata', duties: [
     'the design of their own jobs: pre-measurement visit and video, 3D pre-design and rough quote',
     'final measurement after Selam’s go-ahead; final design with options; the signed Material Selection Form',

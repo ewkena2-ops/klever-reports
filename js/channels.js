@@ -30,7 +30,7 @@ const CHAT_ACCOUNTS = [
   'ephrata', 'liu', 'betty', 'seble', 'getachew', 'yordanos',
   'amaha', 'wude', 'elyas', 'ashenafi',
   'tsega', 'biruktayet',
-  'yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w',
+  'yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w', 'ermiyas',
   /* Rovestone, the sister company (4 Oct 2026) */
   'frewoyni'
 ];

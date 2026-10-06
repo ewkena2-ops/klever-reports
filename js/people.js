@@ -16,6 +16,11 @@ const PEOPLE = [
   { id:'abrham-g',   en:'Abrham Gosaye',        am:'አብርሃም ጎሳዬ',     roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial' },
   { id:'teklweld',   en:'Teklweld Birhanu',     am:'ተክለወልድ ብርሃኑ',   roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial' },
   { id:'abrham-w',   en:'Abrham Webeshat',      am:'አብርሃም ወበሻት',    roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial' },
+  /* The sixth designer, added by the Chairman on 6 Oct 2026; reports from
+     the 7th. No terms letter yet and no surname on file, so `noLetter`: his
+     reports carry no fines and the rulebook tracks his lines at nothing
+     until his letter is signed — then take `noLetter` out. */
+  { id:'ermiyas',    en:'Ermiyas',              am:'ኤርሚያስ',          roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial', from:'2026-10-07', noLetter:1 },
 
   /* Betelhem's assistant. She has no terms letter of her own — everything
      about her is written inside Betelhem's. She is here because she does the

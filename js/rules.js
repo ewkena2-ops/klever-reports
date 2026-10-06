@@ -2549,7 +2549,7 @@ const RULES = [
     am:'በሰዓቱ መገኘት፤ ቀድሞ አለመውጣት (በቀን)',
     src:'The assembler terms — “Daily Bonus Amount Condition Punctuality 100 Birr On time, no early leave”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'No report lists which assemblers worked each day; trainees in their first 6 months get no bonuses.' },
 
   { id:'assembler-satisfaction-bonus', who:['assembler'], kind:'bonus', birr:200, per:'day', how:'recorded',
@@ -2557,7 +2557,7 @@ const RULES = [
     am:'ደንበኛው ያለ ቅሬታ ፈረመ (በቀን)',
     src:'The assembler terms — “Customer satisfaction 200 Birr Customer signs with zero complaint”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Listed as a daily bonus though a customer signs once, at completion; no report links a job to its assemblers.' },
 
   { id:'assembler-high-output-bonus', who:['assembler'], kind:'bonus', birr:200, per:'day', how:'recorded',
@@ -2565,7 +2565,7 @@ const RULES = [
     am:'በቀን 10 ካሬ ሜትር ወይም ከዚያ በላይ፣ በጥሩ ጥራት',
     src:'The assembler terms — “High output 200 Birr 10 m² or more, at good quality”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Only the team’s total m² is reported, not each assembler’s.' },
 
   { id:'assembler-perfect-attendance-bonus', who:['assembler'], kind:'bonus', birr:300, per:'week', how:'recorded',
@@ -2573,7 +2573,7 @@ const RULES = [
     am:'ሙሉ መገኘት፤ በሳምንቱ ማርፈድም መቅረትም የለም',
     src:'The assembler terms — “Weekly Bonus Amount Condition Perfect attendance 300 Birr Zero late, zero absence”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Absence is recorded nowhere; lateness appears in Elyas’s “Who was late?” table.' },
 
   { id:'assembler-team-ontime-bonus', who:['assembler'], kind:'bonus', birr:1, per:'birr', how:'recorded',
@@ -2582,7 +2582,7 @@ const RULES = [
     src:'The assembler terms — “Team on-time 200–400 Birr All jobs completed on time”',
     range:[200, 400],
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'The terms give 200–400 with no scale and do not say who the team is; Elyas’s weekly w_delayed = 0 shows the week qualified.' },
 
   { id:'assembler-monthly-excellence-bonus', who:['assembler'], kind:'bonus', birr:1000, per:'month', how:'recorded',
@@ -2590,7 +2590,7 @@ const RULES = [
     am:'የወሩ ብልጫ፤ በወሩ ምንም ቅጣት የለም',
     src:'The assembler terms — “Monthly Bonus Amount Condition Monthly excellence 1,000 Birr Zero penalties all month”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Check the assembler has no penalty line in this ledger for the month and is past the 6-month trainee level.' },
 
   { id:'assembler-zero-complaint-bonus', who:['assembler'], kind:'bonus', birr:1000, per:'month', how:'recorded',
@@ -2598,7 +2598,7 @@ const RULES = [
     am:'በወሩ ምንም የደንበኛ ቅሬታ የለም',
     src:'The assembler terms — “Zero complaint 1,000 Birr No customer complaints all month”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'No report attributes a complaint to an assembler.' },
 
   { id:'assembler-lead-allowance', who:['assembler'], kind:'bonus', birr:500, per:'month', how:'recorded',
@@ -2606,7 +2606,7 @@ const RULES = [
     am:'የመሪ ገጣጣሚ የአመራር አበል',
     src:'The assembler terms — “700 Birr/m² plus bonuses and 500 Birr/month leadership allowance”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'For a Level 4 Lead Assembler (24 months or more, able to lead a team of 2).' },
 
   { id:'assembler-trainee-no-bonuses', who:['assembler'], kind:'consequence', birr:null, per:'other', how:'recorded',
@@ -2614,7 +2614,7 @@ const RULES = [
     am:'ሠልጣኝ (የመጀመሪያ 6 ወራት)፤ ጉርሻ የለም',
     src:'The assembler terms — “1 · Trainee 0 to 6 months 600 Birr/m² no bonuses”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'No record holds an assembler’s start date or level.' },
 
   { id:'assembler-checklist-not-completed', who:['assembler'], kind:'penalty', birr:300, per:'event', how:'recorded',
@@ -2622,7 +2622,7 @@ const RULES = [
     am:'የሥራ ቦታ ቁሳቁስ ማረጋገጫ ዝርዝር አልተሞላም',
     src:'The assembler terms — “Site material verification — the critical rule Failure Penalty Checklist not completed –300 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Counts toward the 3-failure suspension and the 3/5-penalty counters.' },
 
   { id:'assembler-not-reported-24h', who:['assembler'], kind:'penalty', birr:500, per:'event', how:'recorded',
@@ -2630,7 +2630,7 @@ const RULES = [
     am:'የጎደሉ ወይም የተጎዱ ዕቃዎች በ24 ሰዓት ውስጥ አልተነገሩም',
     src:'The assembler terms — “Missing or damaged items not reported within 24 hours –500 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Counts toward the 3-failure suspension and the 3/5-penalty counters.' },
 
   { id:'assembler-started-incorrect-materials', who:['assembler'], kind:'penalty', birr:500, per:'event', how:'recorded',
@@ -2638,7 +2638,7 @@ const RULES = [
     am:'ተከላ በተሳሳተ ቁሳቁስ ተጀመረ',
     src:'The assembler terms — “Installation started with incorrect materials –500 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Counts toward the 3-failure suspension and the 3/5-penalty counters.' },
 
   { id:'assembler-extra-materials-after-start', who:['assembler'], kind:'penalty', birr:300, per:'event', how:'recorded',
@@ -2646,7 +2646,7 @@ const RULES = [
     am:'ከተጀመረ በኋላ ተጨማሪ ቁሳቁስ ጠየቀ (በደካማ ፍተሻ ምክንያት)',
     src:'The assembler terms — “Asking for extra materials after starting, due to poor checking –300 Birr each time”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Each request is one line; counts toward the 3-failure suspension and the 3/5-penalty counters.' },
 
   { id:'assembler-3-checklist-failures', who:['assembler'], kind:'consequence', birr:null, per:'month', how:'auto',
@@ -2654,7 +2654,7 @@ const RULES = [
     am:'በወር 3 ወይም ከዚያ በላይ የቁሳቁስ ፍተሻ ጥፋቶች፤ እግድና ድጋሚ ሥልጠና',
     src:'The assembler terms — “Three or more failures in one month Suspension + retraining”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'At month close: any assembler with 3 or more lines from assembler-checklist-not-completed, -not-reported-24h, -started-incorrect-materials and -extra-materials-after-start; the terms do not say how long the suspension is.',
     test:'custom' },
 
@@ -2663,7 +2663,7 @@ const RULES = [
     am:'ሳያሳውቁ ማርፈድ',
     src:'The assembler terms — “Daily penalties Failure Penalty Late arrival without notice –100 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Names are typed freely and must be matched; the table does not record whether the assembler gave notice, so waive the line for anyone who did.',
     test:{ at:'day', rows:{ of:'elyas-daily.a_late_who', where:['mins', '>', 0], who:{ col:'name', group:'assembler' } } } },
 
@@ -2672,7 +2672,7 @@ const RULES = [
     am:'ያለፈቃድ ቀድሞ መውጣት',
     src:'The assembler terms — “Early leave without approval –100 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Elyas names early leavers only in free text.' },
 
   { id:'assembler-absence', who:['assembler'], kind:'penalty', birr:200, per:'event', how:'recorded',
@@ -2680,7 +2680,7 @@ const RULES = [
     am:'ሳያሳውቁ መቅረት',
     src:'The assembler terms — “Absence without notice –200 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Repeated absence without notice is immediate removal.' },
 
   { id:'assembler-rude-to-customer', who:['assembler'], kind:'penalty', birr:200, per:'event', how:'recorded',
@@ -2688,7 +2688,7 @@ const RULES = [
     am:'ለደንበኛ ጨዋነት የጎደለው ባህሪ',
     src:'The assembler terms — “Rude behaviour to a customer –200 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Shouting at a customer is immediate removal instead.' },
 
   { id:'assembler-hidden-defect', who:['assembler'], kind:'penalty', birr:500, per:'event', how:'recorded',
@@ -2696,35 +2696,35 @@ const RULES = [
     am:'የተደበቀ ጉድለት አልተነገረም',
     src:'The assembler terms — “Hidden defect not reported –500 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided' },
+    unsignedWhy:'the assembler terms are not signed yet' },
 
   { id:'assembler-poor-quality', who:['assembler'], kind:'penalty', birr:200, per:'event', how:'recorded',
     en:'Poor quality work',
     am:'ደካማ ጥራት ያለው ሥራ',
     src:'The assembler terms — “Poor quality work –200 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided' },
+    unsignedWhy:'the assembler terms are not signed yet' },
 
   { id:'assembler-no-uniform-id', who:['assembler'], kind:'penalty', birr:100, per:'event', how:'recorded',
     en:'Not wearing uniform or ID',
     am:'የሥራ ልብስ አለመልበስ ወይም መታወቂያ አለመያዝ',
     src:'The assembler terms — “Not wearing uniform or ID –100 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided' },
+    unsignedWhy:'the assembler terms are not signed yet' },
 
   { id:'assembler-smoking', who:['assembler'], kind:'penalty', birr:200, per:'event', how:'recorded',
     en:'Smoking at a customer site',
     am:'በደንበኛ የሥራ ቦታ ማጨስ',
     src:'The assembler terms — “Smoking at a customer site –200 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided' },
+    unsignedWhy:'the assembler terms are not signed yet' },
 
   { id:'assembler-property-damage', who:['assembler'], kind:'penalty', birr:500, per:'event', how:'recorded',
     en:'Damaging customer property',
     am:'የደንበኛ ንብረት ማበላሸት',
     src:'The assembler terms — “Damaging customer property –500 Birr + repair cost”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'The repair cost is recorded separately; the same damage also fines Elyas –500.' },
 
   { id:'assembler-property-damage-repair-cost', who:['assembler'], kind:'penalty', birr:1, per:'birr', how:'recorded',
@@ -2732,7 +2732,7 @@ const RULES = [
     am:'የተበላሸ የደንበኛ ንብረት የጥገና ወጪ (ብር)',
     src:'The assembler terms — “Damaging customer property –500 Birr + repair cost”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Record the repair cost in Birr; the terms do not say how it is split across a crew.' },
 
   { id:'assembler-job-incomplete', who:['assembler'], kind:'penalty', birr:300, per:'event', how:'recorded',
@@ -2740,14 +2740,14 @@ const RULES = [
     am:'ያለፈቃድ ሥራ ሳይጠናቀቅ መተው',
     src:'The assembler terms — “Leaving a job incomplete without approval –300 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided' },
+    unsignedWhy:'the assembler terms are not signed yet' },
 
   { id:'assembler-no-daily-progress-update', who:['assembler'], kind:'penalty', birr:200, per:'event', how:'recorded',
     en:'No Daily Progress Update posted',
     am:'የዕለት ሂደት ሪፖርት አልተላከም',
     src:'The assembler terms — “No Daily Progress Update posted –200 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Elyas names them only in free text; the same missing update also fines Elyas –200 and Ashenafi –100.' },
 
   { id:'assembler-missing-photos', who:['assembler'], kind:'penalty', birr:100, per:'event', how:'recorded',
@@ -2755,14 +2755,14 @@ const RULES = [
     am:'በዋትስአፕ ሪፖርቱ ፎቶዎች የሉም',
     src:'The assembler terms — “Missing photos in the WhatsApp update –100 Birr”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided' },
+    unsignedWhy:'the assembler terms are not signed yet' },
 
   { id:'assembler-3-penalties-suspension', who:['assembler'], kind:'consequence', birr:null, per:'month', how:'auto',
     en:'3 penalties in a month: three-day suspension without pay',
     am:'በወር 3 ቅጣቶች፤ ያለ ክፍያ የሦስት ቀን እግድ',
     src:'The assembler terms — “Escalation In one month Consequence 3 penalties Three-day suspension without pay”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'At month close: any assembler with 3 or more penalty lines in the calendar month; the order to Elyas makes the suspension his discretion.',
     test:'custom' },
 
@@ -2771,7 +2771,7 @@ const RULES = [
     am:'በወር 5 ቅጣቶች፤ መሰናበት',
     src:'The assembler terms — “5 penalties Removal from Klever Zero tolerance — immediate removal”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'At month close: any assembler with 5 or more penalty lines in the calendar month; under the order Elyas may only recommend removal to Mahelet and the Chairman.',
     test:'custom' },
 
@@ -2780,7 +2780,7 @@ const RULES = [
     am:'መሰናበት፤ ከደንበኛ ጋር መጣላት፣ ስርቆት፣ ሆን ብሎ ማበላሸት፣ ተደጋጋሚ መቅረት',
     src:'The assembler terms — “Zero tolerance — immediate removal Fighting or shouting at a customer Stealing Deliberately damaging property Repeated absence without notice”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'“Repeated” absence is not defined.' },
 
   { id:'assembler-removal-offences-b', who:['assembler'], kind:'consequence', birr:null, per:'event', how:'recorded',
@@ -2788,7 +2788,7 @@ const RULES = [
     am:'መሰናበት፤ የኤልያስን መመሪያ አለመቀበል ወይም ሰክሮ መሥራት',
     src:'The assembler terms — “Refusing to follow Elyas’s instructions Working while drunk or under the influence”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'The same terms let an assembler refuse defective materials, unsafe work and untrained machines, which this line does not except.' },
 
   { id:'assembler-no-pay-without-confirmation', who:['assembler'], kind:'consequence', birr:null, per:'job', how:'recorded',
@@ -2796,7 +2796,7 @@ const RULES = [
     am:'ደንበኛው በዋትስአፕ እስኪያረጋግጥ ክፍያ አይለቀቅም',
     src:'The assembler terms — “Payment rules 1 No payment without the customer’s confirmation.”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'Pay turns on the customer’s WhatsApp post, not the signed acceptance form, and no report records that post.' },
 
   { id:'assembler-training-failed', who:['assembler'], kind:'consequence', birr:null, per:'other', how:'recorded',
@@ -2804,7 +2804,7 @@ const RULES = [
     am:'የሥልጠና ቀንን ሁለት ጊዜ ወደቀ፤ አይቀጠርም',
     src:'The order to Elyas — “If they fail, they repeat the day. If they fail twice, they are not hired.”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'The same order says Elyas may not hire or fire without Mahelet and the Chairman.' },
 
   { id:'assembler-unpaid-penalties-not-assigned', who:['assembler'], kind:'consequence', birr:null, per:'other', how:'recorded',
@@ -2812,6 +2812,6 @@ const RULES = [
     am:'ያልተከፈለ ቅጣት አለ፤ ለሥራ አይመደብም',
     src:'The order to Elyas — “Refuse to assign an assembler with unpaid penalties outstanding.”',
     signed:false,
-    unsignedWhy:'the assembler terms are not signed and the pay rate is undecided',
+    unsignedWhy:'the assembler terms are not signed yet',
     note:'The terms never say how an assembler’s penalties are collected, and for a piece-rate worker no assignment means no pay.' }
 ];

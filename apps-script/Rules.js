@@ -333,11 +333,16 @@ function ruleLine_(rule, hit, day, schedule) {
 /* Nothing counts before LEDGER_START, and nothing under a document that is
    not signed. The line stays, with the amount it would carry, so the
    Chairman sees it happened. */
-function gate_(line, rule, day) {
+function gate_(line, rule, day, schedule) {
   var start = prop_('LEDGER_START', '');
   var signedOn = rule.signed === false ? prop_('ASSEMBLER_TERMS_SIGNED', '') : '';
+  /* someone with no terms letter yet (`noLetter` on their entry in forms.js) */
+  var noLetter = ((schedule && schedule.people) || []).some(function (p) {
+    return p.id === line.person && p.noLetter;
+  });
   var why = null;
   if (start && day < start) why = 'Not counted — before LEDGER_START (' + start + ').';
+  else if (noLetter) why = 'Not counted — this person has no terms letter yet.';
   else if (rule.hold) why = 'Held for your decision — ' + rule.hold;
   else if (rule.signed === false && (!signedOn || day < signedOn)) {
     why = 'Not counted — ' + (rule.unsignedWhy || 'the document this rule comes from is not signed yet') + '.';
@@ -379,7 +384,7 @@ function runTests_(which, ctx, day, schedule, only) {
         errors.push(rule.id + ': charged ' + h.person + ', who the rule is not for');
         return;
       }
-      lines.push(gate_(ruleLine_(rule, h, day, schedule), rule, day));
+      lines.push(gate_(ruleLine_(rule, h, day, schedule), rule, day, schedule));
     });
   });
   return { lines: lines, errors: errors, unjudged: unjudged, missed: missed };
@@ -434,7 +439,7 @@ function ruleLinesForDay_(day, filings, schedule) {
       source: 'recorded',
       why: 'Recorded by the Chairman for ' + ev.day + (ev.note ? ': ' + ev.note : '.')
     }, ev.day || day, schedule);
-    got.lines.push(gate_(line, rule, ev.day || day));
+    got.lines.push(gate_(line, rule, ev.day || day, schedule));
   });
 
   /* the same rule, person and day found twice (a report and a recording,

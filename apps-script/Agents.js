@@ -526,18 +526,26 @@ function repeats_(d) {
    today was not one of those days. It is code, not a model — whether a thing
    happened is a fact, and only what to do about it is a judgment. */
 
-var DECISIONS = [
+/* someone who joins later (`from` on their entry in forms.js) is not missing
+   before their first day */
+function startsAfter_(d, id) {
+  var from = null;
+  ((d.schedule && d.schedule.people) || []).forEach(function (p) { if (p.id === id) from = p.from || null; });
+  return !!(from && d.day < from);
+}
 
-{ id:'assembler-rate', what:'The assembler pay rate',
-  yours:true,
-  detail:'Clause 3 says 600 Birr per m², which over a 26-day month at 8 a day is 124,800 Birr. '+
-         'Clause 4 says a standard month is 9,000 to 11,000. The two are about twelve times apart.',
-  blocks:'Assembler Complete File, Handbook, Contract, Elyas Complete File parts 3 and 5 — '+
-         'nothing can be printed for assemblers until one figure wins',
-  bites: function () {
-    return 'Still blocking. This is the only open decision that stops paper leaving the building, '+
-           'and it has blocked it every day since it was raised.';
-  } },
+/* Decided, and so never to be raised as open again. */
+var SETTLED = [
+  { id:'assembler-rate', what:'The assembler pay rate', on:'2026-10-06',
+    answer:'600 Birr per m² installed and accepted, piece rate, no base salary (the Chairman, '+
+           '6 Oct 2026: "600 per m2 keep it"). Clause 4’s monthly table of 9,000–11,000 was '+
+           'replaced by what 600 pays: 93,600 at 6 m² a day, 124,800 at 8, 156,000 at 10, over '+
+           '26 days, plus bonuses. The assembler terms, handbook and bound files can be printed; '+
+           'assembler fines and bonuses still count for nothing until the terms are signed '+
+           '(ASSEMBLER_TERMS_SIGNED).' }
+];
+
+var DECISIONS = [
 
 { id:'yordanos-penalty', what:'What Yordanos owes for a missing store report',
   yours:true,
@@ -661,9 +669,10 @@ var DECISIONS = [
   } },
 
 { id:'payroll-headcount', what:'Payroll headcount in the master file',
-  detail:'It pays three salespeople and six designers. There are two and five. It also prints '+
-         'Amaha’s base as 35,008 Birr where his letter says 35,000.',
-  blocks:'Master file section 16 — 25,008 Birr a month',
+  detail:'It pays three salespeople and six designers. There are two salespeople, and six '+
+         'designers since Ermiyas joined on 6 October 2026 (he has no terms letter yet). It '+
+         'also prints Amaha’s base as 35,008 Birr where his letter says 35,000.',
+  blocks:'Master file section 16 — it pays a salesperson who does not exist',
   bites: function () { return null; } }
 ];
 
@@ -953,14 +962,15 @@ var AGENTS = [
       'have been answered since.' },
 
 { id:'design', en:'Design', am:'ዲዛይን',
-  said:['yohannis-design-daily', 'yonas-design-daily', 'abrham-g-design-daily', 'teklweld-design-daily', 'abrham-w-design-daily'],
+  said:['yohannis-design-daily', 'yonas-design-daily', 'abrham-g-design-daily', 'teklweld-design-daily', 'abrham-w-design-daily',
+        'ermiyas-design-daily'],
   facts: function (d) {
-    var ids = ['yohannis','yonas','abrham-g','teklweld','abrham-w'];
+    var ids = ['yohannis','yonas','abrham-g','teklweld','abrham-w','ermiyas'];
     var out = { designers: [], filed: 0, missing: [] };
     ids.forEach(function (id) {
       var r = got_(d.filed, id + '-design-daily');
       if (r) { out.filed++; out.designers.push({ who:id, values:r.fields }); }
-      else out.missing.push(id);
+      else if (!startsAfter_(d, id)) out.missing.push(id);
     });
     return out;
   },
@@ -1191,7 +1201,9 @@ var AGENTS = [
   facts: function (d) {
     return {
       open_decisions: decisionsBiting_(d),
-      note: 'cost_today is null where today was not one of the days this one costs anything',
+      already_decided: SETTLED,
+      note: 'cost_today is null where today was not one of the days this one costs anything. '+
+            'already_decided is settled: never raise it as open or ask him to decide it again',
       asked_of_the_chairman_today: askedOfChair_(d)
     };
   },

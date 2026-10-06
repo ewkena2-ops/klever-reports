@@ -117,6 +117,9 @@ import {
     parts.search.placeholder = t('regSearch');
     parts.search.setAttribute('aria-label', t('regSearch'));
     parts.search.oninput = function () { S.q = parts.search.value.trim().toLowerCase(); drawList(); };
+    /* from a customer's star in the universe: register.html?q=KK-114 */
+    var asked = new URLSearchParams(location.search).get('q');
+    if (asked) { parts.search.value = asked; S.q = asked.trim().toLowerCase(); S.tab = 'table'; }
     root.appendChild(parts.search);
     parts.list = el('div', 'reglist');
     parts.list.appendChild(el('p', 'codenote', t('chLoading')));

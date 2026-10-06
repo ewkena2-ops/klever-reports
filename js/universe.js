@@ -16,7 +16,7 @@ import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, query, where, orderBy, limit, onSnapshot
+  collection, doc, query, where, orderBy, limit, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 (function () {
@@ -108,9 +108,13 @@ import {
     ['group', 'groupStats', 'klever', 'title', 'money', 'replay', 'live', 'coLive', 'coOff', 'coLiveSub', 'coOffSub',
      'flyIn', 'chairman', 'filed', 'late', 'missing', 'in', 'out', 'centre', 'files', 'receives',
      'instructions', 'nothing', 'agent', 'openObs', 'outside', 'notReported', 'birr', 'dept', 'people', 'noOne', 'noOneSub', 'fromKlever', 'toKidan', 'payKidan',
-     'payKidanShort', 'roveM2', 'forRove'].forEach(function (k) {
+     'payKidanShort', 'roveM2', 'forRove', 'cust', 'custLegend', 'custNext', 'custContract', 'custAdv', 'custFinal',
+     'custUnpaid', 'custProblems', 'custOpen'].forEach(function (k) {
       out[k] = t('un' + k.charAt(0).toUpperCase() + k.slice(1));
     });
+    /* the board's steps, in words, for a customer's sheet */
+    out.board = {};
+    BOARD.forEach(function (b) { out.board[b] = t('regB_' + b); });
     /* the words the observatory already uses for the same things */
     out.wantsYou = t('obLegendLoud');
     out.worth = t('obLegendWarm');
@@ -147,7 +151,57 @@ import {
     errLine.textContent = msg;
   }
 
-  var data = { filings: [], findings: [], instructions: [] };
+  /* Klever's Job Tracking Board, in order, with its column numbers (as in
+     apps-script/Register.js REG_BOARD_ and js/register.js) */
+  var BOARD = ['lead', 'visit', 'predesign', 'quote', 'contract', 'advance', 'measure', 'selection', 'ordered',
+               'received', 'finalreq', 'final', 'production', 'made', 'qc', 'ready', 'delivered', 'accepted', 'aftersales'];
+  var BOARD_N = [1, 1, 1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+
+  /* Each customer as the universe draws it: a lead with its job beside it
+     once signed, then the jobs no lead names (as the Leads & jobs table
+     shows them); where it stands is the AI's reading where there is one,
+     else the lists' own; paid once the advance is in. */
+  function customersOf(leads, jobs) {
+    var byJob = {}, byLead = {}, used = {}, out = [], seen = {};
+    jobs.forEach(function (j) { byJob[j.job] = j; if (j.leadCode) byLead[j.leadCode] = j; });
+    function one(l, j) {
+      var x = j || l, ai = x.ai || null;
+      var stage = ai ? ai.stage : (x.board ? x.board.stage : 'lead');
+      var i = BOARD.indexOf(stage);
+      if (i === -1) { i = 0; stage = 'lead'; }
+      var nx = BOARD[i + 1];
+      var status = ai ? ai.status : (x.status || 'moving');
+      return {
+        key: j ? j.job : l.key,
+        name: (l && l.name) || (j && j.cust) || (j && j.job) || '',
+        code: (l && l.code) || (j && j.leadCode) || '',
+        job: j ? j.job : '',
+        value: j && j.value != null ? j.value : (l && l.quote != null ? l.quote : null),
+        adv: j ? j.advIn || 0 : 0, fin: j ? j.finalIn || 0 : 0,
+        stage: stage, n: BOARD_N[i], status: status,
+        why: (ai && ai.why) || x.why || '',
+        next: (ai && ai.next) || (status === 'done' || !nx ? '' : t('regB_' + nx)),
+        who: ai && ai.next ? (ai.who || '') : (status === 'done' ? '' : (x.board ? x.board.nextWho || '' : '')),
+        problems: ((l && l.problems) || []).length + ((j && j.problems) || []).length,
+        paid: i >= BOARD.indexOf('advance')
+      };
+    }
+    leads.forEach(function (l) {
+      var j = (l.job && byJob[l.job]) || (l.code && byLead[l.code]) || null;
+      if (j) used[j.job] = true;
+      out.push(one(l, j));
+    });
+    jobs.forEach(function (j) { if (!used[j.job]) out.push(one(null, j)); });
+    out.forEach(function (c) {
+      var k = c.key, n = 2;
+      while (seen[k]) k = c.key + '~' + (n++);
+      seen[k] = true;
+      c.key = k;
+    });
+    return out;
+  }
+
+  var data = { filings: [], findings: [], instructions: [], customers: [] };
   var world = null, rootEl = null, waiting = null;
 
   function push() { if (world) world.update(data); }
@@ -230,6 +284,19 @@ import {
       qs.forEach(function (d) { out.push(d.data()); });
       data.instructions = out;
       push();
+    }, failed);
+
+    /* every customer, as a star (apps-script/Register.js builds the tables;
+       only the Chairman may read them) */
+    var regLeads = [], regJobs = [];
+    function custPush() { data.customers = customersOf(regLeads, regJobs); push(); }
+    onSnapshot(doc(db, 'register', 'leads'), function (d) {
+      regLeads = d.exists() ? (d.data().rows || []) : [];
+      custPush();
+    }, failed);
+    onSnapshot(doc(db, 'register', 'jobs'), function (d) {
+      regJobs = d.exists() ? (d.data().rows || []) : [];
+      custPush();
     }, failed);
 
     /* A new day is a new company: at Addis midnight, start again — and when

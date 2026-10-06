@@ -102,6 +102,34 @@ const INST = [
   { id: 'suppliers', en: 'Suppliers', am: 'አቅራቢዎች', angle: 3.0, orbit: 92, size: 2.1,
     w: { type: 3, rim: '#e0c8a0', tilt: 0.2, pal: ['#6d5a48', '#9a8266', '#c8b08c', '#3a2e24'] } }
 ];
+/* 6 Oct 2026, the Chairman: "make the orbit bigger". Every orbit spreads
+   by the same factor, so each department has room round it for the
+   customers whose jobs it holds now. */
+const SPREAD = 1.55;
+DEPTS.forEach(d => { d.orbit *= SPREAD; });
+INST.forEach(i => { i.orbit *= SPREAD; });
+INST[0].size = 4.4;          /* the customers' cluster, wider for the stars in it */
+INST[0].angle = 0.95;        /* …and moved round its orbit, clear of the legend at the foot of the page */
+
+/* The customers, each a star (6 Oct 2026: "each client like a star — those
+   who paid, put their star close to where they are"). Not yet paid, it
+   shines in the cluster with the rest. Once the advance is in, it sits
+   beside the planet whose move it is now — the next step on Klever's Job
+   Tracking Board (apps-script/Register.js): the designers for the final
+   measurement and the material selection, finance and the store for the
+   materials and the final payment, operations to approve production and
+   release the delivery, production, the site; and after the follow-up call
+   it goes back out among the customers. */
+const CUST_HOME = {
+  lead: 'customers', visit: 'customers', predesign: 'customers', quote: 'customers', contract: 'customers',
+  advance: 'commercial', measure: 'commercial', selection: 'finance', ordered: 'finance', received: 'finance',
+  finalreq: 'finance', final: 'lead', production: 'production', made: 'production', qc: 'lead', ready: 'lead',
+  delivered: 'site', accepted: 'commercial', aftersales: 'customers'
+};
+const CUST_COLOR = { moving: '#eaf2ff', hold: '#f0b84a', rework: '#ff7a5c', quiet: '#7f8f8a', done: '#5fe0c6' };
+const CUST_WORD = { moving: { en: 'Moving', am: 'በሂደት ላይ' }, hold: { en: 'On hold', am: 'ቆሟል' },
+                    rework: { en: 'Rework', am: 'ዳግም ሥራ' }, quiet: { en: 'Quiet', am: 'ዝም ብሏል' }, done: { en: 'Done', am: 'ተጠናቋል' } };
+
 /* `sum` says which total the flow counts toward. Ephrata's collections are
    the same money Betelhem receives, seen from the sales side, so only
    Betelhem's figure counts as money in; the move to ZamZam is Klever's
@@ -376,6 +404,32 @@ const addisOf = d => new Date(d.getTime() + ADDIS_MS);   /* read with getUTC* */
 function hhmm(d) { const a = addisOf(d); return ('0' + a.getUTCHours()).slice(-2) + ':' + ('0' + a.getUTCMinutes()).slice(-2); }
 function bullets(s) { return String(s || '').replace(/^[ \t]*[*-][ \t]+/gm, '• '); }
 function hash(s) { let h = 7; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
+/* a customer's star: a bright core, a soft glow and four spikes */
+let CUST_TEX = null;
+function starTexture() {
+  if (CUST_TEX) return CUST_TEX;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const rg = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  rg.addColorStop(0, 'rgba(255,255,255,1)');
+  rg.addColorStop(0.1, 'rgba(255,255,255,0.9)');
+  rg.addColorStop(0.3, 'rgba(255,255,255,0.22)');
+  rg.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = rg;
+  g.fillRect(0, 0, 128, 128);
+  [false, true].forEach(vertical => {
+    const lg = vertical ? g.createLinearGradient(64, 0, 64, 128) : g.createLinearGradient(0, 64, 128, 64);
+    lg.addColorStop(0, 'rgba(255,255,255,0)');
+    lg.addColorStop(0.5, 'rgba(255,255,255,0.95)');
+    lg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = lg;
+    if (vertical) g.fillRect(62.5, 0, 3, 128); else g.fillRect(0, 62.5, 128, 3);
+  });
+  CUST_TEX = new THREE.CanvasTexture(c);
+  CUST_TEX.colorSpace = THREE.SRGBColorSpace;
+  return CUST_TEX;
+}
 function el(tag, cls, txt) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -439,6 +493,17 @@ export function mount(root, opts) {
   const im = el('i'); im.style.background = '#ffc75e'; im.style.boxShadow = '0 0 10px #ffc75e';
   lm.appendChild(im); lm.appendChild(document.createTextNode(s('money', 'Money')));
   legend.appendChild(lm);
+  /* the customers' stars */
+  const lc = el('span', 'obs-leg uni-leg-cust');
+  lc.appendChild(document.createTextNode(s('custLegend', 'Customers') + ' '));
+  ['moving', 'hold', 'rework', 'done'].forEach(k => {
+    const b = el('b', null, '✦');
+    b.style.color = CUST_COLOR[k];
+    b.title = L(CUST_WORD[k]);
+    lc.appendChild(b);
+    lc.appendChild(document.createTextNode(L(CUST_WORD[k]) + ' '));
+  });
+  legend.appendChild(lc);
   wrap.appendChild(legend);
 
   /* the timeline */
@@ -547,7 +612,7 @@ export function mount(root, opts) {
   }
 
   /* the asteroid belt, beyond the outermost department */
-  const belt = makeBelt({ count: small ? 1000 : 2200, inner: 75, outer: 80.5, thick: 1.3, size: BS * 0.5, dust: small ? 2500 : 5000, center: sunPos });
+  const belt = makeBelt({ count: small ? 1300 : 2800, inner: 75 * SPREAD, outer: 80.5 * SPREAD, thick: 1.6, size: BS * 0.5, dust: small ? 3200 : 6400, center: sunPos });
   klever.add(belt.mesh);
   klever.add(belt.dust);
 
@@ -745,7 +810,7 @@ export function mount(root, opts) {
   });
 
   /* the agents: small ice worlds on the outermost orbit */
-  const SAT_R = 100, SAT_Y = 3;
+  const SAT_R = 100 * SPREAD, SAT_Y = 3;
   circle(SAT_R, '#5fe0c6', 0.12);
   const sats = (window.KleverOrbit ? window.KleverOrbit.order : Object.keys(WATCH)).map((id, i, arr) => {
     const w = makeWorld({ r: 0.8 * BS, type: 0, pal: ICES[i % ICES.length], seed: 40 + i * 3.3, rim: HEAT.none,
@@ -773,6 +838,80 @@ export function mount(root, opts) {
     labels.appendChild(lab);
     return { id, w, glow, line, ld, lm: lmat, lab, a0: i / arr.length * TAU, heat: 'none' };
   });
+
+  /* ---------- the customers: each a star, beside whoever holds it ---------- */
+  const custTex = starTexture();
+  const custs = new Map(), custList = [];
+  const custHome = id => planets[id] || insts[id] || insts.customers;
+  /* where in its home a star sits: fixed by its key, so it does not jump
+     about when the page is drawn again; round a planet, beyond its moons
+     and a little above them; in the cluster, among its lights */
+  function custOff(key, home, paid) {
+    const h = hash(key), a = (h % 3600) / 3600 * TAU, k = ((h >>> 12) % 1000) / 1000, y = ((h >>> 22) % 100) / 100 - 0.5;
+    if (!paid || home === insts.customers) {
+      const R = home.r * (0.55 + 1.15 * k);
+      return new THREE.Vector3(Math.cos(a) * R, y * home.r * 0.9, Math.sin(a) * R);
+    }
+    const R = home.r * 2.4 + (2.8 + 3.4 * k) * BS;
+    return new THREE.Vector3(Math.cos(a) * R, (2.2 + y * 2.6) * BS, Math.sin(a) * R);
+  }
+  let custWords = false, lastKf = 0, lastDK = 0;
+  function custSync(list) {
+    const seen = new Set();
+    (list || []).forEach(c => {
+      if (!c || !c.key) return;
+      seen.add(c.key);
+      let x = custs.get(c.key);
+      if (!x) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: custTex, color: new THREE.Color(CUST_COLOR.moving),
+          transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+        sp.userData.pick = { kind: 'cust', id: c.key };
+        klever.add(sp);
+        const lab = el('button', 'obs3d-label uni-cust');
+        lab.type = 'button';
+        lab.onclick = () => pick({ kind: 'cust', id: c.key });
+        labels.appendChild(lab);
+        x = { key: c.key, sp, lab, pos: new THREE.Vector3(), r: BS, home: insts.customers, off: new THREE.Vector3(), base: 1, blink: false };
+        custs.set(c.key, x);
+        custList.push(x);
+      }
+      x.c = c;
+      x.paid = !!c.paid;
+      x.home = custHome(x.paid ? (CUST_HOME[c.stage] || 'customers') : 'customers');
+      x.off = custOff(c.key, x.home, x.paid);
+      /* bigger for a bigger contract; a lead not yet paid smaller */
+      const v = Math.max(Number(c.value) || 0, 1);
+      const size = BS * (x.paid ? 6.8 : 4.4) * (1 + 0.5 * THREE.MathUtils.clamp(Math.log10(v / 100000), 0, 1.4));
+      x.sp.scale.set(size, size, 1);
+      x.r = size * 0.16;
+      x.sp.material.color.set(CUST_COLOR[c.status] || CUST_COLOR.moving);
+      x.base = c.status === 'quiet' ? 0.5 : 1;
+      x.blink = c.status === 'hold' || c.status === 'rework';
+      const nm = String(c.name || c.job || c.key).split(' ')[0] + (c.job ? ' · ' + c.job : '');
+      setText(x.lab, nm);
+      x.lab.style.color = CUST_COLOR[c.status] || '';
+      custWords = true;
+    });
+    for (let i = custList.length - 1; i >= 0; i--) {
+      const x = custList[i];
+      if (seen.has(x.key)) continue;
+      klever.remove(x.sp);
+      x.sp.material.dispose();
+      x.lab.remove();
+      custs.delete(x.key);
+      custList.splice(i, 1);
+    }
+  }
+
+  /* for the browser tests only: where each star and planet is (read-only) */
+  if (window.__KLEVER_TEST) {
+    const homeId = h => Object.keys(planets).find(k => planets[k] === h) || Object.keys(insts).find(k => insts[k] === h) || '';
+    window.__uniCust = () => custList.map(x => ({ key: x.key, home: homeId(x.home), paid: x.paid, status: x.c.status,
+      color: '#' + x.sp.material.color.getHexString(), size: x.sp.scale.x, d: x.pos.distanceTo(x.home.pos),
+      pos: x.pos.toArray(), label: x.lab.textContent, op: x.sp.material.opacity }));
+    window.__uniOrbits = () => Object.fromEntries(Object.keys(planets).map(k => [k, Math.hypot(planets[k].pos.x, planets[k].pos.z)]));
+    window.__uniCam = () => ({ d: lastDK, kf: lastKf, level, tween: !!tween });
+  }
 
   /* ---------- the other four companies ---------- */
   const CREW_LOOK = [
@@ -1247,6 +1386,37 @@ export function mount(root, opts) {
         go.href = opts.obsHref || 'agents.html';
         sheet.appendChild(go);
       }
+    } else if (k === 'cust') {
+      const x = custs.get(id);
+      if (!x) { sheet.hidden = true; return; }
+      const c = x.c, st = c.status || 'moving';
+      const cls = st === 'rework' ? 'loud' : st === 'hold' ? 'warm' : st === 'quiet' ? 'none' : 'quiet';
+      const board = S.board || {};
+      sheetHead(s('cust', 'Customer'), cls, L(CUST_WORD[st] || CUST_WORD.moving),
+                c.name + (c.code ? ' #' + c.code : ''),
+                (c.job ? c.job + '  ·  ' : '') + (c.n < 10 ? '0' : '') + c.n + ' · ' + (board[c.stage] || c.stage));
+      if (c.why) sheet.appendChild(el('div', 'obs-said', c.why));
+      const list = el('div', 'uni-reps');
+      const row = (label, val, color) => {
+        const r = el('div', 'uni-rep');
+        const dot = el('i'); dot.style.background = color || '#8b9d97';
+        r.appendChild(dot);
+        r.appendChild(el('span', 'uni-rep-n', label));
+        r.appendChild(el('span', 'uni-rep-t', val));
+        list.appendChild(r);
+      };
+      if (c.next) row(s('custNext', 'Next') , c.next + (c.who ? ' — ' + c.who : ''), CUST_COLOR.moving);
+      if (c.value != null) row(s('custContract', 'Contract'), money(c.value) + ' ' + s('birr', 'Birr'), '#ffc75e');
+      if (c.job) {
+        row(s('custAdv', 'Advance in'), money(c.adv || 0) + ' ' + s('birr', 'Birr'), '#ffc75e');
+        row(s('custFinal', 'Final in'), money(c.fin || 0) + ' ' + s('birr', 'Birr'), '#ffc75e');
+      }
+      if (!x.paid) row(s('custUnpaid', 'Not paid yet'), '', CUST_COLOR.quiet);
+      if (c.problems) row(s('custProblems', 'Problems'), String(c.problems), CUST_COLOR.rework);
+      sheet.appendChild(list);
+      const go = el('a', 'obs-open', s('custOpen', 'Open in Leads & jobs'));
+      go.href = 'register.html?q=' + encodeURIComponent(c.job || c.code || c.name);
+      sheet.appendChild(go);
     } else if (k === 'inst') {
       const it = insts[id].it;
       sheetHead(s('outside', 'Outside Klever'), null, null, L(it), null);
@@ -1312,7 +1482,7 @@ export function mount(root, opts) {
   function computeViews() {
     const portrait = W / H < 0.8;
     views.group = fitDisc(17000, portrait ? 1.2 : 0.62, HUB.clone(), 4500);
-    views.klever = fitDisc(portrait ? 84 : 90, portrait ? 1.0 : 0.56, new THREE.Vector3(0, 2, 0), 14);
+    views.klever = fitDisc((portrait ? 84 : 100) * SPREAD, portrait ? 1.0 : 0.56, new THREE.Vector3(0, 2, 0), 14);
     Object.values(minors).forEach(m => {
       views[m.co.id] = fitDisc((m.crew.length ? 44 : 30) * (portrait ? 1.1 : 1), portrait ? 1.0 : 0.5,
                                m.c0.clone().add(new THREE.Vector3(0, 2, 0)), 10);
@@ -1403,6 +1573,7 @@ export function mount(root, opts) {
     else if (p.kind === 'person') { const n = nodes[p.id]; if (p.id === 'chairman') P = n.pos.clone(); else live = n.pos; dist = p.id === 'chairman' ? SUN_R * 6.5 : Math.max(8, n.r * 13); }
     else if (p.kind === 'dept') { const pl = planets[p.id]; live = pl.pos; dist = pl.r * 6 + 16 * BS; }
     else if (p.kind === 'inst') { const i = insts[p.id]; P = i.pos.clone(); dist = i.r * 6 + 8; }
+    else if (p.kind === 'cust') { const x = custs.get(p.id); if (!x) { picked = null; drawSheet(); return; } live = x.pos; dist = 16 * BS; }
     else { live = satPos(sats.find(x => x.id === p.id)); dist = 9 * BS; }
     if (live) P = live.clone();
     /* come at it from between the camera and the sun, so its lit face shows */
@@ -1424,7 +1595,8 @@ export function mount(root, opts) {
     ray.setFromCamera(ndc, camera);
     if (level === 'company') {
       const objs = Object.values(nodes).map(n => n.pick)
-        .concat(Object.values(planets).map(pl => pl.w.surf), Object.values(insts).map(i => i.pick), sats.map(x => x.w.surf));
+        .concat(Object.values(planets).map(pl => pl.w.surf), Object.values(insts).map(i => i.pick), sats.map(x => x.w.surf),
+                custList.map(x => x.sp));
       Object.values(minors).forEach(m => { if (m.g.visible) { objs.push(m.star.mesh); m.crew.forEach(c => objs.push(c.w.surf)); } });
       const hits = ray.intersectObjects(objs, false);
       if (hits.length) { pick(hits[0].object.userData.pick); return; }
@@ -1504,6 +1676,7 @@ export function mount(root, opts) {
   }
   /* a name sits just below its world, whatever the world's size */
   const below = (pos, r) => anchorV.copy(pos).addScaledVector(camUp, -r * 1.25);
+  const above = (pos, r) => anchorV.copy(pos).addScaledVector(camUp, r * 1.25);
   function place(lab, v, dy, taken, prio, soft) {
     const p = screen(v), st = ls(lab);
     if (p.z > 1 || p.x < -40 || p.x > W + 40 || p.y < -20 || p.y > H + 20) {
@@ -1596,10 +1769,16 @@ export function mount(root, opts) {
       }
       const mine = takenB;
       mine.length = 0;
+      custList.forEach(x => {
+        const show = picked && kFade >= 0.5 && ((picked.kind === 'cust' && picked.id === x.key) ||
+                                               (picked.kind === 'dept' && x.home === planets[picked.id]) ||
+                                               (picked.kind === 'inst' && x.home === insts[picked.id]));
+        if (show) place(x.lab, below(x.pos, x.r), 3, mine, picked.kind === 'cust'); else hide(x.lab);
+      });
       labNodes.forEach(n => { if (nearIds[n.id] === 2) placeNode(n, mine, true); });
       labNodes.forEach(n => { if (nearIds[n.id] === 1) placeNode(n, mine, false); else if (nearIds[n.id] !== 2) hide(n.lab); });
       planetList.forEach(pl => { if (pl.d.key === keepPlanet) place(pl.lab, below(pl.pos, pl.r), 3, mine, true); else hide(pl.lab); });
-      instList.forEach(i => { if (i.it.id === keepInst) place(i.lab, below(i.pos, i.r), 3, mine, true); else hide(i.lab); });
+      instList.forEach(i => { if (i.it.id === keepInst) place(i.lab, i.it.cluster ? above(i.pos, i.r) : below(i.pos, i.r), i.it.cluster ? -24 : 3, mine, true); else hide(i.lab); });
       sats.forEach(x => { if (x.id === keepSat) place(x.lab, below(satPos(x), 0.8 * BS), 3, mine, true); else hide(x.lab); });
       flows.forEach(f => hide(f.lab));
       return;
@@ -1609,14 +1788,18 @@ export function mount(root, opts) {
     if (tiersDirty) sortTiers();
     tiers[0].forEach(n => placeNode(n, taken, true));
     planetList.forEach(pl => place(pl.lab, below(pl.pos, pl.r), 3, taken, true));
-    instList.forEach(i => place(i.lab, below(i.pos, i.r), 3, taken, true));
+    /* the customers' cluster has its name above it: below, it would sit on the legend */
+    instList.forEach(i => (i.it.cluster ? place(i.lab, above(i.pos, i.r), -24, taken, true) : place(i.lab, below(i.pos, i.r), 3, taken, true)));
     tiers[1].forEach(n => placeNode(n, taken, true));
     tiers[2].forEach(n => placeNode(n, taken, true));
     flows.forEach(f => {
       if (!f.amount || f.show < 0.5) { hide(f.lab); return; }
       if (!placeAlong(f.lab, f.curve, ALONG_FLOW, taken)) hide(f.lab);
     });
+    /* customers on hold or back for rework, then the rest if there is room */
+    custList.forEach(x => { if (x.blink) { if (!place(x.lab, below(x.pos, x.r), 3, taken, false, true)) hide(x.lab); } });
     tiers[3].forEach(n => placeNode(n, taken, false));
+    custList.forEach(x => { if (!x.blink) { if (!place(x.lab, below(x.pos, x.r), 3, taken, false, true)) hide(x.lab); } });
     /* on a phone the agents keep their colour but not their names */
     sats.forEach(x => { if (x.heat === 'loud' && W >= 600) place(x.lab, below(satPos(x), 0.8 * BS), 3, taken, false); else hide(x.lab); });
   }
@@ -1757,7 +1940,11 @@ export function mount(root, opts) {
 
     /* how far into Klever the camera is: 0 out among the galaxies, 1 in the system */
     const dK = camera.position.length();
-    const kf = THREE.MathUtils.clamp(1 - (dK - 400) / 1400, 0, 1);
+    /* the orbits spread (SPREAD) and the camera stands about twice as far
+       back to see them all, so the distance at which Klever is fully lit
+       moves out with it — or the wider system would be drawn faded */
+    const kf = THREE.MathUtils.clamp(1 - (dK - 800) / 2800, 0, 1);
+    lastKf = kf; lastDK = dK;
     /* how far into each other company's system the camera is */
     let near = kf;
     minorList.forEach(m => {
@@ -1914,6 +2101,13 @@ export function mount(root, opts) {
         pos.needsUpdate = true;
       });
       instList.forEach(i => { i.extra.forEach(m => { m.opacity = kf * 0.9; }); });
+      /* a customer's star travels with the planet that holds it; one on
+         hold or back for rework breathes, so it catches the eye */
+      custList.forEach((x, i) => {
+        x.pos.copy(x.home.pos).add(x.off);
+        x.sp.position.copy(x.pos);
+        x.sp.material.opacity = kf * x.base * (x.blink && !reduce ? 0.72 + 0.28 * Math.sin(time * 2.2 + i) : 1);
+      });
       sats.forEach((st, i) => {
         const a = st.a0 + at * 0.012;
         const p = satPos(st);
@@ -2009,7 +2203,8 @@ export function mount(root, opts) {
 
   return {
     update(data) {
-      D = Object.assign({ filings: [], findings: [], instructions: [] }, data);
+      D = Object.assign({ filings: [], findings: [], instructions: [], customers: [] }, data);
+      custSync(D.customers);
       D.filings = (D.filings || []).slice().sort((a, b) => a.at - b.at);
       D.now = clock();
       D.dayStart = today0();

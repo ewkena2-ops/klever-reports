@@ -1458,7 +1458,7 @@ import {
   function insRow(i) {
     var row = el('div', 'chinsrow ' + i.status);
     var head = el('div', 'chinsh');
-    head.appendChild(el('span', 'chrw', nameOf(i.to)));
+    head.appendChild(el('span', 'chrw', nameOf(i.to) + (i.by === 'reminder' ? ' · ' + t('chInsReminder') : '')));
     var over = daysFrom(i.due, DAY);
     var late = i.status === 'open' && over > 0;
     var state;

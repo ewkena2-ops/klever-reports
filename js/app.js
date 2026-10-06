@@ -953,9 +953,13 @@
       wrap.innerHTML = '';
       var open = all.filter(function (i) { return i.status === 'open'; })
                     .sort(function (a, b) { return a.due < b.due ? -1 : (a.due > b.due ? 1 : 0); });
-      if (!open.length) return;
-      wrap.appendChild(el('h2', 'eyebrow', t('insTitle')));
-      open.forEach(function (i) { wrap.appendChild(insRow(i)); });
+      /* his, then the script's reminders (supplier credit falling due) */
+      [[false, 'insTitle'], [true, 'insRemTitle']].forEach(function (g) {
+        var these = open.filter(function (i) { return (i.by === 'reminder') === g[0]; });
+        if (!these.length) return;
+        wrap.appendChild(el('h2', 'eyebrow', t(g[1])));
+        these.forEach(function (i) { wrap.appendChild(insRow(i)); });
+      });
     });
     return wrap;
   }
@@ -1445,7 +1449,10 @@
         f.cols.forEach(function (c) {
           /* words go under their label at full width; numbers and pick-lists
              stay beside it */
-          var cell = el('div', 'cell' + (c.t === 'text' ? ' wide' : ''));
+          /* a pick-list whose choices are long ("On credit — no cheque yet")
+             goes full width too, or it reads "On credi" */
+          var longPick = c.t === 'choice' && (c.opts || []).some(function (o) { return (lang === 'am' ? o.am : o.en).length > 14; });
+          var cell = el('div', 'cell' + (c.t === 'text' || c.t === 'date' || longPick ? ' wide' : ''));
           var cl = el('label', null, L(c));
           cell.appendChild(cl);
           var inp;
@@ -1462,6 +1469,11 @@
               op.value = o.v; op.textContent = lang === 'am' ? o.am : o.en;
               inp.appendChild(op);
             });
+          } else if (c.t === 'date') {
+            /* a real date, both calendars shown — a date a reminder is
+               counted from cannot be "Friday" (apps-script/Credit.js) */
+            inp = document.createElement('input');
+            inp.type = 'date';
           } else {
             inp = document.createElement('input');
             inp.type = 'text';
@@ -1473,7 +1485,7 @@
           cl.htmlFor = inp.id;
           inp.value = rowData[c.id] != null ? rowData[c.id] : '';
           inp.onchange = inp.oninput = function () { rowData[c.id] = inp.value; refresh(); if (wrap.sumUp) wrap.sumUp(); };
-          cell.appendChild(inp);
+          cell.appendChild(c.t === 'date' ? dressDate(inp) : inp);
           card.appendChild(cell);
         });
         body.appendChild(card);
@@ -2284,6 +2296,7 @@
       return v;
     }
     if (c.t === 'money') return money(v) + ' ' + t('birr');
+    if (c.t === 'date') return prettyDate(String(v).trim());
     return String(v).trim();
   }
 

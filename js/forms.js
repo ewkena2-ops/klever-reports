@@ -540,7 +540,7 @@ const REPORTS = [
             {v:'cheque', en:'Cheque given', am:'ቼክ ተሰጥቷል'},
             {v:'credit', en:'On credit — no cheque yet', am:'በዱቤ — ቼክ ገና አልተሰጠም'}]},
           {id:'chq', en:'Cheque no., if given', am:'የቼክ ቁጥር (ከተሰጠ)', t:'text'},
-          {id:'due', en:'If on credit: pay by', am:'በዱቤ ከሆነ፦ የሚከፈልበት ቀን', t:'text'},
+          {id:'due', en:'If on credit: pay by', am:'በዱቤ ከሆነ፦ የሚከፈልበት ቀን', t:'date'},
           {id:'date', en:'Promised delivery', am:'ቃል የተገባው ርክክብ', t:'text'}
         ]},
       {id:'ord_suppliers', en:'With which suppliers?', am:'ከየትኞቹ አቅራቢዎች?', t:'text', opt:1},
@@ -1267,7 +1267,7 @@ const REPORTS = [
       {id:'g_cr_list', en:'Who is owed, how much, and by when?', am:'ለማን ዕዳ አለ? ስንት? እስከ መቼ?', t:'table', addEn:'Add a supplier', addAm:'አቅራቢ ጨምር', opt:1, cols:[
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'amount', en:'Owed', am:'ዕዳ', t:'money'},
-          {id:'due', en:'Pay by', am:'የሚከፈልበት ቀን', t:'text'}
+          {id:'due', en:'Pay by', am:'የሚከፈልበት ቀን', t:'date'}
         ]},
       {id:'g_cr_next', en:'How much of it falls due next week?', am:'ከዚህ ውስጥ በሚቀጥለው ሳምንት የሚደርሰው ስንት ነው?', t:'money', opt:1},
       {id:'g_cr_overdue', en:'How much is already past the date we promised?', am:'ቃል የገባንበት ቀን ያለፈው ስንት ነው?', t:'money',

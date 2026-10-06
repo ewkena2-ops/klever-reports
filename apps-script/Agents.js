@@ -1271,6 +1271,10 @@ function dailyRun_() {
       catch (e) { Logger.log('pay refresh: %s', e.message); warn.push('Pay tab: ' + e.message); }
     }
   }
+  /* supplier credit two days from its pay-by date: a reminder to Selam and
+     Getachew (Credit.js) — every morning, Sunday too, before any return */
+  try { creditReminders_(todayAddis_()); }
+  catch (e) { Logger.log('credit reminders: %s', e.message); warn.push('Credit reminders: ' + e.message); }
   /* Yesterday was Sunday: the week. The watch closed it at 9 PM and sent
      its summary if all went well; whatever it did not do is done now. The
      week's summary is its reading — the agents read working days. */

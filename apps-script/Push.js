@@ -98,7 +98,8 @@ function notifyInstruction_(id) {
   var cache = CacheService.getScriptCache();
   if (cache.get('push:' + id)) return false;           /* being sent right now */
   cache.put('push:' + id, '1', 600);
-  var r = pushTo_(ins.to, 'Klever · Instruction from the Chairman · የሊቀመንበሩ መመሪያ',
+  var r = pushTo_(ins.to, ins.by === 'reminder' ? 'Klever · Reminder · ማስታወሻ'   /* Credit.js */
+                                               : 'Klever · Instruction from the Chairman · የሊቀመንበሩ መመሪያ',
                   String(ins.text || '') + (ins.due ? ' — by ' + pushDay_(ins.due) : ''), 'ins-' + id);
   fsPut_('pushlog/' + id, { ins: id, to: ins.to, at: new Date(), phones: r.phones, sent: r.sent,
                             failed: r.failed, error: r.error });

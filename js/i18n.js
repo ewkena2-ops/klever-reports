@@ -178,6 +178,7 @@ const T = {
 
     /* what the Chairman asked for, on the person's own home */
     insTitle:'From the Chairman',
+    insRemTitle:'Reminders',
     insOver1:'A day past its date',
     insOver:'{n} days past its date',
     insToday:'Due today',
@@ -249,6 +250,7 @@ const T = {
     chInsNone:'Nothing given yet. An instruction stays on that person’s phone until they say it is done.',
 
     chInsDone:'Done',
+    chInsReminder:'reminder',
     chInsOver:'days over',
     chInsReopen:'Reopen',
     chInsCancel:'Cancel',
@@ -626,6 +628,7 @@ const T = {
     chOnlyChairman:'ይህ ገጽ የሊቀመንበሩ ነው። ለመክፈት እንደ ሊቀመንበር ይግቡ።',
 
     insTitle:'ከሊቀመንበሩ',
+    insRemTitle:'ማስታወሻዎች',
     insOver1:'ቀኑ በአንድ ቀን አልፏል',
     insOver:'ቀኑ በ{n} ቀን አልፏል',
     insToday:'ዛሬ መድረስ አለበት',
@@ -696,6 +699,7 @@ const T = {
     chInsNone:'እስካሁን የተሰጠ የለም። ትዕዛዙ ተቀባዩ መጠናቀቁን እስኪያሳውቁ ድረስ በስልካቸው ላይ ይታያል።',
 
     chInsDone:'ተጠናቋል',
+    chInsReminder:'ማስታወሻ',
     chInsOver:'ቀን አልፏል',
     chInsReopen:'እንደገና ይከፈት',
     chInsCancel:'ይሰረዝ',

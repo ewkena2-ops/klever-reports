@@ -372,7 +372,7 @@ import {
       a.appendChild(document.createTextNode(label));
       root.appendChild(a);
     }
-    wayIn('agents.html', 'M12 9.6a2.4 2.4 0 1 1 0 4.8a2.4 2.4 0 0 1 0-4.8zM2.8 12c0-2.3 4.1-4.2 9.2-4.2s9.2 1.9 9.2 4.2-4.1 4.2-9.2 4.2-9.2-1.9-9.2-4.2z', t('obOpen'));
+    /* the observatory joined the universe (6 Oct 2026): one way in, to both */
     wayIn('universe.html', 'M12 10.4a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 0 1 0-3.2zM12 4.5c4.4 0 7.5 3.2 7.5 7 0 3-2.4 5-5.2 5M12 19.5c-4.4 0-7.5-3.2-7.5-7 0-3 2.4-5 5.2-5', t('unOpen'));
 
     /* --- every lead and KK job, from the reports, on its own page (Register.js) --- */

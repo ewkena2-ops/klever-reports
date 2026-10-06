@@ -479,6 +479,24 @@ export function mount(root, opts) {
   hl.appendChild(title);
   const stats = el('p', 'uni-stats');
   hl.appendChild(stats);
+  /* The AI's reading, here since the observatory joined the universe (6 Oct
+     2026, the Chairman: "the universe also shows the AI, so merge them"):
+     when the agents last read the company, how many want him, and the
+     button that asks them to read it again now. */
+  const aiRow = el('div', 'uni-ai');
+  const aiTxt = el('span', 'uni-ai-t');
+  const aiBtn = el('button', 'uni-ai-go', s('analyse', 'Analyse now'));
+  aiBtn.type = 'button';
+  aiRow.appendChild(aiTxt);
+  if (opts.onAnalyse) aiRow.appendChild(aiBtn);
+  hl.appendChild(aiRow);
+  aiBtn.onclick = () => {
+    aiBtn.disabled = true;
+    setText(aiBtn, s('asking', 'Asking…'));
+    Promise.resolve().then(() => opts.onAnalyse()).then(
+      () => setText(aiBtn, s('asked', 'Asked — within ten minutes')),
+      () => { aiBtn.disabled = false; setText(aiBtn, s('analyse', 'Analyse now')); });
+  };
   hud.appendChild(hl);
   wrap.appendChild(hud);
 
@@ -1234,6 +1252,18 @@ export function mount(root, opts) {
   function applyAgents() {
     const find = {};
     (D.findings || []).forEach(f => { find[f.id] = f.text || ''; });
+    let loud = 0, warm = 0;
+    (D.findings || []).forEach(f => {
+      const h = window.KleverOrbit ? window.KleverOrbit.heatOf(f.text || '') : 'none';
+      if (h === 'loud') loud++; else if (h === 'warm') warm++;
+    });
+    const when = D.analysisDay
+      ? s('lastReading', 'Reading of') + ' ' + D.analysisDay + (D.ranAt ? ' · ' + hhmm(D.ranAt) : '') + (D.provisional ? ' · ' + s('soFar', 'so far today') : '')
+      : s('noReading', 'No reading yet');
+    setText(aiTxt, s('aiK', 'AI') + ' · ' + when + (D.analysisDay
+      ? ' · ' + (loud ? loud + ' ' + s('wantYouN', 'want you') : s('allQuiet', 'all quiet')) + (warm ? ' · ' + warm + ' ' + s('worthN', 'worth a look') : '')
+      : ''));
+    aiRow.classList.toggle('loud', loud > 0);
     sats.forEach(st => {
       const h = window.KleverOrbit ? window.KleverOrbit.heatOf(find[st.id]) : 'none';
       st.heat = h;
@@ -1314,6 +1344,12 @@ export function mount(root, opts) {
       const worst = mine.length ? worstOf(mine) : null;
       sheetHead(n.dept ? L(n.dept) : s('centre', 'The centre'), stateCls(worst), worst ? L(STATUS[worst]) : null,
                 p ? L(p) : s('chairman', 'Chairman'), p ? (lang === 'am' ? p.roleAm : p.roleEn) : 'Amare Feleke');
+      /* the sun: the AI's brief to him, first */
+      if (id === 'chairman') {
+        const brief = ((D.findings || []).find(f => f.id === 'brief') || {}).text;
+        sheet.appendChild(el('div', 'obs-said-k', s('briefK', 'The AI’s brief') + (D.analysisDay ? ' · ' + D.analysisDay : '')));
+        sheet.appendChild(el('div', 'obs-said' + (brief ? '' : ' empty'), brief ? bullets(brief) : s('noSaid', 'Nothing yet.')));
+      }
       if (mine.length) {
         sheet.appendChild(el('div', 'obs-said-k', s('files', 'Files today')));
         const list = el('div', 'uni-reps');
@@ -1376,16 +1412,31 @@ export function mount(root, opts) {
       const A = window.KleverOrbit && window.KleverOrbit.agents[id];
       const st = sats.find(x => x.id === id);
       const txt = ((D.findings || []).find(f => f.id === id) || {}).text;
-      sheetHead(s('agent', 'Agent in orbit'), st.heat === 'none' ? 'none' : st.heat,
+      const ring = window.KleverOrbit ? (window.KleverOrbit.rings || []).find(r => r.ids.indexOf(id) !== -1) : null;
+      sheetHead(ring ? L(ring) : s('agent', 'Agent in orbit'), st.heat === 'none' ? 'none' : st.heat,
                 { loud: s('wantsYou', 'Wants you'), warm: s('worth', 'Worth a look'), quiet: s('quiet', 'Quiet'), none: s('noReading', 'No reading yet') }[st.heat],
                 A ? L(A) : id, A ? (lang === 'am' ? A.watchAm : A.watchEn) : '');
+      /* the reports it reads (as the observatory showed them) */
+      if (A && A.reads && A.reads.length) {
+        const reads = el('div', 'obs-reads');
+        reads.appendChild(el('span', 'obs-reads-k', s('reads', 'Reads')));
+        A.reads.forEach(r => reads.appendChild(el('span', 'obs-chip', lang === 'am' ? r[1] : r[0])));
+        sheet.appendChild(reads);
+      }
       sheet.appendChild(el('div', 'obs-said-k', s('said', 'What it said') + (D.analysisDay ? ' · ' + D.analysisDay : '')));
       sheet.appendChild(el('div', 'obs-said' + (txt ? '' : ' empty'), txt ? bullets(txt) : s('noSaid', 'Nothing yet.')));
-      if (opts.obsHref !== null) {
-        const go = el('a', 'obs-open', s('openObs', 'Open in the observatory'));
-        go.href = opts.obsHref || 'agents.html';
-        sheet.appendChild(go);
-      }
+      /* the agent before and after it, without closing the sheet */
+      const order = sats.map(x => x.id), i = order.indexOf(id);
+      const nameOf = a => (window.KleverOrbit && window.KleverOrbit.agents[a]) ? L(window.KleverOrbit.agents[a]) : a;
+      const nav = el('div', 'obs-nav');
+      const prevId = order[(i + order.length - 1) % order.length], nextId = order[(i + 1) % order.length];
+      const prev = el('button', 'obs-step', '‹  ' + nameOf(prevId));
+      const next = el('button', 'obs-step', nameOf(nextId) + '  ›');
+      prev.type = next.type = 'button';
+      prev.onclick = () => pick({ kind: 'agent', id: prevId });
+      next.onclick = () => pick({ kind: 'agent', id: nextId });
+      nav.appendChild(prev); nav.appendChild(next);
+      sheet.appendChild(nav);
     } else if (k === 'cust') {
       const x = custs.get(id);
       if (!x) { sheet.hidden = true; return; }
@@ -1523,6 +1574,7 @@ export function mount(root, opts) {
     return dayName(D.dayStart) + '  ·  ' + bits.join('  ·  ');
   }
   function heading() {
+    aiRow.hidden = !(level === 'company' && cur === 'klever');
     const co = coById(cur);
     setText(cCo, L(co));
     setText(title, level === 'group' ? s('group', 'Amare Holdings') : cur === 'klever' ? s('title', 'Klever, today') : L(co));
@@ -1801,7 +1853,10 @@ export function mount(root, opts) {
     tiers[3].forEach(n => placeNode(n, taken, false));
     custList.forEach(x => { if (!x.blink) { if (!place(x.lab, below(x.pos, x.r), 3, taken, false, true)) hide(x.lab); } });
     /* on a phone the agents keep their colour but not their names */
-    sats.forEach(x => { if (x.heat === 'loud' && W >= 600) place(x.lab, below(satPos(x), 0.8 * BS), 3, taken, false); else hide(x.lab); });
+    sats.forEach(x => {
+      const show = x.heat === 'loud' || (x.heat === 'warm' && W >= 600);
+      if (!show || !place(x.lab, below(satPos(x), 0.8 * BS), 3, taken, false, true)) hide(x.lab);
+    });
   }
 
   /* ---------- the loop ---------- */

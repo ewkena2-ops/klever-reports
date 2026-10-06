@@ -16,7 +16,7 @@ import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, query, where, orderBy, limit, onSnapshot
+  collection, doc, setDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 (function () {
@@ -123,6 +123,40 @@ import {
     out.said = t('obSaid');
     out.noSaid = t('obNoSaid');
     out.close = t('obClose');
+    /* the observatory's words for the AI's reading, now that it lives here */
+    out.analyse = t('obAnalyse');
+    out.asking = t('obAsking');
+    out.asked = t('obAsked');
+    out.lastReading = t('obLastReading');
+    out.soFar = t('obSoFar');
+    out.wantYouN = t('obWantYou');
+    out.allQuiet = t('obAllQuiet');
+    out.reads = t('obReads');
+    out.worthN = t('unWorthN');
+    out.briefK = t('unBriefK');
+    out.aiK = t('unAiK');
+    return out;
+  }
+
+  /* the agents read at six every morning, Addis time; the next one is the next six */
+  function nextSix() {
+    var n = Date.now(), a = new Date(n + 3 * 3600e3);
+    var six = Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate(), 6) - 3 * 3600e3;
+    if (six <= n) six += 864e5;
+    return new Date(six);
+  }
+  /* "Analyse now": the same one document the Chairman's page writes; the
+     ten-minute watch picks it up (apps-script/Agents.js) */
+  function analyse() {
+    return setDoc(doc(db, 'control', 'run'), { at: serverTimestamp(), by: 'chairman' });
+  }
+  /* the observatory's own words, for its flat sky on a device with no 3D */
+  function obStrings() {
+    var keys = ['kicker', 'title', 'lastReading', 'noReading', 'nextReading', 'inTime', 'soFar',
+                'analyse', 'asking', 'asked', 'wantYou', 'allQuiet', 'awaiting', 'legendLoud',
+                'legendWarm', 'legendQuiet', 'stateNone', 'reads', 'said', 'noSaid', 'close', 'sun'];
+    var out = {};
+    keys.forEach(function (k) { out[k] = t('ob' + k.charAt(0).toUpperCase() + k.slice(1)); });
     return out;
   }
 
@@ -204,16 +238,33 @@ import {
   var data = { filings: [], findings: [], instructions: [], customers: [] };
   var world = null, rootEl = null, waiting = null;
 
-  function push() { if (world) world.update(data); }
+  var flat = null;
+  function obMeta() {
+    return { dayLabel: data.analysisDay || null, ranAt: data.ranAt || null, provisional: !!data.provisional, next: nextSix() };
+  }
+  function push() {
+    if (world) world.update(data);
+    if (flat) flat.update(data.findings || [], obMeta());
+  }
 
+  /* A device with no 3D still gets the AI's reading: the observatory's flat
+     sky (js/orbit.js), which needs no graphics chip, as the observatory page
+     showed it. Only if even that cannot be drawn, a line saying why, and the
+     way to his page. */
   function flatOnly() {
     rootEl.innerHTML = '';
+    if (window.KleverOrbit && window.KleverOrbit.mount) {
+      try {
+        flat = window.KleverOrbit.mount(rootEl, { lang: lang, text: obStrings(), onAnalyse: analyse });
+        flat.update(data.findings || [], obMeta());
+        return;
+      } catch (e) { flat = null; rootEl.innerHTML = ''; }
+    }
     var box = el('div', 'uni-nogl');
     box.appendChild(el('p', null, t('unNoGl')));
     var links = el('div', 'uni-nogl-links');
     var a1 = el('a', 'obs-open', t('chOverview')); a1.href = 'chairman.html';
-    var a2 = el('a', 'obs-open', t('obOpen')); a2.href = 'agents.html';
-    links.appendChild(a1); links.appendChild(a2);
+    links.appendChild(a1);
     box.appendChild(links);
     rootEl.appendChild(box);
   }
@@ -228,6 +279,7 @@ import {
         people: PEOPLE,
         due: window.KLEVER.dueToday(),
         recipientsOf: window.KLEVER.recipientsOf,
+        onAnalyse: analyse,
         onLost: function () { try { world.destroy(); } catch (e) {} world = null; flatOnly(); }
       });
       push();
@@ -271,6 +323,8 @@ import {
         var d = qs.docs[0].data();
         data.findings = d.findings || [];
         data.analysisDay = d.dayLabel || d.day || null;
+        data.ranAt = d.ranAt && d.ranAt.toDate ? d.ranAt.toDate() : null;
+        data.provisional = !!d.provisional;
       }
       push();
     }, failed);

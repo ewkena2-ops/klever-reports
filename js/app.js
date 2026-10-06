@@ -276,13 +276,12 @@
       var here = document.body.dataset.page;
       var navs = [['chat.html', 'chat', t('chatOpen'), here === 'chat']];
       if (AUTH.isChairman()) {
-        navs.unshift(['agents.html', 'orbit', t('obKicker'), here === 'agents']);
         navs.unshift(['register.html', 'table', t('regTitle'), here === 'register']);
         navs.unshift(['universe.html', 'galaxy', t('unKicker'), here === 'universe']);
         navs.unshift(['chairman.html', 'day', t('chOverview'), here === 'chairman']);
       }
       navs.forEach(function (n) {
-        var fold = n[0] === 'universe.html' || n[0] === 'agents.html' || n[0] === 'register.html';
+        var fold = n[0] === 'universe.html' || n[0] === 'register.html';
         var a2 = el('a', 'navbtn' + (n[3] ? ' on' : '') + (fold ? ' fold' : ''));
         a2.href = n[0];
         a2.title = n[2];
@@ -303,7 +302,7 @@
         sum.appendChild(icon('more'));
         more.appendChild(sum);
         var panel = el('div', 'navmenu');
-        navs.filter(function (n) { return n[0] === 'universe.html' || n[0] === 'agents.html' || n[0] === 'register.html'; })
+        navs.filter(function (n) { return n[0] === 'universe.html' || n[0] === 'register.html'; })
           .forEach(function (n) {
             var a3 = el('a', 'navitem' + (n[3] ? ' on' : ''));
             a3.href = n[0];

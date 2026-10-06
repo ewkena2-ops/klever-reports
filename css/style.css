@@ -176,7 +176,8 @@ h1{
 .navitem svg{width:20px;height:20px;flex-shrink:0}
 .navitem.on,.navitem:hover{background:var(--teal-bg);color:var(--teal-hi)}
 .langtoggle.infold{display:none;align-self:flex-start;margin:4px 4px 2px}
-@media (max-width:420px){
+/* five pages of his (6 Oct 2026: Leads & jobs) — below 560 px three fold */
+@media (max-width:560px){
   .top-in.chair .navbtn.fold{display:none}
   .top-in.chair .navmore{display:block}
 }
@@ -1527,3 +1528,49 @@ svg.sky .node text{font-size:11px}
 /* cancel a whole day's report fines */
 .chchg.chall{border-style:dashed}
 .chchg.chall .chrw{font-weight:600}
+
+/* ================================================================
+   LEADS & JOBS (register.html, js/register.js; 6 Oct 2026)
+   ================================================================ */
+.regnote{background:#081010;border:1px solid var(--teal-line);border-radius:var(--r-l);padding:14px 15px 12px;margin:0 0 6px}
+.regnote-k{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal-hi);margin-bottom:8px}
+.regnote-t{font-family:var(--serif);font-size:15.5px;line-height:1.55;color:var(--ink);white-space:pre-line;overflow-wrap:anywhere}
+.regnote-m{font-family:var(--mono);font-size:11.5px;color:var(--dim);margin-top:8px}
+.chtile.regbad{border-color:var(--coral-line);background:var(--coral-bg)}
+.chtile.regbad .chtv{color:var(--coral)}
+.regtabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;margin:16px 0 10px;
+  background:var(--field);border:1px solid var(--line-2);border-radius:13px}
+.regtabs button{min-height:42px;border:0;border-radius:10px;background:transparent;cursor:pointer;
+  font-size:14px;font-weight:600;color:var(--mut);font-variant-numeric:tabular-nums}
+.regtabs button[aria-selected="true"]{background:var(--teal-hi);color:var(--teal-ink)}
+.regtabs button.hasbad:not([aria-selected="true"]){color:var(--coral)}
+.regsearch{width:100%;box-sizing:border-box;min-height:44px;margin:0 0 12px;padding:0 14px;font-size:15px;
+  background:var(--field);color:var(--ink);border:1px solid var(--line-2);border-radius:12px}
+.reglist{display:flex;flex-direction:column;gap:10px}
+.regcard{display:block;width:100%;box-sizing:border-box;text-align:left;font:inherit;color:inherit;
+  background:var(--card);border:1px solid var(--line);border-left:3px solid var(--teal-line);
+  border-radius:var(--r);padding:12px 14px 13px}
+.regcard.bad{border-left-color:var(--coral)}
+.regjump{cursor:pointer}
+.regjump:active{background:var(--card-2)}
+.reghead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
+.regname{font-size:15px;font-weight:700;color:var(--ink);line-height:1.35;overflow-wrap:anywhere;min-width:0}
+.regcode{font-family:var(--mono);font-weight:600;color:var(--teal-hi)}
+.regchip{flex:none;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;
+  color:var(--teal-hi);background:var(--teal-bg);border:1px solid var(--teal-line)}
+.regchip.bad{color:var(--coral);background:var(--coral-bg);border-color:var(--coral-line)}
+.regmeta{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);line-height:1.5;overflow-wrap:anywhere}
+.regline{font-size:13.5px;color:var(--ink-2);line-height:1.5;margin-top:4px;overflow-wrap:anywhere}
+.regline.regok{color:var(--teal-hi)}
+.regprob{font-size:13.5px;color:var(--coral);line-height:1.45;margin-top:6px;overflow-wrap:anywhere}
+.regnoteline{font-size:12.5px;color:var(--mut);line-height:1.45;margin-top:5px;overflow-wrap:anywhere}
+.regtrail{font-family:var(--mono);font-size:11.5px;color:var(--dim);line-height:1.6;margin-top:8px;overflow-wrap:anywhere}
+.regtrack{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin:4px 0 8px}
+.regtrack span{height:4px;border-radius:2px;background:var(--line-2)}
+.regtrack span.on{background:var(--teal-hi)}
+.regcard.bad .regtrack span.on{background:var(--coral)}
+/* on his page: the summary, and the way in */
+.chreg{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px}
+.chreg-l{font-size:14.5px;color:var(--ink);line-height:1.5}
+.chreg-l.bad{color:var(--coral)}
+.chreg .obs-open{margin:12px 0 0}

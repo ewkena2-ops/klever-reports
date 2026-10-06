@@ -375,6 +375,13 @@ import {
     wayIn('agents.html', 'M12 9.6a2.4 2.4 0 1 1 0 4.8a2.4 2.4 0 0 1 0-4.8zM2.8 12c0-2.3 4.1-4.2 9.2-4.2s9.2 1.9 9.2 4.2-4.1 4.2-9.2 4.2-9.2-1.9-9.2-4.2z', t('obOpen'));
     wayIn('universe.html', 'M12 10.4a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 0 1 0-3.2zM12 4.5c4.4 0 7.5 3.2 7.5 7 0 3-2.4 5-5.2 5M12 19.5c-4.4 0-7.5-3.2-7.5-7 0-3 2.4-5 5.2-5', t('unOpen'));
 
+    /* --- every lead and KK job, from the reports, on its own page (Register.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('regTitle')));
+    var reg = el('div', 'chreg');
+    reg.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(reg);
+    watchRegister(reg);
+
     /* --- an order in a sentence; the AI finds who does it (apps-script/Orders.js) --- */
     root.appendChild(el('p', 'eyebrow', t('ordTitle')));
     var orders = el('div', 'chask chorders');
@@ -2229,6 +2236,40 @@ import {
       list.innerHTML = '';
       qs.forEach(function (d) { list.appendChild(askCard(d.data({ serverTimestamps: 'estimate' }))); });
     }, failInto(list));
+  }
+
+  /* ---------------- leads and jobs, in two lines ---------------- */
+
+  /* The summary apps-script/Register.js writes after each report: how many
+     leads are open and how many have gone quiet, how many jobs and how many
+     with something wrong, the first line of the morning's note, and the way
+     to the page with the tables (register.html). */
+  function watchRegister(into) {
+    var NS = 'http://www.w3.org/2000/svg';
+    onSnapshot(doc(db, 'register', 'summary'), function (d) {
+      into.innerHTML = '';
+      var s = d.exists() ? d.data() : null;
+      if (!s || (!s.leads && !s.jobs)) {
+        into.appendChild(el('div', 'chreg-l', t('regCardNone')));
+      } else {
+        into.appendChild(el('div', 'chreg-l' + (s.leadsQuiet ? ' bad' : ''),
+          tfill('regCardLeads', { n: s.leadsOpen || 0, q: s.leadsQuiet || 0 })));
+        into.appendChild(el('div', 'chreg-l' + (s.jobProblems ? ' bad' : ''),
+          tfill('regCardJobs', { n: s.jobs || 0, p: s.jobProblems || 0 })));
+        if (s.note) into.appendChild(el('div', 'chord-why', bullets(String(s.note).split('\n')[0])));
+      }
+      var a = el('a', 'obs-open');
+      a.href = 'register.html';
+      var ic = document.createElementNS(NS, 'svg');
+      [['viewBox', '0 0 24 24'], ['fill', 'none'], ['stroke', 'currentColor'], ['stroke-width', '1.7'],
+       ['stroke-linecap', 'round'], ['aria-hidden', 'true']].forEach(function (x) { ic.setAttribute(x[0], x[1]); });
+      var pth = document.createElementNS(NS, 'path');
+      pth.setAttribute('d', 'M4 5.5h16v13H4zM4 10h16M4 14.5h16M10 5.5v13');
+      ic.appendChild(pth);
+      a.appendChild(ic);
+      a.appendChild(document.createTextNode(t('regOpen')));
+      into.appendChild(a);
+    }, failInto(into));
   }
 
   /* ---------------- his orders, routed by the AI ---------------- */

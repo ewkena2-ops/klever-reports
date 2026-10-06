@@ -1472,10 +1472,10 @@ const REPORTS = [
         {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
         {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
         {id:'m2',   en:'m²', am:'ካሬ ሜትር', t:'num'},
-        {id:'start',en:'Planned start', am:'የሚጀመርበት', t:'text'},
-        {id:'done', en:'Planned completion', am:'የሚጠናቀቅበት', t:'text'},
-        {id:'qc',   en:'QC date', am:'የQC ቀን', t:'text'},
-        {id:'del',  en:'Delivery date', am:'የማድረሻ ቀን', t:'text'}
+        {id:'start',en:'Planned start', am:'የሚጀመርበት', t:'date'},
+        {id:'done', en:'Planned completion', am:'የሚጠናቀቅበት', t:'date'},
+        {id:'qc',   en:'QC date', am:'የQC ቀን', t:'date'},
+        {id:'del',  en:'Delivery date', am:'የማድረሻ ቀን', t:'date'}
       ]},
       {id:'plan_rove', en:'Does the plan include any Rovestone or other internal jobs?', am:'ዕቅዱ የሮቭስቶን ወይም ሌላ የውስጥ ሥራ ይዟል?', t:'yesno'},
       {id:'plan_rove_what', en:'Which ones, how many m², and has the Chairman approved each? (Internal work queues behind fully paid external jobs.)', am:'የትኞቹ? ስንት ካሬ ሜትር? እያንዳንዳቸውን ሊቀመንበሩ አጽድቀዋል? (የውስጥ ሥራ ሙሉ ከተከፈለባቸው የውጭ ሥራዎች በኋላ ነው።)', t:'area', show:{f:'plan_rove', when:'yes'}}

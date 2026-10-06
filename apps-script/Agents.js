@@ -1275,6 +1275,10 @@ function dailyRun_() {
      Getachew (Credit.js) — every morning, Sunday too, before any return */
   try { creditReminders_(todayAddis_()); }
   catch (e) { Logger.log('credit reminders: %s', e.message); warn.push('Credit reminders: ' + e.message); }
+  /* his leads and jobs: built again (a lead goes quiet by the calendar
+     alone) and the morning's note written (Register.js) */
+  try { registerBuild_(todayAddis_(), true); }
+  catch (e) { Logger.log('register: %s', e.message); warn.push('Leads & jobs: ' + e.message); }
   /* Yesterday was Sunday: the week. The watch closed it at 9 PM and sent
      its summary if all went well; whatever it did not do is done now. The
      week's summary is its reading — the agents read working days. */
@@ -1935,6 +1939,8 @@ function watch_(waitMs) {
     startFromRestart_();
     /* and the Sheet, once (the reset of 5 Oct 2026) */
     sheetReset_();
+    /* and the leads and jobs, once, from every report since counting began */
+    try { registerBackfill_(); } catch (e) { Logger.log('register backfill: %s', e.message); }
     /* a question of his still waiting — the post from his page never came */
     answerWaiting_();
     /* and an order of his, for the AI to find who does it (Orders.js) */
@@ -2001,6 +2007,8 @@ function runIfNew_() {
   if (fresh.some(function (f) { return f.report === 'getachew-daily'; })) {
     try { creditSettle_(today); } catch (e) { Logger.log('credit settle: %s', e.message); }
   }
+  /* every lead and job they name, into his tables (Register.js) */
+  try { registerUpdate_(fresh); } catch (e) { Logger.log('register: %s', e.message); }
   Logger.log('%s new report(s) since %s — reading today again.', fresh.length, from.toISOString());
   ran_('reading', function () {
     runAgents({ quiet: true });

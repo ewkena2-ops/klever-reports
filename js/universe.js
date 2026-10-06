@@ -135,6 +135,9 @@ import {
     out.worthN = t('unWorthN');
     out.briefK = t('unBriefK');
     out.aiK = t('unAiK');
+    out.aiRead = t('unAiRead');
+    out.aiSaid = t('unAiSaid');
+    out.aiAbout = t('unAiAbout');
     return out;
   }
 

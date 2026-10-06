@@ -485,9 +485,15 @@ export function mount(root, opts) {
      button that asks them to read it again now. */
   const aiRow = el('div', 'uni-ai');
   const aiTxt = el('span', 'uni-ai-t');
-  const aiBtn = el('button', 'uni-ai-go', s('analyse', 'Analyse now'));
+  const aiBtn = el('button', 'uni-ai-go uni-ai-run', s('analyse', 'Analyse now'));
   aiBtn.type = 'button';
   aiRow.appendChild(aiTxt);
+  /* "it analysed, but where is what it said?" (6 Oct 2026): the whole
+     reading, one tap from the heading */
+  const aiRead = el('button', 'uni-ai-go uni-ai-read', s('aiRead', 'What it said'));
+  aiRead.type = 'button';
+  aiRead.onclick = () => pick({ kind: 'ai', id: 'all' });
+  aiRow.appendChild(aiRead);
   if (opts.onAnalyse) aiRow.appendChild(aiBtn);
   hl.appendChild(aiRow);
   aiBtn.onclick = () => {
@@ -1277,6 +1283,30 @@ export function mount(root, opts) {
 
   /* ---------- the sheet ---------- */
   let picked = null;
+  const agentName = a => (window.KleverOrbit && window.KleverOrbit.agents[a]) ? L(window.KleverOrbit.agents[a]) : a;
+  const heatOfText = txt => window.KleverOrbit ? window.KleverOrbit.heatOf(txt || '') : 'none';
+  const HEAT_ORDER = { loud: 0, warm: 1, quiet: 2, none: 3 };
+  /* one agent's finding, under its name — the name opens the agent */
+  function findingInto(box, f, opensAgent) {
+    const h = heatOfText(f.text);
+    const head = el(opensAgent ? 'button' : 'div', 'uni-find-k ' + h, agentName(f.id));
+    if (opensAgent) { head.type = 'button'; head.onclick = () => pick({ kind: 'agent', id: f.id }); }
+    box.appendChild(head);
+    box.appendChild(el('div', 'obs-said uni-find', bullets(f.text || '')));
+  }
+  /* the lines of today's reading that name someone (first name, or the
+     first word of a name of two) */
+  function linesAbout(names) {
+    const words = names.filter(Boolean).map(n => String(n).toLowerCase());
+    const out = [];
+    (D.findings || []).forEach(f => {
+      String(f.text || '').split(/\n+/).forEach(line => {
+        const l = line.toLowerCase();
+        if (line.trim() && words.some(w => l.indexOf(w) !== -1) && out.indexOf(line.trim()) === -1) out.push(line.trim());
+      });
+    });
+    return out.slice(0, 8);
+  }
   const stateCls = st => st === 'on' ? 'quiet' : st === 'late' ? 'warm' : st === 'missing' ? 'loud' : 'none';
   function sheetHead(ringTxt, cls, stateTxt, name, sub) {
     sheet.innerHTML = '';
@@ -1388,6 +1418,14 @@ export function mount(root, opts) {
         sheet.appendChild(list);
       }
       if (!mine.length && !toMe.length && !ins.length) sheet.appendChild(el('p', 'obs-said empty', s('nothing', 'No report of theirs today.')));
+      /* what the AI wrote about them today */
+      if (p) {
+        const about = linesAbout([L(p).split(' ')[0], p.en.split(' ')[0]]);
+        if (about.length) {
+          sheet.appendChild(el('div', 'obs-said-k', s('aiAbout', 'What the AI said about them') + (D.analysisDay ? ' · ' + D.analysisDay : '')));
+          sheet.appendChild(el('div', 'obs-said', bullets(about.join('\n'))));
+        }
+      }
     } else if (k === 'dept') {
       const P = planets[id], d = P.d;
       const members = byDept[id];
@@ -1408,6 +1446,37 @@ export function mount(root, opts) {
       } else {
         sheet.appendChild(el('p', 'obs-said empty', s('nothing', 'No report of theirs today.')));
       }
+      /* what the AI said about this department: its own agents' findings,
+         and for operations (no agent of its own) the lines that name its
+         people */
+      const mineAgents = (D.findings || []).filter(f => WATCH[f.id] === id)
+        .sort((a, b) => HEAT_ORDER[heatOfText(a.text)] - HEAT_ORDER[heatOfText(b.text)]);
+      if (mineAgents.length) {
+        sheet.appendChild(el('div', 'obs-said-k', s('aiSaid', 'What the AI said') + (D.analysisDay ? ' · ' + D.analysisDay : '')));
+        mineAgents.forEach(f => findingInto(sheet, f, true));
+      } else {
+        const about = linesAbout(members.map(m => L(m).split(' ')[0]));
+        if (about.length) {
+          sheet.appendChild(el('div', 'obs-said-k', s('aiSaid', 'What the AI said') + (D.analysisDay ? ' · ' + D.analysisDay : '')));
+          sheet.appendChild(el('div', 'obs-said', bullets(about.join('\n'))));
+        }
+      }
+    } else if (k === 'ai') {
+      /* the whole reading: the brief, then every agent, those that want him first */
+      const all = (D.findings || []).slice();
+      const loud = all.filter(f => heatOfText(f.text) === 'loud').length;
+      sheetHead(s('aiK', 'AI'), loud ? 'loud' : 'quiet', loud ? loud + ' ' + s('wantYouN', 'want you') : s('allQuiet', 'all quiet'),
+                s('aiSaid', 'What the AI said'), D.analysisDay ? s('lastReading', 'Reading of') + ' ' + D.analysisDay +
+                (D.ranAt ? ' · ' + hhmm(D.ranAt) : '') + (D.provisional ? ' · ' + s('soFar', 'so far today') : '') : s('noReading', 'No reading yet'));
+      const brief = all.find(f => f.id === 'brief');
+      if (brief) {
+        sheet.appendChild(el('div', 'obs-said-k', s('briefK', 'The AI’s brief')));
+        sheet.appendChild(el('div', 'obs-said', bullets(brief.text || '')));
+      }
+      all.filter(f => f.id !== 'brief')
+        .sort((a, b) => HEAT_ORDER[heatOfText(a.text)] - HEAT_ORDER[heatOfText(b.text)])
+        .forEach(f => findingInto(sheet, f, true));
+      if (!all.length) sheet.appendChild(el('p', 'obs-said empty', s('noSaid', 'Nothing yet.')));
     } else if (k === 'agent') {
       const A = window.KleverOrbit && window.KleverOrbit.agents[id];
       const st = sats.find(x => x.id === id);
@@ -1613,7 +1682,7 @@ export function mount(root, opts) {
       if (level === 'company') { computeViews(); flyTo(views.company, 1600); }
       return;
     }
-    if (p.kind === 'company') return;
+    if (p.kind === 'company' || p.kind === 'ai') return;
     const home = p.kind === 'head' || p.kind === 'crew' ? String(p.id).split(':')[0] : 'klever';
     if (level !== 'company' || cur !== home) {
       level = 'company'; cur = home; controls.minDistance = 3;

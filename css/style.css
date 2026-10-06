@@ -482,7 +482,7 @@ input.miss,textarea.miss,select.miss{
 }
 .ins::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--teal-hi)}
 .ins.over::before{background:var(--coral)}
-.inst{font-family:var(--serif);font-size:17px;line-height:1.45;color:var(--ink)}
+.inst{font-family:var(--serif);font-size:17px;line-height:1.45;color:var(--ink);white-space:pre-line}
 .insd{font-family:var(--mono);font-size:12px;color:var(--mut);margin:6px 0 12px}
 .ins.over .insd{color:var(--coral)}
 .insbox{display:flex;flex-direction:column;gap:9px}
@@ -1627,3 +1627,6 @@ svg.sky .node text{font-size:11px}
 div.uni-find-k{cursor:default}
 .obs-said.uni-find{margin-top:2px}
 .uni-ai-read{color:var(--ink);border-color:var(--line-3)}
+/* the AI's morning list among his orders (Team.js) */
+.chord-ai{border-left:3px solid var(--teal-hi)}
+.chord-ai > .chask-note{margin:0 0 10px}

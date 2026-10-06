@@ -249,6 +249,17 @@ service cloud.firestore {
        stays as it was, beside what he actually sent. */
     match /orders/{id} {
       allow get, list: if isChairman() || isLedger();
+      /* the AI's morning list (apps-script/Team.js, 6 Oct 2026): written by
+         the script's own account as a plan, one a day, named for its day.
+         It goes nowhere until he presses Send, as with his own orders. */
+      allow create: if isLedger()
+                    && id.matches('^ai-[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                    && request.resource.data.by == 'ai'
+                    && request.resource.data.status == 'planned'
+                    && request.resource.data.tasks is list
+                    && request.resource.data.tasks.size() <= 20
+                    && request.resource.data.keys().hasOnly(
+                         ['q', 'day', 'at', 'by', 'status', 'tasks', 'why', 'model', 'plannedAt', 'from']);
       allow create: if isChairman()
                     && request.resource.data.keys().hasOnly(['q', 'at', 'by', 'status'])
                     && request.resource.data.q is string
@@ -266,7 +277,8 @@ service cloud.firestore {
                              && request.resource.data.sentAt == request.time
                              && request.resource.data.sent is list
                              && request.resource.data.sent.size() > 0
-                             && request.resource.data.sent.size() <= 6)
+                             && (request.resource.data.sent.size() <= 6
+                                 || (resource.data.by == 'ai' && request.resource.data.sent.size() <= 20)))
                             || (request.resource.data.status == 'dropped'
                                 && request.resource.data.sentAt == request.time)))
                     /* an order the AI asked about, or could not plan: he

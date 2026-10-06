@@ -327,7 +327,10 @@ function orderPrompt_(q, ctx) {
    person with an account, or with no words, is dropped and said; a date
    that is not a date, is past, or is too far off becomes the default; a
    Sunday moves to the Monday. Two tasks for one person become one. */
-function orderPlan_(reply, day, schedule) {
+function orderPlan_(reply, day, schedule, opt) {
+  /* his orders: at most ORDER_MAX_TASKS_, due in two working days if he gave
+     no time; the AI's morning list (Team.js): more tasks, due today */
+  var max = (opt && opt.max) || ORDER_MAX_TASKS_;
   var text = String(reply || '');
   var a = text.indexOf('{'), z = text.lastIndexOf('}');
   var j = null;
@@ -335,7 +338,7 @@ function orderPlan_(reply, day, schedule) {
   if (!j || typeof j !== 'object') return { error: 'The AI’s answer could not be read. Try again, or give it by hand below.' };
   var names = {};
   (schedule.people || []).forEach(function (p) { names[p.id] = p.en; });
-  var latest = addDays_(day, 180), dflt = workingDaysOn_(day, ORDER_DEFAULT_DAYS_);
+  var latest = addDays_(day, 180), dflt = (opt && opt.dflt) || workingDaysOn_(day, ORDER_DEFAULT_DAYS_);
   var byPerson = {}, order = [], dropped = [];
   (Object.prototype.toString.call(j.tasks) === '[object Array]' ? j.tasks : []).forEach(function (t) {
     if (!t || typeof t !== 'object') return;
@@ -351,15 +354,17 @@ function orderPlan_(reply, day, schedule) {
     var why = String(t.why || '').trim().substring(0, 300);
     if (byPerson[to]) {
       var b = byPerson[to];
-      b.what = (b.what + ' ' + what).substring(0, 1000);
+      /* numbered things (the AI's morning list) go on their own lines */
+      var sep = /\n/.test(b.what + what) || /^\s*\d+[.)]\s/.test(what) ? '\n' : ' ';
+      b.what = (b.what + sep + what).substring(0, 1000);
       if (due < b.due) b.due = due;
       return;
     }
     byPerson[to] = { to: to, name: names[to], what: what.substring(0, 1000), due: due, why: why };
     order.push(to);
   });
-  var tasks = order.slice(0, ORDER_MAX_TASKS_).map(function (k) { return byPerson[k]; });
-  if (order.length > ORDER_MAX_TASKS_) dropped.push((order.length - ORDER_MAX_TASKS_) + ' more task(s) were left out — at most ' + ORDER_MAX_TASKS_);
+  var tasks = order.slice(0, max).map(function (k) { return byPerson[k]; });
+  if (order.length > max) dropped.push((order.length - max) + ' more task(s) were left out — at most ' + max);
   var question = String(j.question || '').trim().substring(0, 500);
   if (!tasks.length && !question) question = 'Who should do this? The AI could not tell — say who, or give it by hand below.';
   return { tasks: tasks, question: tasks.length ? '' : question, dropped: dropped };

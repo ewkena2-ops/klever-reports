@@ -1957,6 +1957,9 @@ function watch_(waitMs) {
     answerWaiting_();
     /* and an order of his, for the AI to find who does it (Orders.js) */
     planWaiting_();
+    /* a working morning: the AI's list of what each person should do
+       today, drafted for him to check and send (Team.js) */
+    try { teamPlanIfDue_(); } catch (e) { Logger.log('team plan: %s', e.message); }
     /* and an instruction of his that has not reached its person's phone (Push.js) */
     notifyWaiting_();
     /* Sunday after 9 PM: the week is over — settle it, send its summary */

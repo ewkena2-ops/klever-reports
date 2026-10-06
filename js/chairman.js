@@ -2362,7 +2362,9 @@ import {
     });
     who.onchange = function () { task.to = who.value; };
     var what = el('textarea');
-    what.rows = 3;
+    /* the AI's list puts each thing on its own line */
+    var lines = String(task.what || '').split(String.fromCharCode(10));
+    what.rows = Math.min(8, Math.max(3, lines.length + Math.floor(String(task.what || '').length / 45) + 1));
     what.maxLength = 1000;
     what.value = task.what;
     what.setAttribute('aria-label', t('chInsWhat'));
@@ -2393,8 +2395,16 @@ import {
   }
 
   function orderCard(o) {
-    var box = el('div', 'chask-item chord');
-    box.appendChild(el('div', 'chask-q', o.q || ''));
+    /* the AI's own list for the day (apps-script/Team.js): drafted from the
+       morning's reading, and sent — like his orders — only by his Send */
+    var ai = o.by === 'ai';
+    var box = el('div', 'chask-item chord' + (ai ? ' chord-ai' : ''));
+    if (ai) {
+      box.appendChild(el('div', 'chask-q', t('ordAiTitle') + (o.day ? ' · ' + dayShort(o.day) : '')));
+      if (o.status === 'planned') box.appendChild(el('p', 'chask-note', t('ordAiNote')));
+    } else {
+      box.appendChild(el('div', 'chask-q', o.q || ''));
+    }
     var when = o.at && o.at.toDate ? o.at.toDate() : null;
 
     if (o.status === 'planned') {

@@ -1823,10 +1823,14 @@ function watchForRunRequest() { watch_(1000); }
    - 5 Oct 2026, evening: the sign-in cards had not been handed out and
      nobody had filed, so the close at 06:44 would have charged all nineteen
      for Monday. Counting starts Tuesday 6 October; he names the day the cards
-     go out, and it moves again to that. */
+     go out, and it moves again to that.
+   - 6 Oct 2026, evening: nobody had filed on Tuesday either (0 of 19 at
+     17:40), and he said "so everyone will start tomorrow". Counting starts
+     Wednesday 7 October — the day Ermiyas starts too. */
 var STARTS_ = [
   { day: '2026-10-05', flag: 'RESTART_APPLIED', why: 'the restart of 3 Oct' },
-  { day: '2026-10-06', flag: 'START_MOVED_2026_10_06', why: 'cards not handed out on Mon 5 Oct' }
+  { day: '2026-10-06', flag: 'START_MOVED_2026_10_06', why: 'cards not handed out on Mon 5 Oct' },
+  { day: '2026-10-07', flag: 'START_MOVED_2026_10_07', why: 'nobody filed on Tue 6 Oct; everyone starts Wed 7 Oct' }
 ];
 var RESTART_START_ = STARTS_[0].day;
 function startFromRestart_() {

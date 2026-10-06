@@ -3455,6 +3455,10 @@ function oddFigures(report, v) {
   /* someone with no terms letter yet reports, and is fined for nothing */
   REPORTS.forEach(function (r) {
     var p = PEOPLE.filter(function (x) { return x.id === r.person; })[0];
-    if (p && p.noLetter) r.noFine = 1;
+    if (p && p.noLetter) {
+      r.noFine = 1;
+      r.penEn = 'No fines — no terms letter yet';
+      r.penAm = 'ቅጣት የለም — የውል ደብዳቤ ገና አልተሰጠም';
+    }
   });
 })();

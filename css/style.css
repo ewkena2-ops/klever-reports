@@ -1538,10 +1538,10 @@ svg.sky .node text{font-size:11px}
 .regnote-m{font-family:var(--mono);font-size:11.5px;color:var(--dim);margin-top:8px}
 .chtile.regbad{border-color:var(--coral-line);background:var(--coral-bg)}
 .chtile.regbad .chtv{color:var(--coral)}
-.regtabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;margin:16px 0 10px;
+.regtabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;margin:16px 0 10px;
   background:var(--field);border:1px solid var(--line-2);border-radius:13px}
-.regtabs button{min-height:42px;border:0;border-radius:10px;background:transparent;cursor:pointer;
-  font-size:14px;font-weight:600;color:var(--mut);font-variant-numeric:tabular-nums}
+.regtabs button{min-height:42px;border:0;border-radius:10px;background:transparent;cursor:pointer;padding:0 4px;
+  font-size:13px;font-weight:600;color:var(--mut);font-variant-numeric:tabular-nums;line-height:1.2}
 .regtabs button[aria-selected="true"]{background:var(--teal-hi);color:var(--teal-ink)}
 .regtabs button.hasbad:not([aria-selected="true"]){color:var(--coral)}
 .regsearch{width:100%;box-sizing:border-box;min-height:44px;margin:0 0 12px;padding:0 14px;font-size:15px;
@@ -1575,3 +1575,20 @@ svg.sky .node text{font-size:11px}
 .chreg-l{font-size:14.5px;color:var(--ink);line-height:1.5}
 .chreg-l.bad{color:var(--coral)}
 .chreg .obs-open{margin:12px 0 0}
+/* his table: one row a customer, every step a column; it slides sideways
+   inside its box, the name column staying put */
+.regtable-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+.regtable{border-collapse:separate;border-spacing:0;min-width:1180px;width:100%;font-size:13px}
+.regtable th{background:var(--card-2);color:var(--dim);font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  text-align:left;padding:10px;white-space:nowrap;border-bottom:1px solid var(--line-2)}
+.regtable td{padding:10px;border-bottom:1px solid var(--line);white-space:nowrap;color:var(--ink-2);font-variant-numeric:tabular-nums;vertical-align:middle}
+.regtable tbody tr:last-child td{border-bottom:0}
+.regtable .c{position:sticky;left:0;z-index:1;min-width:120px;max-width:150px;white-space:normal;overflow-wrap:anywhere;
+  font-weight:700;color:var(--ink);background:var(--card);box-shadow:1px 0 0 var(--line-2)}
+.regtable th.c{background:var(--card-2);z-index:2}
+.regtable tr.bad td.c{box-shadow:inset 3px 0 0 var(--coral),1px 0 0 var(--line-2)}
+.regtable td.dim{color:var(--dim)}
+.regtable td.bad{color:var(--coral);font-weight:600}
+.regtable td.regcode{font-family:var(--mono);font-weight:500;color:var(--teal-hi)}
+.regtable tbody tr{cursor:pointer}
+.regtable tbody tr:active td{background:var(--card-2)}

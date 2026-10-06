@@ -59,7 +59,7 @@ import {
   /* the tab he chose; until he chooses, the problems if there are any —
      worked out each time, because the first answer can come from the
      phone's cache (empty) a moment before the real one */
-  function tab() { return S.tab || (problemItems().length ? 'problems' : 'jobs'); }
+  function tab() { return S.tab || (problemItems().length ? 'problems' : 'table'); }
 
   function connect() {
     app = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
@@ -144,7 +144,8 @@ import {
 
     var probs = problemItems().length;
     parts.tabs.innerHTML = '';
-    [['problems', t('regTabProblems'), probs], ['jobs', t('regTabJobs'), jobs.length], ['leads', t('regTabLeads'), leads.length]]
+    [['problems', t('regTabProblems'), probs], ['table', t('regTabTable'), tableRows().length],
+     ['jobs', t('regTabJobs'), jobs.length], ['leads', t('regTabLeads'), leads.length]]
       .forEach(function (x) {
         var b = el('button', null, x[1] + ' ' + x[2]);
         b.type = 'button';
@@ -257,10 +258,94 @@ import {
     return c;
   }
 
+  /* ---------------- the table: one row a customer ---------------- */
+
+  /* Each lead, with its job beside it once signed (the lead's KK code, or a
+     job whose contract gave this lead's no.); then the jobs no lead names —
+     the ones signed before reporting began. */
+  function tableRows() {
+    var byJob = {}, byLead = {}, used = {};
+    (S.jobs || []).forEach(function (j) { byJob[j.job] = j; if (j.leadCode) byLead[j.leadCode] = j; });
+    var rows = (S.leads || []).map(function (l) {
+      var j = (l.job && byJob[l.job]) || (l.code && byLead[l.code]) || null;
+      if (j) used[j.job] = true;
+      return { lead: l, job: j };
+    });
+    (S.jobs || []).forEach(function (j) { if (!used[j.job]) rows.push({ lead: null, job: j }); });
+    return rows;
+  }
+  function short(ymd) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd || '')) return '';
+    var d = new Date(ymd + 'T12:00:00Z');
+    return d.getUTCDate() + ' ' + MONTHS[lang][d.getUTCMonth()];
+  }
+  function num(n) { return n == null || n === 0 ? '' : Number(n).toLocaleString('en-US'); }
+  function rowMatches(r) {
+    return (r.lead && matches(r.lead)) || (r.job && matches(r.job));
+  }
+  function drawTable(rows) {
+    var wrap = el('div', 'regtable-wrap');
+    var tb = el('table', 'regtable');
+    var head = el('tr');
+    ['Customer', 'Stage', 'Sales', 'Lead', 'Visit', 'Quote', 'Contract', 'Advance', 'Final', 'Prod', 'Qc', 'Delivered', 'Site', 'Problems']
+      .forEach(function (k, i) { head.appendChild(el('th', i === 0 ? 'c' : null, t('regCol' + k))); });
+    var th = el('thead'); th.appendChild(head); tb.appendChild(th);
+    var body = el('tbody');
+    rows.forEach(function (r) {
+      var l = r.lead, j = r.job, at = (l && l.at) || {};
+      var probs = ((l && l.problems) || []).concat((j && j.problems) || []);
+      var tr = el('tr', probs.length ? 'bad' : null);
+      function cell(text, cls) { var td = el('td', cls || null, text || '—'); if (!text) td.classList.add('dim'); tr.appendChild(td); return td; }
+      var name = el('td', 'c');
+      name.appendChild(document.createTextNode(l ? l.name : (j.cust || j.job)));
+      var code = l && l.code ? l.code : (j && j.leadCode) || '';
+      if (code) name.appendChild(el('span', 'regno', ' #' + code));
+      tr.appendChild(name);
+      var stage = j ? j.stageName : l.stageName;
+      var st = el('td');
+      st.appendChild(chip(stageWord(stage), probs.length > 0));
+      tr.appendChild(st);
+      cell(l ? l.sales : (j.sales || ''));
+      cell(short(at.lead || (l && l.first)));
+      cell(short(at.visit || at.predesign));
+      cell(l ? num(l.quote) : '');
+      cell(j ? j.job + (j.value != null ? ' · ' + num(j.value) : '') : (l && l.job) || '', 'regcode');
+      cell(j ? num(j.advIn) : '');
+      cell(j ? num(j.finalIn) : '');
+      cell(j ? (j.made ? short(j.made) + ' ✓' : short(j.prodFirst)) : '');
+      var qcFailedNow = j && j.qcFailed && !(j.qcPassed && j.qcPassed > j.qcFailed);
+      cell(j ? (qcFailedNow ? '✗ ' + short(j.qcFailed) : short(j.qcPassed)) : '', qcFailedNow ? 'bad' : null);
+      cell(j ? short(j.delivered) : '');
+      cell(j ? short(j.site) : '');
+      var pc = cell(probs.length ? '⚠ ' + probs.length : '', probs.length ? 'bad' : null);
+      if (probs.length) pc.title = probs.map(function (x) { return x.text; }).join('\n');
+      /* a row opens that customer's card */
+      tr.onclick = function () {
+        S.tab = j ? 'jobs' : 'leads';
+        S.q = String(j ? j.job : (code || l.name)).toLowerCase();
+        parts.search.value = j ? j.job : (code || l.name);
+        drawTop(); drawList();
+        window.scrollTo(0, parts.tabs.offsetTop - 70);
+      };
+      body.appendChild(tr);
+    });
+    tb.appendChild(body);
+    wrap.appendChild(tb);
+    return wrap;
+  }
+
   function drawList() {
     if (S.leads == null || S.jobs == null) return;
     parts.list.innerHTML = '';
     var items, make;
+    if (tab() === 'table') {
+      if (!S.leads.length && !S.jobs.length) { parts.list.appendChild(el('p', 'codenote', t('regEmpty'))); return; }
+      var rows = tableRows().filter(rowMatches);
+      if (!rows.length) { parts.list.appendChild(el('p', 'codenote', t('regNoMatch'))); return; }
+      parts.list.appendChild(drawTable(rows));
+      parts.list.appendChild(el('p', 'codenote', t('regTableHint')));
+      return;
+    }
     if (tab() === 'problems') { items = problemItems(); make = problemCard; }
     else if (tab() === 'leads') { items = S.leads; make = leadCard; }
     else { items = S.jobs; make = jobCard; }

@@ -21,8 +21,9 @@
    failed at QC and not passed since; a material holding up production; a
    complaint still open; an advance with no Job File; a lead quiet for seven
    days, quoted with no visit, with no next step, or past the day Ephrata
-   expected it to sign. A job code that no contract names is a note, not a
-   problem: every job signed before 6 October is one.
+   expected it to sign; one KK code written for two customers, or on two
+   contracts. A job code that no contract names is a note, not a problem:
+   every job signed before 6 October is one.
 
    WHEN. The tables are built again a minute or two after any report that
    carries these lists (Agents.js runIfNew_), and each morning (dailyRun_),
@@ -93,6 +94,23 @@ function regJob_(s) {
   var t = String(s || '').toUpperCase().replace(/[\s_]+/g, '').replace(/–|—/g, '-');
   var m = /^([A-Z]+)-?(\d.*)$/.exec(t);
   return m ? m[1] + '-' + m[2] : t;
+}
+/* Names (as regName_ gives them) in groups: two names are one customer when
+   they join through a shared word, directly or through another name
+   ("abebe", "abebe kebede", "a kebede" are one group). */
+function regGroups_(names) {
+  var left = names.slice(), groups = [];
+  while (left.length) {
+    var g = [left.shift()], grew = true;
+    while (grew) {
+      grew = false;
+      for (var i = left.length - 1; i >= 0; i--) {
+        if (g.some(function (x) { return regShareWord_(x, left[i]); })) { g.push(left.splice(i, 1)[0]); grew = true; }
+      }
+    }
+    groups.push(g);
+  }
+  return groups;
 }
 /* two spellings of one name share a word of 3 letters or more */
 function regShareWord_(a, b) {
@@ -206,6 +224,9 @@ function regFold_(events, today, names, sellers) {
         if (order(e.k) > L.stage) L.stage = order(e.k);
         L.last = { k: e.k, day: e.day, by: who(e.person) };
         L.steps.push({ k: e.k, day: e.day, by: who(e.person) });
+        /* the first day of each step, for his table (one column a step) */
+        L.at = L.at || {};
+        if (!L.at[e.k]) L.at[e.k] = e.day;
         if (sellers[e.person]) L.sales = who(e.person);
         if (e.k === 'contract' && e.who && !L.sales) L.sales = e.who;
         /* the next step is the latest step's own; a list with no such
@@ -223,6 +244,10 @@ function regFold_(events, today, names, sellers) {
                                             signed: '', advIn: 0, finalIn: 0, complaints: [], delays: [], seen: {} });
     J.last = e.day;
     J.seen[e.k] = true;
+    /* every name and every contract's lead no. written with this code, to
+       catch one KK code given to two customers */
+    if (e.cust && regName_(e.cust)) (J.names = J.names || {})[regName_(e.cust)] = e.cust;
+    if (e.k === 'contract' && e.lead) (J.contractLeads = J.contractLeads || {})[e.lead] = true;
     if (e.cust && (!J.cust || e.k === 'contract')) J.cust = e.cust;
     switch (e.k) {
       case 'contract':
@@ -310,13 +335,7 @@ function regFold_(events, today, names, sellers) {
          one); a name outside this lead's group is someone else */
       var names = Object.keys(codeNames[L.code] || {}), mine = regName_(L.name);
       if (names.indexOf(mine) === -1) names.push(mine);
-      var group = [mine], grew = true;
-      while (grew) {
-        grew = false;
-        names.forEach(function (n) {
-          if (group.indexOf(n) === -1 && group.some(function (g) { return regShareWord_(g, n); })) { group.push(n); grew = true; }
-        });
-      }
+      var group = regGroups_(names).filter(function (g) { return g.indexOf(mine) !== -1; })[0];
       var others = names.filter(function (n) { return group.indexOf(n) === -1; })
                         .map(function (n) { return codeNames[L.code][n]; });
       if (others.length) p.push({ code: 'code-clash', text: 'Code ' + L.code + ' is also written for ' + others.join(', ') });
@@ -365,6 +384,16 @@ function regFold_(events, today, names, sellers) {
     if (J.jobFile === 'no') p.push({ code: 'no-job-file', text: 'Advance in, but no Job File opened' });
     var openC = J.complaints.filter(function (c) { return !/^(closed|resolved)$/.test(c.state); });
     if (openC.length) p.push({ code: 'complaint', text: openC.length + ' complaint' + (openC.length > 1 ? 's' : '') + ' open: ' + openC[openC.length - 1].what });
+    /* one KK code, two customers — Ephrata gives the codes by hand */
+    var groups = regGroups_(Object.keys(J.names || {}));
+    if (groups.length > 1) {
+      p.push({ code: 'job-clash', text: J.job + ' is written for ' + (groups.length === 2 ? 'two' : groups.length) + ' customers: ' +
+               groups.map(function (g) { return J.names[g[0]]; }).join(' and ') });
+    }
+    var cl = Object.keys(J.contractLeads || {});
+    if (cl.length > 1) p.push({ code: 'job-two-contracts', text: J.job + ' is on ' + cl.length + ' contracts, with lead nos. ' + cl.join(' and ') });
+    delete J.names;
+    delete J.contractLeads;
     J.leadCode = jobLead[J.job] || '';
     J.problems = p;
     J.notes = notes;

@@ -2251,8 +2251,19 @@ import {
         if (tok && window.ARCHIVE && window.ARCHIVE.on()) {
           window.ARCHIVE.post({ kind: 'order', k: id, idToken: tok })['catch'](function () {});
         }
+        return id;
       });
   }
+
+  /* An order he answered (the AI asked him something) or tried again goes
+     on as a new order; the old card leaves his list, so a question he has
+     answered is not still asking. Dropped ones leave it too. */
+  function retireOrder(o, next) {
+    var ch = next ? { status: 'replaced', next: next, sentAt: serverTimestamp() }
+                  : { status: 'dropped', sentAt: serverTimestamp() };
+    return updateDoc(doc(db, 'orders', o.id), ch);
+  }
+  var ORDERS_HIDDEN = { replaced: true, dropped: true };
 
   /* the words that go to the person, in both languages, with where to close it */
   function orderMessageFor(task) {
@@ -2384,49 +2395,75 @@ import {
       };
     } else if (o.status === 'sent') {
       var sentAt = o.sentAt && o.sentAt.toDate ? o.sentAt.toDate() : null;
-      box.appendChild(el('div', 'chord-sent', t('ordSent') + (sentAt ? ' · ' + hhmm(sentAt) : '')));
+      var sentDay = sentAt ? new Date(sentAt.getTime() + 3 * 3600e3).toISOString().slice(0, 10) : null;   /* Addis */
+      var earlier = !!(sentDay && DAY && sentDay < DAY);
+      box.appendChild(el('div', 'chord-sent', t('ordSent') + (sentAt ? ' · ' + (earlier ? dayShort(sentDay) + ' ' : '') + hhmm(sentAt) : '')));
+      /* the same words by the same day to several people are shown once,
+         with everyone they went to, and one WhatsApp button for all of them */
+      var groups = [], byKey = {};
       (o.sent || []).forEach(function (task) {
+        var k = task.due + '\n' + task.what;
+        if (!byKey[k]) { byKey[k] = { task: task, to: [] }; groups.push(byKey[k]); }
+        byKey[k].to.push(nameOf(task.to));
+      });
+      /* sent on an earlier day: folded to who and by when, open on a tap */
+      var into = box;
+      if (earlier) {
+        into = el('details', 'chord-old');
+        into.appendChild(el('summary', null, tfill('ordSentTo', { names: groups.map(function (g) { return g.to.join(', '); }).join(' · ') })));
+        box.appendChild(into);
+      }
+      groups.forEach(function (g) {
         var r = el('div', 'chord-done');
-        r.appendChild(el('div', 'chord-to', nameOf(task.to) + ' · ' + t('chInsDue') + ' ' + dayShort(task.due)));
-        r.appendChild(el('div', 'chord-what', task.what));
+        r.appendChild(el('div', 'chord-to', tfill('ordSentTo', { names: g.to.join(', ') }) + ' · ' + t('chInsDue') + ' ' + dayShort(g.task.due)));
+        r.appendChild(el('div', 'chord-what', g.task.what));
         var wa = el('a', 'chask-again chord-wa', t('ordWhatsApp'));
-        wa.href = 'https://wa.me/?text=' + encodeURIComponent(orderMessageFor(task));
+        wa.href = 'https://wa.me/?text=' + encodeURIComponent(orderMessageFor(g.task));
         wa.target = '_blank';
         wa.rel = 'noopener';
         r.appendChild(wa);
-        box.appendChild(r);
+        r.appendChild(el('div', 'chord-why', tfill('ordWaPick', { names: g.to.map(function (n) { return n.split(' ')[0]; }).join(', ') })));
+        into.appendChild(r);
       });
-      box.appendChild(el('div', 'chask-meta', t('ordSentNote')));
-    } else if (o.status === 'dropped') {
-      box.appendChild(el('div', 'chask-a chask-wait', t('ordDropped')));
-    } else if (o.status === 'unclear') {
-      box.appendChild(el('div', 'chord-ask', t('ordAsks') + ' ' + (o.question || '')));
-      var more = el('textarea');
-      more.rows = 2;
-      more.maxLength = 500;
-      more.setAttribute('aria-label', t('ordAnswer'));
-      box.appendChild(more);
-      var ans = el('button', 'chask-again', t('ordAnswer'));
+      into.appendChild(el('div', 'chask-meta', t('ordSentNote')));
+    } else if (o.status === 'unclear' || o.status === 'failed') {
+      var asking = o.status === 'unclear';
+      box.appendChild(asking ? el('div', 'chord-ask', t('ordAsks') + ' ' + (o.question || ''))
+                             : el('div', 'chask-a chask-fail', t('ordCouldNot') + ' ' + (o.error || '')));
+      var more = null;
+      if (asking) {
+        more = el('textarea');
+        more.rows = 2;
+        more.maxLength = 500;
+        more.setAttribute('aria-label', t('ordAnswer'));
+        box.appendChild(more);
+      }
+      var bar2 = el('div', 'chord-bar');
+      var ans = el('button', 'chask-again', t(asking ? 'ordAnswer' : 'ordAgain'));
       ans.type = 'button';
+      var drop2 = el('button', 'chask-again', t('ordDrop'));
+      drop2.type = 'button';
       ans.onclick = function () {
-        var a = more.value.trim();
-        if (!a) { more.focus(); return; }
-        ans.disabled = true;
-        orderAI(String(o.q || '').slice(0, 480) + ' — ' + a.slice(0, 500))['catch'](function () {
-          ans.disabled = false;
+        var a = more ? more.value.trim() : '';
+        if (more && !a) { more.focus(); return; }
+        ans.disabled = drop2.disabled = true;
+        orderAI(more ? String(o.q || '').slice(0, 480) + ' — ' + a.slice(0, 500) : o.q).then(function (id) {
+          return retireOrder(o, id)['catch'](function () {});   /* the new one is asked either way */
+        }, function () {
+          ans.disabled = drop2.disabled = false;
           toast(t('ordFailed'));
         });
       };
-      box.appendChild(ans);
-    } else if (o.status === 'failed') {
-      box.appendChild(el('div', 'chask-a chask-fail', t('ordCouldNot') + ' ' + (o.error || '')));
-      var again = el('button', 'chask-again', t('ordAgain'));
-      again.type = 'button';
-      again.onclick = function () {
-        again.disabled = true;
-        orderAI(o.q)['catch'](function () { again.disabled = false; toast(t('ordFailed')); });
+      drop2.onclick = function () {
+        ans.disabled = drop2.disabled = true;
+        retireOrder(o, null)['catch'](function () {
+          ans.disabled = drop2.disabled = false;
+          toast(t('ordFailed'));
+        });
       };
-      box.appendChild(again);
+      bar2.appendChild(ans);
+      bar2.appendChild(drop2);
+      box.appendChild(bar2);
     } else {
       box.appendChild(el('div', 'chask-a chask-wait', t('ordThinking')));
     }
@@ -2467,12 +2504,14 @@ import {
        typing — is kept as it is while other orders come and go; a card is
        drawn again only when its own order moves on. */
     var cards = {};
-    onSnapshot(query(collection(db, 'orders'), orderBy('at', 'desc'), limit(8)), function (qs) {
-      var seen = {};
+    onSnapshot(query(collection(db, 'orders'), orderBy('at', 'desc'), limit(20)), function (qs) {
+      var seen = {}, shown = 0;
       list.innerHTML = '';
       qs.forEach(function (d) {
         var o = d.data({ serverTimestamps: 'estimate' });
         o.id = d.id;
+        if (ORDERS_HIDDEN[o.status] || shown >= 8) return;
+        shown++;
         seen[d.id] = true;
         var c = cards[d.id];
         if (!c || c.status !== o.status) c = cards[d.id] = { status: o.status, el: orderCard(o) };

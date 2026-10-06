@@ -863,6 +863,10 @@ body[data-page="chairman"] .codenote{font-size:12.5px;color:var(--dim);text-alig
 .chord-what{font-size:14px;color:var(--ink-2);line-height:1.5;margin-top:3px;overflow-wrap:anywhere;white-space:pre-line}
 .chord-wa{display:inline-flex;align-items:center;text-decoration:none;margin-top:8px}
 .chord-ask{font-size:14px;color:var(--ink);line-height:1.5;margin-bottom:8px;overflow-wrap:anywhere}
+.chord-ask + textarea{width:100%;box-sizing:border-box}
+.chord-old summary{cursor:pointer;font-size:13px;color:var(--ink-2);padding:4px 0;min-height:32px;overflow-wrap:anywhere}
+.chord-old[open] summary{color:var(--mut)}
+.chord-done .chord-why{margin-top:6px}
 .chfind.cfo{border-left-color:var(--gold)}
 .chcfo-lines{margin:10px 2px 0}
 .chcfo-head .chfk,.chcfo-head .chfv{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}

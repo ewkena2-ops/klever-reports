@@ -252,7 +252,21 @@ service cloud.firestore {
                              && request.resource.data.sent.size() > 0
                              && request.resource.data.sent.size() <= 6)
                             || (request.resource.data.status == 'dropped'
-                                && request.resource.data.sentAt == request.time)));
+                                && request.resource.data.sentAt == request.time)))
+                    /* an order the AI asked about, or could not plan: he
+                       answers or tries again (a new order — `next`), or
+                       drops it, and the old card leaves his list */
+                    || (isChairman()
+                        && resource.data.status in ['unclear', 'failed']
+                        && request.resource.data.sentAt == request.time
+                        && ((request.resource.data.status == 'replaced'
+                             && request.resource.data.diff(resource.data).affectedKeys()
+                                  .hasOnly(['status', 'sentAt', 'next'])
+                             && request.resource.data.next is string
+                             && request.resource.data.next.matches('^[A-Za-z0-9_-]{6,40}$'))
+                            || (request.resource.data.status == 'dropped'
+                                && request.resource.data.diff(resource.data).affectedKeys()
+                                     .hasOnly(['status', 'sentAt']))));
       allow delete: if false;
     }
     /* Phones that get notifications (js/fb.js, apps-script/Push.js): one

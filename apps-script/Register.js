@@ -40,17 +40,18 @@ var REG_OLD_JOB_DAYS_ = 60;        /* a job on site this long ago, with no probl
    one (each salesperson and designer has their own copy). The other keys
    name the column that holds that thing. */
 var REG_SOURCES_ = [
-  { r: 'ephrata-daily', f: 'visits_list', k: 'visit', cust: 'cust', next: 'next', who: 'who' },
-  { r: 'ephrata-daily', f: 'quotes_list', k: 'quote', cust: 'cust', value: 'value', who: 'who' },
-  { r: 'ephrata-daily', f: 'contracts_list', k: 'contract', cust: 'cust', job: 'code', value: 'value', adv: 'adv', who: 'sp' },
-  { r: 'ephrata-weekly', f: 'w_contracts_list', k: 'contract', cust: 'cust', job: 'code', value: 'value', adv: 'adv', who: 'sp' },
-  { r: 'ephrata-weekly', f: 'w_comp_list', k: 'complaint', cust: 'cust', what: 'what', state: 'state' },
-  { r: 'ephrata-projection', f: 'proj_contracts', k: 'expected', cust: 'cust', value: 'val', date: 'sign', conf: 'conf', next: 'next' },
-  { r: '-sales-daily', f: 'l_list', k: 'lead', cust: 'cust', phone: 'phone', next: 'next' },
-  { r: '-sales-daily', f: 'v_list', k: 'visit', cust: 'cust', next: 'next', who: 'designer' },
-  { r: '-sales-daily', f: 'q_list', k: 'quote', cust: 'cust', value: 'value' },
-  { r: '-sales-daily', f: 'c_list', k: 'contract', cust: 'cust', job: 'code', value: 'value', adv: 'adv' },
-  { r: '-design-daily', f: 'm_pre_list', k: 'predesign', cust: 'cust', next: 'next' },
+  { r: 'ephrata-daily', f: 'visits_list', k: 'visit', cust: 'cust', lc: 'lc', next: 'next', who: 'who' },
+  { r: 'ephrata-daily', f: 'quotes_list', k: 'quote', cust: 'cust', lc: 'lc', value: 'value', who: 'who' },
+  { r: 'ephrata-daily', f: 'contracts_list', k: 'contract', cust: 'cust', lc: 'lc', job: 'code', value: 'value', adv: 'adv', who: 'sp' },
+  { r: 'ephrata-weekly', f: 'w_contracts_list', k: 'contract', cust: 'cust', lc: 'lc', job: 'code', value: 'value', adv: 'adv', who: 'sp' },
+  { r: 'ephrata-weekly', f: 'w_comp_list', k: 'complaint', cust: 'cust', lc: 'lc', what: 'what', state: 'state' },
+  { r: 'ephrata-projection', f: 'proj_contracts', k: 'expected', cust: 'cust', lc: 'lc', value: 'val', date: 'sign', conf: 'conf', next: 'next' },
+  { r: '-sales-daily', f: 'l_list', k: 'lead', cust: 'cust', lc: 'lc', phone: 'phone', next: 'next' },
+  { r: '-sales-daily', f: 'v_list', k: 'visit', cust: 'cust', lc: 'lc', next: 'next', who: 'designer' },
+  { r: '-sales-daily', f: 'q_list', k: 'quote', cust: 'cust', lc: 'lc', value: 'value' },
+  { r: '-sales-daily', f: 'c_list', k: 'contract', cust: 'cust', lc: 'lc', job: 'code', value: 'value', adv: 'adv' },
+  { r: '-sales-weekly', f: 's_contracts_list', k: 'contract', cust: 'cust', lc: 'lc', job: 'code', value: 'value' },
+  { r: '-design-daily', f: 'm_pre_list', k: 'predesign', cust: 'cust', lc: 'lc', next: 'next' },
   { r: '-design-daily', f: 'm_fin_list', k: 'design', cust: 'cust', job: 'code', ok: 'green' },
   { r: '-design-daily', f: 'cp_list', k: 'complaint', cust: 'cust', job: 'code', what: 'what' },
   { r: 'betty-daily', f: 'adv_in_list', k: 'advance', cust: 'cust', job: 'code', amount: 'amount', ok: 'file' },
@@ -93,6 +94,12 @@ function regJob_(s) {
   var m = /^([A-Z]+)-?(\d.*)$/.exec(t);
   return m ? m[1] + '-' + m[2] : t;
 }
+/* two spellings of one name share a word of 3 letters or more */
+function regShareWord_(a, b) {
+  var w = {};
+  String(a).split(' ').forEach(function (x) { if (x.length >= 3) w[x] = true; });
+  return String(b).split(' ').some(function (x) { return x.length >= 3 && w[x]; });
+}
 function regDate_(s) {
   var t = String(s || '').trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(t) && dayOf_(new Date(t + 'T12:00:00' + ADDIS_)) === t ? t : '';
@@ -116,8 +123,16 @@ function regEventsOf_(filing) {
         if (s[x] && regDate_(row[s[x]])) e[x] = regDate_(row[s[x]]);
       });
       if (s.next) e.hn = true;            /* this list asks for a next step */
+      /* the customer's code: the 4-digit lead no. the salesperson gave, or —
+         on a list that is not a contract — the KK code once they have paid */
+      if (s.lc && !blank_(row[s.lc])) {
+        var raw = String(row[s.lc]).trim(), digits = raw.replace(/\s+/g, '');
+        if (/^\d{4}$/.test(digits)) e.lead = digits;
+        else if (s.k !== 'contract' && /^[A-Za-z]{1,4}\s*-?\s*\d/.test(raw)) { if (!e.job) e.job = raw; }
+        else e.badCode = raw.substring(0, 20);
+      }
       if (e.job) e.job = regJob_(e.job);
-      if (!e.cust && !e.job) return;
+      if (!e.cust && !e.job && !e.lead) return;
       out.push(e);
     });
   });
@@ -153,13 +168,37 @@ function regFold_(events, today, names, sellers) {
   var who = function (p) { return names[p] || p; };
   var leads = {}, jobs = {};
   var order = function (k) { var i = REG_LEAD_STAGES_.indexOf(k); return i === -1 ? -1 : i; };
+  /* A lead is its 4-digit code wherever one was written; a line with only
+     the name, or only the KK code, finds the code through another line that
+     gave both. Without any code, the name is the key, as before. */
+  var nameLead = {}, jobLead = {}, codeNames = {};
+  events.slice().sort(function (a, b) { return a.day < b.day ? -1 : a.day > b.day ? 1 : 0; }).forEach(function (e) {
+    if (e.lead && e.cust) {
+      nameLead[regName_(e.cust)] = e.lead;
+      (codeNames[e.lead] = codeNames[e.lead] || {})[regName_(e.cust)] = e.cust;
+    }
+    if (e.lead && e.job) jobLead[e.job] = e.lead;
+  });
+  var leadKey = function (e) {
+    if (e.lead) return '#' + e.lead;
+    if (e.job && jobLead[e.job]) return '#' + jobLead[e.job];
+    var nm = e.cust ? regName_(e.cust) : '';
+    return nm && nameLead[nm] ? '#' + nameLead[nm] : nm;
+  };
   events.slice().sort(function (a, b) { return a.day < b.day ? -1 : a.day > b.day ? 1 : 0; }).forEach(function (e) {
     /* the lead, by its customer */
-    var key = e.cust ? regName_(e.cust) : '';
+    var key = leadKey(e);
     if (key && (order(e.k) !== -1 || e.k === 'expected')) {
-      var L = leads[key] || (leads[key] = { key: key, name: e.cust, first: e.day, stage: -1, steps: [],
+      var L = leads[key] || (leads[key] = { key: key, code: key.charAt(0) === '#' ? key.slice(1) : '',
+                                            name: e.cust || key, first: e.day, stage: -1, steps: [],
                                             phone: '', sales: '', next: '', quote: null, job: '', expected: null });
-      L.name = e.cust;
+      /* the name shown: the contract's, else the fullest spelling seen —
+         not a quick "Abebe" in a visit note */
+      if (e.cust) {
+        if (e.k === 'contract') { L.name = e.cust; L.fromContract = true; }
+        else if (!L.fromContract && String(e.cust).length >= String(L.name).length) L.name = e.cust;
+      }
+      if (e.badCode) L.badCode = e.badCode;
       if (e.phone) L.phone = e.phone;
       if (e.k === 'expected') {
         L.expected = { date: e.date || '', value: e.value == null ? null : e.value, conf: e.conf || '' };
@@ -263,6 +302,25 @@ function regFold_(events, today, names, sellers) {
       (L.last.k === 'expected' ? 'only in Ephrata’s forecast of ' + pushDay_(L.last.day) : 'last: ' + L.last.k + ', ' + pushDay_(L.last.day)) + ')' });
     if (L.quoted && !(L.visited && L.visited <= L.quoted)) p.push({ code: 'quote-no-visit', text: 'Quoted ' + pushDay_(L.quoted) + ' with no visit recorded first' });
     if (open && L.nextAsked && !L.next) p.push({ code: 'no-next', text: 'No next step written' });
+    if (!L.code && L.badCode) p.push({ code: 'bad-code', text: 'Code “' + L.badCode + '” is not a 4-digit lead no. or a KK code' });
+    else if (open && !L.code) p.push({ code: 'no-code', text: 'No customer code written (the 4-digit lead no.)' });
+    if (L.code) {
+      /* one code, two customers: the names written with it fall into groups
+         joined by a shared word ("Abebe", "Abebe Kebede", "A. Kebede" are
+         one); a name outside this lead's group is someone else */
+      var names = Object.keys(codeNames[L.code] || {}), mine = regName_(L.name);
+      if (names.indexOf(mine) === -1) names.push(mine);
+      var group = [mine], grew = true;
+      while (grew) {
+        grew = false;
+        names.forEach(function (n) {
+          if (group.indexOf(n) === -1 && group.some(function (g) { return regShareWord_(g, n); })) { group.push(n); grew = true; }
+        });
+      }
+      var others = names.filter(function (n) { return group.indexOf(n) === -1; })
+                        .map(function (n) { return codeNames[L.code][n]; });
+      if (others.length) p.push({ code: 'code-clash', text: 'Code ' + L.code + ' is also written for ' + others.join(', ') });
+    }
     if (open && L.expected && L.expected.date && L.expected.date < today) {
       p.push({ code: 'expected-passed', text: 'Ephrata expected it signed by ' + pushDay_(L.expected.date) + '; not signed' });
     }
@@ -307,6 +365,7 @@ function regFold_(events, today, names, sellers) {
     if (J.jobFile === 'no') p.push({ code: 'no-job-file', text: 'Advance in, but no Job File opened' });
     var openC = J.complaints.filter(function (c) { return !/^(closed|resolved)$/.test(c.state); });
     if (openC.length) p.push({ code: 'complaint', text: openC.length + ' complaint' + (openC.length > 1 ? 's' : '') + ' open: ' + openC[openC.length - 1].what });
+    J.leadCode = jobLead[J.job] || '';
     J.problems = p;
     J.notes = notes;
     J.openComplaints = openC.length;

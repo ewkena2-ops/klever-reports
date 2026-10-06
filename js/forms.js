@@ -99,6 +99,7 @@ const REPORTS = [
         show:{f:'visits_done', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'where', en:'Area', am:'አካባቢ', t:'text'},
           {id:'who', en:'Visited by', am:'የጎበኘው', t:'text'},
           {id:'next', en:'Next step', am:'ቀጣይ እርምጃ', t:'text'}
@@ -113,6 +114,7 @@ const REPORTS = [
         show:{f:'quotes_issued', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'value', en:'Value', am:'ዋጋ', t:'money'},
           {id:'who', en:'Prepared by', am:'ያዘጋጀው', t:'text'}
         ]},
@@ -126,6 +128,7 @@ const REPORTS = [
         show:{f:'contracts', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Lead no. (4 digits)', am:'የደንበኛ ቁጥር (4 አሃዝ)', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'value', en:'Contract value', am:'የውል ዋጋ', t:'money'},
           {id:'adv', en:'Advance paid', am:'የተከፈለ ቅድመ ክፍያ', t:'money'},
@@ -142,6 +145,7 @@ const REPORTS = [
         show:{f:'collected_today', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'kind', en:'For', am:'የምን', t:'choice', opts:[
             {v:'advance', en:'Advance', am:'ቅድመ ክፍያ'},
@@ -156,6 +160,7 @@ const REPORTS = [
         total:'amount', totalEn:'Total expected', totalAm:'ጠቅላላ የሚጠበቅ',
         cols:[
           {id:'cust', en:'Client', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'kind', en:'Payment', am:'የክፍያ ዓይነት', t:'choice', opts:[
             {v:'advance', en:'Advance', am:'ቅድመ ክፍያ'},
             {v:'final', en:'Final payment', am:'የመጨረሻ ክፍያ'},
@@ -780,6 +785,7 @@ const REPORTS = [
         show:{f:'w_contracts', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Lead no. (4 digits)', am:'የደንበኛ ቁጥር (4 አሃዝ)', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'value', en:'Contract value', am:'የውል ዋጋ', t:'money'},
           {id:'adv', en:'Advance paid', am:'የተከፈለ ቅድመ ክፍያ', t:'money'},
@@ -854,6 +860,7 @@ const REPORTS = [
         show:{f:'w_comp_in', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'what', en:'Complaint', am:'ቅሬታው', t:'text'},
           {id:'owner', en:'Being fixed by', am:'የሚያስተካክለው', t:'text'},
           {id:'state', en:'Status', am:'ሁኔታ', t:'choice', opts:[
@@ -977,6 +984,7 @@ const REPORTS = [
         show:{f:'d_complaints', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'what', en:'Complaint', am:'ቅሬታው', t:'text'},
           {id:'dept', en:'Caused by (department)', am:'ያስከተለው ክፍል', t:'text'},
           {id:'done', en:'Resolved', am:'ተፈቷል', t:'yesno'}
@@ -1400,6 +1408,7 @@ const REPORTS = [
       {id:'proj_contracts', en:'Which customers do you expect to sign in the next 4 weeks?', am:'በሚቀጥሉት 4 ሳምንታት የትኞቹ ደንበኞች ውል ይፈርማሉ ብለው ይጠብቃሉ?',
        t:'table', addEn:'Add customer', addAm:'ደንበኛ ጨምር', cols:[
         {id:'cust', en:'Customer name', am:'የደንበኛ ስም', t:'text'},
+        {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
         {id:'val', en:'Contract value', am:'የውል ዋጋ', t:'money'},
         {id:'sign', en:'Expected signing date', am:'የሚፈረምበት ቀን', t:'text'},
         {id:'adv', en:'Advance date', am:'የቅድመ ክፍያ ቀን', t:'text'},
@@ -2828,6 +2837,7 @@ const SALES_DAILY = {
         show:{f:'l_total', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'phone', en:'Phone', am:'ስልክ', t:'text'},
           {id:'next', en:'Next step', am:'ቀጣይ እርምጃ', t:'text'}
         ]}
@@ -2847,6 +2857,7 @@ const SALES_DAILY = {
         show:{f:'v_done', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'designer', en:'Designer', am:'ዲዛይነር', t:'text'},
           {id:'next', en:'Next step', am:'ቀጣይ እርምጃ', t:'text'}
         ]},
@@ -2860,6 +2871,7 @@ const SALES_DAILY = {
         show:{f:'q_issued', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'value', en:'Value', am:'ዋጋ', t:'money'},
           {id:'margin', en:'Margin per m²', am:'ትርፍ በካሬ ሜትር', t:'money'},
           {id:'disc', en:'Discount given', am:'የተሰጠ ቅናሽ', t:'text'}
@@ -2877,6 +2889,7 @@ const SALES_DAILY = {
         show:{f:'c_signed', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Lead no. (4 digits)', am:'የደንበኛ ቁጥር (4 አሃዝ)', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'value', en:'Contract value', am:'የውል ዋጋ', t:'money'},
           {id:'adv', en:'Advance paid', am:'የተከፈለ ቅድመ ክፍያ', t:'money'}
@@ -2893,6 +2906,7 @@ const SALES_DAILY = {
         show:{f:'k_today', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'kind', en:'For', am:'የምን', t:'choice', opts:[
             {v:'advance', en:'Advance', am:'ቅድመ ክፍያ'},
@@ -2952,6 +2966,7 @@ const SALES_WEEKLY = {
         show:{f:'s_contracts', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Lead no. (4 digits)', am:'የደንበኛ ቁጥር (4 አሃዝ)', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'value', en:'Contract value', am:'የውል ዋጋ', t:'money'},
           {id:'margin', en:'Margin per m²', am:'ትርፍ በካሬ ሜትር', t:'money'}
@@ -2989,6 +3004,7 @@ const SALES_WEEKLY = {
         show:{f:'mg_below', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'margin', en:'Margin per m²', am:'ትርፍ በካሬ ሜትር', t:'money'},
           {id:'by', en:'Approved by', am:'ያጸደቀው', t:'text'}
         ]}
@@ -3002,6 +3018,7 @@ const SALES_WEEKLY = {
         show:{f:'cm_missed', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'stage', en:'Stage', am:'ደረጃ', t:'text'},
           {id:'why', en:'Why', am:'ምክንያት', t:'text'}
         ]},
@@ -3023,6 +3040,7 @@ const SALES_WEEKLY = {
         show:{f:'cu_recv', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'what', en:'Complaint', am:'ቅሬታው', t:'text'},
           {id:'state', en:'Status', am:'ሁኔታ', t:'choice', opts:[
             {v:'resolved', en:'Resolved', am:'ተፈቷል'},
@@ -3066,6 +3084,7 @@ const DESIGN_DAILY = {
         show:{f:'m_pre', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'where', en:'Area', am:'አካባቢ', t:'text'},
           {id:'next', en:'Pre-design due', am:'ቅድመ ዲዛይን የሚደርስበት', t:'text'}
         ]},
@@ -3114,6 +3133,7 @@ const DESIGN_DAILY = {
         show:{f:'d_rev', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'what', en:'What changed', am:'የተቀየረው', t:'text'},
           {id:'times', en:'Revision no. for this customer', am:'ለዚህ ደንበኛ ስንተኛ ማሻሻያ', t:'num'}
         ]},
@@ -3275,6 +3295,7 @@ const DESIGN_WEEKLY = {
         show:{f:'wc_missed', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'stage', en:'Stage (1–10)', am:'ደረጃ (1–10)', t:'num'},
           {id:'why', en:'Why', am:'ለምን', t:'text'}
         ]},

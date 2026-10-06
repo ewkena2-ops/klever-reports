@@ -160,7 +160,7 @@ import {
 
   function matches(x) {
     if (!S.q) return true;
-    return [x.name, x.cust, x.job, x.phone, x.sales, x.title].some(function (v) {
+    return [x.name, x.cust, x.job, x.phone, x.sales, x.title, x.code, x.leadCode].some(function (v) {
       return v && String(v).toLowerCase().indexOf(S.q) !== -1;
     });
   }
@@ -175,7 +175,9 @@ import {
   function leadCard(l) {
     var c = el('div', 'regcard' + (l.problems && l.problems.length ? ' bad' : ''));
     var h = el('div', 'reghead');
-    h.appendChild(el('span', 'regname', l.name));
+    var nm = el('span', 'regname', l.name);
+    if (l.code) nm.appendChild(el('span', 'regcode regno', ' #' + l.code));
+    h.appendChild(nm);
     h.appendChild(chip(stageWord(l.stageName), false));
     c.appendChild(h);
     var meta = [l.phone, l.sales, l.quote != null ? t('regQuote') + ' ' + birr(l.quote) : ''].filter(Boolean).join(' · ');
@@ -211,6 +213,7 @@ import {
     var nm = el('span', 'regname');
     nm.appendChild(el('span', 'regcode', j.job));
     if (j.cust) nm.appendChild(document.createTextNode(' · ' + j.cust));
+    if (j.leadCode) nm.appendChild(el('span', 'regcode regno', ' #' + j.leadCode));
     h.appendChild(nm);
     h.appendChild(chip(stageWord(j.stageName), false));
     c.appendChild(h);

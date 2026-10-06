@@ -157,6 +157,19 @@ ORDER_DUTIES_.kidan = { reportsTo: null, duties: [
   'being told the same day of a cash discrepancy or a posting error'],
   covers: [] };
 
+/* Meri Block Board and Real Estate & Construction (Lemi Kura), 6 Oct 2026:
+   one account each, reporting for their company; no letter, not Klever staff */
+ORDER_DUTIES_.meri = { reportsTo: null, duties: [
+  'Meri Block Board’s own work — this account reports for Meri Block Board; not Klever staff',
+  'what passes between Meri Block Board and Klever: orders, deliveries, materials and payments, either way',
+  'Meri Block Board’s problems, and the decisions it needs from the Chairman'],
+  covers: ['Meri Block Board’s staff'] };
+ORDER_DUTIES_.lemikura = { reportsTo: null, duties: [
+  'Real Estate & Construction’s work, its Lemi Kura project — this account reports for it; not Klever staff',
+  'what passes between Real Estate & Construction and Klever: orders, deliveries, materials and payments, either way',
+  'Real Estate & Construction’s problems, and the decisions it needs from the Chairman'],
+  covers: ['Real Estate & Construction’s staff'] };
+
 /* the six designers, one letter (Klever-Designer-Terms; Ermiyas, from 6 Oct
    2026, has none yet) — a task for "the designer" of a job goes to the one
    he names */

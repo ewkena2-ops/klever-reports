@@ -45,6 +45,13 @@ const PEOPLE = [
      Klever's "All staff"; the Group Finance room (js/channels.js) is where
      the reports land. */
   { id:'kidan', en:'Kidan', am:'ኪዳን', roleEn:'Group Finance Controller', roleAm:'የቡድኑ ፋይናንስ ተቆጣጣሪ', grp:'groupfinance', company:'rovestone', noLetter:1 },
+  /* The other two companies of the group (6 Oct 2026: "add one person mari
+     and one lemi kura"). One account each, reporting the way Frewoyni does
+     for Rovestone — daily and weekly, no fines (not Klever staff, no
+     letter). The Chairman has not given their names yet: each account is
+     called for its company until he does (rename `en`/`am`; the id stays). */
+  { id:'meri', en:'Meri Block Board', am:'መሪ ብሎክ ቦርድ', roleEn:'Reports for Meri Block Board', roleAm:'ለመሪ ብሎክ ቦርድ ሪፖርት የሚያቀርቡ', grp:'meri', company:'meri', from:'2026-10-07', noLetter:1 },
+  { id:'lemikura', en:'Lemi Kura', am:'ለሚ ኩራ', roleEn:'Reports for Real Estate & Construction (Lemi Kura)', roleAm:'ለሪል እስቴትና ግንባታ (ለሚ ኩራ) ሪፖርት የሚያቀርቡ', grp:'realestate', company:'realestate', from:'2026-10-07', noLetter:1 },
   { id:'frewoyni', en:'Frewoyni', am:'ፍሬወይኒ', roleEn:'Rovestone Operations Lead', roleAm:'የሮቭስቶን ኦፕሬሽን ኃላፊ', grp:'rovestone', company:'rovestone', from:'2026-10-05' },
 
   /* The 22 production workers, from the September payroll sheet. Ashenafi
@@ -2841,6 +2848,96 @@ const REPORTS = [
    reaches all seven people instead of seven places.
    --------------------------------------------------------------------------- */
 
+/* A company of the group that is not Klever reports here the way Rovestone
+   does (Frewoyni's forms, above): its day, what passed between it and Klever
+   either way, its money, its problems and what it needs decided. Written
+   once for any such company; `co` is its name. No fines: not Klever staff. */
+function sisterReports(pid, co, coAm) {
+  var no = { penEn:'No fines — reporting only', penAm:'ቅጣት የለም — ሪፖርት ብቻ', noFine:1, derived:1,
+             toEn:'Chairman', toAm:'ሊቀመንበር' };
+  var daily = Object.assign({
+    id: pid + '-daily', person: pid, cadence:'daily', dueTime:'17:30',
+    en: co + ' Daily Report', am: 'የ' + coAm + ' ዕለታዊ ሪፖርት',
+    dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
+    sections:[
+      { en:'1 · Today’s work', am:'1 · የዛሬ ሥራ', fields:[
+        {id:'w_done', en:'What did ' + co + ' get done today?', am: coAm + ' ዛሬ ምን ሠራ?', t:'area'},
+        {id:'w_jobs', en:'Which jobs are open, and where does each stand?', am:'ክፍት የሆኑት ሥራዎች የትኞቹ ናቸው? እያንዳንዱ የት ደርሷል?', t:'table',
+          addEn:'Add a job', addAm:'ሥራ ጨምር', opt:1, cols:[
+            {id:'job', en:'Job or site', am:'ሥራ ወይም ቦታ', t:'text'},
+            {id:'stage', en:'Where it stands', am:'ያለበት ደረጃ', t:'text'},
+            {id:'next', en:'Next step', am:'ቀጣይ እርምጃ', t:'text'},
+            {id:'due', en:'Due', am:'የሚያልቅበት', t:'text'}
+          ]},
+        {id:'w_people', en:'How many people worked for ' + co + ' today?', am:'ዛሬ ለ' + coAm + ' ስንት ሰው ሠራ?', t:'num', opt:1}
+      ]},
+      { en:'2 · With Klever', am:'2 · ከክሌቨር ጋር', fields:[
+        {id:'k_new', en:'Did anything pass between ' + co + ' and Klever today — an order, a delivery, materials or a payment?',
+         am:'ዛሬ በ' + coAm + ' እና በክሌቨር መካከል ትዕዛዝ፣ ርክክብ፣ ዕቃ ወይም ክፍያ ነበር?', t:'yesno'},
+        {id:'k_new_list', en:'What passed?', am:'ምን ነበር?', t:'table', addEn:'Add one', addAm:'ጨምር',
+          show:{f:'k_new', when:'yes'}, cols:[
+            {id:'what', en:'Order, delivery, materials or payment', am:'ትዕዛዝ፣ ርክክብ፣ ዕቃ ወይም ክፍያ', t:'text'},
+            {id:'job', en:'Job or item', am:'ሥራ ወይም ዕቃ', t:'text'},
+            {id:'qty', en:'How much — m², pieces or Birr', am:'መጠን — ሜ²፣ ብዛት ወይም ብር', t:'text'},
+            {id:'when', en:'Needed or due by', am:'የሚፈለግበት ቀን', t:'text'}
+          ]},
+        {id:'k_waiting', en:'Is ' + co + ' waiting on anything from Klever? What, and since when?',
+         am: coAm + ' ከክሌቨር የሚጠብቀው ነገር አለ? ምን? ከመቼ ጀምሮ?', t:'area', opt:1},
+        {id:'k_quality', en:'Was there any problem between ' + co + ' and Klever today — late, wrong, or poor quality?',
+         am:'ዛሬ በ' + coAm + ' እና በክሌቨር መካከል ችግር ነበር — መዘግየት፣ ስሕተት ወይም የጥራት ችግር?', t:'yesno'},
+        {id:'k_quality_what', en:'What, on which job, and has the other side been told?', am:'ምን? በየትኛው ሥራ? ለሌላው ወገን ተነግሯል?', t:'area', show:{f:'k_quality', when:'yes'}}
+      ]},
+      { en:'3 · Money', am:'3 · ገንዘብ', fields:[
+        {id:'m_in', en:'How much money came in to ' + co + ' today?', am:'ዛሬ ወደ ' + coAm + ' ስንት ብር ገባ?', t:'money'},
+        {id:'m_out', en:'How much did ' + co + ' pay out today?', am: coAm + ' ዛሬ ስንት ብር ከፈለ?', t:'money'},
+        {id:'m_klever', en:'How much of it was paid to or received from Klever?', am:'ከዚህ ውስጥ ለክሌቨር የተከፈለው ወይም ከክሌቨር የተቀበለው ስንት ነው?', t:'money', opt:1}
+      ]},
+      { en:'4 · Problems and decisions', am:'4 · ችግሮችና ውሳኔዎች', fields:[
+        {id:'p_problem', en:'What went wrong today, and what is being done about it?', am:'ዛሬ ምን ችግር ተፈጠረ? ምን እየተደረገ ነው?', t:'area', opt:1},
+        {id:'p_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
+        {id:'p_chair_what', en:'What exactly should he decide, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? እስከ መቼ?', t:'area', show:{f:'p_chair', when:'yes'}}
+      ]},
+      { en:'5 · Tomorrow', am:'5 · ነገ', fields:[
+        {id:'t_plan', en:'What is the plan for tomorrow?', am:'የነገው ዕቅድ ምንድን ነው?', t:'area'}
+      ]}
+    ]
+  }, no);
+  var weekly = Object.assign({
+    id: pid + '-weekly', person: pid, cadence:'weekly', dueTime:'17:00', dueDay:5,
+    en: co + ' Weekly Summary', am: 'የ' + coAm + ' ሳምንታዊ ማጠቃለያ',
+    dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+    sections:[
+      { en:'1 · The week’s work', am:'1 · የሳምንቱ ሥራ', fields:[
+        {id:'w_summary', en:'What did ' + co + ' achieve this week?', am: coAm + ' በዚህ ሳምንት ምን አሳካ?', t:'area'},
+        {id:'w_done', en:'How many jobs were finished this week?', am:'በዚህ ሳምንት ስንት ሥራ ተጠናቀቀ?', t:'num'},
+        {id:'w_open', en:'How many jobs are still open?', am:'ስንት ሥራ አሁንም ክፍት ነው?', t:'num'},
+        {id:'w_behind', en:'How many of them are behind schedule?', am:'ከእነዚህ ስንቱ ከጊዜው ወደኋላ ቀርቷል?', t:'num'},
+        {id:'w_behind_why', en:'Which, by how much, and why?', am:'የትኞቹ? በምን ያህል? ለምን?', t:'area', show:{f:'w_behind', when:'pos'}}
+      ]},
+      { en:'2 · Klever', am:'2 · ክሌቨር', fields:[
+        {id:'o_sent', en:'How many orders or deliveries passed between ' + co + ' and Klever this week?',
+         am:'በዚህ ሳምንት በ' + coAm + ' እና በክሌቨር መካከል ስንት ትዕዛዝ ወይም ርክክብ ተካሄደ?', t:'num'},
+        {id:'o_issues', en:'Any delay or quality problem between ' + co + ' and Klever? Which job, and what?',
+         am:'በ' + coAm + ' እና በክሌቨር መካከል መዘግየት ወይም የጥራት ችግር ነበር? የትኛው ሥራ? ምን?', t:'area', opt:1},
+        {id:'o_owed', en:'What is owed between ' + co + ' and Klever now — how much, and who owes whom?',
+         am:'አሁን በ' + coAm + ' እና በክሌቨር መካከል ያለው ዕዳ ስንት ነው? ማን ለማን?', t:'area', opt:1}
+      ]},
+      { en:'3 · Money', am:'3 · ገንዘብ', fields:[
+        {id:'f_in', en:'How much came in to ' + co + ' this week?', am:'በዚህ ሳምንት ወደ ' + coAm + ' ስንት ብር ገባ?', t:'money'},
+        {id:'f_out', en:'How much did ' + co + ' pay out this week?', am: coAm + ' በዚህ ሳምንት ስንት ብር ከፈለ?', t:'money'},
+        {id:'f_cash', en:'How much cash and bank does ' + co + ' hold at the end of the week?', am:'በሳምንቱ መጨረሻ ' + coAm + ' በጥሬ ገንዘብና በባንክ ስንት ብር አለው?', t:'money', opt:1}
+      ]},
+      { en:'4 · Next week', am:'4 · የሚቀጥለው ሳምንት', fields:[
+        {id:'n_plan', en:'What is the plan for next week?', am:'የሚቀጥለው ሳምንት ዕቅድ ምንድን ነው?', t:'area'},
+        {id:'n_need', en:'What do you need from Klever or the Chairman?', am:'ከክሌቨር ወይም ከሊቀመንበሩ ምን ያስፈልግዎታል?', t:'area', opt:1},
+        {id:'n_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
+        {id:'n_chair_what', en:'What exactly should he decide, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? እስከ መቼ?', t:'area', show:{f:'n_chair', when:'yes'}}
+      ]}
+    ]
+  }, no);
+  return [daily, weekly];
+}
+
 const SALES_DAILY = {
   id:'sales-daily', cadence:'daily', dueTime:'17:00',
   en:'Daily Sales Activity Report', am:'ዕለታዊ የሽያጭ እንቅስቃሴ ሪፖርት',
@@ -3460,10 +3557,15 @@ function oddFigures(report, v) {
   ['yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w', 'ermiyas'].forEach(function (p) {
     REPORTS.push(copyFor(DESIGN_DAILY, p), copyFor(DESIGN_WEEKLY, p));
   });
+  /* Meri Block Board and Real Estate & Construction (6 Oct 2026) */
+  [['meri', 'Meri Block Board', 'መሪ ብሎክ ቦርድ'],
+   ['lemikura', 'Real Estate & Construction', 'ሪል እስቴትና ግንባታ']].forEach(function (c) {
+    sisterReports(c[0], c[1], c[2]).forEach(function (r) { REPORTS.push(r); });
+  });
   /* someone with no terms letter yet reports, and is fined for nothing */
   REPORTS.forEach(function (r) {
     var p = PEOPLE.filter(function (x) { return x.id === r.person; })[0];
-    if (p && p.noLetter) {
+    if (p && p.noLetter && !r.noFine) {
       r.noFine = 1;
       r.penEn = 'No fines — no terms letter yet';
       r.penAm = 'ቅጣት የለም — የውል ደብዳቤ ገና አልተሰጠም';

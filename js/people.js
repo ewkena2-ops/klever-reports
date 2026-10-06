@@ -39,6 +39,13 @@ const PEOPLE = [
      Klever's "All staff"; the Group Finance room (js/channels.js) is where
      the reports land. */
   { id:'kidan', en:'Kidan', am:'ኪዳን', roleEn:'Group Finance Controller', roleAm:'የቡድኑ ፋይናንስ ተቆጣጣሪ', grp:'groupfinance', company:'rovestone', noLetter:1 },
+  /* The other two companies of the group (6 Oct 2026: "add one person mari
+     and one lemi kura"). One account each, reporting the way Frewoyni does
+     for Rovestone — daily and weekly, no fines (not Klever staff, no
+     letter). The Chairman has not given their names yet: each account is
+     called for its company until he does (rename `en`/`am`; the id stays). */
+  { id:'meri', en:'Meri Block Board', am:'መሪ ብሎክ ቦርድ', roleEn:'Reports for Meri Block Board', roleAm:'ለመሪ ብሎክ ቦርድ ሪፖርት የሚያቀርቡ', grp:'meri', company:'meri', from:'2026-10-07', noLetter:1 },
+  { id:'lemikura', en:'Lemi Kura', am:'ለሚ ኩራ', roleEn:'Reports for Real Estate & Construction (Lemi Kura)', roleAm:'ለሪል እስቴትና ግንባታ (ለሚ ኩራ) ሪፖርት የሚያቀርቡ', grp:'realestate', company:'realestate', from:'2026-10-07', noLetter:1 },
   { id:'frewoyni', en:'Frewoyni', am:'ፍሬወይኒ', roleEn:'Rovestone Operations Lead', roleAm:'የሮቭስቶን ኦፕሬሽን ኃላፊ', grp:'rovestone', company:'rovestone', from:'2026-10-05' },
 
   /* The 22 production workers, from the September payroll sheet. Ashenafi

@@ -34,7 +34,9 @@ const CHAT_ACCOUNTS = [
   /* Rovestone, the sister company (4 Oct 2026) */
   'frewoyni',
   /* Group Finance (6 Oct 2026) */
-  'kidan'
+  'kidan',
+  /* Meri Block Board and Real Estate & Construction (Lemi Kura), 6 Oct 2026 */
+  'meri', 'lemikura'
 ];
 
 function hasChat(id) { return id === CHAIRMAN || CHAT_ACCOUNTS.indexOf(id) !== -1; }

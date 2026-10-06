@@ -1058,6 +1058,41 @@ var AGENTS = [
       'sent to Klever that needs his approval or Klever’s capacity, money owed to Klever, a problem '+
       'with Klever’s work. If nothing needs him, say so in one line.' },
 
+/* Meri Block Board and Real Estate & Construction (Lemi Kura), 6 Oct 2026:
+   each reports the way Rovestone does; one agent reads both */
+{ id:'sisters', en:'Meri Block Board and Real Estate', am:'መሪ ብሎክ ቦርድና ሪል እስቴት',
+  facts: function (d) {
+    function one(pid, co) {
+      var f = got_(d.filed, pid + '-daily');
+      if (!f) return { company: co, filed_today: false };
+      var v = f.fields || {};
+      return {
+        company: co, filed_today: true,
+        done_today: v.w_done || '',
+        open_jobs: rows_(v.w_jobs),
+        with_klever_today: yes_(v.k_new) ? rows_(v.k_new_list) : [],
+        waiting_on_klever: v.k_waiting || '',
+        problem_with_klever: ay_(v, 'k_quality') ? (v.k_quality_what || 'yes') : null,
+        money_in: a_(v, 'm_in'),
+        money_out: a_(v, 'm_out'),
+        to_or_from_klever: a_(v, 'm_klever'),
+        money_in_last_7_days: series_(d, pid + '-daily', 'm_in'),
+        problem: v.p_problem || '',
+        decision_needed_from_the_chairman: yes_(v.p_chair) ? (v.p_chair_what || 'yes') : null,
+        plan_for_tomorrow: v.t_plan || ''
+      };
+    }
+    return {
+      about: 'Two companies of the group under the same Chairman, each reporting here from 7 Oct 2026 ' +
+             '(no fines; not Klever staff). Their people’s names are not on file yet.',
+      meri_block_board: one('meri', 'Meri Block Board'),
+      real_estate_lemi_kura: one('lemikura', 'Real Estate & Construction (Lemi Kura project)')
+    };
+  },
+  ask:'Read each company’s day. Say what the Chairman must act on: a decision asked of him, '+
+      'anything waiting on Klever or owed between a company and Klever, a problem with Klever. '+
+      'A company that did not report: say so in a few words. If nothing needs him, say so in one line.' },
+
 { id:'compliance', en:'Who reported and who did not', am:'ማን ሪፖርት አደረገ ማን አላደረገም',
   facts: function (d) {
     var missing = [], late = [], ontime = [];

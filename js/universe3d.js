@@ -153,7 +153,7 @@ const WATCH = {
   purchasing: 'finance', finance: 'finance', margin: 'finance', commercial: 'commercial',
   design: 'commercial', customer: 'commercial', site: 'site', compliance: 'chairman',
   penalties: 'chairman', contradictions: 'chairman', decide: 'chairman', brief: 'chairman',
-  rovestone: 'chairman'
+  rovestone: 'chairman', sisters: 'chairman'
 };
 
 /* The camera looks at Klever from the side away from its galaxy's core, so
@@ -187,10 +187,12 @@ const COMPANIES = [
     crew: [{ id: 'frewoyni', en: 'Frewoyni', am: 'ፍሬወይኒ', roleEn: 'Operations Lead', roleAm: 'የኦፕሬሽን ኃላፊ' }],
     kind: 'barred', n: 18000, radius: 3400, arms: 2, wind: 2.2, rot: [0.55, 0.4, 0.25], boost: 1.5,
     inner: '#ffe0b0', outer: '#a8c8ff', dust: 520, core: 2100, off: [11200, -1600, 6000] },
-  { id: 'meri', en: 'Meri Block Board', am: 'መሪ ብሎክ ቦርድ', sys: 0.22,
+  { id: 'meri', en: 'Meri Block Board', am: 'መሪ ብሎክ ቦርድ', sys: 0.22, on: true,
+    head: { id: 'meri', en: 'Meri Block Board', am: 'መሪ ብሎክ ቦርድ', roleEn: 'Reports here (name to come)', roleAm: 'እዚህ ሪፖርት ያቀርባሉ (ስም ይመጣል)' },
     kind: 'elliptical', n: 16000, radius: 3000, rot: [0.3, 0, 0.5], boost: 1.5,
     inner: '#ffd49a', outer: '#e0a878', dust: 0, core: 2600, off: [7900, 2000, -10100] },
-  { id: 'realestate', en: 'Real Estate & Construction', am: 'ሪል እስቴትና ግንባታ', sys: 0.42,
+  { id: 'realestate', en: 'Real Estate & Construction', am: 'ሪል እስቴትና ግንባታ', sys: 0.42, on: true,
+    head: { id: 'lemikura', en: 'Lemi Kura', am: 'ለሚ ኩራ', roleEn: 'Reports here for the Lemi Kura project (name to come)', roleAm: 'ለለሚ ኩራ ፕሮጀክት እዚህ ሪፖርት ያቀርባሉ (ስም ይመጣል)' },
     kind: 'spiral', n: 18000, radius: 3600, arms: 3, wind: 1.35, rot: [1.2, 0.6, 0.1], boost: 1.5,
     inner: '#fff0d8', outer: '#9fbcff', dust: 520, core: 1800, off: [-10100, -1400, -8200] },
   { id: 'groupfinance', en: 'Group Finance', am: 'የቡድኑ ፋይናንስ', sys: 0.36, on: true,
@@ -1107,8 +1109,11 @@ export function mount(root, opts) {
   const ymdOf = d => { const a = addisOf(d); return a.getUTCFullYear() + '-' + ('0' + (a.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + a.getUTCDate()).slice(-2); };
   let dayText = '';
   const kidan = { reps: due.filter(r => /Kidan/.test(r.toEn || '')), filed: 0, pay: null }, rove = { m2: null };
-  /* what Rovestone files here itself (Frewoyni, since 5 Oct 2026) */
-  const roveReps = due.filter(r => r.person === 'frewoyni');
+  /* what each company files here itself: Rovestone (Frewoyni, since 5 Oct
+     2026), Meri Block Board and Real Estate (from 7 Oct) */
+  const CO_REPORTER = { rovestone: 'frewoyni', meri: 'meri', realestate: 'lemikura' };
+  const ownReps = cid => due.filter(r => r.person === CO_REPORTER[cid]);
+  const roveReps = ownReps('rovestone');
   const STATE_N = { pending: 0, on: 1, late: 2, missing: 3 };
 
   /* This runs once a second, and every frame while the day replays, so it
@@ -1341,13 +1346,16 @@ export function mount(root, opts) {
     return co.live ? s('coLive', 'live') : co.on ? s('coOn', 'connected') : s('coOff', 'not connected yet');
   }
   /* what Rovestone files here itself, today */
-  function ownRows() {
-    if (!roveReps.length) return;
-    sheet.appendChild(el('div', 'obs-said-k', s('fromRove', 'From Rovestone today')));
+  function ownRows(cid) {
+    const reps = ownReps(cid || 'rovestone');
+    if (!reps.length) return;
+    sheet.appendChild(el('div', 'obs-said-k', cid && cid !== 'rovestone'
+      ? s('fromCo', 'From this company today') : s('fromRove', 'From Rovestone today')));
     const list = el('div', 'uni-reps');
-    roveReps.forEach(r => {
+    reps.forEach(r => {
       const st = stateOf(r, T), f = filingOf(r, T);
-      repRow(list, st, 'Frewoyni · ' + L(r), f ? hhmm(f.at) : L(STATUS[st]));
+      const who = people.find(x => x.id === r.person);
+      repRow(list, st, (cid && cid !== 'rovestone' ? '' : (who ? short(who) : 'Frewoyni') + ' · ') + L(r), f ? hhmm(f.at) : L(STATUS[st]));
     });
     sheet.appendChild(list);
   }
@@ -1577,7 +1585,7 @@ export function mount(root, opts) {
                 linked ? s('personOn', 'Has an account on this site') : s('personOff', 'No account yet'),
                 who ? L(who) : L(co),
                 who ? (lang === 'am' ? who.roleAm : who.roleEn) : s('noOneSub', 'No one from this company is on file yet.'));
-      if (who && who.id === 'frewoyni') ownRows();
+      if (who && who.id && who.id === CO_REPORTER[cid]) ownRows(cid);
       feedRows(cid);
       if (!co.on) sheet.appendChild(el('p', 'obs-said empty', s('coOffSub', 'No reports come from here yet.')));
     } else if (k === 'company') {
@@ -1586,8 +1594,10 @@ export function mount(root, opts) {
                 co.live ? s('coLiveSub', 'Every person, every report and the day’s money, drawn from what was filed today.')
                         : co.id === 'rovestone' ? s('roveOnSub', 'Frewoyni, Rovestone’s Operations Lead, sends a daily and a weekly report on this site (no fines). Kalkidan has no account yet.')
                         : co.id === 'groupfinance' ? s('gfOnSub', 'Kidan has an account and reads the eight reports addressed to Kidan in the Group Finance room. Nothing is filed from here.')
+                        : co.id === 'meri' ? s('meriOnSub', 'One account reports here for Meri Block Board: a daily and a weekly report (no fines). The name is to come.')
+                        : co.id === 'realestate' ? s('reOnSub', 'One account reports here for Real Estate & Construction, its Lemi Kura project: a daily and a weekly report (no fines). The name is to come.')
                         : s('coOffSub', 'No reports come from here yet. When its people file on the site, it lights up the way Klever does.'));
-      if (co.id === 'rovestone') ownRows();
+      if (CO_REPORTER[co.id]) ownRows(co.id);
       if (!co.live) feedRows(co.id);
       {
         const go = el('button', 'obs-open', s('flyIn', 'Fly in'));
@@ -1667,6 +1677,9 @@ export function mount(root, opts) {
       const daily = roveReps.filter(r => r.cadence === 'daily')[0];
       if (daily) bits.push(s('roveDaily', 'Frewoyni’s daily report') + ' ' + L(STATUS[stateOf(daily, T)]).toLowerCase());
       if (rove.m2 != null) bits.push(money(rove.m2) + ' m² ' + s('forRove', 'made for Rovestone today'));
+    } else if (CO_REPORTER[id]) {
+      const daily = ownReps(id).filter(r => r.cadence === 'daily')[0];
+      if (daily) bits.push(s('ownDaily', 'Daily report') + ' ' + L(STATUS[stateOf(daily, T)]).toLowerCase());
     } else bits.push(s('noOne', 'No one on file yet'));
     return dayName(D.dayStart) + '  ·  ' + bits.join('  ·  ');
   }

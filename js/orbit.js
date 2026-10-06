@@ -120,6 +120,12 @@
       watchAm: 'የእህት ኩባንያው ቀን፦ ለክሌቨር የሚልካቸው ትዕዛዞች፣ ዕዳው፣ እና ከእርስዎ የሚፈልገው።',
       reads: [['Frewoyni’s daily Rovestone report', 'የፍሬወይኒ ዕለታዊ የሮቭስቶን ሪፖርት']]
     },
+    sisters: {
+      en: 'Meri and Real Estate', am: 'መሪና ሪል እስቴት',
+      watchEn: 'Meri Block Board’s and Real Estate’s day: what passes with Klever, what is owed, and what they need from you.',
+      watchAm: 'የመሪ ብሎክ ቦርድና የሪል እስቴት ቀን፦ ከክሌቨር ጋር የሚያልፈው፣ ዕዳው፣ እና ከእርስዎ የሚፈልጉት።',
+      reads: [['The Meri Block Board daily report', 'የመሪ ብሎክ ቦርድ ዕለታዊ ሪፖርት'], ['The Lemi Kura daily report', 'የለሚ ኩራ ዕለታዊ ሪፖርት']]
+    },
     attendance: {
       en: 'Attendance', am: 'መገኘት',
       watchEn: 'Who was absent or late, and how much of the day that really explains.',
@@ -135,7 +141,7 @@
     { en: 'The factory', am: 'ፋብሪካው', rel: 0.66, period: 140, start: 1.3,
       rgb: [95, 224, 198], ids: ['production', 'quality', 'store', 'purchasing', 'margin'] },
     { en: 'Money, customers, people', am: 'ገንዘብ፣ ደንበኞችና ሰዎች', rel: 0.96, period: 200, start: 2.2,
-      rgb: [226, 204, 132], ids: ['finance', 'commercial', 'customer', 'design', 'site', 'attendance', 'rovestone'] }
+      rgb: [226, 204, 132], ids: ['finance', 'commercial', 'customer', 'design', 'site', 'attendance', 'rovestone', 'sisters'] }
   ];
   var ORDER = ['brief'].concat(RINGS[0].ids, RINGS[1].ids, RINGS[2].ids);
 

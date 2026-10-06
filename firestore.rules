@@ -35,6 +35,8 @@ service cloud.firestore {
                     'ermiyas',
                     /* Group Finance Controller, 6 Oct 2026 */
                     'kidan',
+                    /* Meri Block Board and Real Estate & Construction (Lemi Kura), 6 Oct 2026 */
+                    'meri', 'lemikura',
                     /* Rovestone's Operations Lead, added 4 Oct 2026 — and
                        left out of this list until the 5 Oct live test found
                        every report of hers refused */

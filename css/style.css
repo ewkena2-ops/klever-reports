@@ -1247,6 +1247,9 @@ body[data-page="agents"] .wrap.signing,body[data-page="universe"] .wrap.signing{
 .uni-co.live{border-color:var(--teal-line);box-shadow:0 0 26px rgba(95,224,198,.22)}
 .uni-co.live b{color:#eafffa}
 .uni-co.live span{color:var(--teal-hi)}
+/* connected: people here have accounts, though the company is not drawn as a system */
+.uni-co.on{border-color:rgba(95,224,198,.35)}
+.uni-co.on span{color:#9fd8cb}
 .uni-person{font-size:12px;color:#e3efeb}
 .uni-sun{font-size:12.5px;font-weight:700;color:#ffe6bd;letter-spacing:.02em}
 .uni-planet{

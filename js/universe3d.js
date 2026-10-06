@@ -6,9 +6,11 @@
    company: Group Finance, the holding, a great lens-shaped galaxy at the
    centre; Klever Küche a grand four-armed spiral; Rovestone a barred
    spiral; Meri Block Board an elliptical; Real Estate & Construction a
-   spiral seen nearly edge-on. Only Klever is lit from inside — the only
-   company whose people file reports. The others say, honestly, that they
-   are not connected yet.
+   spiral seen nearly edge-on. Only Klever is lit from inside, drawn as a
+   whole solar system. Rovestone (Frewoyni reports here since 5 Oct 2026)
+   and Group Finance (Kidan has an account since 6 Oct, and reads the
+   reports addressed to Kidan) say "connected" — `on` below. Meri Block
+   Board and Real Estate say, honestly, that they are not connected yet.
 
    KLEVER'S GALAXY. The camera falls through it towards one star on its
    first arm.
@@ -180,9 +182,9 @@ const COMPANIES = [
   { id: 'klever', en: 'Klever Küche', am: 'ክሌቨር ኩሽ', live: true,
     kind: 'spiral', n: 64000, radius: 3960, arms: 4, wind: WIND, rot: [0, 0, 0], boost: 1,
     inner: '#ffd9a3', outer: '#bcd4ff', dust: 1500, core: 2600, off: [-12000, 900, 6800] },
-  { id: 'rovestone', en: 'Rovestone', am: 'ሮቭስቶን', sys: 0.42,
+  { id: 'rovestone', en: 'Rovestone', am: 'ሮቭስቶን', sys: 0.42, on: true,
     head: { en: 'Kalkidan', am: 'ቃልኪዳን', roleEn: 'General Manager', roleAm: 'ዋና ሥራ አስኪያጅ' },
-    crew: [{ en: 'Frewoyni', am: 'ፍሬወይኒ', roleEn: 'Operations Lead', roleAm: 'የኦፕሬሽን ኃላፊ' }],
+    crew: [{ id: 'frewoyni', en: 'Frewoyni', am: 'ፍሬወይኒ', roleEn: 'Operations Lead', roleAm: 'የኦፕሬሽን ኃላፊ' }],
     kind: 'barred', n: 18000, radius: 3400, arms: 2, wind: 2.2, rot: [0.55, 0.4, 0.25], boost: 1.5,
     inner: '#ffe0b0', outer: '#a8c8ff', dust: 520, core: 2100, off: [11200, -1600, 6000] },
   { id: 'meri', en: 'Meri Block Board', am: 'መሪ ብሎክ ቦርድ', sys: 0.22,
@@ -191,8 +193,8 @@ const COMPANIES = [
   { id: 'realestate', en: 'Real Estate & Construction', am: 'ሪል እስቴትና ግንባታ', sys: 0.42,
     kind: 'spiral', n: 18000, radius: 3600, arms: 3, wind: 1.35, rot: [1.2, 0.6, 0.1], boost: 1.5,
     inner: '#fff0d8', outer: '#9fbcff', dust: 520, core: 1800, off: [-10100, -1400, -8200] },
-  { id: 'groupfinance', en: 'Group Finance', am: 'የቡድኑ ፋይናንስ', sys: 0.36,
-    head: { en: 'Kidan', am: 'ኪዳን', roleEn: 'Group Finance Controller', roleAm: 'የቡድኑ ፋይናንስ ተቆጣጣሪ' },
+  { id: 'groupfinance', en: 'Group Finance', am: 'የቡድኑ ፋይናንስ', sys: 0.36, on: true,
+    head: { id: 'kidan', en: 'Kidan', am: 'ኪዳን', roleEn: 'Group Finance Controller', roleAm: 'የቡድኑ ፋይናንስ ተቆጣጣሪ' },
     kind: 'lenticular', n: 26000, radius: 5200, rot: [0.35, 0.2, -0.15], boost: 1.5,
     inner: '#ffe2b0', outer: '#efe4d4', dust: 0, core: 4600, off: [0, 0, 0] }
 ];
@@ -599,10 +601,10 @@ export function mount(root, opts) {
     const core = glowSprite('rgba(255,228,180,0.9)', 'rgba(255,190,120,0.18)', co.core);
     core.position.copy(co.center);
     scene.add(core);
-    const lab = el('button', 'obs3d-label uni-co' + (co.live ? ' live' : ''));
+    const lab = el('button', 'obs3d-label uni-co' + (co.live ? ' live' : co.on ? ' on' : ''));
     lab.type = 'button';
     lab.appendChild(el('b', null, L(co)));
-    lab.appendChild(el('span', null, co.live ? s('coLive', 'live') : s('coOff', 'not connected yet')));
+    lab.appendChild(el('span', null, coWord(co)));
     lab.onclick = () => pick({ kind: 'company', id: co.id });
     labels.appendChild(lab);
     return { co, pos: co.center, core, lab };
@@ -1105,6 +1107,8 @@ export function mount(root, opts) {
   const ymdOf = d => { const a = addisOf(d); return a.getUTCFullYear() + '-' + ('0' + (a.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + a.getUTCDate()).slice(-2); };
   let dayText = '';
   const kidan = { reps: due.filter(r => /Kidan/.test(r.toEn || '')), filed: 0, pay: null }, rove = { m2: null };
+  /* what Rovestone files here itself (Frewoyni, since 5 Oct 2026) */
+  const roveReps = due.filter(r => r.person === 'frewoyni');
   const STATE_N = { pending: 0, on: 1, late: 2, missing: 3 };
 
   /* This runs once a second, and every frame while the day replays, so it
@@ -1332,6 +1336,21 @@ export function mount(root, opts) {
     list.appendChild(row);
   }
   /* what Klever's reports say reaches another company today */
+  /* live (Klever), connected (people with accounts here) or not connected yet */
+  function coWord(co) {
+    return co.live ? s('coLive', 'live') : co.on ? s('coOn', 'connected') : s('coOff', 'not connected yet');
+  }
+  /* what Rovestone files here itself, today */
+  function ownRows() {
+    if (!roveReps.length) return;
+    sheet.appendChild(el('div', 'obs-said-k', s('fromRove', 'From Rovestone today')));
+    const list = el('div', 'uni-reps');
+    roveReps.forEach(r => {
+      const st = stateOf(r, T), f = filingOf(r, T);
+      repRow(list, st, 'Frewoyni · ' + L(r), f ? hhmm(f.at) : L(STATUS[st]));
+    });
+    sheet.appendChild(list);
+  }
   function feedRows(cid) {
     if (cid === 'groupfinance') {
       if (!kidan.reps.length && kidan.pay == null) return;
@@ -1552,16 +1571,23 @@ export function mount(root, opts) {
       const [cid, idx] = String(id).split(':');
       const m = minors[cid], co = m.co;
       const who = k === 'head' ? co.head : co.crew[+idx];
-      sheetHead(L(co), 'none', s('coOff', 'not connected yet'), who ? L(who) : L(co),
+      /* someone with an account here is connected; a name on file without one is not */
+      const linked = !!(who && who.id);
+      sheetHead(L(co), linked ? 'quiet' : 'none',
+                linked ? s('personOn', 'Has an account on this site') : s('personOff', 'No account yet'),
+                who ? L(who) : L(co),
                 who ? (lang === 'am' ? who.roleAm : who.roleEn) : s('noOneSub', 'No one from this company is on file yet.'));
+      if (who && who.id === 'frewoyni') ownRows();
       feedRows(cid);
-      sheet.appendChild(el('p', 'obs-said empty', s('coOffSub', 'No reports come from here yet.')));
+      if (!co.on) sheet.appendChild(el('p', 'obs-said empty', s('coOffSub', 'No reports come from here yet.')));
     } else if (k === 'company') {
       const co = COMPANIES.find(c => c.id === id);
-      sheetHead(s('group', 'Amare Holdings'), co.live ? 'quiet' : 'none',
-                co.live ? s('coLive', 'live') : s('coOff', 'not connected yet'), L(co),
+      sheetHead(s('group', 'Amare Holdings'), co.live || co.on ? 'quiet' : 'none', coWord(co), L(co),
                 co.live ? s('coLiveSub', 'Every person, every report and the day’s money, drawn from what was filed today.')
+                        : co.id === 'rovestone' ? s('roveOnSub', 'Frewoyni, Rovestone’s Operations Lead, sends a daily and a weekly report on this site (no fines). Kalkidan has no account yet.')
+                        : co.id === 'groupfinance' ? s('gfOnSub', 'Kidan has an account and reads the eight reports addressed to Kidan in the Group Finance room. Nothing is filed from here.')
                         : s('coOffSub', 'No reports come from here yet. When its people file on the site, it lights up the way Klever does.'));
+      if (co.id === 'rovestone') ownRows();
       if (!co.live) feedRows(co.id);
       {
         const go = el('button', 'obs-open', s('flyIn', 'Fly in'));
@@ -1633,11 +1659,13 @@ export function mount(root, opts) {
   const Y_AXIS = new THREE.Vector3(0, 1, 0), lastF = new THREE.Vector3(), tmpF = new THREE.Vector3();
   let follow = null;
   function minorText(id) {
-    const bits = [s('coOff', 'not connected yet')];
+    const bits = [coWord(coById(id))];
     if (id === 'groupfinance') {
       if (kidan.reps.length) bits.push(s('toKidan', 'Klever’s reports to Kidan') + ' ' + kidan.filed + ' / ' + kidan.reps.length);
       if (kidan.pay != null) bits.push(s('payKidanShort', 'payments over 50,000') + ' ' + money(kidan.pay));
     } else if (id === 'rovestone') {
+      const daily = roveReps.filter(r => r.cadence === 'daily')[0];
+      if (daily) bits.push(s('roveDaily', 'Frewoyni’s daily report') + ' ' + L(STATUS[stateOf(daily, T)]).toLowerCase());
       if (rove.m2 != null) bits.push(money(rove.m2) + ' m² ' + s('forRove', 'made for Rovestone today'));
     } else bits.push(s('noOne', 'No one on file yet'));
     return dayName(D.dayStart) + '  ·  ' + bits.join('  ·  ');

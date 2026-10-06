@@ -428,6 +428,12 @@ const REPORTS = [
       {id:'jf_created', en:'How many Job Files were opened today?', am:'ዛሬ ስንት ጆብ ፋይሎች ተከፈቱ?', t:'num'},
       {id:'wa_created', en:'How many customer WhatsApp groups were created today?', am:'ዛሬ ስንት የደንበኛ ዋትስአፕ ግሩፖች ተከፈቱ?', t:'num'},
       {id:'final_req', en:'How many final payment requests went to customers today?', am:'ዛሬ ለደንበኞች ስንት የመጨረሻ ክፍያ ጥያቄዎች ተላኩ?', t:'num'},
+      {id:'final_req_list', en:'Which customers, and for how much?', am:'ለየትኞቹ ደንበኞች? ስንት ብር?', t:'table', addEn:'Add a request', addAm:'ጥያቄ ጨምር',
+        show:{f:'final_req', when:'pos'}, cols:[
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'amount', en:'Amount asked', am:'የተጠየቀው መጠን', t:'money'}
+        ]},
       {id:'prod_confirmed', en:'How many production go-aheads did you give Mahelet today?', am:'ዛሬ ለማህሌት ስንት የምርት ማረጋገጫዎች ሰጡ?', t:'num'},
       {id:'prod_list', en:'Which job codes, and was the final payment confirmed in the bank for each?', am:'የትኞቹ የሥራ ኮዶች ናቸው? የእያንዳንዳቸው የመጨረሻ ክፍያ ባንክ መግባቱ ተረጋግጧል?', t:'area', show:{f:'prod_confirmed', when:'pos'}}
     ]},
@@ -2462,6 +2468,11 @@ const REPORTS = [
     ]},
     { en:'3 · Customer acceptance', am:'3 · የደንበኛ ተቀባይነት', fields:[
       {id:'ac_signed', en:'How many customers signed the acceptance form today?', am:'ዛሬ ስንት ደንበኞች የተቀባይነት ፎርም ፈረሙ?', t:'num'},
+      {id:'ac_list', en:'Which customers?', am:'የትኞቹ ደንበኞች?', t:'table', addEn:'Add a customer', addAm:'ደንበኛ ጨምር',
+        show:{f:'ac_signed', when:'pos'}, cols:[
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'}
+        ]},
       {id:'ac_complaints', en:'How many customer complaints came in today?', am:'ዛሬ ስንት የደንበኛ ቅሬታዎች ቀረቡ?', t:'num',
         tgt:{op:'lte', v:0, en:'A complaint costs the 3,000 + 2,000 Birr bonuses',
              am:'ቅሬታ የ3,000 + 2,000 ብር ጉርሻዎችን ያሳጣል'}},
@@ -2933,6 +2944,12 @@ const SALES_DAILY = {
     ]},
     { en:'8 · After-sales', am:'8 · ከሽያጭ በኋላ', fields:[
       {id:'fu_calls', en:'Of customers installed 48 hours ago, how many got their follow-up call? (called / due)', am:'ተከላቸው ከ48 ሰዓት በፊት ከተጠናቀቀ ደንበኞች ስንቱ የክትትል ጥሪ ተደረገላቸው? (የተደወለላቸው / መደወል የነበረባቸው)', t:'ratio'},
+      {id:'fu_list', en:'Which customers were called?', am:'የትኞቹ ደንበኞች ተደወለላቸው?', t:'table', addEn:'Add a customer', addAm:'ደንበኛ ጨምር',
+        show:{f:'fu_calls', when:'pos'}, cols:[
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'happy', en:'Happy with the job', am:'በሥራው ረክተዋል', t:'yesno'}
+        ]},
       {id:'fu_calls_why', en:'Who was not called, and when will they be?', am:'ያልተደወለላቸው እነማን ናቸው? መቼ ይደወልላቸዋል?', t:'area', show:{f:'fu_calls', when:'short'}},
       {id:'ref_logged', en:'How many referrals did you ask for and log today?', am:'ዛሬ ስንት ሪፈራል ተጠይቆ ተመዘገበ?', t:'num'}
     ]},
@@ -3142,6 +3159,12 @@ const DESIGN_DAILY = {
     ]},
     { en:'4 · Material selection', am:'4 · የቁሳቁስ ምርጫ', fields:[
       {id:'ms_signed', en:'How many Material Selection Forms were physically signed today?', am:'ዛሬ ስንት የቁሳቁስ ምርጫ ፎርሞች በእጅ ተፈረሙ?', t:'num'},
+      {id:'ms_list', en:'Which jobs?', am:'የየትኞቹ ሥራዎች?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+        show:{f:'ms_signed', when:'pos'}, cols:[
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'opt', en:'Option signed', am:'የተፈረመው አማራጭ', t:'choice', opts:[{v:'A', en:'Option A', am:'አማራጭ A'}, {v:'B', en:'Option B', am:'አማራጭ B'}]}
+        ]},
       {id:'ms_photo', en:'How many signed forms have a photo in the WhatsApp group? (posted / signed)', am:'ከተፈረሙት ስንቱ ፎቶ በዋትስአፕ ግሩፕ ተልኳል? (የተላኩ / የተፈረሙ)', t:'ratio',
         tgt:{op:'gte', v:100, en:'Missing photo is –200 Birr and loses 0.3%',
              am:'ፎቶ ካልተላከ –200 ብር እና 0.3% ያሳጣል'}},

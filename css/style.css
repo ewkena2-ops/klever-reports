@@ -1566,7 +1566,7 @@ svg.sky .node text{font-size:11px}
 .regprob{font-size:13.5px;color:var(--coral);line-height:1.45;margin-top:6px;overflow-wrap:anywhere}
 .regnoteline{font-size:12.5px;color:var(--mut);line-height:1.45;margin-top:5px;overflow-wrap:anywhere}
 .regtrail{font-family:var(--mono);font-size:11.5px;color:var(--dim);line-height:1.6;margin-top:8px;overflow-wrap:anywhere}
-.regtrack{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin:4px 0 8px}
+.regtrack{display:grid;grid-template-columns:repeat(15,1fr);gap:2px;margin:4px 0 8px}
 .regtrack span{height:4px;border-radius:2px;background:var(--line-2)}
 .regtrack span.on{background:var(--teal-hi)}
 .regcard.bad .regtrack span.on{background:var(--coral)}
@@ -1592,3 +1592,15 @@ svg.sky .node text{font-size:11px}
 .regtable td.regcode{font-family:var(--mono);font-weight:500;color:var(--teal-hi)}
 .regtable tbody tr{cursor:pointer}
 .regtable tbody tr:active td{background:var(--card-2)}
+/* where a customer stands: the status, and why */
+.regstand{display:flex;align-items:flex-start;gap:8px;margin:2px 0 4px;flex-wrap:wrap}
+.regst{flex:none;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;border:1px solid var(--line-2);color:var(--ink-2)}
+.regst.moving{color:var(--teal-hi);background:var(--teal-bg);border-color:var(--teal-line)}
+.regst.done{color:var(--teal-hi);border-color:var(--teal-line)}
+.regst.hold{color:var(--gold);background:var(--gold-bg);border-color:rgba(227,181,71,.4)}
+.regst.rework{color:var(--coral);background:var(--coral-bg);border-color:var(--coral-line)}
+.regst.quiet{color:var(--mut)}
+.regwhy{font-size:13.5px;color:var(--ink);line-height:1.45;overflow-wrap:anywhere;flex:1;min-width:160px}
+.regaitag{font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-top:5px}
+.regtable td.regwhycell{white-space:normal;min-width:220px;max-width:300px;line-height:1.4;color:var(--ink)}
+.regtable{min-width:2300px}

@@ -50,9 +50,32 @@ import {
   }
   function bullets(s) { return String(s || '').replace(/^[ \t]*[*-][ \t]+/gm, '• '); }
 
-  var LEAD_STAGES = ['lead', 'visit', 'predesign', 'quote', 'design', 'contract'];
-  var JOB_STAGES = ['signed', 'advance', 'final', 'production', 'made', 'qc', 'delivered', 'site'];
-  function stageWord(kind) { return t('regSt_' + kind); }
+  /* Klever's Job Tracking Board, in order, with its column numbers (as in
+     apps-script/Register.js REG_BOARD_) */
+  var BOARD = ['lead', 'visit', 'predesign', 'quote', 'contract', 'advance', 'measure', 'selection', 'ordered',
+               'received', 'finalreq', 'final', 'production', 'made', 'qc', 'ready', 'delivered', 'accepted', 'aftersales'];
+  var BOARD_N = [1, 1, 1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+  /* where a customer stands: the AI's reading where there is one, else the
+     lists' own */
+  function where(x) {
+    var i = BOARD.indexOf(x.board ? x.board.stage : 'lead'), nx = BOARD[i + 1];
+    var own = { id: BOARD[i], status: x.status || 'moving', why: x.why || '', next: nx ? t('regB_' + nx) : '',
+                who: x.board ? x.board.nextWho : '', ai: false };
+    if (!x.ai) return own;
+    /* the AI's reading; where it left the why or the next step blank, the
+       board's own (from its stage) — nothing next once it is done */
+    var j = BOARD.indexOf(x.ai.stage), anx = BOARD[j + 1];
+    var done = x.ai.status === 'done';
+    return { id: x.ai.stage, status: x.ai.status, why: x.ai.why || own.why,
+             next: x.ai.next || (done || !anx ? '' : t('regB_' + anx)),
+             who: x.ai.next ? x.ai.who : (done ? '' : (x.board && x.ai.stage === x.board.stage ? x.board.nextWho : '')),
+             ai: true, old: !!x.ai.old };
+  }
+  function stageText(id) {
+    var n = BOARD_N[BOARD.indexOf(id)] || 1;
+    return (n < 10 ? '0' : '') + n + ' · ' + t('regB_' + id);
+  }
+  function statusChip(st) { return el('span', 'regst ' + st, t('regS_' + st)); }
 
   var app, auth, db, root;
   var S = { summary: null, leads: null, jobs: null, tab: null, q: '' };
@@ -137,9 +160,13 @@ import {
     var open = leads.filter(function (l) { return l.stageName !== 'contract'; }).length;
     var quiet = leads.filter(function (l) { return (l.problems || []).some(function (p) { return p.code === 'quiet'; }); }).length;
     var bad = jobs.filter(function (j) { return (j.problems || []).length; }).length;
+    var rowsNow = tableRows(), hold = 0, rework = 0;
+    rowsNow.forEach(function (r) { var w = where(r.job || r.lead); if (w.status === 'hold') hold++; if (w.status === 'rework') rework++; });
     parts.tiles.appendChild(tile(t('regTileLeads'), String(open)));
-    parts.tiles.appendChild(tile(t('regTileQuiet'), String(quiet), quiet > 0));
     parts.tiles.appendChild(tile(t('regTileJobs'), String(jobs.length)));
+    parts.tiles.appendChild(tile(t('regTileHold'), String(hold), hold > 0));
+    parts.tiles.appendChild(tile(t('regTileRework'), String(rework), rework > 0));
+    parts.tiles.appendChild(tile(t('regTileQuiet'), String(quiet), quiet > 0));
     parts.tiles.appendChild(tile(t('regTileBad'), String(bad), bad > 0));
 
     var probs = problemItems().length;
@@ -167,6 +194,16 @@ import {
   }
 
   function chip(text, bad) { return el('span', 'regchip' + (bad ? ' bad' : ''), text); }
+  /* stage and status, why, and what is next — under a card's name */
+  function standingInto(card, x) {
+    var w = where(x);
+    var row = el('div', 'regstand');
+    row.appendChild(statusChip(w.status));
+    if (w.why) row.appendChild(el('span', 'regwhy', w.why));
+    card.appendChild(row);
+    if (w.next) card.appendChild(line('regline', t('regNext') + ': ' + w.next + (w.who ? ' — ' + w.who : '')));
+    if (w.ai) card.appendChild(line('regaitag', t('regAiRead') + (w.old ? ' · ' + t('regOlder') : '')));
+  }
   function line(cls, text) { return el('div', cls, text); }
   function problemsInto(card, problems, notes) {
     (problems || []).forEach(function (p) { card.appendChild(line('regprob', '⚠ ' + p.text)); });
@@ -179,15 +216,16 @@ import {
     var nm = el('span', 'regname', l.name);
     if (l.code) nm.appendChild(el('span', 'regcode regno', ' #' + l.code));
     h.appendChild(nm);
-    h.appendChild(chip(stageWord(l.stageName), false));
+    h.appendChild(chip(stageText(where(l).id), false));
     c.appendChild(h);
+    standingInto(c, l);
     var meta = [l.phone, l.sales, l.quote != null ? t('regQuote') + ' ' + birr(l.quote) : ''].filter(Boolean).join(' · ');
     if (meta) c.appendChild(line('regmeta', meta));
     if (l.last && l.last.k !== 'expected') {
       c.appendChild(line('regline', t('regLast') + ': ' + t('regStep_' + l.last.k) + ' · ' + day(l.last.day) + ' (' + ago(l.quiet) + ')' +
                                      (l.last.by ? ' · ' + l.last.by : '')));
     }
-    if (l.next) c.appendChild(line('regline', t('regNext') + ': ' + l.next));
+    if (l.next) c.appendChild(line('regline', t('regSalesNext') + ': ' + l.next));
     if (l.expected && l.expected.date) {
       c.appendChild(line('regline', t('regExpected') + ': ' + day(l.expected.date) +
                                      (l.expected.value != null ? ' · ' + birr(l.expected.value) : '') +
@@ -201,10 +239,10 @@ import {
     return c;
   }
 
-  function track(stage) {
-    var i = JOB_STAGES.indexOf(stage), bar = el('div', 'regtrack');
-    bar.setAttribute('aria-label', stageWord(stage));
-    JOB_STAGES.forEach(function (s, k) { bar.appendChild(el('span', k <= i ? 'on' : null)); });
+  function track(id) {
+    var n = BOARD_N[BOARD.indexOf(id)] || 1, bar = el('div', 'regtrack');
+    bar.setAttribute('aria-label', stageText(id));
+    for (var k = 1; k <= 15; k++) bar.appendChild(el('span', k <= n ? 'on' : null));
     return bar;
   }
 
@@ -216,9 +254,11 @@ import {
     if (j.cust) nm.appendChild(document.createTextNode(' · ' + j.cust));
     if (j.leadCode) nm.appendChild(el('span', 'regcode regno', ' #' + j.leadCode));
     h.appendChild(nm);
-    h.appendChild(chip(stageWord(j.stageName), false));
+    var wj = where(j);
+    h.appendChild(chip(stageText(wj.id), false));
     c.appendChild(h);
-    c.appendChild(track(j.stageName));
+    c.appendChild(track(wj.id));
+    standingInto(c, j);
     var money = [j.value != null ? t('regContract') + ' ' + birr(j.value) : '',
                  t('regAdvIn') + ' ' + birr(j.advIn || 0),
                  t('regFinalIn') + ' ' + birr(j.finalIn || 0)].filter(Boolean).join(' · ');
@@ -230,13 +270,9 @@ import {
                 j.plan.del ? t('regPlanDel') + ' ' + day(j.plan.del) : ''].filter(Boolean).join(' · ');
       if (pl) c.appendChild(line('regline', t('regPlan') + ': ' + pl));
     }
-    var facts = [];
-    if (j.signed) facts.push(t('regSt_signed') + ' ' + day(j.signed));
-    if (j.prodFirst) facts.push(t('regProd') + ' ' + day(j.prodFirst));
-    if (j.made) facts.push(t('regSt_made') + ' ' + day(j.made));
-    if (j.qcPassed && !(j.qcFailed && j.qcFailed > j.qcPassed)) facts.push(t('regSt_qc') + ' ' + day(j.qcPassed));
-    if (j.delivered) facts.push(t('regSt_delivered') + ' ' + day(j.delivered));
-    if (j.site) facts.push(t('regSt_site') + ' ' + day(j.site));
+    /* each board step done, with its day, in the board's order */
+    var facts = BOARD.filter(function (b) { return j.steps && j.steps[b]; })
+                     .map(function (b) { return t('regB_' + b) + ' ' + day(j.steps[b]); });
     if (facts.length) c.appendChild(line('regtrail', facts.join(' → ')));
     problemsInto(c, j.problems, j.notes);
     return c;
@@ -287,8 +323,12 @@ import {
     var wrap = el('div', 'regtable-wrap');
     var tb = el('table', 'regtable');
     var head = el('tr');
-    ['Customer', 'Stage', 'Sales', 'Lead', 'Visit', 'Quote', 'Contract', 'Advance', 'Final', 'Prod', 'Qc', 'Delivered', 'Site', 'Problems']
+    var STEP_COLS = ['lead', 'visit', 'predesign', 'quote', 'measure', 'selection', 'ordered', 'received', 'finalreq',
+                     'production', 'made', 'qc', 'delivered', 'accepted', 'aftersales'];
+    ['Customer', 'Stage', 'Status', 'Why', 'Next', 'Sales', 'Contract', 'Advance', 'Final']
       .forEach(function (k, i) { head.appendChild(el('th', i === 0 ? 'c' : null, t('regCol' + k))); });
+    STEP_COLS.forEach(function (b) { head.appendChild(el('th', null, t('regCs_' + b))); });
+    head.appendChild(el('th', null, t('regColProblems')));
     var th = el('thead'); th.appendChild(head); tb.appendChild(th);
     var body = el('tbody');
     rows.forEach(function (r) {
@@ -301,22 +341,29 @@ import {
       var code = l && l.code ? l.code : (j && j.leadCode) || '';
       if (code) name.appendChild(el('span', 'regno', ' #' + code));
       tr.appendChild(name);
-      var stage = j ? j.stageName : l.stageName;
+      var w = where(j || l);
       var st = el('td');
-      st.appendChild(chip(stageWord(stage), probs.length > 0));
+      st.appendChild(chip(stageText(w.id), probs.length > 0));
       tr.appendChild(st);
+      var sc = el('td');
+      sc.appendChild(statusChip(w.status));
+      tr.appendChild(sc);
+      cell(w.why, 'regwhycell');
+      cell(w.next ? w.next + (w.who ? ' — ' + w.who : '') : '', 'regwhycell');
       cell(l ? l.sales : (j.sales || ''));
-      cell(short(at.lead || (l && l.first)));
-      cell(short(at.visit || at.predesign));
-      cell(l ? num(l.quote) : '');
       cell(j ? j.job + (j.value != null ? ' · ' + num(j.value) : '') : (l && l.job) || '', 'regcode');
       cell(j ? num(j.advIn) : '');
       cell(j ? num(j.finalIn) : '');
-      cell(j ? (j.made ? short(j.made) + ' ✓' : short(j.prodFirst)) : '');
+      /* the day of each board step: the lead's own, then the job's */
+      var days = {};
+      Object.keys(at).forEach(function (k) { days[k] = at[k]; });
+      if (j && j.steps) Object.keys(j.steps).forEach(function (k) { days[k] = j.steps[k]; });
+      if (!days.lead && l && l.first && l.last && l.last.k !== 'expected') days.lead = l.first;
       var qcFailedNow = j && j.qcFailed && !(j.qcPassed && j.qcPassed > j.qcFailed);
-      cell(j ? (qcFailedNow ? '✗ ' + short(j.qcFailed) : short(j.qcPassed)) : '', qcFailedNow ? 'bad' : null);
-      cell(j ? short(j.delivered) : '');
-      cell(j ? short(j.site) : '');
+      STEP_COLS.forEach(function (b) {
+        if (b === 'qc' && qcFailedNow) { cell('✗ ' + short(j.qcFailed), 'bad'); return; }
+        cell(short(days[b]));
+      });
       var pc = cell(probs.length ? '⚠ ' + probs.length : '', probs.length ? 'bad' : null);
       if (probs.length) pc.title = probs.map(function (x) { return x.text; }).join('\n');
       /* a row opens that customer's card */

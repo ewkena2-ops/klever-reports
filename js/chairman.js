@@ -2256,6 +2256,10 @@ import {
           tfill('regCardLeads', { n: s.leadsOpen || 0, q: s.leadsQuiet || 0 })));
         into.appendChild(el('div', 'chreg-l' + (s.jobProblems ? ' bad' : ''),
           tfill('regCardJobs', { n: s.jobs || 0, p: s.jobProblems || 0 })));
+        /* on hold and in rework, as the AI reads them (Register.js) */
+        if (s.onHold || s.rework) {
+          into.appendChild(el('div', 'chreg-l bad', tfill('regCardHold', { h: s.onHold || 0, r: s.rework || 0 })));
+        }
         if (s.note) into.appendChild(el('div', 'chord-why', bullets(String(s.note).split('\n')[0])));
       }
       var a = el('a', 'obs-open');

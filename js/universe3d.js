@@ -1721,7 +1721,12 @@ export function mount(root, opts) {
   function computeViews() {
     const portrait = W / H < 0.8;
     views.group = fitDisc(17000, portrait ? 1.2 : 0.62, HUB.clone(), 4500);
-    views.klever = fitDisc((portrait ? 103 : 123) * SPREAD, portrait ? 1.0 : 0.5, new THREE.Vector3(0, 2, 0), 14);
+    /* aimed a little toward the near side: in perspective the near half of
+       the disc looks bigger than the far half, and the system sat low — the
+       outer ring ran under the time bar while the sky above it was empty */
+    const kR = (portrait ? 103 : 123) * SPREAD, kNear = portrait ? 0 : 0.12 * kR;
+    views.klever = fitDisc(kR, portrait ? 1.0 : 0.5,
+                           new THREE.Vector3(Math.sin(AZ) * kNear, 2, Math.cos(AZ) * kNear), 14);
     Object.values(minors).forEach(m => {
       views[m.co.id] = fitDisc((m.crew.length ? 44 : 30) * (portrait ? 1.1 : 1), portrait ? 1.0 : 0.5,
                                m.c0.clone().add(new THREE.Vector3(0, 2, 0)), 10);

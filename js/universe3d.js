@@ -59,19 +59,19 @@ import { TAU, ease, webglOk, makeRenderer, makeComposer, paintSky, makeStars, gl
    department is a planet: where it orbits, how big it is, what it is made of. */
 const DEPTS = [
   { key: 'commercial', en: 'Commercial', am: 'ንግድ', color: '#56c8ff',
-    orbit: 40, angle: -2.5, size: 3.1, type: 1, clouds: true, tilt: 0.41, spin: 0.06,
+    orbit: 56.8, angle: -2.5, size: 3.1, type: 1, clouds: true, tilt: 0.41, spin: 0.06,
     pal: ['#1f6f93', '#6e8f4d', '#b49a69', '#e9e2d0'] },
   { key: 'finance', en: 'Finance and store', am: 'ፋይናንስና መጋዘን', color: '#c8a2ff',
-    orbit: 28, angle: 2.75, size: 3.5, type: 2, rings: true, tilt: 0.45, spin: 0.09,
+    orbit: 38.7, angle: 2.75, size: 3.5, type: 2, rings: true, tilt: 0.45, spin: 0.09,
     pal: ['#c9a8d8', '#f3e8f6', '#86689a', '#b8709e'] },
   { key: 'site', en: 'Site', am: 'ተከላ', color: '#ff8fc8',
-    orbit: 66, angle: 0.35, size: 2.4, type: 3, tilt: 0.3, spin: 0.05,
+    orbit: 94.2, angle: 0.35, size: 2.4, type: 3, tilt: 0.3, spin: 0.05,
     pal: ['#7a3525', '#b5603c', '#e0a077', '#3a1f18'] },
   { key: 'production', en: 'Production', am: 'ምርት', color: '#9be7a0',
-    orbit: 53, angle: -1.55, size: 4.8, type: 2, tilt: 0.18, spin: 0.08,
+    orbit: 76.1, angle: -1.55, size: 4.8, type: 2, tilt: 0.18, spin: 0.08,
     pal: ['#bcc8a0', '#eef0da', '#7a8a5c', '#a86a3a'] },
   { key: 'lead', en: 'Operations', am: 'ኦፕሬሽን', color: '#8aa2ff',
-    orbit: 22, angle: -0.75, size: 2.0, type: 0, tilt: 0.25, spin: 0.04,
+    orbit: 21.3, angle: -0.75, size: 2.0, type: 0, tilt: 0.25, spin: 0.04,
     pal: ['#e6ecff', '#a9b8f0', '#4a58a0', '#ffffff'] }
 ];
 const STATUS = {
@@ -98,10 +98,10 @@ const HEAT = { loud: '#ff7a5c', warm: '#f0b84a', quiet: '#8fd8c8', none: '#56706
 
 /* where the money goes, and whose report says so */
 const INST = [
-  { id: 'customers', en: 'Customers', am: 'ደንበኞች', angle: 1.35, orbit: 82, cluster: true, size: 3.2 },
-  { id: 'bank', en: 'Klever’s bank', am: 'የክሌቨር ባንክ', angle: 2.6, orbit: 82, size: 2.8,
+  { id: 'customers', en: 'Customers', am: 'ደንበኞች', angle: 1.35, orbit: 111, cluster: true, size: 3.2 },
+  { id: 'bank', en: 'Klever’s bank', am: 'የክሌቨር ባንክ', angle: 2.6, orbit: 111, size: 2.8,
     w: { type: 2, rings: true, rim: '#ffd9a0', tilt: 0.5, pal: ['#e5c67e', '#fff0cf', '#9c7a3c', '#d88b4a'] } },
-  { id: 'suppliers', en: 'Suppliers', am: 'አቅራቢዎች', angle: 3.0, orbit: 92, size: 2.1,
+  { id: 'suppliers', en: 'Suppliers', am: 'አቅራቢዎች', angle: 3.0, orbit: 116, size: 2.1,
     w: { type: 3, rim: '#e0c8a0', tilt: 0.2, pal: ['#6d5a48', '#9a8266', '#c8b08c', '#3a2e24'] } }
 ];
 /* Klever's four banks, moons of its bank (7 Oct 2026, the Chairman: "why
@@ -116,7 +116,14 @@ const BANKS = [
 ];
 /* 6 Oct 2026, the Chairman: "make the orbit bigger". Every orbit spreads
    by the same factor, so each department has room round it for the
-   customers whose jobs it holds now. */
+   customers whose jobs it holds now.
+   7 Oct 2026: "why do the planets look compact — we have so much space".
+   The five departments were bunched near the sun (Operations and Finance
+   9 apart, each with a ring of people 15–30 wide) and overlapped 44% of
+   the time as they turned. Now they stand evenly out to the belt — 33, 60,
+   88, 118, 146 — with their people a little closer, and never overlap; the
+   belt, the money and the agents move out with them, and a wide screen
+   sees it all from a little lower (0.50, was 0.56), so the system fills the width. */
 const SPREAD = 1.55;
 DEPTS.forEach(d => { d.orbit *= SPREAD; });
 INST.forEach(i => { i.orbit *= SPREAD; });
@@ -659,7 +666,7 @@ export function mount(root, opts) {
   }
 
   /* the asteroid belt, beyond the outermost department */
-  const belt = makeBelt({ count: small ? 1300 : 2800, inner: 75 * SPREAD, outer: 80.5 * SPREAD, thick: 1.6, size: BS * 0.5, dust: small ? 3200 : 6400, center: sunPos });
+  const belt = makeBelt({ count: small ? 1300 : 2800, inner: 103.5 * SPREAD, outer: 109 * SPREAD, thick: 1.6, size: BS * 0.5, dust: small ? 3200 : 6400, center: sunPos });
   klever.add(belt.mesh);
   klever.add(belt.dust);
 
@@ -734,7 +741,7 @@ export function mount(root, opts) {
       .sort((a, b) => (isLead(b) - isLead(a)) || ((reporters[b.id] ? 1 : 0) - (reporters[a.id] ? 1 : 0)));
     const near = list.filter(p => reporters[p.id] || isLead(p));
     const far = list.filter(p => !(reporters[p.id] || isLead(p)));
-    const shells = [[near, P.r * 1.55 + 1.5 * BS, 0.38, 0.4], [far, P.r * 2.05 + 2.5 * BS, -0.22, 1.3]];
+    const shells = [[near, P.r * 1.45 + 1.3 * BS, 0.38, 0.4], [far, P.r * 1.85 + 2 * BS, -0.22, 1.3]];
     shells.forEach(([grp, R, tx, ph]) => {
       if (!grp.length) return;
       const e = new THREE.Euler(tx, 0, 0.12);
@@ -880,7 +887,7 @@ export function mount(root, opts) {
   });
 
   /* the agents: small ice worlds on the outermost orbit */
-  const SAT_R = 100 * SPREAD, SAT_Y = 3;
+  const SAT_R = 123 * SPREAD, SAT_Y = 3;
   circle(SAT_R, '#5fe0c6', 0.12);
   const sats = (window.KleverOrbit ? window.KleverOrbit.order : Object.keys(WATCH)).map((id, i, arr) => {
     const w = makeWorld({ r: 0.8 * BS, type: 0, pal: ICES[i % ICES.length], seed: 40 + i * 3.3, rim: HEAT.none,
@@ -1714,7 +1721,7 @@ export function mount(root, opts) {
   function computeViews() {
     const portrait = W / H < 0.8;
     views.group = fitDisc(17000, portrait ? 1.2 : 0.62, HUB.clone(), 4500);
-    views.klever = fitDisc((portrait ? 84 : 100) * SPREAD, portrait ? 1.0 : 0.56, new THREE.Vector3(0, 2, 0), 14);
+    views.klever = fitDisc((portrait ? 103 : 123) * SPREAD, portrait ? 1.0 : 0.5, new THREE.Vector3(0, 2, 0), 14);
     Object.values(minors).forEach(m => {
       views[m.co.id] = fitDisc((m.crew.length ? 44 : 30) * (portrait ? 1.1 : 1), portrait ? 1.0 : 0.5,
                                m.c0.clone().add(new THREE.Vector3(0, 2, 0)), 10);

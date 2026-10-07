@@ -65,8 +65,14 @@
       : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m];
   }
   function today() { var a = addis(); return a.getUTCDate() + ' ' + monShort(a.getUTCMonth()) + ' ' + a.getUTCFullYear(); }
-  function clock() { var a = addis(); return pad2(a.getUTCHours()) + ':' + pad2(a.getUTCMinutes()); }
-  function clockOf(date) { var a = addis(date.getTime()); return pad2(a.getUTCHours()) + ':' + pad2(a.getUTCMinutes()); }
+  /* a time of day as it is read: 1:57 PM in English (the Chairman, 7 Oct
+     2026: "AM and PM, not 24h"); Amharic keeps 13:57, as hhmm() does */
+  function clock12(h, m) {
+    if (lang === 'am') return pad2(h) + ':' + pad2(m);
+    return (h % 12 || 12) + ':' + pad2(m) + ' ' + (h >= 12 ? 'PM' : 'AM');
+  }
+  function clock() { var a = addis(); return clock12(a.getUTCHours(), a.getUTCMinutes()); }
+  function clockOf(date) { var a = addis(date.getTime()); return clock12(a.getUTCHours(), a.getUTCMinutes()); }
   /* "Fri 26 Sep" for a yyyy-mm-dd */
   function dayLabel(ymd) {
     var d = new Date(ymd + 'T12:00:00Z');

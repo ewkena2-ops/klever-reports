@@ -323,11 +323,18 @@
 
     /* ---------- the text at the top ---------- */
     function pad(n) { return ('0' + n).slice(-2); }
+    /* Addis time, whatever the phone's zone: 1:57 PM in English (7 Oct 2026,
+       "AM and PM, not 24h"); Amharic keeps 13:57 */
+    function clock(d) {
+      var a = new Date(d.getTime() + 3 * 3600e3), h = a.getUTCHours();
+      return lang === 'am' ? pad(h) + ':' + pad(a.getUTCMinutes())
+                           : (h % 12 || 12) + ':' + pad(a.getUTCMinutes()) + ' ' + (h >= 12 ? 'PM' : 'AM');
+    }
     function drawHud() {
       if (meta.dayLabel) {
         mLast.textContent = s('lastReading', 'Reading of') + ' ' + meta.dayLabel +
           /* Addis time, whatever the phone's zone */
-          (meta.ranAt ? ' · ' + pad(new Date(meta.ranAt.getTime() + 3 * 3600e3).getUTCHours()) + ':' + pad(meta.ranAt.getMinutes()) : '') +
+          (meta.ranAt ? ' · ' + clock(meta.ranAt) : '') +
           (meta.provisional ? ' · ' + (meta.soFar ? s('soFar', 'so far today') : s('midDay', 'read mid-day')) : '');
       } else {
         mLast.textContent = s('noReading', 'No reading yet');

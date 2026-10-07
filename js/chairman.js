@@ -140,10 +140,12 @@ import {
     var sun = sundayOf(addisYmd(when));
     return when.getTime() >= weekCut(sun, id).getTime() ? addDays(sun, 7) : sun;
   }
-  /* a time on the Addis clock */
+  /* a time on the Addis clock: 1:57 PM in English (7 Oct 2026, "AM and PM,
+     not 24h"); Amharic keeps 13:57 */
   function hhmm(d) {
-    var a = new Date(d.getTime() + 3 * 3600e3);
-    return ('0' + a.getUTCHours()).slice(-2) + ':' + ('0' + a.getUTCMinutes()).slice(-2);
+    var a = new Date(d.getTime() + 3 * 3600e3), h = a.getUTCHours(), m = ('0' + a.getUTCMinutes()).slice(-2);
+    if (lang === 'am') return ('0' + h).slice(-2) + ':' + m;
+    return (h % 12 || 12) + ':' + m + ' ' + (h >= 12 ? 'PM' : 'AM');
   }
   function daysFrom(a, b) {
     return Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 86400000);

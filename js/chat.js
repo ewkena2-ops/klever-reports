@@ -583,8 +583,7 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
     var dd = new Date();
     var dt = el('div', 'lh-date');
     dt.appendChild(el('span', null, nameOf(me)));
-    dt.appendChild(el('span', null,
-      ('0' + dd.getHours()).slice(-2) + ':' + ('0' + dd.getMinutes()).slice(-2)));
+    dt.appendChild(el('span', null, hhmm(dd)));
     lh.appendChild(dt);
     root.appendChild(lh);
 
@@ -1377,8 +1376,11 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
     };
   }
 
+  /* 1:57 PM in English (7 Oct 2026, "AM and PM, not 24h"); Amharic keeps 13:57 */
   function hhmm(d) {
-    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    var h = d.getHours(), m = ('0' + d.getMinutes()).slice(-2);
+    if (lang === 'am') return ('0' + h).slice(-2) + ':' + m;
+    return (h % 12 || 12) + ':' + m + ' ' + (h >= 12 ? 'PM' : 'AM');
   }
   var MONTHS = {
     en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],

@@ -415,7 +415,13 @@ function num(v) { const x = Number(String(v == null ? '' : v).replace(/[^0-9.\-]
    phone's clock zone: every hour, date and midnight here is Addis's. */
 const ADDIS_MS = 3 * 3600e3;
 const addisOf = d => new Date(d.getTime() + ADDIS_MS);   /* read with getUTC* */
-function hhmm(d) { const a = addisOf(d); return ('0' + a.getUTCHours()).slice(-2) + ':' + ('0' + a.getUTCMinutes()).slice(-2); }
+/* 1:57 PM in English (the Chairman, 7 Oct 2026: "AM and PM, not 24h");
+   Amharic keeps 13:57. Set by mount() from the page's language. */
+let CLOCK_24 = false;
+function hhmm(d) {
+  const a = addisOf(d), h = a.getUTCHours(), m = ('0' + a.getUTCMinutes()).slice(-2);
+  return CLOCK_24 ? ('0' + h).slice(-2) + ':' + m : (h % 12 || 12) + ':' + m + ' ' + (h >= 12 ? 'PM' : 'AM');
+}
 function bullets(s) { return String(s || '').replace(/^[ \t]*[*-][ \t]+/gm, '• '); }
 function hash(s) { let h = 7; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
 /* a customer's star: a bright core, a soft glow and four spikes */
@@ -455,6 +461,7 @@ function setAttr(e, k, v) { if (e.getAttribute(k) !== v) e.setAttribute(k, v); }
 export function mount(root, opts) {
   if (!webglOk()) throw new Error('no webgl');
   const lang = opts.lang === 'am' ? 'am' : 'en';
+  CLOCK_24 = lang === 'am';
   const S = opts.text || {};
   const s = (k, d) => (S[k] != null ? S[k] : d);
   /* a mid-day reading says "so far today" only while its day is today */

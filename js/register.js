@@ -43,10 +43,12 @@ import {
   }
   function birr(n) { return n == null ? '—' : Number(n).toLocaleString('en-US') + ' ' + t('regBirr'); }
   function ago(n) { return n <= 0 ? t('regToday') : n === 1 ? t('regYesterday') : tf('regDaysAgo', { n: n }); }
+  /* 1:57 PM in English (7 Oct 2026, "AM and PM, not 24h"); Amharic keeps 13:57 */
   function hhmm(ts) {
     if (!ts || !ts.toDate) return '';
-    var a = new Date(ts.toDate().getTime() + 3 * 3600e3);
-    return ('0' + a.getUTCHours()).slice(-2) + ':' + ('0' + a.getUTCMinutes()).slice(-2);
+    var a = new Date(ts.toDate().getTime() + 3 * 3600e3), h = a.getUTCHours(), m = ('0' + a.getUTCMinutes()).slice(-2);
+    if (lang === 'am') return ('0' + h).slice(-2) + ':' + m;
+    return (h % 12 || 12) + ':' + m + ' ' + (h >= 12 ? 'PM' : 'AM');
   }
   function bullets(s) { return String(s || '').replace(/^[ \t]*[*-][ \t]+/gm, '• '); }
 

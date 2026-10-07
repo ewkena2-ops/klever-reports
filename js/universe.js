@@ -110,7 +110,7 @@ import {
      'instructions', 'nothing', 'agent', 'openObs', 'outside', 'notReported', 'birr', 'dept', 'people', 'noOne', 'noOneSub', 'fromKlever', 'toKidan', 'payKidan',
      'payKidanShort', 'roveM2', 'forRove', 'cust', 'custLegend', 'custNext', 'custContract', 'custAdv', 'custFinal',
      'custUnpaid', 'custProblems', 'custOpen', 'coOn', 'personOn', 'personOff', 'roveOnSub', 'gfOnSub', 'roveDaily',
-     'fromRove', 'meriOnSub', 'reOnSub', 'ownDaily', 'fromCo'].forEach(function (k) {
+     'fromRove', 'meriOnSub', 'reOnSub', 'ownDaily', 'fromCo', 'banks', 'bankTotal', 'bankFrom', 'bankNone'].forEach(function (k) {
       out[k] = t('un' + k.charAt(0).toUpperCase() + k.slice(1));
     });
     /* the board's steps, in words, for a customer's sheet */

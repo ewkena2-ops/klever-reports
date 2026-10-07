@@ -23,8 +23,10 @@
    is a moon of their department's planet. Each of today's reports is a
    beam from the moon that owes it to the people it is addressed to — teal
    on time, gold late, coral missing, faint if it is not due yet — and the
-   day's money moves in gold between the customers, the bank, suppliers
-   and ZamZam, as Betelhem's and Ephrata's reports record it. The sixteen
+   day's money moves in gold between the customers, the bank and
+   suppliers, as Selam's and Ephrata's reports record it; Klever's four
+   banks circle its bank as moons, each with the balance Selam last
+   reported. The sixteen
    agents are small ice worlds on the outermost orbit, lit by what they
    last found.
 
@@ -99,10 +101,18 @@ const INST = [
   { id: 'customers', en: 'Customers', am: 'ደንበኞች', angle: 1.35, orbit: 82, cluster: true, size: 3.2 },
   { id: 'bank', en: 'Klever’s bank', am: 'የክሌቨር ባንክ', angle: 2.6, orbit: 82, size: 2.8,
     w: { type: 2, rings: true, rim: '#ffd9a0', tilt: 0.5, pal: ['#e5c67e', '#fff0cf', '#9c7a3c', '#d88b4a'] } },
-  { id: 'zamzam', en: 'ZamZam Bank', am: 'ዘምዘም ባንክ', angle: 2.2, orbit: 92, size: 1.8,
-    w: { type: 2, rim: '#bfe8d0', tilt: 0.3, pal: ['#8fc4a4', '#e4f2e8', '#3f7a60', '#b8d8a8'] } },
   { id: 'suppliers', en: 'Suppliers', am: 'አቅራቢዎች', angle: 3.0, orbit: 92, size: 2.1,
     w: { type: 3, rim: '#e0c8a0', tilt: 0.2, pal: ['#6d5a48', '#9a8266', '#c8b08c', '#3a2e24'] } }
+];
+/* Klever's four banks, moons of its bank (7 Oct 2026, the Chairman: "why
+   are Klever's bank and ZamZam separate — put each bank circling with its
+   balance"). ZamZam was a planet of its own; it is one of Klever's banks.
+   Each balance is the line for it under the total in Selam's daily report. */
+const BANKS = [
+  { id: 'cbe', en: 'CBE', am: 'ንግድ ባንክ', field: 'bank_cbe', pal: ['#8a6bb8', '#c9b4e6', '#4a3470', '#e6dcf5'] },
+  { id: 'awash', en: 'Awash', am: 'አዋሽ', field: 'bank_awash', pal: ['#5b8fc4', '#bcd6ee', '#2c4f78', '#e0ecf8'] },
+  { id: 'aby', en: 'Abyssinia', am: 'አቢሲኒያ', field: 'bank_aby', pal: ['#d6a648', '#f3dca0', '#8a6420', '#fff1cc'] },
+  { id: 'zamzam', en: 'ZamZam', am: 'ዘምዘም', field: 'bank_zz', pal: ['#8fc4a4', '#e4f2e8', '#3f7a60', '#b8d8a8'] }
 ];
 /* 6 Oct 2026, the Chairman: "make the orbit bigger". Every orbit spreads
    by the same factor, so each department has room round it for the
@@ -797,7 +807,30 @@ export function mount(root, opts) {
     labels.appendChild(lab);
     insts[it.id] = { it, pos, r, pick: pickMesh, lab, extra };
   });
-  const where = id => (nodes[id] ? nodes[id].pos : insts[id] ? insts[id].pos : null);
+
+  /* Klever's four banks, circling its bank; a tap on one opens the bank */
+  const bankI = insts.bank;
+  const bankR = bankI.r * 1.9 + 1.5 * BS, bankE = new THREE.Euler(0.42, 0, 0.12);
+  circle(bankR, '#ffd9a0', 0.14, bankI.pos, bankE);
+  const banks = BANKS.map((b, i) => {
+    const r = 0.62 * BS, a0 = 0.3 + i / BANKS.length * TAU;
+    const pos = new THREE.Vector3(Math.cos(a0) * bankR, 0, Math.sin(a0) * bankR).applyEuler(bankE).add(bankI.pos);
+    const w = makeWorld({ r, type: 3, pal: b.pal, seed: 60 + i * 2.9, rim: '#ffd9a0', rimI: 0.5,
+                          tilt: 0.3, spin: 0.05, segs: 36, sun: sunPos });
+    w.group.position.copy(pos);
+    w.surf.userData.pick = { kind: 'inst', id: 'bank' };
+    klever.add(w.group);
+    worlds.push(w);
+    const lab = el('button', 'obs3d-label uni-inst uni-bank', L(b));
+    lab.type = 'button';
+    lab.onclick = () => pick({ kind: 'inst', id: 'bank' });
+    labels.appendChild(lab);
+    return { b, pos, r, w, lab, a0, om: 0.09, bal: null };
+  });
+  const bankOf = {};
+  banks.forEach(m => { bankOf[m.b.id] = m; });
+  let bankTotal = null, bankAt = null;
+  const where = id => (nodes[id] ? nodes[id].pos : insts[id] ? insts[id].pos : bankOf[id] ? bankOf[id].pos : null);
 
   /* the day's report beams */
   const beams = [];
@@ -1092,6 +1125,16 @@ export function mount(root, opts) {
     for (const f of D.filings) if (f.report === reportId && f.at.getTime() >= from && f.at.getTime() <= t) v = f.values || {};
     return v;
   }
+  /* a balance is not the day's money: the last one Selam reported stands,
+     today's or one from the week before, until she reports the next */
+  const filled = x => x !== '' && x != null;
+  function lastBalance(t) {
+    let b = null;
+    for (const f of D.filings) {
+      if (f.report === 'betty-daily' && f.at.getTime() <= t && f.values && filled(f.values.bank_total)) b = { v: f.values, at: f.at };
+    }
+    return b;
+  }
   const rank = { missing: 3, late: 2, pending: 1, on: 0 };
   function worstOf(reps) {
     let w = null;
@@ -1178,6 +1221,15 @@ export function mount(root, opts) {
       if (lk.id === 'groupfinance') lk.pm.color.set(kc);
       setText(lk.lab, lk.id === 'groupfinance' ? toKidan : forRove);
     });
+    /* each bank's balance on its moon, the total on Klever's bank */
+    const bal = lastBalance(T);
+    banks.forEach(m => {
+      m.bal = bal && filled(bal.v[m.b.field]) ? num(bal.v[m.b.field]) : null;
+      setText(m.lab, L(m.b) + (m.bal != null ? ' · ' + money(m.bal) : ''));
+    });
+    bankTotal = bal ? num(bal.v.bank_total) : null;
+    bankAt = bal ? bal.at : null;
+    setText(bankI.lab, L(bankI.it) + (bankTotal != null ? ' · ' + money(bankTotal) : ''));
     let inn = 0, out = 0;
     flows.forEach(fl => {
       const v = lastValues(fl.f.report, T);
@@ -1568,7 +1620,22 @@ export function mount(root, opts) {
       sheet.appendChild(go);
     } else if (k === 'inst') {
       const it = insts[id].it;
-      sheetHead(s('outside', 'Outside Klever'), null, null, L(it), null);
+      const rep = (name, val, color) => {
+        const row = el('div', 'uni-rep');
+        const dot = el('i'); dot.style.background = color;
+        row.appendChild(dot);
+        row.appendChild(el('span', 'uni-rep-n', name));
+        row.appendChild(el('span', 'uni-rep-t', val));
+        sheet.appendChild(row);
+      };
+      if (id === 'bank') {
+        /* Klever's own banks: each balance, then the total, as Selam last reported them */
+        sheetHead(s('banks', 'Klever’s banks'), null, null, L(it),
+                  bankAt ? s('bankFrom', 'Balances from Selam’s report of') + ' ' + dayName(bankAt) + ' · ' + hhmm(bankAt)
+                         : s('bankNone', 'No balance reported yet'));
+        banks.forEach(m => rep(L(m.b), m.bal != null ? money(m.bal) + ' ' + s('birr', 'Birr') : s('notReported', 'not reported'), m.b.pal[0]));
+        if (bankTotal != null) rep(s('bankTotal', 'All four banks'), money(bankTotal) + ' ' + s('birr', 'Birr'), '#ffd9a0');
+      } else sheetHead(s('outside', 'Outside Klever'), null, null, L(it), null);
       flows.filter(fl => fl.f.from === id || fl.f.to === id).forEach(fl => {
         const row = el('div', 'uni-rep');
         const dot = el('i'); dot.style.background = '#ffc75e';
@@ -1760,7 +1827,7 @@ export function mount(root, opts) {
     if (level === 'company') {
       const objs = Object.values(nodes).map(n => n.pick)
         .concat(Object.values(planets).map(pl => pl.w.surf), Object.values(insts).map(i => i.pick), sats.map(x => x.w.surf),
-                custList.map(x => x.sp));
+                custList.map(x => x.sp), banks.map(m => m.w.surf));
       Object.values(minors).forEach(m => { if (m.g.visible) { objs.push(m.star.mesh); m.crew.forEach(c => objs.push(c.w.surf)); } });
       const hits = ray.intersectObjects(objs, false);
       if (hits.length) { pick(hits[0].object.userData.pick); return; }
@@ -1943,6 +2010,7 @@ export function mount(root, opts) {
       labNodes.forEach(n => { if (nearIds[n.id] === 1) placeNode(n, mine, false); else if (nearIds[n.id] !== 2) hide(n.lab); });
       planetList.forEach(pl => { if (pl.d.key === keepPlanet) place(pl.lab, below(pl.pos, pl.r), 3, mine, true); else hide(pl.lab); });
       instList.forEach(i => { if (i.it.id === keepInst) place(i.lab, i.it.cluster ? above(i.pos, i.r) : below(i.pos, i.r), i.it.cluster ? -24 : 3, mine, true); else hide(i.lab); });
+      banks.forEach(m => { if (keepInst === 'bank') place(m.lab, below(m.pos, m.r), 3, mine, true); else hide(m.lab); });
       sats.forEach(x => { if (x.id === keepSat) place(x.lab, below(satPos(x), 0.8 * BS), 3, mine, true); else hide(x.lab); });
       flows.forEach(f => hide(f.lab));
       return;
@@ -1954,6 +2022,14 @@ export function mount(root, opts) {
     planetList.forEach(pl => place(pl.lab, below(pl.pos, pl.r), 3, taken, true));
     /* the customers' cluster has its name above it: below, it would sit on the legend */
     instList.forEach(i => (i.it.cluster ? place(i.lab, above(i.pos, i.r), -24, taken, true) : place(i.lab, below(i.pos, i.r), 3, taken, true)));
+    /* the four banks round Klever's bank, each with its balance: all four
+       when there is room for them, none when there is not (from afar they
+       pile on one another) — the bank's own name carries the total */
+    const bankMark = taken.length;
+    if (!banks.every(m => place(m.lab, below(m.pos, m.r), 3, taken, false, true))) {
+      taken.length = bankMark;
+      banks.forEach(m => hide(m.lab));
+    }
     tiers[1].forEach(n => placeNode(n, taken, true));
     tiers[2].forEach(n => placeNode(n, taken, true));
     flows.forEach(f => {
@@ -2205,6 +2281,11 @@ export function mount(root, opts) {
         n.pos.set(Math.cos(a) * n.R, 0, Math.sin(a) * n.R).applyEuler(n.e).add(n.P.pos);
         n.w.group.position.copy(n.pos);
         if (n.marker) n.marker.position.copy(n.pos);
+      });
+      banks.forEach(m => {
+        const a = m.a0 + m.om * orbitT;
+        m.pos.set(Math.cos(a) * bankR, 0, Math.sin(a) * bankR).applyEuler(bankE).add(bankI.pos);
+        m.w.group.position.copy(m.pos);
       });
       beams.forEach(b => {
         b.u.uA.value.copy(b.A);

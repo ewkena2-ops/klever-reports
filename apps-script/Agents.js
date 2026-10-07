@@ -1409,6 +1409,8 @@ function runOn_(c, provisional, opts) {
   if (!quiet) writeAnalysis_(results, d);
   publishAnalysis_(results, d);
   if (!quiet) mailAnalysis_(results, d);
+  /* the morning's brief to his WhatsApp (Wa.js) — the closed day only, not a mid-day look */
+  if (!quiet && !provisional) waSendBrief_(results, d);
 }
 
 /* Writes nothing, sends nothing, spends nothing on the model. Use this to see

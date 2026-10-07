@@ -85,6 +85,16 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
     var p = personById(id);
     return p ? L(p) : String(id || '');
   }
+  /* A customer on Klever's WhatsApp, posted to the customers' room by the
+     WhatsApp agent (7 Oct 2026): their name and number, which is all the
+     sales people need to call them back. Digits only — it goes into a link. */
+  function waDigits(m) { return String((m && m.phone) || '').replace(/[^0-9]/g, '').substring(0, 15); }
+  function waName(m) {
+    var d = waDigits(m);
+    var n = String((m && m.name) || '').substring(0, 60);
+    return (n || t('chatWaCustomer')) + (d ? ' · +' + d : '');
+  }
+  function senderOf(m) { return m && m.who === 'whatsapp' ? waName(m) : nameOf(m && m.who); }
   function initialOf(id) {
     return id === CHAIRMAN ? '★' : nameOf(id).charAt(0);
   }
@@ -627,7 +637,7 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
         if (snap.empty) return;
         var d = snap.docs[0];
         var m = d.data({ serverTimestamps: 'estimate' });
-        last.textContent = nameOf(m.who) + ': ' + previewOf(m);
+        last.textContent = senderOf(m) + ': ' + previewOf(m);
         last.classList.add('lastmsg');
         row.at = msOf(m.at);
         var unread = m.who !== me && !d.metadata.hasPendingWrites && row.at > seenOf(seen, ch.id);
@@ -1116,8 +1126,9 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
 
     function buildMsg(it, m) {
       var own = it.who === me;
-      var msg = el('div', 'msg' + (own ? ' own' : ''));
-      var whoEl = el('div', 'msgwho', nameOf(it.who));
+      var wa = m.who === 'whatsapp';
+      var msg = el('div', 'msg' + (own ? ' own' : '') + (wa ? ' wa' : ''));
+      var whoEl = el('div', 'msgwho', senderOf(m));
       msg.appendChild(whoEl);
 
       if (m.kind === 'image' && isImageData(m.media)) {
@@ -1137,6 +1148,20 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
         fillText(tx, m.text);
         msg.appendChild(tx);
       }
+      /* a customer: call them, or write to them, from your own phone */
+      var wd = wa ? waDigits(m) : '';
+      if (wd) {
+        var acts = el('div', 'msgwa');
+        var call = el('a', 'msgwa-btn', t('chatWaCall'));
+        call.href = 'tel:+' + wd;
+        var write = el('a', 'msgwa-btn', t('chatWaWrite'));
+        write.href = 'https://wa.me/' + wd;
+        write.target = '_blank';
+        write.rel = 'noopener';
+        acts.appendChild(call);
+        acts.appendChild(write);
+        msg.appendChild(acts);
+      }
       var meta = el('div', 'msgtime');
       msg.appendChild(meta);
       it.el = msg;
@@ -1147,7 +1172,8 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
     function addItem(d) {
       var it = { id: d.id, seq: seq++ };
       var m = readItem(it, d);
-      it.who = String(m.who || '');
+      /* each customer is their own sender, so two customers in a row both show their names */
+      it.who = m.who === 'whatsapp' ? 'whatsapp:' + waDigits(m) : String(m.who || '');
       buildMsg(it, m);
       paintTime(it);
       items.set(it.id, it);

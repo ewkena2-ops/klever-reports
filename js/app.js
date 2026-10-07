@@ -579,6 +579,8 @@
       /* a room kept for one person's reports (Group Finance, for Kidan's)
          takes nothing that is not addressed to them */
       if (ch.onlyFor && to.indexOf(ch.onlyFor) === -1) return;
+      /* the WhatsApp customers' room carries customers, never a report */
+      if (ch.noReports) return;
       var holdsAll = to.every(function (id) { return ch.members.indexOf(id) !== -1; });
       if (!holdsAll) return;
       if (!best || ch.members.length < best.members.length) best = ch;

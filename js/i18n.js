@@ -70,6 +70,9 @@ const T = {
     chatSignInSub:'Enter your password to open your channels.',
 
     chatPassword:'Password',
+    chatWaCustomer:'WhatsApp customer',
+    chatWaCall:'Call',
+    chatWaWrite:'WhatsApp',
     chatSignIn:'Sign in',
     chatSigningIn:'Signing in…',
     chatBadSignIn:'That password isn’t right. Try again.',
@@ -682,6 +685,9 @@ const T = {
     chatSignInSub:'ቻናሎችዎን ለመክፈት የይለፍ ቃልዎን ያስገቡ።',
 
     chatPassword:'የይለፍ ቃል',
+    chatWaCustomer:'የዋትስአፕ ደንበኛ',
+    chatWaCall:'ደውል',
+    chatWaWrite:'ዋትስአፕ',
     chatSignIn:'ግባ',
     chatSigningIn:'በመግባት ላይ…',
     chatBadSignIn:'የይለፍ ቃሉ ትክክል አይደለም። እንደገና ይሞክሩ።',

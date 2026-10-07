@@ -133,6 +133,24 @@ service cloud.firestore {
                                  : request.resource.data.media.matches('^data:audio/[a-z0-9.+-]+(;codecs=[a-z0-9.]+)?;base64,[A-Za-z0-9+/=]+$')))
                          );
 
+        /* A customer from Klever's WhatsApp (7 Oct 2026). The AI no longer
+           answers customers; the WhatsApp agent hands each message to the
+           script, which posts it here, in the customers' room only, under
+           the name 'whatsapp', with the customer's name and number so a sales
+           person can call back — text only, at the server's time. */
+        allow create: if cid == 'customers'
+                      && isLedger()
+                      && request.resource.data.who == 'whatsapp'
+                      && request.resource.data.keys().hasOnly(['who','text','at','name','phone'])
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 4000
+                      && request.resource.data.at == request.time
+                      && request.resource.data.name is string
+                      && request.resource.data.name.size() <= 80
+                      && request.resource.data.phone is string
+                      && request.resource.data.phone.matches('^[0-9]{6,15}$');
+
         /* append-only, for everyone, forever */
         allow update, delete: if false;
       }
@@ -146,6 +164,14 @@ service cloud.firestore {
      *  one the penalty ledger answers for, so it has to be impossible to
      *  forge: you file as yourself, for yourself, at a time the server
      *  sets, and nothing can be altered afterwards.                      */
+    /* The script's own settings that cannot sit in this public repository —
+       the secret it shares with the WhatsApp agent (7 Oct 2026). Only the
+       script's account reads them; nobody writes them from a phone. */
+    match /config/{id} {
+      allow get: if isLedger();
+      allow list, create, update, delete: if false;
+    }
+
     match /reports/{rid} {
 
       /* your own reports, and the Chairman sees everyone's */

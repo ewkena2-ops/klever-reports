@@ -755,6 +755,13 @@ body[data-page="chat"] .wrap{padding-bottom:110px}
 .msgimg img{display:block;max-width:100%;height:auto;border-radius:12px;background:var(--raise)}
 .msgvoice{display:block;width:100%;min-width:210px;margin:4px 0 2px;height:38px}
 .msgdur{font-family:var(--mono);font-size:10.5px;color:var(--dim);text-align:right}
+/* a customer from Klever's WhatsApp, and the two ways to answer them */
+.msg.wa{border-color:rgba(37,211,102,.35)}
+.msg.wa .msgwho{color:#5fd68a}
+.msgwa{display:flex;gap:8px;margin:8px 0 2px;flex-wrap:wrap}
+.msgwa-btn{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;
+  border:1px solid rgba(95,214,138,.45);color:#8fe3ad;font-size:14px;font-weight:600;text-decoration:none}
+.msgwa-btn:active{background:rgba(95,214,138,.12)}
 
 .composer,.recbar{
   position:fixed;left:0;right:0;bottom:0;z-index:30;

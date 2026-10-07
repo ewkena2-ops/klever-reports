@@ -95,6 +95,10 @@ function doPost(e) {
      Each lookup spends one of the account's daily outgoing requests, which
      the ledger, the agents and the morning close share — a stranger posting
      junk tokens could otherwise switch the night's work off. */
+  /* the WhatsApp agent (Wa.js): no sign-in token, a shared secret instead */
+  if (row && /^wa-/.test(String(row.kind || ''))) {
+    return ContentService.createTextOutput(waPost_(row));
+  }
   if (!tokenShape_(row.idToken)) return ContentService.createTextOutput('refused');
   if (flooded_()) return ContentService.createTextOutput('busy');
   var poster = knownToken_(row.idToken);

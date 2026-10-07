@@ -60,7 +60,9 @@ function fsDelete_(path) {
 
 /* Send one notification to each of a person's phones. Returns {sent, failed,
    phones, error}: `error` is the first reason a send failed. */
-function pushTo_(person, title, body, tag) {
+/* `page`: where a tap opens, under the site (a customer on WhatsApp opens the
+   chat); the site's front page if left out */
+function pushTo_(person, title, body, tag, page) {
   var site = prop_('SITE', AGENT_DEFAULT_SITE);
   var phones = pushTokensOf_(person);
   var out = { phones: phones.length, sent: 0, failed: 0, error: '' };
@@ -70,7 +72,7 @@ function pushTo_(person, title, body, tag) {
       notification: { title: String(title).substring(0, 120), body: String(body).substring(0, 400) },
       webpush: {
         notification: { icon: site + 'assets/icon-192.png', tag: tag || undefined },
-        fcm_options: { link: site }
+        fcm_options: { link: site + (page || '') }
       }
     });
     if (r.code === 200) { out.sent++; return; }

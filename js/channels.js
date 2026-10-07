@@ -93,7 +93,18 @@ const CHANNEL_DEFS = [
     descEn:'Kidan, Group Finance — with Selam, Mahelet and Ephrata, whose reports go to Kidan.',
     descAm:'ኪዳን፣ የቡድኑ ፋይናንስ — ከሰላም፣ ማህሌት እና ኤፍራታ ጋር፤ ሪፖርቶቻቸው ለኪዳን ይደርሳሉ።',
     grp:'groupfinance', onlyFor:'kidan',
-    ids:['betty','liu','ephrata'] }
+    ids:['betty','liu','ephrata'] },
+
+  /* The Chairman's choice, 7 Oct 2026: the AI stops answering customers on
+     Klever's WhatsApp (+251 95 776 7472); each customer's message is posted
+     here instead, by the WhatsApp agent through the script, and the three
+     sales people call the customer back. `noReports`: nobody's report is
+     ever delivered here, however small the room. */
+  { id:'customers', kind:'team', en:'WhatsApp customers', am:'የዋትስአፕ ደንበኞች',
+    descEn:'Every customer who writes to Klever’s WhatsApp. Call them back from your phone, and say here who is taking them.',
+    descAm:'ወደ ክሌቨር ዋትስአፕ የሚጽፍ እያንዳንዱ ደንበኛ። ከስልክዎ መልሰው ይደውሉ፣ ማን እንደሚይዘው እዚህ ይናገሩ።',
+    noReports:1,
+    ids:['ephrata','tsega','biruktayet'] }
 ];
 
 var CHANNELS = {
@@ -121,6 +132,7 @@ var CHANNELS = {
     }).map(function (d) {
       /* onlyFor is for routing on the phone; the seed (all() below) leaves it out */
       return { id:d.id, kind:d.kind, en:d.en, am:d.am, onlyFor:d.onlyFor || null,
+               noReports:!!d.noReports,
                descEn:d.descEn, descAm:d.descAm, members:CHANNELS.membersOf(d) };
     });
 

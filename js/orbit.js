@@ -328,7 +328,7 @@
         mLast.textContent = s('lastReading', 'Reading of') + ' ' + meta.dayLabel +
           /* Addis time, whatever the phone's zone */
           (meta.ranAt ? ' · ' + pad(new Date(meta.ranAt.getTime() + 3 * 3600e3).getUTCHours()) + ':' + pad(meta.ranAt.getMinutes()) : '') +
-          (meta.provisional ? ' · ' + s('soFar', 'so far today') : '');
+          (meta.provisional ? ' · ' + (meta.soFar ? s('soFar', 'so far today') : s('midDay', 'read mid-day')) : '');
       } else {
         mLast.textContent = s('noReading', 'No reading yet');
       }

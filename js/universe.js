@@ -130,6 +130,7 @@ import {
     out.asked = t('obAsked');
     out.lastReading = t('obLastReading');
     out.soFar = t('obSoFar');
+    out.midDay = t('obMidDay');
     out.wantYouN = t('obWantYou');
     out.allQuiet = t('obAllQuiet');
     out.reads = t('obReads');
@@ -156,7 +157,7 @@ import {
   }
   /* the observatory's own words, for its flat sky on a device with no 3D */
   function obStrings() {
-    var keys = ['kicker', 'title', 'lastReading', 'noReading', 'nextReading', 'inTime', 'soFar',
+    var keys = ['kicker', 'title', 'lastReading', 'noReading', 'nextReading', 'inTime', 'soFar', 'midDay',
                 'analyse', 'asking', 'asked', 'wantYou', 'allQuiet', 'awaiting', 'legendLoud',
                 'legendWarm', 'legendQuiet', 'stateNone', 'reads', 'said', 'noSaid', 'close', 'sun'];
     var out = {};
@@ -243,10 +244,16 @@ import {
   var world = null, rootEl = null, waiting = null;
 
   var flat = null;
+  /* "so far today" only while that day is today: Tuesday's mid-day reading
+     read "so far today" all Wednesday morning (7 Oct 2026), because a day
+     before counting starts is never closed and nothing replaced it */
+  function soFarToday() { return !!data.provisional && data.analysisYmd === addisYmd(); }
   function obMeta() {
-    return { dayLabel: data.analysisDay || null, ranAt: data.ranAt || null, provisional: !!data.provisional, next: nextSix() };
+    return { dayLabel: data.analysisDay || null, ranAt: data.ranAt || null, provisional: !!data.provisional,
+             soFar: soFarToday(), next: nextSix() };
   }
   function push() {
+    data.soFar = soFarToday();
     if (world) world.update(data);
     if (flat) flat.update(data.findings || [], obMeta());
   }
@@ -327,6 +334,7 @@ import {
         var d = qs.docs[0].data();
         data.findings = d.findings || [];
         data.analysisDay = d.dayLabel || d.day || null;
+        data.analysisYmd = d.day || qs.docs[0].id;
         data.ranAt = d.ranAt && d.ranAt.toDate ? d.ranAt.toDate() : null;
         data.provisional = !!d.provisional;
       }

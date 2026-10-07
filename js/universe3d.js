@@ -447,6 +447,8 @@ export function mount(root, opts) {
   const lang = opts.lang === 'am' ? 'am' : 'en';
   const S = opts.text || {};
   const s = (k, d) => (S[k] != null ? S[k] : d);
+  /* a mid-day reading says "so far today" only while its day is today */
+  const partTail = () => (D.provisional ? ' · ' + (D.soFar ? s('soFar', 'so far today') : s('midDay', 'read mid-day')) : '');
   const L = o => (o ? (lang === 'am' && o.am ? o.am : o.en) : '');
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const small = Math.min(window.innerWidth, window.innerHeight) < 600;
@@ -1273,7 +1275,7 @@ export function mount(root, opts) {
       if (h === 'loud') loud++; else if (h === 'warm') warm++;
     });
     const when = D.analysisDay
-      ? s('lastReading', 'Reading of') + ' ' + D.analysisDay + (D.ranAt ? ' · ' + hhmm(D.ranAt) : '') + (D.provisional ? ' · ' + s('soFar', 'so far today') : '')
+      ? s('lastReading', 'Reading of') + ' ' + D.analysisDay + (D.ranAt ? ' · ' + hhmm(D.ranAt) : '') + partTail()
       : s('noReading', 'No reading yet');
     setText(aiTxt, s('aiK', 'AI') + ' · ' + when + (D.analysisDay
       ? ' · ' + (loud ? loud + ' ' + s('wantYouN', 'want you') : s('allQuiet', 'all quiet')) + (warm ? ' · ' + warm + ' ' + s('worthN', 'worth a look') : '')
@@ -1494,7 +1496,7 @@ export function mount(root, opts) {
       const loud = all.filter(f => heatOfText(f.text) === 'loud').length;
       sheetHead(s('aiK', 'AI'), loud ? 'loud' : 'quiet', loud ? loud + ' ' + s('wantYouN', 'want you') : s('allQuiet', 'all quiet'),
                 s('aiSaid', 'What the AI said'), D.analysisDay ? s('lastReading', 'Reading of') + ' ' + D.analysisDay +
-                (D.ranAt ? ' · ' + hhmm(D.ranAt) : '') + (D.provisional ? ' · ' + s('soFar', 'so far today') : '') : s('noReading', 'No reading yet'));
+                (D.ranAt ? ' · ' + hhmm(D.ranAt) : '') + partTail() : s('noReading', 'No reading yet'));
       const brief = all.find(f => f.id === 'brief');
       if (brief) {
         sheet.appendChild(el('div', 'obs-said-k', s('briefK', 'The AI’s brief')));

@@ -955,7 +955,7 @@ var AGENTS = [
   ask:'Compare what she expected to collect with what actually came in: an expected '+
       'payment that keeps sliding to next week is a customer who is not paying. '+
       'Is the week going to reach 3,000,000 Birr, and if not say it now rather than on '+
-      'Friday. Look at where leads came from against which ones converted — if one source '+
+      'Saturday. Look at where leads came from against which ones converted — if one source '+
       'produces volume and no contracts, that is money being spent for nothing. A WhatsApp '+
       'message that waited over 2 hours is a customer kept waiting; the figure counts messages '+
       'answered late, not messages still unanswered — the written answer says whether they '+

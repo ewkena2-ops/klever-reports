@@ -173,7 +173,7 @@ function dayCtx_(day, filings, schedule) {
       return (schedule.reports || []).filter(function (r) { return r.person === person; });
     },
     /* the filings of the last `days` days, read only when a test asks —
-       the streak rules on a Friday, not every rule every day */
+       the streak rules on the weekly reports' day, not every rule every day */
     history: function (days) {
       if (!ctx._hist || ctx._histDays < days) {
         ctx._hist = byReportDay_(filedBetween_(addDays_(day, -days), addDays_(day, 1)));
@@ -1274,7 +1274,7 @@ EVAL_['liu-wa-repeat-kpi-cancel'] = { month: function (ctx) {
 /* ---- Ephrata: the rolling 4-week total, and the marketing leads ---- */
 /* A block day: the last day of a block of `days`, counting from `from`
    (itself a block day). Ephrata's 4-week total is judged on these only —
-   every fourth Friday — so one bad period is charged once (Chairman,
+   every fourth Saturday (the week ends on Saturday, 7 Oct 2026) — so one bad period is charged once (Chairman,
    28 September 2026). */
 function isBlockDay_(blocks, day) {
   if (day < blocks.from) return false;

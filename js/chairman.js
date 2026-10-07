@@ -1117,7 +1117,7 @@ import {
                    title: dayShort(d), v: v, note: v == null ? '' : note,
                    open: dow(d) === 0 ? null : (function (day) {
                      return function (from) {
-                       /* her daily report is not owed on Fridays */
+                       /* her daily report is owed every working day (7 Oct 2026; it skipped Fridays before) */
                        var owed = dueOn(day).some(function (r) { return r.id === 'betty-daily'; });
                        openDay('betty', day, [{ rid: 'betty-forecast' }].concat(owed ? [{ rid: 'betty-daily' }] : []), from);
                      };

@@ -4,7 +4,7 @@
    Every other reading watches money coming in and the bank against the
    6,000,000 floor. Nothing said where the money went, so nothing could say
    where it could go further — the Chairman's own example: 90,000 Birr a week
-   on staff food, against paying people cash instead. Selam's Friday report
+   on staff food, against paying people cash instead. Selam's Saturday report
    now has "7 · Money spent this week" (forms.js, sp_*), and the Sunday
    weekly summary (Packs.js) hands this file the week.
 
@@ -209,7 +209,7 @@ function cfoRead_(facts, P) {
   if (!facts.spending_reported) {
     /* nothing to read, so no model is paid to say so */
     return 'Selam did not report the week’s spending, so there is nothing to say yet about where ' +
-           'the money went. It goes in “7 · Money spent this week” of her Friday Weekly Finance Report.';
+           'the money went. It goes in “7 · Money spent this week” of her Saturday Weekly Finance Report.';
   }
   if (!brain_().key) return '(No model key set — GEMINI_KEY. The figures are still complete.)';
   var prompt = [

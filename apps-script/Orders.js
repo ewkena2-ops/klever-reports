@@ -86,7 +86,7 @@ var ORDER_DUTIES_ = {
   /* Klever-Yordanos-Storekeeper-Terms */
   yordanos: { reportsTo: 'liu', duties: [
     'receiving deliveries and checking them against the Job File and BOM; rejecting with photos',
-    'stock records every day and the Friday stock count',
+    'stock records every day and the Saturday stock count',
     'issuing materials — only with Mahelet’s signed approval',
     'factory consumables (30,000 Birr a month)',
     'store security, theft reports and shortage warnings'],

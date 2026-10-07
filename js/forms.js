@@ -174,7 +174,7 @@ const REPORTS = [
         ]},
       {id:'week_total', en:'How much has come in this week so far?', am:'በዚህ ሳምንት እስካሁን ስንት ብር ገባ?', t:'money',
         tgt:{op:'gte', v:3000000, en:'Commission starts at 3,000,000 Birr/week', am:'ኮሚሽን የሚጀምረው በሳምንት ከ3,000,000 ብር ነው'}},
-      {id:'week_gap', en:'The week is below 3,000,000 Birr. Which customers will close the gap by Friday, and for how much?', am:'ሳምንቱ ከ3,000,000 ብር በታች ነው። እስከ ዓርብ ክፍተቱን የሚሞሉት የትኞቹ ደንበኞች ናቸው? በስንት ብር?', t:'area', show:{f:'week_total', when:'miss'}},
+      {id:'week_gap', en:'The week is below 3,000,000 Birr. Which customers will close the gap by Saturday, and for how much?', am:'ሳምንቱ ከ3,000,000 ብር በታች ነው። እስከ ቅዳሜ ክፍተቱን የሚሞሉት የትኞቹ ደንበኞች ናቸው? በስንት ብር?', t:'area', show:{f:'week_total', when:'miss'}},
       {id:'expected_list', en:'Expected collections: which clients will pay, what for, how much and when?', am:'የሚጠበቁ ክፍያዎች፦ የትኞቹ ደንበኞች፣ ለምን፣ ስንት እና መቼ ይከፍላሉ?', t:'table',
         addEn:'Add an expected payment', addAm:'የሚጠበቅ ክፍያ ጨምር',
         total:'amount', totalEn:'Total expected', totalAm:'ጠቅላላ የሚጠበቅ',
@@ -354,10 +354,10 @@ const REPORTS = [
 
 /* ============================= BETTY — DAILY ============================= */
 {
-  id:'betty-daily', person:'betty', cadence:'daily', dueTime:'17:30', skipDays:[5],
+  id:'betty-daily', person:'betty', cadence:'daily', dueTime:'17:30',
   en:'Daily Finance Report', am:'ዕለታዊ የፋይናንስ ሪፖርት',
   toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
-  dueEn:'5:30 PM, Monday to Thursday and Saturday', dueAm:'ከሰኞ እስከ ሐሙስ እና ቅዳሜ ከቀኑ 11፡30 (5:30 PM)',
+  dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   derived:1,
   sections:[
@@ -805,10 +805,10 @@ const REPORTS = [
 
 /* ========================= EPHRATA — WEEKLY ========================= */
 {
-  id:'ephrata-weekly', person:'ephrata', cadence:'weekly', dueTime:'16:00', dueDay:5,
+  id:'ephrata-weekly', person:'ephrata', cadence:'weekly', dueTime:'16:00', dueDay:6,
   en:'Weekly Commercial Report', am:'ሳምንታዊ የንግድ ሪፖርት',
   toEn:'Chairman', toAm:'ሊቀመንበር',
-  dueEn:'Friday 4:00 PM', dueAm:'ዓርብ ከቀኑ 10፡00 (4:00 PM)',
+  dueEn:'Saturday 4:00 PM', dueAm:'ቅዳሜ ከቀኑ 10፡00 (4:00 PM)',
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Sales performance', am:'1 · የሽያጭ አፈጻጸም', fields:[
@@ -936,10 +936,10 @@ const REPORTS = [
 
 /* ========================= MAHELET — WEEKLY ========================= */
 {
-  id:'liu-weekly', person:'liu', cadence:'weekly', dueTime:'15:00', dueDay:5,
+  id:'liu-weekly', person:'liu', cadence:'weekly', dueTime:'15:00', dueDay:6,
   en:'Weekly Production & Delivery Summary', am:'ሳምንታዊ የምርትና የማድረስ ሪፖርት',
   toEn:'Chairman', toAm:'ሊቀመንበር',
-  dueEn:'Friday 3:00 PM', dueAm:'ዓርብ ከቀኑ 9፡00 (3:00 PM)',
+  dueEn:'Saturday 3:00 PM', dueAm:'ቅዳሜ ከቀኑ 9፡00 (3:00 PM)',
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Production performance', am:'1 · የምርት አፈጻጸም', fields:[
@@ -1040,7 +1040,7 @@ const REPORTS = [
       {id:'wa_comp_what', en:'Who complained, about what, and what was done?', am:'ቅሬታ ያቀረበው ማን ነው? ስለምን? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'wa_comp', when:'pos'}}
     ]},
     { en:'8 · 15-day production plan status', am:'8 · የ15 ቀን የምርት ዕቅድ ሁኔታ', fields:[
-      {id:'pl_sent', en:'Did the 15-day plan reach the Chairman by Friday 3:00 PM?', am:'የ15 ቀን ዕቅዱ እስከ ዓርብ 9፡00 ለሊቀመንበሩ ደርሷል?', t:'yesno'},
+      {id:'pl_sent', en:'Did the 15-day plan reach the Chairman by Saturday 3:00 PM?', am:'የ15 ቀን ዕቅዱ እስከ ቅዳሜ 9፡00 ለሊቀመንበሩ ደርሷል?', t:'yesno'},
       {id:'pl_sent_why', en:'Why was it late, and when did it reach him?', am:'ለምን ዘገየ? መቼ ደረሳቸው?', t:'area', show:{f:'pl_sent', when:'no'}},
       {id:'pl_onsched', en:'How many planned jobs were finished on schedule? (on schedule / due this week)', am:'ከታቀዱት ሥራዎች ስንቱ በዕቅዱ ቀን ተጠናቀቁ? (በሰዓቱ / በዚህ ሳምንት የሚደርሱ)', t:'ratio'},
       {id:'pl_delayed', en:'How many jobs are behind the plan?', am:'ስንት ሥራዎች ከዕቅዱ ወደኋላ ቀርተዋል?', t:'num'},
@@ -1076,10 +1076,10 @@ const REPORTS = [
 
 /* ==================== BETELHEM — WEEKLY FINANCE ==================== */
 {
-  id:'betty-weekly', person:'betty', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  id:'betty-weekly', person:'betty', cadence:'weekly', dueTime:'17:00', dueDay:6,
   en:'Weekly Finance Report', am:'ሳምንታዊ የፋይናንስ ሪፖርት',
   toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
-  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  dueEn:'Saturday 5:00 PM', dueAm:'ቅዳሜ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'Late or not sent –500 Birr · Wrong information –500 to –1,000 Birr',
   penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር · የተሳሳተ መረጃ –500 እስከ –1,000 ብር',
   derived:1,
@@ -1163,8 +1163,8 @@ const REPORTS = [
       {id:'r_board_why', en:'Which job cards did not match, and what was fixed?', am:'የትኞቹ ካርዶች አልተመሳሰሉም? ምን ተስተካከለ?', t:'area', show:{f:'r_board', when:'no'}},
       {id:'r_docs_missing', en:'How many documents are still missing?', am:'እስካሁን ስንት ሰነዶች ጎድለዋል?', t:'num'},
       {id:'r_docs_list', en:'Which documents, from whom, and since when?', am:'የትኞቹ ሰነዶች? ከማን? ከመቼ ጀምሮ?', t:'area', show:{f:'r_docs_missing', when:'pos'}},
-      {id:'r_joblist', en:'Did the payment-confirmed job list reach Mahelet by Friday 1:00 PM?',
-        am:'የክፍያ ማረጋገጫ ዝርዝሩ ዓርብ ከቀኑ 7፡00 በፊት ለማህሌት ደርሷል?', t:'yesno'},
+      {id:'r_joblist', en:'Did the payment-confirmed job list reach Mahelet by Saturday 1:00 PM?',
+        am:'የክፍያ ማረጋገጫ ዝርዝሩ ቅዳሜ ከቀኑ 7፡00 በፊት ለማህሌት ደርሷል?', t:'yesno'},
       {id:'r_joblist_why', en:'Why not, and when did it go?', am:'ለምን አልደረሰም? መቼ ተላከ?', t:'area', show:{f:'r_joblist', when:'no'}},
       {id:'seble_err', en:'Did any work delegated to Seble need correcting this week?', am:'በዚህ ሳምንት ለሰብለ የተሰጠ ሥራ ማስተካከያ አስፈልጎታል?', t:'yesno'},
       {id:'seble_err_what', en:'What was wrong, how often, and what has been done so it does not happen again?', am:'ምን ተሳስቶ ነበር? ስንት ጊዜ? እንዳይደገም ምን ተደረገ?', t:'area', show:{f:'seble_err', when:'yes'}}
@@ -1254,10 +1254,10 @@ const REPORTS = [
 
 /* ==================== GETACHEW — WEEKLY PURCHASING ==================== */
 {
-  id:'getachew-weekly', person:'getachew', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  id:'getachew-weekly', person:'getachew', cadence:'weekly', dueTime:'17:00', dueDay:6,
   en:'Weekly Purchasing Summary', am:'ሳምንታዊ የግዥ ሪፖርት',
   toEn:'Chairman, copied to Mahelet and Selam', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለሰላም',
-  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  dueEn:'Saturday 5:00 PM', dueAm:'ቅዳሜ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   derived:1,
   sections:[
@@ -1347,15 +1347,15 @@ const REPORTS = [
 
 /* ===================== YORDANOS — WEEKLY STORE ===================== */
 {
-  id:'yordanos-weekly', person:'yordanos', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  id:'yordanos-weekly', person:'yordanos', cadence:'weekly', dueTime:'17:00', dueDay:6,
   en:'Weekly Store Summary', am:'ሳምንታዊ የመጋዘን ሪፖርት',
   toEn:'Chairman, copied to Mahelet and Selam', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለሰላም',
-  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  dueEn:'Saturday 5:00 PM', dueAm:'ቅዳሜ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'Reports are mandatory weekly', penAm:'ሳምንታዊ ሪፖርት ግዴታ ነው',
   derived:1,
   sections:[
-    { en:'1 · Friday stock count', am:'1 · የዓርብ ቆጠራ', fields:[
-      {id:'y_count', en:'Was the Friday physical stock count done?', am:'የዓርብ የዕቃ ቆጠራ ተከናውኗል?', t:'yesno'},
+    { en:'1 · Saturday stock count', am:'1 · የቅዳሜ ቆጠራ', fields:[
+      {id:'y_count', en:'Was the Saturday physical stock count done?', am:'የቅዳሜ የዕቃ ቆጠራ ተከናውኗል?', t:'yesno'},
       {id:'y_count_why', en:'Why not, and when will it be done?', am:'ለምን? መቼ ይከናወናል?', t:'area', show:{f:'y_count', when:'no'}},
       {id:'y_accuracy', en:'What was stock accuracy at the count?', am:'በቆጠራው የክምችት ትክክለኛነት ስንት በመቶ ነበር?', t:'pct',
         tgt:{op:'gte', v:99, en:'Target ≥99% — 2,000 Birr KPI bonus',
@@ -1429,10 +1429,10 @@ const REPORTS = [
 /* ============= EPHRATA — 4-WEEK ROLLING SALES PROJECTION ============= */
 {
   /* Amendment 1, 17 September 2026 moved this back from Monday 10:00 AM. */
-  id:'ephrata-projection', person:'ephrata', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  id:'ephrata-projection', person:'ephrata', cadence:'weekly', dueTime:'17:00', dueDay:6,
   en:'4-Week Rolling Sales Projection', am:'የ4 ሳምንት የሽያጭ ትንበያ',
   toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
-  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  dueEn:'Saturday 5:00 PM', dueAm:'ቅዳሜ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'First miss –500 Birr · Second in a row –1,000 Birr',
   penAm:'መጀመሪያ ሲቀር –500 ብር · በተከታታይ ሁለተኛ –1,000 ብር',
   sections:[
@@ -1482,10 +1482,10 @@ const REPORTS = [
 
 /* ============== MAHELET — 15-DAY PRODUCTION PLAN ============== */
 {
-  id:'liu-plan', person:'liu', cadence:'weekly', dueTime:'15:00', dueDay:5,
+  id:'liu-plan', person:'liu', cadence:'weekly', dueTime:'15:00', dueDay:6,
   en:'15-Day Production Plan', am:'የ15 ቀን የምርት ዕቅድ',
   toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
-  dueEn:'Friday 3:00 PM', dueAm:'ዓርብ ከቀኑ 9፡00 (3:00 PM)',
+  dueEn:'Saturday 3:00 PM', dueAm:'ቅዳሜ ከቀኑ 9፡00 (3:00 PM)',
   penEn:'Late –5,000 Birr · Incomplete –2,000 Birr · Two weeks without a plan –10,000 Birr',
   penAm:'ዘግይቶ –5,000 ብር · ያልተሟላ –2,000 ብር · ሁለት ሳምንት ካልቀረበ –10,000 ብር',
   sections:[
@@ -1503,7 +1503,7 @@ const REPORTS = [
         {id:'ok',   en:'Final payment confirmed', am:'የመጨረሻ ክፍያ ተረጋግጧል', t:'yesno'},
         {id:'date', en:"Selam's confirmation date", am:'ሰላም ያረጋገጠችበት ቀን', t:'text'}
       ]},
-      {id:'plan_list_late', en:'Did Selam\'s list reach you by Friday 1:00 PM?', am:'የሰላም ዝርዝር እስከ ዓርብ 7፡00 ደርሶዎታል?', t:'yesno'},
+      {id:'plan_list_late', en:'Did Selam\'s list reach you by Saturday 1:00 PM?', am:'የሰላም ዝርዝር እስከ ቅዳሜ 7፡00 ደርሶዎታል?', t:'yesno'},
       {id:'plan_list_late_why', en:'When did it arrive, and what did the delay cost this plan?', am:'መቼ ደረሰ? መዘግየቱ በዚህ ዕቅድ ላይ ምን አስከተለ?', t:'area', show:{f:'plan_list_late', when:'no'}}
     ]},
     { en:'3 · Production queue', am:'3 · የምርት ተራ', fields:[
@@ -1617,12 +1617,12 @@ const REPORTS = [
 
 /* ============ BETELHEM — PAYMENT-CONFIRMED JOB LIST ============ */
 {
-  id:'betty-joblist', person:'betty', cadence:'weekly', dueTime:'13:00', dueDay:5,
+  id:'betty-joblist', person:'betty', cadence:'weekly', dueTime:'13:00', dueDay:6,
   en:'Payment-Confirmed Job List', am:'ክፍያቸው የተረጋገጠ ሥራዎች ዝርዝር',
   toEn:'Mahelet', toAm:'ማህሌት',
-  dueEn:'Friday 1:00 PM', dueAm:'ዓርብ ከቀኑ 7፡00 (1:00 PM)',
-  penEn:'Not sent by Friday 1:00 PM –500 Birr',
-  penAm:'ዓርብ ከቀኑ 7፡00 ካልተላከ –500 ብር',
+  dueEn:'Saturday 1:00 PM', dueAm:'ቅዳሜ ከቀኑ 7፡00 (1:00 PM)',
+  penEn:'Not sent by Saturday 1:00 PM –500 Birr',
+  penAm:'ቅዳሜ ከቀኑ 7፡00 ካልተላከ –500 ብር',
   derived:1,
   sections:[
     { en:'1 · Jobs cleared for production', am:'1 · ወደ ምርት የሚገቡ ሥራዎች', fields:[
@@ -2014,10 +2014,10 @@ const REPORTS = [
 
 /* ======================= AMAHA — WEEKLY PRODUCTION ====================== */
 {
-  id:'amaha-weekly', person:'amaha', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  id:'amaha-weekly', person:'amaha', cadence:'weekly', dueTime:'17:00', dueDay:6,
   en:'Weekly Production Summary', am:'ሳምንታዊ የምርት ማጠቃለያ',
   toEn:'Mahelet + Ephrata', toAm:'ማህሌት + ኤፍራታ',
-  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  dueEn:'Saturday 5:00 PM', dueAm:'ቅዳሜ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Production performance', am:'1 · የምርት አፈጻጸም', fields:[
@@ -2305,10 +2305,10 @@ const REPORTS = [
 
 /* ========================= WUDE — WEEKLY QC =========================== */
 {
-  id:'wude-weekly', person:'wude', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  id:'wude-weekly', person:'wude', cadence:'weekly', dueTime:'17:00', dueDay:6,
   en:'Weekly QC Summary', am:'ሳምንታዊ የጥራት ቁጥጥር ማጠቃለያ',
   toEn:'Mahelet + Ephrata', toAm:'ማህሌት + ኤፍራታ',
-  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  dueEn:'Saturday 5:00 PM', dueAm:'ቅዳሜ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Inspection performance', am:'1 · የፍተሻ አፈጻጸም', fields:[
@@ -2589,10 +2589,10 @@ const REPORTS = [
 
 /* ======================== ELYAS — WEEKLY SITE ========================= */
 {
-  id:'elyas-weekly', person:'elyas', cadence:'weekly', dueTime:'17:00', dueDay:5,
+  id:'elyas-weekly', person:'elyas', cadence:'weekly', dueTime:'17:00', dueDay:6,
   en:'Weekly Site Summary', am:'ሳምንታዊ የተከላ ማጠቃለያ',
   toEn:'Mahelet + Ephrata', toAm:'ማህሌት + ኤፍራታ',
-  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  dueEn:'Saturday 5:00 PM', dueAm:'ቅዳሜ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Installation performance', am:'1 · የተከላ አፈጻጸም', fields:[
@@ -2812,10 +2812,10 @@ const REPORTS = [
   ]
 },
 {
-  id:'frewoyni-weekly', person:'frewoyni', cadence:'weekly', dueTime:'17:00', dueDay:5, noFine:1,
+  id:'frewoyni-weekly', person:'frewoyni', cadence:'weekly', dueTime:'17:00', dueDay:6, noFine:1,
   en:'Rovestone Weekly Summary', am:'የሮቭስቶን ሳምንታዊ ማጠቃለያ',
   toEn:'Chairman', toAm:'ሊቀመንበር',
-  dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+  dueEn:'Saturday 5:00 PM', dueAm:'ቅዳሜ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'No fines — reporting only', penAm:'ቅጣት የለም — ሪፖርት ብቻ',
   derived:1,
   sections:[
@@ -2909,9 +2909,9 @@ function sisterReports(pid, co, coAm) {
     ]
   }, no);
   var weekly = Object.assign({
-    id: pid + '-weekly', person: pid, cadence:'weekly', dueTime:'17:00', dueDay:5,
+    id: pid + '-weekly', person: pid, cadence:'weekly', dueTime:'17:00', dueDay:6,
     en: co + ' Weekly Summary', am: 'የ' + coAm + ' ሳምንታዊ ማጠቃለያ',
-    dueEn:'Friday 5:00 PM', dueAm:'ዓርብ ከቀኑ 11፡00 (5:00 PM)',
+    dueEn:'Saturday 5:00 PM', dueAm:'ቅዳሜ ከቀኑ 11፡00 (5:00 PM)',
     sections:[
       { en:'1 · The week’s work', am:'1 · የሳምንቱ ሥራ', fields:[
         {id:'w_summary', en:'What did ' + co + ' achieve this week?', am: coAm + ' በዚህ ሳምንት ምን አሳካ?', t:'area'},
@@ -3086,11 +3086,11 @@ const SALES_DAILY = {
 };
 
 const SALES_WEEKLY = {
-  id:'sales-weekly', cadence:'weekly', dueTime:'15:30', dueDay:5,
+  id:'sales-weekly', cadence:'weekly', dueTime:'15:30', dueDay:6,
   en:'Weekly Sales Summary', am:'ሳምንታዊ የሽያጭ ማጠቃለያ',
   toEn:'Ephrata', toAm:'ኤፍራታ',
-  dueEn:'Friday 3:30 PM — Ephrata needs it for her 4:00 PM report',
-  dueAm:'ዓርብ ከቀኑ 9፡30 (3:30 PM)',
+  dueEn:'Saturday 3:30 PM — Ephrata needs it for her 4:00 PM report',
+  dueAm:'ቅዳሜ ከቀኑ 9፡30 (3:30 PM)',
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Sales performance', am:'1 · የሽያጭ አፈጻጸም', fields:[
@@ -3354,10 +3354,10 @@ const DESIGN_DAILY = {
 };
 
 const DESIGN_WEEKLY = {
-  id:'design-weekly', cadence:'weekly', dueTime:'16:00', dueDay:5,
+  id:'design-weekly', cadence:'weekly', dueTime:'16:00', dueDay:6,
   en:'Weekly Design Summary', am:'ሳምንታዊ የዲዛይን ማጠቃለያ',
   toEn:'Ephrata', toAm:'ኤፍራታ',
-  dueEn:'Friday 4:00 PM', dueAm:'ዓርብ ከቀኑ 10፡00 (4:00 PM)',
+  dueEn:'Saturday 4:00 PM', dueAm:'ቅዳሜ ከቀኑ 10፡00 (4:00 PM)',
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Measurements', am:'1 · ልኬቶች', fields:[

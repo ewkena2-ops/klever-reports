@@ -389,7 +389,13 @@ const REPORTS = [
     ]},
     { en:'2 · Bank position', am:'2 · የባንክ ሁኔታ', fields:[
       {id:'bank_total', en:'What is the total bank balance tonight?', am:'ዛሬ ማታ ጠቅላላ የባንክ ቀሪ ስንት ነው?', t:'money',
-        tgt:{op:'gte', v:6000000, en:'6 Million Birr Cash Reserve Rule', am:'የ6 ሚሊዮን ብር ክምችት ደንብ'}},
+        tgt:{op:'gte', v:6000000, en:'6 Million Birr Cash Reserve Rule', am:'የ6 ሚሊዮን ብር ክምችት ደንብ'},
+        parts:{of:['bank_cbe','bank_awash','bank_aby','bank_zz'], all:1}},
+      /* Klever's four banks, each on its own line (Chairman, 7 Oct 2026) */
+      {id:'bank_cbe', en:'In Commercial Bank of Ethiopia (CBE)', am:'በኢትዮጵያ ንግድ ባንክ', t:'money', i:1},
+      {id:'bank_awash', en:'In Awash Bank', am:'በአዋሽ ባንክ', t:'money', i:1},
+      {id:'bank_aby', en:'In Bank of Abyssinia', am:'በአቢሲኒያ ባንክ', t:'money', i:1},
+      {id:'bank_zz', en:'In ZamZam Bank', am:'በዘምዘም ባንክ', t:'money', i:1},
       {id:'bank_total_why', en:'The balance is below the 6,000,000 Birr reserve. Why, which payments were still made today, and what is frozen until it recovers?', am:'ቀሪው ከ6,000,000 ብር ክምችት በታች ነው። ለምን? ዛሬ የትኞቹ ክፍያዎች ተፈጸሙ? እስኪመለስ ድረስ ምን ቆመ?', t:'area', show:{f:'bank_total', when:'miss'}},
       {id:'below6_reported', en:'If it is below 6M, was the Chairman told today?', am:'ከ6ሚ በታች ከሆነ ዛሬ ለሊቀመንበሩ ተነግሯል?', t:'yesno', opt:1}
     ]},

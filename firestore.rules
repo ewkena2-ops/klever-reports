@@ -151,6 +151,20 @@ service cloud.firestore {
                       && request.resource.data.phone is string
                       && request.resource.data.phone.matches('^[0-9]{6,15}$');
 
+        /* The Chairman's post to a whole room, decided on WhatsApp and
+           confirmed with his YES (apps-script/Wa.js): written by the
+           script's account in his name, marked via 'whatsapp', text only,
+           in a standing room — never a private line. */
+        allow create: if cid in ['all', 'leads', 'production', 'site', 'commercial', 'finance', 'groupfinance', 'customers']
+                      && isLedger()
+                      && request.resource.data.who == 'chairman'
+                      && request.resource.data.via == 'whatsapp'
+                      && request.resource.data.keys().hasOnly(['who','text','at','via'])
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 4000
+                      && request.resource.data.at == request.time;
+
         /* append-only, for everyone, forever */
         allow update, delete: if false;
       }
@@ -402,6 +416,21 @@ service cloud.firestore {
                     && request.resource.data.reason is string
                     && request.resource.data.reason.size() >= 3
                     && request.resource.data.reason.size() <= 500;
+      /* …and the same, decided on WhatsApp and confirmed with his YES
+         (apps-script/Wa.js), written by the script's account in his name */
+      allow create: if isLedger()
+                    && request.resource.data.keys().hasOnly(
+                         ['day','report','person','reason','amount','by','at','via'])
+                    && request.resource.data.by == 'chairman'
+                    && request.resource.data.via == 'whatsapp'
+                    && request.resource.data.at == request.time
+                    && request.resource.data.day is string
+                    && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                    && request.resource.data.report is string
+                    && request.resource.data.person is string
+                    && request.resource.data.reason is string
+                    && request.resource.data.reason.size() >= 3
+                    && request.resource.data.reason.size() <= 500;
       allow update, delete: if false;
     }
 
@@ -437,6 +466,27 @@ service cloud.firestore {
                     && request.resource.data.count <= 1000
                     && request.resource.data.note is string
                     && request.resource.data.note.size() <= 500;
+      /* …and the same, decided on WhatsApp and confirmed with his YES */
+      allow create: if isLedger()
+                    && request.resource.data.keys().hasOnly(
+                         ['person','name','rule','day','count','note','by','at','via'])
+                    && request.resource.data.by == 'chairman'
+                    && request.resource.data.via == 'whatsapp'
+                    && request.resource.data.at == request.time
+                    && request.resource.data.person is string
+                    && request.resource.data.person.size() > 0
+                    && request.resource.data.person.size() <= 80
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() <= 80
+                    && request.resource.data.rule is string
+                    && request.resource.data.rule.matches('^[a-z0-9-]{3,80}$')
+                    && request.resource.data.day is string
+                    && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                    && request.resource.data.count is int
+                    && request.resource.data.count >= 1
+                    && request.resource.data.count <= 1000
+                    && request.resource.data.note is string
+                    && request.resource.data.note.size() <= 500;
       allow update, delete: if false;
     }
 
@@ -457,6 +507,23 @@ service cloud.firestore {
                     && request.resource.data.keys().hasOnly(
                          ['to','text','due','by','at','status'])
                     && request.resource.data.by == 'chairman'
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.at == request.time
+                    && request.resource.data.to is string
+                    && request.resource.data.to.size() > 0
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 1000
+                    && request.resource.data.due is string
+                    && request.resource.data.due.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+      /* his instruction, decided on WhatsApp and confirmed with his YES
+         (apps-script/Wa.js), written by the script's account in his name */
+      allow create: if isLedger()
+                    && request.resource.data.keys().hasOnly(
+                         ['to','text','due','by','at','status','via'])
+                    && request.resource.data.by == 'chairman'
+                    && request.resource.data.via == 'whatsapp'
                     && request.resource.data.status == 'open'
                     && request.resource.data.at == request.time
                     && request.resource.data.to is string

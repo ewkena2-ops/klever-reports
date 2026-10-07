@@ -94,7 +94,11 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
     var n = String((m && m.name) || '').substring(0, 60);
     return (n || t('chatWaCustomer')) + (d ? ' · +' + d : '');
   }
-  function senderOf(m) { return m && m.who === 'whatsapp' ? waName(m) : nameOf(m && m.who); }
+  function senderOf(m) {
+    if (m && m.who === 'whatsapp') return waName(m);
+    /* his post to a room, decided on WhatsApp and confirmed with his YES */
+    return nameOf(m && m.who) + (m && m.via === 'whatsapp' ? ' · WhatsApp' : '');
+  }
   function initialOf(id) {
     return id === CHAIRMAN ? '★' : nameOf(id).charAt(0);
   }

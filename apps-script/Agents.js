@@ -934,6 +934,27 @@ var AGENTS = [
       'estimate one. If last_bank_balance_reported is below the reserve, say so with its day '+
       'even when today’s report is missing — the last thing known is that the floor was broken.' },
 
+/* THE DAILY GROUP CFO (8 Oct 2026). The finance analyst reads Selam's day
+   and the Sunday CFO the week's spending; nobody watched the group's cash
+   each morning. This does: Klever's four banks against the 6,000,000 floor
+   and how long the headroom lasts, Selam's 7-day forecast and its lowest
+   point, money due in (Ephrata's expected collections, final payments owed
+   on jobs) and out (supplier credit by its pay-by date), the same-day
+   controls broken, the three sister companies' money in and out — and what
+   Selam, Kidan, Getachew and Ephrata each do today. Figures and actions in
+   code (groupCfo_ in GroupCfo.js); Team.js reads this finding. */
+{ id:'groupcfo', en:'Daily Group CFO', am:'የዕለቱ የቡድኑ CFO', words: 180,
+  said:['betty-daily', 'betty-forecast', 'getachew-daily', 'frewoyni-daily', 'meri-daily', 'lemikura-daily'],
+  facts: function (d) { return groupCfo_(d); },
+  ask:'You are the group’s CFO this morning. Lead with any same-day control broken — a payment over '+
+      '50,000 without Kidan above all — and whether Klever is below the 6,000,000 floor. Then the cash: '+
+      'the bank against the floor, how many days the headroom lasts at this rate if a number is given, '+
+      'and the lowest point and first day below the floor in Selam’s forecast. Then what is due in '+
+      '(final payments owed, what Ephrata expects) against what is due out (supplier credit past its '+
+      'date and due within 7 days). Then the three sister companies in one line each, and any that did '+
+      'not report. Never add the companies together. End with TODAY, one line per person: their actions '+
+      'in today_actions, in that order, and only those.' },
+
 { id:'commercial', en:'Sales and commercial', am:'ሽያጭና ንግድ',
   said:['ephrata-daily', 'tsega-sales-daily', 'biruktayet-sales-daily', 'ephrata-weekly', 'ephrata-projection'],
   facts: function (d) {

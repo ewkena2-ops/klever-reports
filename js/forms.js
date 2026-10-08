@@ -3036,15 +3036,22 @@ const SALES_DAILY = {
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
+          {id:'m2', en:'m²', am:'ካሬ ሜትር', t:'num'},
           {id:'value', en:'Value', am:'ዋጋ', t:'money'},
           {id:'margin', en:'Margin per m²', am:'ትርፍ በካሬ ሜትር', t:'money'},
           {id:'disc', en:'Discount given', am:'የተሰጠ ቅናሽ', t:'text'}
-        ]},
+        ],
+        /* the margin on the whole quotation cannot be more than its price
+           (the Chairman, 8 Oct 2026: the m² was asked for nowhere) */
+        rowOdd:{ per:'margin', times:'m2', max:'value',
+                 en:'the margin per m² × the m² comes to {a}, more than the price {b}',
+                 am:'ትርፍ በካሬ ሜትር × ካሬ ሜትሩ {a} ይሆናል — ከዋጋው {b} ይበልጣል' }},
       {id:'q_margin', en:'What was the average margin per m² on today\'s quotations?', am:'የዛሬዎቹ ፕሮፎርማዎች አማካይ ትርፍ በካሬ ሜትር ስንት ነው?', t:'money',
         tgt:{op:'gte', v:6000, en:'Margin floor 6,000 Birr/m² — below without approval is –1,000 Birr',
              am:'ዝቅተኛው ትርፍ በካሬ ሜትር 6,000 ብር — ያለፈቃድ ከዚህ በታች –1,000 ብር'}},
       {id:'q_margin_why', en:'Which quotations went below 6,000 Birr/m², and who approved them?', am:'ከ6,000 ብር በካሬ ሜትር በታች የሆኑት የትኞቹ ፕሮፎርማዎች ናቸው? ማን አጸደቃቸው?', t:'area', show:{f:'q_margin', when:'miss'}},
-      {id:'q_expiry', en:'Did every quotation state the 7-day expiry?', am:'ሁሉም ፕሮፎርማዎች የ7 ቀን ገደብ ተጽፎባቸዋል?', t:'yesno'},
+      /* 15 days, not 7 (the Chairman, 8 Oct 2026); the letters still say 7 */
+      {id:'q_expiry', en:'Did every quotation state the 15-day expiry?', am:'ሁሉም ፕሮፎርማዎች የ15 ቀን ገደብ ተጽፎባቸዋል?', t:'yesno'},
       {id:'q_expiry_why', en:'Which ones did not, and have they been corrected?', am:'ያልተጻፈባቸው የትኞቹ ናቸው? ተስተካክለዋል?', t:'area', show:{f:'q_expiry', when:'no'}}
     ]},
     { en:'4 · Contracts', am:'4 · ውሎች', fields:[
@@ -3563,6 +3570,20 @@ function oddFigures(report, v) {
             en: we[1] + ' (' + show(b) + ') should be the same as “' + bare(w.en) + '” (' + show(t) + ')',
             am: '«' + wa[1] + '» (' + show(b) + ') ከ«' + bare(w.am) + '» (' + show(t) + ') ጋር እኩል መሆን አለበት' });
         }
+      }
+      /* a row of a list that cannot be right: one figure times another,
+         beyond a third in the same row */
+      if (f.t === 'table' && f.rowOdd) {
+        var rr = v[f.id];
+        rr = Object.prototype.toString.call(rr) === '[object Array]' ? rr : [];
+        rr.forEach(function (r, i) {
+          var per = num((r || {})[f.rowOdd.per]), by = num((r || {})[f.rowOdd.times]), cap = num((r || {})[f.rowOdd.max]);
+          if (per === null || by === null || cap === null || by <= 0 || per <= 0) return;
+          var got = Math.round(per * by * 100) / 100;
+          if (got <= cap) return;
+          var fill = function (w) { return String(w).replace('{a}', show(got)).replace('{b}', show(cap)); };
+          out.push({ f: f.id, en: 'row ' + (i + 1) + ': ' + fill(f.rowOdd.en), am: 'ረድፍ ' + (i + 1) + '፦ ' + fill(f.rowOdd.am) });
+        });
       }
       if (f.parts) {
         var tot = num(v[f.id]), sum = 0, got = 0;

@@ -10,7 +10,7 @@
    work; four weeks of leads → visits → quotes → contracts and where the
    leads came from; and, from the leads register (Register.js), the named
    customers each one should act on today — a quote about to lapse (quotes
-   carry a 7-day expiry), a signing Ephrata expects this week, a lead past
+   carry a 15-day expiry), a signing Ephrata expects this week, a lead past
    the 48-hour visit rule, a lead gone quiet — ranked here, in code.
 
    Each person's figures are kept apart and never added together: Ephrata's
@@ -19,7 +19,7 @@
 
 var SD_WEEKS_ = 4;
 var SD_MARGIN_FLOOR_ = 6000;
-var SD_QUOTE_DAYS_ = 7;
+var SD_QUOTE_DAYS_ = 15;        /* the Chairman, 8 Oct 2026: was 7 */
 var SD_QUOTE_WARN_DAYS_ = 3;
 var SD_VISIT_HOURS_DAYS_ = 2;
 var SD_ACTIONS_ = 3;

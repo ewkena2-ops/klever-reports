@@ -1035,9 +1035,10 @@ const RULES = [
     note:'Ephrata is also fined 5,000 if the contract is signed below the floor without approval.' },
 
   { id:'sales-quote-no-expiry', who:['sales'], kind:'penalty', birr:100, per:'event', how:'recorded',
-    en:'Quotation issued with no 7-day expiry stated',
-    am:'የ7 ቀን ማብቂያ ያልተጻፈበት ዋጋ ማቅረቢያ ተሰጥቷል',
-    src:'The salesperson letter — “Quotation issued with no 7-day expiry stated –100 Birr”' },
+    en:'Quotation issued with no 15-day expiry stated',
+    am:'የ15 ቀን ማብቂያ ያልተጻፈበት ዋጋ ማቅረቢያ ተሰጥቷል',
+    src:'The salesperson letter — “Quotation issued with no 7-day expiry stated –100 Birr”',
+    note:'The Chairman, 8 Oct 2026: a quotation now holds for 15 days, not the letter’s 7.' },
 
   { id:'sales-wa-2h', who:['sales'], kind:'penalty', birr:200, per:'event', how:'auto',
     en:'Customer not answered within 2 hours',

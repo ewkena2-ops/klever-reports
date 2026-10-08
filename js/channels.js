@@ -100,6 +100,15 @@ const CHANNEL_DEFS = [
      here instead, by the WhatsApp agent through the script, and the three
      sales people call the customer back. `noReports`: nobody's report is
      ever delivered here, however small the room. */
+  /* Quality Vision (8 Oct 2026): Wude posts a photo of each finished piece
+     with its job code; the AI (apps-script/Vision.js) answers here with what
+     it can see. `noReports`: nobody's report is delivered here. */
+  { id:'qc', kind:'team', en:'QC photos', am:'የጥራት ፎቶዎች',
+    descEn:'Wude: post a photo of each finished piece with its job code (e.g. KK-302 doors). The AI answers with any scratch, chip or gap it can see — check by hand before release.',
+    descAm:'ውዱ፦ የእያንዳንዱን የተጠናቀቀ ዕቃ ፎቶ ከሥራ ኮዱ ጋር ይላኩ (ለምሳሌ KK-302 በሮች)። AI የሚያየውን ጭረት፣ ስብራት ወይም ክፍተት ይመልሳል — ከመልቀቅዎ በፊት በእጅ ያረጋግጡ።',
+    noReports:1,
+    ids:['wude', 'amaha', 'liu'] },
+
   { id:'customers', kind:'team', en:'WhatsApp customers', am:'የዋትስአፕ ደንበኞች',
     descEn:'Every customer who writes to Klever’s WhatsApp. Call them back from your phone, and say here who is taking them.',
     descAm:'ወደ ክሌቨር ዋትስአፕ የሚጽፍ እያንዳንዱ ደንበኛ። ከስልክዎ መልሰው ይደውሉ፣ ማን እንደሚይዘው እዚህ ይናገሩ።',

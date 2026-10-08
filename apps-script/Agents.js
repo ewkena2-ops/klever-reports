@@ -806,6 +806,25 @@ var AGENTS = [
       'say it first. End with TODAY, one line per person: their actions in today_actions, in that order, '+
       'and only those. If a person has none, leave them out.' },
 
+/* THREE MORE MORNING AGENTS (8 Oct 2026), figures in Daily3.js. */
+{ id:'gate', en:'Workflow gate', am:'የሥራ ሂደት በር', words: 150,
+  facts: function (d) { return gateFacts_(d); },
+  ask:'You guard the job journey’s gates this morning. Say which gates are broken today, by gate, with the job code, '+
+      'customer and whose move it is, worst first: production before the final payment and delivery without '+
+      'clearance are the most serious. End with TODAY, one line per person: their actions in today_actions, and only '+
+      'those. If no gate is broken, say so in one line.' },
+{ id:'reconcile', en:'Reconciliation', am:'ማስታረቅ', words: 150,
+  said:['betty-daily', 'getachew-daily', 'ephrata-daily', 'yordanos-daily'],
+  facts: function (d) { return reconcileFacts_(d); },
+  ask:'You reconcile yesterday’s figures. Say which checks did not agree, with both figures and the difference as '+
+      'given, largest first; cheques with no matching approval; cheques beyond the ZamZam transfer. Say which reports '+
+      'were missing so their checks could not be made. End with TODAY, one line per person, from today_actions only. '+
+      'If everything agreed, say so in one line.' },
+{ id:'anomaly', en:'Attendance anomaly', am:'የተገኝነት ያልተለመደ ሁኔታ',
+  facts: function (d) { return anomalyFacts_(d); },
+  ask:'You watch attendance for patterns. Name each worker with a pattern and what it is, as given — absent beside '+
+      'the Sunday again and again, absent days running, often late. Say if yesterday had far more absences than '+
+      'usual. Patterns are things to ask about, not to punish: say so. If there is no pattern, say so in one line.' },
 { id:'quality', en:'Quality', am:'ጥራት',
   said:['wude-daily', 'wude-weekly', 'wude-monthly'],
   facts: function (d) {
@@ -1390,6 +1409,9 @@ function dailyRun_() {
      register, the maintenance plan (Registers.js) */
   try { registersEnsure_(); }
   catch (e) { Logger.log('register tabs: %s', e.message); warn.push('Register tabs: ' + e.message); }
+  /* a permit, licence or filing coming due — to its owner, at 14, 7 and 1 days (Owners.js) */
+  try { permitAlerts_(todayAddis_(), loadSchedule_()); }
+  catch (e) { Logger.log('permit alerts: %s', e.message); warn.push('Permit alerts: ' + e.message); }
   /* his leads and jobs: built again (a lead goes quiet by the calendar
      alone) and the morning's note written (Register.js) */
   try { registerBuild_(todayAddis_(), true); }
@@ -1476,6 +1498,11 @@ function runOn_(c, provisional, opts) {
   var results = askAll_(d);
   if (!quiet) writeAnalysis_(results, d);
   publishAnalysis_(results, d);
+  /* each owner's copy of their agents' readings — the closed day only (Owners.js) */
+  if (!provisional) {
+    try { deliverReadings_(results.map(function (r) { return { id: r.id, en: r.en, am: r.am, text: r.text }; }), d.day, 'morning'); }
+    catch (e) { Logger.log('readings to owners: %s', e.message); }
+  }
   if (!quiet) mailAnalysis_(results, d);
   /* the morning's brief to his WhatsApp (Wa.js) — the closed day only, not a mid-day look */
   if (!quiet && !provisional) waSendBrief_(results, d);
@@ -2069,6 +2096,8 @@ function watch_(waitMs) {
     /* a working morning: the AI's list of what each person should do
        today, drafted for him to check and send (Team.js) */
     try { teamPlanIfDue_(); } catch (e) { Logger.log('team plan: %s', e.message); }
+    /* a finished piece photographed in the QC room, checked by the AI (Vision.js) */
+    try { visionWatch_(); } catch (e) { Logger.log('vision: %s', e.message); }
     /* and an instruction of his that has not reached its person's phone (Push.js) */
     notifyWaiting_();
     /* Sunday after 9 PM: the week is over — settle it, send its summary */
@@ -2126,6 +2155,9 @@ function runIfNew_() {
   catch (e) { Logger.log('new-report check failed: %s', e.message); return; }
   if (!fresh.length) return;
   markSeen_(fresh[fresh.length - 1].at);
+  /* the alerts that cannot wait for the morning: a lead not called, a
+     delivery rejected, a new complaint (Owners.js) */
+  try { realtimeAlerts_(fresh, loadSchedule_()); } catch (e) { Logger.log('alerts: %s', e.message); }
   /* Getachew's report in: a supplier credit it says is paid has its
      reminders closed now, not tomorrow morning (Credit.js) */
   if (fresh.some(function (f) { return f.report === 'getachew-daily'; })) {

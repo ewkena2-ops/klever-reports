@@ -219,6 +219,19 @@
       });
     },
 
+    /* My agents' readings (apps-script/Owners.js): the latest of each. */
+    watchMyReadings: function (cb) {
+      return later(function () {
+      if (!user) return null;
+      var q = F.query(F.collection(db, 'readings'), F.where('to', '==', idOf(user)));
+      return F.onSnapshot(q, function (snap) {
+        var out = [];
+        snap.forEach(function (d) { var x = d.data(); x.id = d.id; out.push(x); });
+        cb(out);
+      }, function () { cb([]); });
+      });
+    },
+
     /* Close one, once, with what was done. The server sets the time and the
        rules refuse anything else about the instruction being changed. */
     closeInstruction: function (id, note) {

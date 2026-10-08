@@ -147,6 +147,7 @@ function qualityFacts_(P) {
     days_someone_pressed_wude_to_pass: rdDaysWhen_(w, 'pr_any', true, from, to),
     rework_cost_this_week: rdSum_(w, 'r_cost', from, to),
     waste_cost_this_week_amaha: awk ? a_(awk.v, 'w_cost') : null,
+    quality_vision: visionWeek_(from, to),
     last_monthly_rework_report: mon ? { as_of: dayLabel_(mon.day), cost: a_(mon.v, 'm_cost'), rate_pct: a_(mon.v, 'm_rate'), top_causes_by_cost: causes } : null
   };
 }
@@ -154,7 +155,8 @@ var QUALITY_ASK_ =
   'You are the Chairman’s head of quality. In at most 130 words, short bullets: the pass rate against 98% and '+
   'its trend over four weeks; defects that reached finished goods; the commonest defect types and where they '+
   'start; any critical defect by job; jobs that failed more than once; rework still open and what rework costs '+
-  'where reported, with the top causes. If anyone pressed Wude to pass a defect, say it first.';
+  'where reported, with the top causes; and what Quality Vision found in the photos, if any were checked. If anyone '+
+  'pressed Wude to pass a defect, say it first.';
 
 /* ------------------------------------------------------------------ *
  *  Customer satisfaction                                              *
@@ -507,3 +509,148 @@ var SPECIALISTS_ = [
     },
     empty: function (f) { return !f.open_jobs; }, emptyText: 'The job register has no open jobs, so there is nothing to control yet.' }
 ];
+
+/* ------------------------------------------------------------------ *
+ *  Chronic issues: what keeps coming back (owner: Mahelet, the COO)   *
+ * ------------------------------------------------------------------ */
+function chronicFacts_(P) {
+  var to = P.end, back = addDays_(to, -55), four = addDays_(to, -27);
+  var ad = (rdBy_('amaha', back, to)['amaha-daily']) || {};
+  var ld = (rdBy_('liu', back, to)['liu-daily']) || {};
+  var gd = (rdBy_('getachew', back, to)['getachew-daily']) || {};
+  var wd = (rdBy_('wude', back, to)['wude-daily']) || {};
+  var pulse = (rdBy_('betty', back, to)['betty-pulse']) || {};
+  var add = function (m, key, label, day) {
+    var k = spLower_(key);
+    if (!k) return;
+    var e = m[k] || (m[k] = { what: String(label).trim(), days: {}, weeks: {} });
+    e.days[day] = true; e.weeks[sundayOf_(day)] = true;
+  };
+  var list = function (m, minDays, minWeeks) {
+    return Object.keys(m).map(function (k) { var e = m[k]; return { what: e.what, days: Object.keys(e.days).length, weeks: Object.keys(e.weeks).length }; })
+      .filter(function (e) { return e.days >= minDays || e.weeks >= minWeeks; })
+      .sort(function (a, b) { return b.days - a.days; });
+  };
+  var mach = {};
+  rdRows_(ad, 'm_rows').forEach(function (x) { if (ay_(x.r, 'run') === false || n_(x.r.down) > 0) add(mach, x.r.name, x.r.name, x.day); });
+  rdRows_(ld, 'downtime_list').forEach(function (x) { add(mach, x.r.machine, x.r.machine, x.day); });
+  var supL = {}, supR = {};
+  rdRows_(gd, 'sup_delay_list').forEach(function (x) { add(supL, creditName_(x.r.sup), x.r.sup, x.day); });
+  rdRows_(gd, 'del_rej_list').forEach(function (x) { add(supR, creditName_(x.r.sup), x.r.sup, x.day); });
+  var mat = {};
+  Object.keys(ld).forEach(function (d) { if (ay_(ld[d], 'shortage') === true && ld[d].shortage_what) add(mat, ld[d].shortage_what, ld[d].shortage_what, d); });
+  Object.keys(ad).forEach(function (d) { if (ay_(ad[d], 'b_short') === true && ad[d].b_shortw) add(mat, ad[d].b_shortw, ad[d].b_shortw, d); });
+  var typeL = choiceLabels_(P.schedule, 'wude-daily', 'd_rows', 'type');
+  var def = {};
+  rdRows_(wd, 'd_rows').forEach(function (x) { if (x.r.type) add(def, x.r.type, typeL[x.r.type] || x.r.type, x.day); });
+  var cust = {};
+  rdRows_(pulse, 'pl_list').forEach(function (x) { if (x.r.cust && x.r.state !== 'closed') add(cust, x.r.cust, x.r.cust, x.day); });
+  var roster = ((P.schedule && P.schedule.people) || []).filter(function (p) { return p.roleEn === 'Production Worker'; });
+  var abs = {};
+  rdRows_(ad, 'mp_absent_list').forEach(function (x) { if (x.r.name) { var n = hrWho_(x.r.name, roster); add(abs, n, n, x.day); } });
+  /* the same report late or missing in three of the last four weeks, from the ledger */
+  var people = {};
+  tryQuery_('ledger', [['day', 'GREATER_THAN_OR_EQUAL', four], ['day', 'LESS_THAN_OR_EQUAL', to]], 'day').forEach(function (doc) {
+    (doc.lines || []).forEach(function (l) {
+      if (l.status !== 'LATE' && l.status !== 'MISSING') return;
+      var k = l.person + '|' + l.report;
+      var e = people[k] || (people[k] = { who: l.name || (P.names || {})[l.person] || l.person, report: l.reportName || l.report, weeks: {} });
+      e.weeks[sundayOf_(l.dueDay || doc.day)] = true;
+    });
+  });
+  var reports = Object.keys(people).map(function (k) { var e = people[k]; return { who: e.who, report: e.report, weeks_late_or_missing_of_4: Object.keys(e.weeks).length }; })
+    .filter(function (e) { return e.weeks_late_or_missing_of_4 >= 3; });
+  var out = {
+    weeks: '8 weeks to ' + dayLabel_(to),
+    rule: 'a thing is chronic when it happens on 3 or more days, or in 3 or more different weeks (suppliers and customers: twice; reports: 3 of the last 4 weeks)',
+    machines_breaking_down: list(mach, 3, 3),
+    suppliers_late: list(supL, 2, 2),
+    suppliers_rejected: list(supR, 2, 2),
+    materials_short: list(mat, 3, 3),
+    defect_types: list(def, 3, 3),
+    customers_complaining_again: list(cust, 2, 2),
+    workers_absent_again: list(abs, 3, 3),
+    reports_late_or_missing_again: reports
+  };
+  out.chronic_total = ['machines_breaking_down', 'suppliers_late', 'suppliers_rejected', 'materials_short', 'defect_types', 'customers_complaining_again', 'workers_absent_again', 'reports_late_or_missing_again']
+    .reduce(function (a, k) { return a + out[k].length; }, 0);
+  return out;
+}
+var CHRONIC_ASK_ =
+  'You are the Chairman’s COO looking for what keeps coming back. In at most 130 words, short bullets: the chronic '+
+  'issues by kind — machines, suppliers, materials, defects, customers, absences, reports — with how many days or '+
+  'weeks each, worst first; and for the worst two, what fixing the cause would take, in one line each. If nothing '+
+  'is chronic, say so.';
+
+/* ------------------------------------------------------------------ *
+ *  Vendor comparison (owners: Getachew, Kidan)                        *
+ * ------------------------------------------------------------------ */
+function vendorsFacts_(P) {
+  var to = P.end, back = addDays_(to, -55);
+  var gd = (rdBy_('getachew', back, to)['getachew-daily']) || {};
+  var yd = (rdBy_('yordanos', back, to)['yordanos-daily']) || {};
+  var items = {};
+  rdRows_(gd, 'p_rows').forEach(function (x) {
+    var ik = spLower_(x.r.pitem), sk = creditName_(x.r.psup), price = a_(x.r, 'pnow');
+    if (!ik || !sk || price === null) return;
+    var it = items[ik] || (items[ik] = { item: String(x.r.pitem).trim(), unit: String(x.r.punit || '').trim(), sup: {} });
+    var s = it.sup[sk] || (it.sup[sk] = { supplier: String(x.r.psup).trim(), latest_price: price, on: x.day, bought: 0 });
+    s.bought++;
+    if (x.day >= s.on) { s.latest_price = price; s.on = x.day; }
+  });
+  var compared = [], single = [];
+  Object.keys(items).forEach(function (k) {
+    var it = items[k];
+    var ss = Object.keys(it.sup).map(function (s) { var e = it.sup[s]; return { supplier: e.supplier, latest_price: e.latest_price, on: dayLabel_(e.on), times_bought: e.bought }; })
+      .sort(function (a, b) { return a.latest_price - b.latest_price; });
+    if (ss.length > 1) {
+      var lo = ss[0].latest_price, hi = ss[ss.length - 1].latest_price;
+      compared.push({ item: it.item, unit: it.unit, suppliers: ss, cheapest: ss[0].supplier, dearest: ss[ss.length - 1].supplier,
+                      spread_pct: lo ? Math.round((hi - lo) / lo * 1000) / 10 : null });
+    } else single.push({ item: it.item, supplier: ss[0].supplier, latest_price: ss[0].latest_price });
+  });
+  compared.sort(function (a, b) { return (b.spread_pct || 0) - (a.spread_pct || 0); });
+  /* each supplier's record */
+  var card = {};
+  var c = function (sup) { var k = creditName_(sup); return k ? (card[k] = card[k] || { supplier: String(sup).trim(), orders: 0, value: 0, late: 0, rejected: 0, price_rises_over_10pct: 0 }) : null; };
+  rdRows_(gd, 'ord_list').forEach(function (x) { var e = c(x.r.sup); if (e) { e.orders++; e.value += n_(x.r.amount); } });
+  rdRows_(gd, 'sup_delay_list').forEach(function (x) { var e = c(x.r.sup); if (e) e.late++; });
+  rdRows_(gd, 'del_rej_list').forEach(function (x) { var e = c(x.r.sup); if (e) e.rejected++; });
+  rdRows_(yd, 'rec_list').forEach(function (x) { if (ay_(x.r, 'ok') === false) { var e = c(x.r.sup); if (e) e.rejected++; } });
+  rdRows_(gd, 'p_rows').forEach(function (x) { if (a_(x.r, 'pchg') > 10) { var e = c(x.r.psup); if (e) e.price_rises_over_10pct++; } });
+  return {
+    weeks: '8 weeks to ' + dayLabel_(to),
+    items_priced: Object.keys(items).length,
+    items_bought_from_more_than_one_supplier: compared,
+    items_from_one_supplier_only: single,
+    suppliers: Object.keys(card).map(function (k) { return card[k]; }).sort(function (a, b) { return b.value - a.value; }),
+    note: 'prices are the last price paid to each supplier, from Getachew’s price lines; a supplier is compared only on items it has been bought from'
+  };
+}
+var VENDORS_ASK_ =
+  'You are the Chairman’s buyer comparing suppliers. In at most 130 words, short bullets: the items where suppliers '+
+  'differ most in price, with the cheapest and the dearest and the spread; items bought from one supplier only (a '+
+  'risk if it fails); and the suppliers with the most late deliveries, rejections or price rises against what Klever '+
+  'buys from them. Quote the figures as given.';
+
+SPECIALISTS_.push(
+  { id: 'chronic', en: 'Chronic issues', am: 'ተደጋጋሚ ችግሮች', role: 'COO', when: { week: true },
+    facts: function (P) { return chronicFacts_(P); }, ask: CHRONIC_ASK_,
+    tiles: function (f) {
+      return [{ en: 'Chronic', am: 'ተደጋጋሚ', v: String(f.chronic_total) },
+              { en: 'Machines', am: 'ማሽኖች', v: String(f.machines_breaking_down.length) },
+              { en: 'Suppliers late', am: 'የዘገዩ አቅራቢዎች', v: String(f.suppliers_late.length) },
+              { en: 'Reports late again', am: 'ደጋግመው የዘገዩ ሪፖርቶች', v: String(f.reports_late_or_missing_again.length) }];
+    } },
+  { id: 'vendors', en: 'Vendor comparison', am: 'የአቅራቢዎች ንጽጽር', role: 'buyer', when: { week: true },
+    facts: function (P) { return vendorsFacts_(P); }, ask: VENDORS_ASK_,
+    tiles: function (f) {
+      var top = f.items_bought_from_more_than_one_supplier[0];
+      return [{ en: 'Items compared', am: 'የተነጻጸሩ ዕቃዎች', v: String(f.items_bought_from_more_than_one_supplier.length) },
+              { en: 'One supplier only', am: 'አንድ አቅራቢ ብቻ', v: String(f.items_from_one_supplier_only.length) },
+              { en: 'Widest spread', am: 'ከፍተኛ የዋጋ ልዩነት', v: top && top.spread_pct !== null ? top.spread_pct + '%' : '—' },
+              { en: 'Suppliers', am: 'አቅራቢዎች', v: String(f.suppliers.length) }];
+    },
+    empty: function (f) { return !f.items_priced && !f.suppliers.length; },
+    emptyText: 'Getachew has recorded no prices or orders in eight weeks, so there is nothing to compare yet.' }
+);

@@ -82,6 +82,8 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
   }
   function nameOf(id) {
     if (id === CHAIRMAN) return lang === 'am' ? 'ሊቀመንበር' : 'Chairman';
+    /* the AI's answer to a photo in the QC photos room (apps-script/Vision.js) */
+    if (id === 'qcvision') return t('chatQcVision');
     var p = personById(id);
     return p ? L(p) : String(id || '');
   }

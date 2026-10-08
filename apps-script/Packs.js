@@ -99,6 +99,14 @@ function weeklyPack_(endDay) {
   var rd = { saved: {}, html: '' };
   try { rd = runReaders_('week', P, facts, { cfo: cfo, hr: hr, legal: legal, ops: ops }, cfoWarn); }
   catch (e) { cfoWarn.push('Specialists: ' + e.message); }
+  /* each owner's copy of their Sunday readings (Owners.js) */
+  try {
+    var mine = [];
+    if (cfo && cfoText) mine.push({ id: 'cfo', en: 'Your CFO — the week’s money', am: 'የእርስዎ CFO — የሳምንቱ ገንዘብ', text: cfoText });
+    if (ops && opsText) mine.push({ id: 'ops', en: 'Operations — plan to site', am: 'ኦፕሬሽን — ከዕቅድ እስከ ተከላ', text: opsText });
+    ((rd.saved && rd.saved.readers) || []).forEach(function (r) { mine.push({ id: r.id, en: r.en, am: r.am, text: r.text }); });
+    deliverReadings_(mine, end, 'week');
+  } catch (e) { cfoWarn.push('Readings to owners: ' + e.message); }
   var extra = cfoSaved_(cfo, cfoText);
   var more = [hrSaved_(hr, hrText), legalSaved_(legal, legalText), opsSaved_(ops, opsText), rd.saved];
   more.forEach(function (m) { Object.keys(m).forEach(function (k) { extra[k] = m[k]; }); });

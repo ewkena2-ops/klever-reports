@@ -133,6 +133,19 @@ service cloud.firestore {
                                  : request.resource.data.media.matches('^data:audio/[a-z0-9.+-]+(;codecs=[a-z0-9.]+)?;base64,[A-Za-z0-9+/=]+$')))
                          );
 
+        /* Quality Vision (apps-script/Vision.js, 8 Oct 2026): the script reads
+           the QC photos room — this room only — and answers each photo there,
+           as 'qcvision', text only, at the server's time. */
+        allow read: if cid == 'qc' && isLedger();
+        allow create: if cid == 'qc'
+                      && isLedger()
+                      && request.resource.data.who == 'qcvision'
+                      && request.resource.data.keys().hasOnly(['who','text','at'])
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 4000
+                      && request.resource.data.at == request.time;
+
         /* A customer from Klever's WhatsApp (7 Oct 2026). The AI no longer
            answers customers; the WhatsApp agent hands each message to the
            script, which posts it here, in the customers' room only, under
@@ -270,6 +283,25 @@ service cloud.firestore {
        only as one waiting to be answered; the script, signed in as the
        ledger, writes the answer onto it. Nobody else reads them — they are
        about the company's money. */
+    /* Each agent's reading to its owner (apps-script/Owners.js, 8 Oct
+       2026): the person it is for reads it, and the Chairman; only the
+       script writes it. */
+    match /readings/{id} {
+      allow get, list: if isChairman() || isLedger()
+                       || (signedIn() && resource.data.to == me());
+      allow create, update: if isLedger()
+                    && request.resource.data.keys().hasOnly(['to','agent','kind','en','am','text','day','at'])
+                    && request.resource.data.to is string
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() <= 4000;
+      allow delete: if false;
+    }
+    /* Quality Vision's verdicts (apps-script/Vision.js): his and the script's */
+    match /vision/{id} {
+      allow get, list: if isChairman() || isLedger();
+      allow create, update: if isLedger();
+      allow delete: if false;
+    }
     match /asks/{id} {
       allow get, list: if isChairman() || isLedger();
       /* mode: 'advise' sends it to his advisor (apps-script/Advise.js)
@@ -546,6 +578,25 @@ service cloud.firestore {
                     && request.resource.data.status == 'open'
                     && request.resource.data.at is timestamp
                     && request.resource.data.to in ['betty', 'getachew']
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 1000
+                    && request.resource.data.due is string
+                    && request.resource.data.due.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+      /* the script's alerts (apps-script/Owners.js, 8 Oct 2026): what cannot
+         wait for the morning — a lead not called, a delivery rejected, a new
+         complaint, a permit coming due, a defect in a photo — to the person
+         who must act, open, once. They close it themselves, as any other. */
+      allow create: if isLedger()
+                    && request.resource.data.keys().hasOnly(
+                         ['to','text','due','by','at','status'])
+                    && request.resource.data.by == 'alert'
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.at is timestamp
+                    && request.resource.data.to is string
+                    && request.resource.data.to.size() > 0
+                    && request.resource.data.to.size() <= 40
                     && request.resource.data.text is string
                     && request.resource.data.text.size() > 0
                     && request.resource.data.text.size() <= 1000

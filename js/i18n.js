@@ -71,6 +71,7 @@ const T = {
 
     chatPassword:'Password',
     chatWaCustomer:'WhatsApp customer',
+    chatQcVision:'Quality Vision (AI)',
     chatWaCall:'Call',
     chatWaWrite:'WhatsApp',
     chatSignIn:'Sign in',
@@ -220,6 +221,10 @@ const T = {
     /* what the Chairman asked for, on the person's own home */
     insTitle:'From the Chairman',
     insRemTitle:'Reminders',
+    insAlertTitle:'Alerts from your AI',
+    rdHomeTitle:'From your AI',
+    rdHomeMorning:'Daily reading',
+    rdHomeWeek:'Week to',
     regTitle:'Leads & jobs',
     regSub:'Every lead and every KK job, built from the reports as they come in — nobody fills this in.',
     regNoteTitle:'What needs you',
@@ -722,6 +727,7 @@ const T = {
 
     chatPassword:'የይለፍ ቃል',
     chatWaCustomer:'የዋትስአፕ ደንበኛ',
+    chatQcVision:'የጥራት ምርመራ (AI)',
     chatWaCall:'ደውል',
     chatWaWrite:'ዋትስአፕ',
     chatSignIn:'ግባ',
@@ -870,6 +876,10 @@ const T = {
 
     insTitle:'ከሊቀመንበሩ',
     insRemTitle:'ማስታወሻዎች',
+    insAlertTitle:'ከAIዎ የመጡ ማንቂያዎች',
+    rdHomeTitle:'ከAIዎ',
+    rdHomeMorning:'የዕለት ንባብ',
+    rdHomeWeek:'ሳምንቱ እስከ',
     regTitle:'ደንበኞችና ሥራዎች',
     regSub:'እያንዳንዱ ደንበኛና እያንዳንዱ የKK ሥራ፣ ሪፖርቶች ሲገቡ ከነሱ የሚሠራ — ማንም አይሞላውም።',
     regNoteTitle:'እርስዎን የሚፈልገው',

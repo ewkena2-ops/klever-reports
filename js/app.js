@@ -966,12 +966,41 @@
       wrap.innerHTML = '';
       var open = all.filter(function (i) { return i.status === 'open'; })
                     .sort(function (a, b) { return a.due < b.due ? -1 : (a.due > b.due ? 1 : 0); });
-      /* his, then the script's reminders (supplier credit falling due) */
-      [[false, 'insTitle'], [true, 'insRemTitle']].forEach(function (g) {
-        var these = open.filter(function (i) { return (i.by === 'reminder') === g[0]; });
+      /* his, then the script's reminders (supplier credit falling due), then
+         the AI's alerts (apps-script/Owners.js) */
+      var kindOf = function (i) { return i.by === 'reminder' ? 'rem' : i.by === 'alert' ? 'alert' : 'his'; };
+      [['his', 'insTitle'], ['rem', 'insRemTitle'], ['alert', 'insAlertTitle']].forEach(function (g) {
+        var these = open.filter(function (i) { return kindOf(i) === g[0]; });
         if (!these.length) return;
         wrap.appendChild(el('h2', 'eyebrow', t(g[1])));
         these.forEach(function (i) { wrap.appendChild(insRow(i)); });
+      });
+    });
+    return wrap;
+  }
+
+  /* The readings of the agents this person owns (apps-script/Owners.js):
+     the morning's and the week's, newest first, each folded to its title. */
+  var stopRd = null;
+  function readingsCard() {
+    if (stopRd) { try { stopRd(); } catch (e) {} stopRd = null; }
+    var wrap = el('div', 'rdwrap');
+    if (!window.FB || !window.FB.live() || AUTH.isChairman() || !window.FB.watchMyReadings) return wrap;
+    stopRd = window.FB.watchMyReadings(function (all) {
+      wrap.innerHTML = '';
+      if (!all.length) return;
+      all.sort(function (a, b) { return String(b.day || '') < String(a.day || '') ? -1 : String(b.day || '') > String(a.day || '') ? 1 : 0; });
+      wrap.appendChild(el('h2', 'eyebrow', t('rdHomeTitle')));
+      all.slice(0, 8).forEach(function (r) {
+        var card = el('details', 'rdcard');
+        var s = el('summary', 'rdcard-s');
+        s.appendChild(el('span', 'rdcard-t', L(r)));
+        /* the morning's reading is of the day before, closed; the week's is to its Sunday */
+        var wk = r.kind === 'week', d = /^\d{4}-\d{2}-\d{2}$/.test(String(r.day || '')) ? dayLabel(r.day) : '';
+        s.appendChild(el('span', 'rdcard-d', t(wk ? 'rdHomeWeek' : 'rdHomeMorning') + (d ? (wk ? ' ' : ' · ') + d : '')));
+        card.appendChild(s);
+        card.appendChild(el('div', 'rdcard-x', r.text || ''));
+        wrap.appendChild(card);
       });
     });
     return wrap;
@@ -1199,6 +1228,7 @@
     var st = standing(p.id);
     root.appendChild(deck(p, st));
     root.appendChild(instructionsCard());
+    root.appendChild(readingsCard());
     if (!AUTH.isChairman()) root.appendChild(pushCard());
 
     var tl = timeline(p.id);

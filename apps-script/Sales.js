@@ -84,7 +84,7 @@ function sdMember_(m, byDay, d, monday, from, left, names) {
     name: names[m.id] || m.id,
     filed_the_day_read: !!v,
     the_day_read: v ? {
-      leads: a_(v, f.leads), called_within_1_hour: pair_(v, f.called),
+      leads: a_(v, f.leads), called_within_24_hours: pair_(v, f.called),
       visits_done: a_(v, f.visits), leads_waiting_over_48h_for_a_visit: a_(v, f.visitsLate),
       quotes: a_(v, f.quotes), contracts: a_(v, f.contracts), contract_value: a_(v, f.value),
       collected: a_(v, f.collected), whatsapp_answered_late_over_2h: a_(v, f.unans)
@@ -104,7 +104,7 @@ function sdMember_(m, byDay, d, monday, from, left, names) {
       working_days: working, days_filed: allDays.length, days_not_filed: Math.max(0, working - allDays.length),
       leads: leads, visits: sdSum_(byDay, allDays, f.visits), quotes: quotes, contracts: contracts,
       contract_value: sdSum_(byDay, allDays, f.value),
-      called_within_1_hour: sdPairSum_(byDay, allDays, f.called),
+      called_within_24_hours: sdPairSum_(byDay, allDays, f.called),
       lead_to_contract_pct: sdPct_(contracts, leads),
       quote_to_contract_pct: sdPct_(contracts, quotes)
     }

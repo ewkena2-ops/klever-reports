@@ -995,7 +995,7 @@ var AGENTS = [
       leads_today: a_(ephrata, 'leads_total'),
       leads_by_source: { social:a_(ephrata, 'leads_social'), showroom:a_(ephrata, 'leads_showroom'),
                          referral:a_(ephrata, 'leads_referral'), agent:a_(ephrata, 'leads_agent'), other:a_(ephrata, 'leads_other') },
-      new_leads_called_within_1hr: pair_(ephrata, 'resp_1hr'),
+      new_leads_called_within_24_hours: pair_(ephrata, 'resp_1hr'),
       visits_booked: a_(ephrata, 'visits_booked'), visits_done: a_(ephrata, 'visits_done'), visits_late: a_(ephrata, 'visits_late'),
       quotes_issued: a_(ephrata, 'quotes_issued'), quotes_late: a_(ephrata, 'quotes_late'),
       contracts_signed: a_(ephrata, 'contracts'), contract_value: a_(ephrata, 'contract_value'),
@@ -1045,7 +1045,7 @@ var AGENTS = [
   facts: function (d) { return salesDirector_(d); },
   ask:'You run the sales team this morning. First, the week: for each person, collected so far '+
       'against their target and what each remaining working day now needs — say plainly who will '+
-      'miss. Then yesterday: who did the work (leads called within the hour, visits, quotes, '+
+      'miss. Then yesterday: who did the work (leads called within 24 hours, visits, quotes, '+
       'contracts) and who did not file; name any quote below the 6,000 Birr/m² floor. Then the last '+
       'four weeks: lead to contract, and whether marketing posts are bringing real leads. End with '+
       'TODAY, one line per salesperson: the customers in today_actions for them, by name, and what '+

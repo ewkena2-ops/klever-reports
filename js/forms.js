@@ -107,8 +107,9 @@ const REPORTS = [
       {id:'leads_best', en:'Which of today\'s leads is the most serious, and what is the next step with them?', am:'ከዛሬዎቹ ደንበኞች ውስጥ በጣም ተስፋ ያለው ማን ነው? ቀጣዩ እርምጃስ ምንድን ነው?', t:'area', show:{f:'leads_total', when:'pos'}}
     ]},
     { en:'2 · Lead response compliance', am:'2 · የምላሽ ፍጥነት', fields:[
-      {id:'resp_1hr', en:'New leads today: how many did you call within 1 hour? (called within 1 hour / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ1 ሰዓት ውስጥ ደወሉላቸው? (በ1 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'leads_total'},
-      {id:'resp_1hr_why', en:'Which leads were not called within the hour, why, and have they been called now?', am:'በ1 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን? አሁን ተደውሎላቸዋል?', t:'area', show:{f:'resp_1hr', when:'short'}},
+      /* 24 hours, not 1 (the Chairman, 8 Oct 2026); the letters still say 1 hour */
+      {id:'resp_1hr', en:'New leads today: how many did you call within 24 hours? (called within 24 hours / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ24 ሰዓት ውስጥ ደወሉላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'leads_total'},
+      {id:'resp_1hr_why', en:'Which leads were not called within 24 hours, why, and have they been called now?', am:'በ24 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን? አሁን ተደውሎላቸዋል?', t:'area', show:{f:'resp_1hr', when:'short'}},
       {id:'resp_showroom', en:'How many showroom visitors were served the same day? (served / all visitors)', am:'ሾውሩም ከመጡት ስንቱ በዕለቱ ተስተናገዱ? (የተስተናገዱ / ሁሉም)', t:'ratio'},
       {id:'resp_showroom_why', en:'Who was not served the same day, and why?', am:'በዕለቱ ያልተስተናገደው ማን ነው? ለምን?', t:'area', show:{f:'resp_showroom', when:'short'}}
     ]},
@@ -858,7 +859,7 @@ const REPORTS = [
     ]},
     { en:'2 · Lead performance', am:'2 · የደንበኛ አፈጻጸም', fields:[
       {id:'w_leads', en:'How many new leads came in this week?', am:'በዚህ ሳምንት ስንት አዲስ ደንበኞች መጡ?', t:'num'},
-      {id:'w_leads_1hr', en:'New leads this week: how many were called within 1 hour? (called within 1 hour / all new leads this week)', am:'በዚህ ሳምንት አዲስ የመጡ ደንበኞች፦ ስንቱ በ1 ሰዓት ውስጥ ተደወለላቸው? (በ1 ሰዓት ውስጥ የተደወለላቸው / በዚህ ሳምንት የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'w_leads'},
+      {id:'w_leads_1hr', en:'New leads this week: how many were called within 24 hours? (called within 24 hours / all new leads this week)', am:'በዚህ ሳምንት አዲስ የመጡ ደንበኞች፦ ስንቱ በ24 ሰዓት ውስጥ ተደወለላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / በዚህ ሳምንት የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'w_leads'},
       {id:'w_leads_1hr_why', en:'Which leads were missed, whose leads were they, and why?', am:'ያመለጡት ደንበኞች እነማን ናቸው? የማን ደንበኞች ነበሩ? ለምን?', t:'area', show:{f:'w_leads_1hr', when:'short'}},
       {id:'w_visits', en:'How many pre-measurement visits were done this week?', am:'በዚህ ሳምንት ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num'},
       {id:'w_quotes', en:'How many quotations went out this week?', am:'በዚህ ሳምንት ስንት ፕሮፎርማ ተሰጠ?', t:'num'},
@@ -3025,10 +3026,10 @@ const SALES_DAILY = {
         ]}
     ]},
     { en:'2 · Lead response', am:'2 · የምላሽ ፍጥነት', fields:[
-      {id:'r_1hr', en:'New leads today: how many did you call within 1 hour? (called within 1 hour / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ1 ሰዓት ውስጥ ደወሉላቸው? (በ1 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'l_total',
+      {id:'r_1hr', en:'New leads today: how many did you call within 24 hours? (called within 24 hours / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ24 ሰዓት ውስጥ ደወሉላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'l_total',
         tgt:{op:'gte', v:100, en:'Stage 1 of your commission — –200 Birr per missed lead',
              am:'የኮሚሽንዎ 1ኛ ደረጃ — ላመለጠ እያንዳንዱ –200 ብር'}},
-      {id:'r_1hr_why', en:'Which leads were not called within the hour, and why?', am:'በ1 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን?', t:'area', show:{f:'r_1hr', when:'short'}},
+      {id:'r_1hr_why', en:'Which leads were not called within 24 hours, and why?', am:'በ24 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን?', t:'area', show:{f:'r_1hr', when:'short'}},
       {id:'r_show', en:'How many showroom visitors were served the same day? (served / all visitors)', am:'ሾውሩም ከመጡት ስንቱ በዕለቱ ተስተናገዱ? (የተስተናገዱ / ሁሉም)', t:'ratio'},
       {id:'r_show_why', en:'Who was not served the same day, and why?', am:'በዕለቱ ያልተስተናገደው ማን ነው? ለምን?', t:'area', show:{f:'r_show', when:'short'}}
     ]},
@@ -3175,7 +3176,7 @@ const SALES_WEEKLY = {
     ]},
     { en:'3 · Lead performance', am:'3 · የደንበኛ አያያዝ አፈጻጸም', fields:[
       {id:'lp_total', en:'How many new leads did you receive this week?', am:'በዚህ ሳምንት ስንት አዲስ ደንበኞች መጡ?', t:'num'},
-      {id:'lp_1hr', en:'New leads this week: how many were called within 1 hour? (called within 1 hour / all new leads this week)', am:'በዚህ ሳምንት አዲስ የመጡ ደንበኞች፦ ስንቱ በ1 ሰዓት ውስጥ ተደወለላቸው? (በ1 ሰዓት ውስጥ የተደወለላቸው / በዚህ ሳምንት የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'lp_total'},
+      {id:'lp_1hr', en:'New leads this week: how many were called within 24 hours? (called within 24 hours / all new leads this week)', am:'በዚህ ሳምንት አዲስ የመጡ ደንበኞች፦ ስንቱ በ24 ሰዓት ውስጥ ተደወለላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / በዚህ ሳምንት የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'lp_total'},
       {id:'lp_1hr_why', en:'Which leads were missed, and why?', am:'ያመለጡት ደንበኞች እነማን ናቸው? ለምን?', t:'area', show:{f:'lp_1hr', when:'short'}},
       {id:'lp_visits', en:'How many pre-measurement visits were done this week?', am:'በዚህ ሳምንት ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num'},
       {id:'lp_quotes', en:'How many quotations did you present this week?', am:'በዚህ ሳምንት ስንት ፕሮፎርማ ቀረበ?', t:'num'},

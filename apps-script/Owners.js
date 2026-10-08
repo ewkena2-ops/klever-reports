@@ -118,14 +118,14 @@ function realtimeAlerts_(fresh, schedule) {
     var base = 'al-' + rep + '-' + day;
     var from = names[who] || who;
     try {
-      /* 22 · Sales coordinator: leads not called within the hour, leads waiting
+      /* 22 · Sales coordinator: leads not called within 24 hours, leads waiting
          for a visit, quotes below the margin floor */
       if (/-sales-daily$/.test(rep) || rep === 'ephrata-daily') {
         var lead = rep === 'ephrata-daily';
         var p = pair_(v, lead ? 'resp_1hr' : 'r_1hr');
         if (p && p.done !== null && p.of !== null && p.of > p.done) {
           sent += alertMany_(base + '-r1', [who, 'ephrata'], (p.of - p.done) + ' of ' + p.of + ' new leads in ' + from +
-                             '’s report of ' + dayLabel_(day) + ' were not called within the hour. Call them now, and say here when each was called.', day);
+                             '’s report of ' + dayLabel_(day) + ' were not called within 24 hours. Call them now, and say here when each was called.', day);
         }
         var late = a_(v, lead ? 'visits_late' : 'v_late');
         if (late > 0) {

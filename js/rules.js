@@ -842,11 +842,11 @@ const RULES = [
     test:'custom' },
 
   { id:'sales-stage-01-lead-1h', who:['sales'], kind:'bonus', birr:1, per:'birr', how:'recorded',
-    en:'Commission stage 1: lead contacted within 1 hour (0.2%)',
-    am:'የኮሚሽን ደረጃ 1፦ ደንበኛ ሊሆን የሚችል በ1 ሰዓት ውስጥ ተገናኝቷል (0.2%)',
+    en:'Commission stage 1: lead contacted within 24 hours (0.2%)',
+    am:'የኮሚሽን ደረጃ 1፦ ደንበኛ ሊሆን የሚችል በ24 ሰዓት ውስጥ ተገናኝቷል (0.2%)',
     src:'The salesperson letter — “Lead contacted within 1 hour First message introducing yourself and booking the appointment 0.2%”',
     formula:'0.2% of the collected contract value (external contracts only)',
-    note:'Per job, only when the step is met and its WhatsApp message posted; the Chairman enters the Birr figure.' },
+    note:'Per job, only when the step is met and its WhatsApp message posted; the Chairman enters the Birr figure. The Chairman, 8 Oct 2026: 24 hours, not the letter’s 1 hour.' },
 
   { id:'sales-stage-02-visit-48h', who:['sales'], kind:'bonus', birr:1, per:'birr', how:'recorded',
     en:'Commission stage 2: pre-measurement booked within 48 hours (0.2%)',
@@ -1010,10 +1010,10 @@ const RULES = [
     note:'Paid on the contract value, not the collected value; no form records who referred whom.' },
 
   { id:'sales-lead-1h', who:['sales'], kind:'penalty', birr:200, per:'item', how:'auto',
-    en:'Lead not contacted within 1 hour',
-    am:'ደንበኛ ሊሆን የሚችል በ1 ሰዓት ውስጥ አልተገናኘም',
+    en:'Lead not contacted within 24 hours',
+    am:'ደንበኛ ሊሆን የሚችል በ24 ሰዓት ውስጥ አልተገናኘም',
     src:'The salesperson letter — “Lead not contacted within 1 hour –200 Birr per lead”',
-    note:'Commission stage 1 (0.2%) is also lost on each such job.',
+    note:'Commission stage 1 (0.2%) is also lost on each such job. The Chairman, 8 Oct 2026: 24 hours, not the letter’s 1 hour.',
     test:{ at:'day', when:[{ diff:['{p}-sales-daily.r_1hr__b', '{p}-sales-daily.r_1hr__a'] }, '>', 0], count:{ diff:['{p}-sales-daily.r_1hr__b', '{p}-sales-daily.r_1hr__a'] } } },
 
   { id:'sales-showroom-same-day', who:['sales'], kind:'penalty', birr:200, per:'item', how:'auto',

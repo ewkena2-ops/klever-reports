@@ -144,7 +144,11 @@ function regName_(s) {
 }
 /* "kk 114", "KK114", "kk-114" are one job: KK-114 */
 function regJob_(s) {
-  var t = String(s || '').toUpperCase().replace(/[\s_]+/g, '').replace(/–|—/g, '-');
+  /* 8 Oct 2026: one report wrote the same job six ways — "k.k =165",
+     "K.K 165", "K.K=165", "kk165", "Kk165" — and the register held three
+     jobs instead of one. Everything that is not a letter, a digit or the
+     hyphen goes before the code is read. */
+  var t = String(s || '').toUpperCase().replace(/–|—/g, '-').replace(/[^A-Z0-9-]/g, '');
   var m = /^([A-Z]+)-?(\d.*)$/.exec(t);
   return m ? m[1] + '-' + m[2] : t;
 }

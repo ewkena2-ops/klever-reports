@@ -83,18 +83,23 @@ function opsPlanMaterials_(P, plan) {
   var need = {};
   want.forEach(function (r) {
     var m = String(r.mat).trim();
-    (need[m] = need[m] || { material: m, needed: 0, jobs: [] });
+    (need[m] = need[m] || { material: m, needed: 0, jobs: [], firstStart: null });
     need[m].needed += n_(r.qty);
-    var code = r.code ? opsCode_(r.code) : '';
-    need[m].jobs.push({ job: code, quantity: n_(r.qty), job_starts: starts[code] ? dayLabel_(starts[code]) : null });
+    /* the job codes as she wrote them in the one cell: "KK-500, kk 501" */
+    (String(r.jobs || '').match(/KK[-\s]?\d+/gi) || []).forEach(function (j) {
+      var code = opsCode_(j);
+      if (need[m].jobs.indexOf(code) < 0) need[m].jobs.push(code);
+      var st = starts[code];
+      if (st && (!need[m].firstStart || st < need[m].firstStart)) need[m].firstStart = st;
+    });
   });
   var lines = Object.keys(need).map(function (m) {
     var x = need[m];
     x.on_hand = onHand ? (onHand[m] === undefined ? null : onHand[m]) : null;
     x.short_by = x.on_hand === null ? null : Math.max(0, Math.round((x.needed - x.on_hand) * 100) / 100);
-    /* the first job that needs it is the date to buy against */
-    var days = x.jobs.map(function (j) { return j.job_starts; }).filter(Boolean).sort();
-    x.first_job_starts = days.length ? days[0] : null;
+    /* the first of those jobs is the day to buy against */
+    x.first_job_starts = x.firstStart ? dayLabel_(x.firstStart) : null;
+    delete x.firstStart;
     return x;
   }).sort(function (a2, b2) { return (b2.short_by || 0) - (a2.short_by || 0); });
   return {

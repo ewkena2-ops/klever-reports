@@ -1544,12 +1544,13 @@ const REPORTS = [
     ]},
     { en:'5 · Materials and bottlenecks', am:'5 · ዕቃዎችና እንቅፋቶች', fields:[
       /* the production date is set before the material is bought (the Chairman,
-         8 Oct 2026), so the plan has to say what to buy. The same twelve
-         materials the store counts, so the plan, the store and purchasing
-         use one set of words. */
-      {id:'plan_mat', en:'Which materials does each job in this plan need?', am:'በዚህ ዕቅድ ውስጥ ያለው እያንዳንዱ ሥራ ምን ዕቃ ይፈልጋል?',
+         8 Oct 2026), so the plan has to say what to buy. One row a material,
+         not one a job — you buy the MDF once, and a job needing six materials
+         would otherwise write its code six times. The same twelve materials
+         the store counts, so the plan, the store and purchasing use one set
+         of words. */
+      {id:'plan_mat', en:'What does this plan need from the store, and for which jobs?', am:'ይህ ዕቅድ ከመጋዘን ምን ይፈልጋል? ለየትኞቹ ሥራዎች?',
        t:'table', addEn:'Add a material', addAm:'ዕቃ ጨምር', cols:[
-          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'mat',  en:'Material', am:'ዕቃ', t:'choice', opts:[
             {v:'MDF 18mm',            en:'MDF 18mm',            am:'ኤምዲኤፍ 18ሚሜ'},
             {v:'MDF 16mm',            en:'MDF 16mm',            am:'ኤምዲኤፍ 16ሚሜ'},
@@ -1564,7 +1565,8 @@ const REPORTS = [
             {v:'Legs and shelf pins', en:'Legs and shelf pins', am:'እግሮችና የመደርደሪያ ችንካሮች'},
             {v:'Glue and screws',     en:'Glue and screws',     am:'ሙጫና ብሎኖች'}
           ]},
-          {id:'qty',  en:'Quantity', am:'ብዛት', t:'num'}
+          {id:'qty',  en:'Quantity', am:'ብዛት', t:'num'},
+          {id:'jobs', en:'For which jobs', am:'ለየትኞቹ ሥራዎች', t:'text'}
         ]},
       {id:'plan_block', en:'What could stop this plan, and what support is needed, from whom?', am:'ይህን ዕቅድ ምን ሊያቆመው ይችላል? ምን ድጋፍ ያስፈልጋል? ከማን?', t:'area', opt:1}
     ]},

@@ -15,7 +15,8 @@
                   sales, whether last week's forecasts came true, what the
                   Chairman asked for and got — then the weekly reports and the
                   week's daily briefs for the model to read. With it, the
-                  CFO's reading of where the week's money went (Cfo.js).
+                  CFO's reading of where the week's money went (Cfo.js)
+                  and HR's reading of the week's people (Hr.js).
      monthlyPack  the 2nd, on the month just ended. The same, plus the
                   deductions: every person's penalties for the month, less
                   any the Chairman cancelled, as a table and a Sheet tab that
@@ -77,8 +78,19 @@ function weeklyPack_(endDay) {
     cfo = null;
     cfoWarn.push('CFO: ' + e.message);
   }
-  var warn = savePack_('week-' + end, 'week', P, facts, text, cfoSaved_(cfo, cfoText)).concat(cfoWarn);
-  mailPack_('week', P, facts, text, cfo, cfoText);
+  /* and HR's reading of the week's people (Hr.js), the same way */
+  var hr = null, hrText = '';
+  try {
+    hr = hrFacts_(P, facts.reporting);
+    hrText = hrRead_(hr, P);
+  } catch (e) {
+    hr = null;
+    cfoWarn.push('HR: ' + e.message);
+  }
+  var extra = cfoSaved_(cfo, cfoText), hrExtra = hrSaved_(hr, hrText);
+  Object.keys(hrExtra).forEach(function (k) { extra[k] = hrExtra[k]; });
+  var warn = savePack_('week-' + end, 'week', P, facts, text, extra).concat(cfoWarn);
+  mailPack_('week', P, facts, text, cfo, cfoText, hr, hrText);
   return { period: P.start + ' to ' + end, warn: warn,
            note: (facts.reporting.on_time_pct == null ? 'no reports' : facts.reporting.on_time_pct + '% on time') };
 }
@@ -599,7 +611,7 @@ function writePayTab_(month, pay) {
   sh.setFrozenRows(1);
 }
 
-function mailPack_(kind, P, facts, text, cfo, cfoText) {
+function mailPack_(kind, P, facts, text, cfo, cfoText, hr, hrText) {
   var rep = facts.reporting, ops = facts.operations, ins = facts.instructions;
   var title = kind === 'week' ? 'Klever — the week' : 'Klever — ' + facts.month;
   var cell = 'padding:5px 8px;border-bottom:1px solid #e4e7e3';
@@ -619,6 +631,8 @@ function mailPack_(kind, P, facts, text, cfo, cfoText) {
 
   /* the week's money, read by the CFO (Cfo.js) */
   if (kind === 'week' && cfo) html += cfoMailHtml_(cfo, cfoText);
+  /* the week's people, read by HR (Hr.js) */
+  if (kind === 'week' && hr) html += hrMailHtml_(hr, hrText);
 
   /* the forecasts, judged in code */
   if (facts.forecasts) {

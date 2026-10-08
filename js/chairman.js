@@ -424,6 +424,12 @@ import {
     cfo.appendChild(el('p', 'codenote', t('cfoNone')));
     root.appendChild(cfo);
 
+    /* --- the week's people, read by HR (apps-script/Hr.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('hrTitle')));
+    var hr = el('div', 'chhr');
+    hr.appendChild(el('p', 'codenote', t('hrNone')));
+    root.appendChild(hr);
+
     /* --- and the day it was made of --- */
     root.appendChild(el('p', 'eyebrow', t('chRaw')));
     var raw = el('div', 'chraw');
@@ -448,7 +454,7 @@ import {
     watchCharges({ fines: charges, bonus: bonusBox, pay: payBox }, tOwed, tBonus);
     watchStanding(standing);
     watchEvents(record);
-    watchWeek(week, cfo);
+    watchWeek(week, cfo, hr);
     watchAsks(asks);
     watchReports(raw, tFiled, tMissing);
     watchCharts(charts);
@@ -2094,13 +2100,14 @@ import {
 
   /* ---------------- the week ---------------- */
 
-  function watchWeek(into, cfoInto) {
+  function watchWeek(into, cfoInto, hrInto) {
     onSnapshot(query(collection(db, 'packs'), orderBy('end', 'desc'), limit(4)), function (qs) {
       var packs = [];
       qs.forEach(function (d) { packs.push(d.data()); });
       var w = packs.filter(function (p) { return p.kind === 'week'; })[0];
       into.innerHTML = '';
       drawCfo(cfoInto, w);
+      drawHr(hrInto, w);
       if (!w) { into.appendChild(el('p', 'codenote', t('chNoWeek'))); return; }
 
       into.appendChild(el('p', 'skysub', prettyDay(w.start) + ' – ' + prettyDay(w.end)));
@@ -2114,7 +2121,7 @@ import {
       var f = el('div', 'chfind brief');
       f.appendChild(el('div', 'chft', w.text || ''));
       into.appendChild(f);
-    }, function (e) { failInto(into)(e); failInto(cfoInto)(e); });
+    }, function (e) { failInto(into)(e); failInto(cfoInto)(e); failInto(hrInto)(e); });
   }
 
   /* The CFO's week: three figures, the reading, and each spending line
@@ -2155,6 +2162,42 @@ import {
       tot.appendChild(el('span', 'chfv', birr(w.cfoSpent)));
       tbl.appendChild(tot);
     }
+    into.appendChild(tbl);
+  }
+
+  /* HR's week: four figures, the reading, and each person's on-time record
+     this week against the weeks before. Every figure was worked out in
+     Hr.js; a dash is a week with nothing to compare, never a 0. */
+  function drawHr(into, w) {
+    into.innerHTML = '';
+    if (!w || !w.hrText) { into.appendChild(el('p', 'codenote', t('hrNone'))); return; }
+    var pct = function (x) { return x == null ? '—' : x + '%'; };
+    var tiles = el('div', 'chtiles');
+    tiles.appendChild(tile(t('hrOnTime'), pct(w.hrOnTimePct)).box);
+    tiles.appendChild(tile(t('hrSlipping'), w.hrSlipping == null ? '—' : String(w.hrSlipping)).box);
+    tiles.appendChild(tile(t('hrNoLetter'), w.hrNoLetter == null ? '—' : String(w.hrNoLetter)).box);
+    tiles.appendChild(tile(t('hrAttend'), pct(w.hrAttendPct)).box);
+    into.appendChild(tiles);
+    var f = el('div', 'chfind hr');
+    f.appendChild(el('div', 'chft', w.hrText));
+    into.appendChild(f);
+    var people = (w.hrPeople || []).filter(function (p) { return p.due; });
+    if (!people.length) return;
+    var tbl = el('div', 'chcfo-lines chhr-lines');
+    var head = el('div', 'chf chcfo-head');
+    head.appendChild(el('span', 'chfk', t('hrPerson')));
+    head.appendChild(el('span', 'chfv', t('hrThisWeek') + ' · ' + t('hrBefore')));
+    tbl.appendChild(head);
+    people.forEach(function (p) {
+      var r = el('div', 'chf');
+      r.appendChild(el('span', 'chfk', p.name));
+      var v = el('span', 'chfv' + (p.trend === 'worse' ? ' fine' : p.trend === 'better' ? ' bonus' : ''));
+      v.appendChild(document.createTextNode(p.onTime + '/' + p.due + ' · ' + pct(p.pct)));
+      v.appendChild(el('span', 'chcfo-avg', ' · ' + pct(p.before) +
+        (p.trend === 'worse' ? ' · ' + t('hrWorse') : p.trend === 'better' ? ' · ' + t('hrBetter') : '')));
+      r.appendChild(v);
+      tbl.appendChild(r);
+    });
     into.appendChild(tbl);
   }
 

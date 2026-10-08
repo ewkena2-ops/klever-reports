@@ -359,6 +359,11 @@ import {
     var asks = el('div', 'chask');
     root.appendChild(asks);
 
+    /* --- his advisor, the Chairman's office: decisions weighed (apps-script/Advise.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('advTitle')));
+    var advice = el('div', 'chask chadv');
+    root.appendChild(advice);
+
     /* the full sky, and the whole company, each on its own page */
     var NS = 'http://www.w3.org/2000/svg';
     function wayIn(href, d, label) {
@@ -467,7 +472,8 @@ import {
     watchStanding(standing);
     watchEvents(record);
     watchWeek(week, cfo, hr, legal, opsBox);
-    watchAsks(asks);
+    watchAsks(asks, 'ask');
+    watchAsks(advice, 'advise');
     watchReports(raw, tFiled, tMissing);
     watchCharts(charts);
     watchHealth(sys, sysAlarm);
@@ -2297,9 +2303,12 @@ import {
      which answers it onto the same document (apps-script/Ask.js). If that
      post is lost, the script's ten-minute watch answers it instead. The
      answer appears here by itself: this page watches the collection. */
-  function askAI(q) {
+  function askAI(q, mode) {
     var id = 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-    return setDoc(doc(db, 'asks', id), { q: q, at: serverTimestamp(), by: me, status: 'asked' })
+    var rec = { q: q, at: serverTimestamp(), by: me, status: 'asked' };
+    /* to his advisor rather than a plain answer (apps-script/Advise.js) */
+    if (mode === 'advise') rec.mode = 'advise';
+    return setDoc(doc(db, 'asks', id), rec)
       .then(function () {
         var u = auth.currentUser;
         return u ? u.getIdToken() : null;
@@ -2327,28 +2336,31 @@ import {
       again.type = 'button';
       again.onclick = function () {
         again.disabled = true;
-        askAI(a.q)['catch'](function () { again.disabled = false; toast(t('aiAskFailed')); });
+        askAI(a.q, a.mode)['catch'](function () { again.disabled = false; toast(t('aiAskFailed')); });
       };
       box.appendChild(again);
     } else {
-      box.appendChild(el('div', 'chask-a chask-wait', t('aiAskThinking')));
+      box.appendChild(el('div', 'chask-a chask-wait', t(a.mode === 'advise' ? 'advThinking' : 'aiAskThinking')));
     }
     return box;
   }
 
-  function watchAsks(into) {
+  /* The same box twice: questions of fact (mode 'ask') and decisions for his
+     advisor (mode 'advise'). Each list shows only its own. */
+  function watchAsks(into, mode) {
+    var adv = mode === 'advise';
     var form = el('form', 'chask-form');
     var q = el('textarea');
-    q.rows = 2;
+    q.rows = adv ? 3 : 2;
     q.maxLength = 1000;
-    q.placeholder = t('aiAskHint');
-    q.setAttribute('aria-label', t('aiAskTitle'));
-    var go = el('button', 'seed', t('aiAskBtn'));
+    q.placeholder = t(adv ? 'advHint' : 'aiAskHint');
+    q.setAttribute('aria-label', t(adv ? 'advTitle' : 'aiAskTitle'));
+    var go = el('button', 'seed', t(adv ? 'advBtn' : 'aiAskBtn'));
     go.type = 'submit';
     form.appendChild(q);
     form.appendChild(go);
     into.appendChild(form);
-    into.appendChild(el('p', 'chask-note', t('aiAskNote')));
+    into.appendChild(el('p', 'chask-note', t(adv ? 'advNote' : 'aiAskNote')));
     var list = el('div', 'chask-list');
     into.appendChild(list);
 
@@ -2357,7 +2369,7 @@ import {
       var text = q.value.trim();
       if (!text) { q.focus(); return; }
       go.disabled = true;
-      askAI(text).then(function () {
+      askAI(text, mode).then(function () {
         q.value = '';
         go.disabled = false;
       }, function () {
@@ -2366,9 +2378,15 @@ import {
       });
     };
 
-    onSnapshot(query(collection(db, 'asks'), orderBy('at', 'desc'), limit(10)), function (qs) {
+    onSnapshot(query(collection(db, 'asks'), orderBy('at', 'desc'), limit(30)), function (qs) {
       list.innerHTML = '';
-      qs.forEach(function (d) { list.appendChild(askCard(d.data({ serverTimestamps: 'estimate' }))); });
+      var n = 0;
+      qs.forEach(function (d) {
+        var a = d.data({ serverTimestamps: 'estimate' });
+        if ((a.mode === 'advise') !== adv || n >= 10) return;
+        n++;
+        list.appendChild(askCard(a));
+      });
     }, failInto(list));
   }
 

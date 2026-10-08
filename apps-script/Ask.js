@@ -2,7 +2,8 @@
 
    HOW A QUESTION TRAVELS
    His page writes the question to /asks/{id} (the rules let only him write
-   one, and only as "asked"), then posts the id to this script's web app
+   one, and only as "asked"; mode 'advise' sends it to his advisor instead,
+   Advise.js), then posts the id to this script's web app
    with his sign-in token (Code.js doPost, kind 'ask'). The script checks
    the token is the Chairman's, reads the question back from Firestore —
    the text he wrote there, not whatever arrived in the post — gathers what
@@ -66,6 +67,9 @@ function answerAsk_(id) {
   var day = todayAddis_();
   var out = { q: d.q, at: d.at, by: d.by, status: 'answered', a: '', model: '', error: '',
               answeredAt: new Date() };
+  /* a question for his advisor (Advise.js) keeps saying so */
+  var advise = d.mode === 'advise';
+  if (d.mode) out.mode = d.mode;
   var capKey = 'asks:' + day;
   var n = Number(cache.get(capKey) || 0);
   if (n >= ASK_DAILY_CAP_) {
@@ -79,7 +83,8 @@ function answerAsk_(id) {
         out.status = 'failed';
         out.error = 'No model key is set in the script (GEMINI_KEY).';
       } else {
-        var a = aiAsk_(askPrompt_(d.q, askContext_(day)), 2500);   /* room for a week's list */
+        var a = advise ? aiAsk_(advisePrompt_(d.q, adviseContext_(day)), 3000)
+                       : aiAsk_(askPrompt_(d.q, askContext_(day)), 2500);   /* room for a week's list */
         if (/^\((no answer|could not read)/.test(a)) {
           out.status = 'failed';
           out.error = a;

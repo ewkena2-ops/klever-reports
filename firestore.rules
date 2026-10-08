@@ -272,8 +272,11 @@ service cloud.firestore {
        about the company's money. */
     match /asks/{id} {
       allow get, list: if isChairman() || isLedger();
+      /* mode: 'advise' sends it to his advisor (apps-script/Advise.js)
+         instead of a plain answer; left out, it is a plain question */
       allow create: if isChairman()
-                    && request.resource.data.keys().hasOnly(['q', 'at', 'by', 'status'])
+                    && request.resource.data.keys().hasOnly(['q', 'at', 'by', 'status', 'mode'])
+                    && (!('mode' in request.resource.data) || request.resource.data.mode in ['ask', 'advise'])
                     && request.resource.data.q is string
                     && request.resource.data.q.size() > 0
                     && request.resource.data.q.size() <= 1000

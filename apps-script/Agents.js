@@ -734,6 +734,7 @@ function contradictions_(d) {
   }
   cmp('defects — Amaha against Wude', 'amaha-daily','qc_defects', 'wude-daily','d_total');
   cmp('defects — Wude against Mahelet', 'wude-daily','d_total', 'liu-daily','defects');
+  cmp('waste % — Amaha against Mahelet', 'amaha-daily','w_pct', 'liu-daily','waste');
   /* jobs against jobs: Elyas's m² against Mahelet's count of jobs (6 against
      1) was reported as a disagreement */
   cmp('jobs installed — Elyas against Mahelet', 'elyas-daily','j_done', 'liu-daily','installed');
@@ -1335,7 +1336,7 @@ var AGENTS = [
       amaha_m2: N('amaha-daily','p_total'),
       amaha_defects: N('amaha-daily','qc_defects'), wude_defects: N('wude-daily','d_total'),
       mahelet_defects: N('liu-daily','defects'),
-      amaha_waste_pct: N('amaha-daily','w_pct'),
+      amaha_waste_pct: N('amaha-daily','w_pct'),   mahelet_waste_pct: N('liu-daily','waste'),
       amaha_stopped_for_board: ay_(amaha, 'b_short'),
       amaha_which_board: amaha.b_shortw || '',
       yordanos_shortages: N('yordanos-daily','sh_flagged'),

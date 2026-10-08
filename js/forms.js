@@ -109,9 +109,7 @@ const REPORTS = [
     { en:'2 · Lead response compliance', am:'2 · የምላሽ ፍጥነት', fields:[
       /* 24 hours, not 1 (the Chairman, 8 Oct 2026); the letters still say 1 hour */
       {id:'resp_1hr', en:'New leads today: how many did you call within 24 hours? (called within 24 hours / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ24 ሰዓት ውስጥ ደወሉላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'leads_total'},
-      {id:'resp_1hr_why', en:'Which leads were not called within 24 hours, why, and have they been called now?', am:'በ24 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን? አሁን ተደውሎላቸዋል?', t:'area', show:{f:'resp_1hr', when:'short'}},
-      {id:'resp_showroom', en:'How many showroom visitors were served the same day? (served / all visitors)', am:'ሾውሩም ከመጡት ስንቱ በዕለቱ ተስተናገዱ? (የተስተናገዱ / ሁሉም)', t:'ratio'},
-      {id:'resp_showroom_why', en:'Who was not served the same day, and why?', am:'በዕለቱ ያልተስተናገደው ማን ነው? ለምን?', t:'area', show:{f:'resp_showroom', when:'short'}}
+      {id:'resp_1hr_why', en:'Which leads were not called within 24 hours, why, and have they been called now?', am:'በ24 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን? አሁን ተደውሎላቸዋል?', t:'area', show:{f:'resp_1hr', when:'short'}}
     ]},
     { en:'3 · Pre-measurement', am:'3 · ቅድመ ልኬት', fields:[
       {id:'visits_booked', en:'How many pre-measurement appointments did you make today?', am:'ዛሬ ስንት የቅድመ ልኬት ቀጠሮ ያዙ?', t:'num'},
@@ -3029,9 +3027,7 @@ const SALES_DAILY = {
       {id:'r_1hr', en:'New leads today: how many did you call within 24 hours? (called within 24 hours / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ24 ሰዓት ውስጥ ደወሉላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'l_total',
         tgt:{op:'gte', v:100, en:'Stage 1 of your commission — –200 Birr per missed lead',
              am:'የኮሚሽንዎ 1ኛ ደረጃ — ላመለጠ እያንዳንዱ –200 ብር'}},
-      {id:'r_1hr_why', en:'Which leads were not called within 24 hours, and why?', am:'በ24 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን?', t:'area', show:{f:'r_1hr', when:'short'}},
-      {id:'r_show', en:'How many showroom visitors were served the same day? (served / all visitors)', am:'ሾውሩም ከመጡት ስንቱ በዕለቱ ተስተናገዱ? (የተስተናገዱ / ሁሉም)', t:'ratio'},
-      {id:'r_show_why', en:'Who was not served the same day, and why?', am:'በዕለቱ ያልተስተናገደው ማን ነው? ለምን?', t:'area', show:{f:'r_show', when:'short'}}
+      {id:'r_1hr_why', en:'Which leads were not called within 24 hours, and why?', am:'በ24 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን?', t:'area', show:{f:'r_1hr', when:'short'}}
     ]},
     { en:'3 · Pre-measurement', am:'3 · ቅድመ ልኬት', fields:[
       {id:'v_booked', en:'How many pre-measurement appointments did you make today?', am:'ዛሬ ስንት የቅድመ ልኬት ቀጠሮ ያዙ?', t:'num'},

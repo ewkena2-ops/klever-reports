@@ -1016,12 +1016,11 @@ const RULES = [
     note:'Commission stage 1 (0.2%) is also lost on each such job. The Chairman, 8 Oct 2026: 24 hours, not the letter’s 1 hour.',
     test:{ at:'day', when:[{ diff:['{p}-sales-daily.r_1hr__b', '{p}-sales-daily.r_1hr__a'] }, '>', 0], count:{ diff:['{p}-sales-daily.r_1hr__b', '{p}-sales-daily.r_1hr__a'] } } },
 
-  { id:'sales-showroom-same-day', who:['sales'], kind:'penalty', birr:200, per:'item', how:'auto',
+  { id:'sales-showroom-same-day', who:['sales'], kind:'penalty', birr:200, per:'item', how:'recorded',
     en:'Showroom visitor not engaged the same day',
     am:'የሾውሩም ጎብኚ በዕለቱ አልተስተናገደም',
     src:'The salesperson letter — “Showroom visitor not engaged the same day –200 Birr”',
-    note:'The letter does not say "each"; charged per visitor.',
-    test:{ at:'day', when:[{ diff:['{p}-sales-daily.r_show__b', '{p}-sales-daily.r_show__a'] }, '>', 0], count:{ diff:['{p}-sales-daily.r_show__b', '{p}-sales-daily.r_show__a'] } } },
+    note:'The letter does not say "each"; charged per visitor. The Chairman, 8 Oct 2026: the question was taken out of the reports, so nothing is charged by itself — it stands in the letter, and he records it if it happens.' },
 
   { id:'sales-site-visit-48h', who:['sales'], kind:'penalty', birr:300, per:'event', how:'recorded',
     en:'Pre-measurement not booked within 48 hours',

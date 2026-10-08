@@ -25,7 +25,8 @@ var SD_VISIT_HOURS_DAYS_ = 2;
 var SD_ACTIONS_ = 3;
 /* who the unassigned leads fall to */
 var SD_LEAD_ = 'ephrata';
-var SD_SALES_F_ = { leads: 'l_total', called: 'r_1hr', visits: 'v_done', visitsLate: 'v_late', quotes: 'q_issued',
+/* no visits: pre-measurement is Ephrata's, who assigns it (8 Oct 2026) */
+var SD_SALES_F_ = { leads: 'l_total', called: 'r_1hr', quotes: 'q_issued',
                     contracts: 'c_signed', value: 'c_value', collected: 'k_today', week: 'k_week', unans: 'w_unans',
                     quoteList: 'q_list', margin: 'q_margin' };
 var SD_TEAM_ = [
@@ -109,6 +110,11 @@ function sdMember_(m, byDay, d, monday, from, left, names) {
       quote_to_contract_pct: sdPct_(contracts, quotes)
     }
   };
+  /* only Ephrata is asked about pre-measurement, so only her row carries it */
+  if (!f.visits) {
+    if (out.the_day_read) { delete out.the_day_read.visits_done; delete out.the_day_read.leads_waiting_over_48h_for_a_visit; }
+    delete out.last_4_weeks.visits;
+  }
   /* a salesperson's quotes: below the margin floor, by customer */
   if (f.quoteList && v) {
     out.the_day_read.average_margin_per_m2 = a_(v, f.margin);

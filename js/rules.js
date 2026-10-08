@@ -1026,7 +1026,7 @@ const RULES = [
     en:'Pre-measurement not booked within 48 hours',
     am:'የቅድመ ልኬት ቀጠሮ በ48 ሰዓት ውስጥ አልተያዘም',
     src:'The salesperson letter — “Site visit not booked within 48 hours –300 Birr”',
-    note:'The daily form counts visits still waiting, so the same visit repeats day after day — record each late visit once.' },
+    note:'Ephrata’s daily report counts the leads still waiting, so the same one repeats day after day — record each late visit once. The Chairman, 8 Oct 2026: pre-measurement is Ephrata’s, who assigns it; the salespeople are no longer asked.' },
 
   { id:'sales-quote-below-margin', who:['sales'], kind:'penalty', birr:1000, per:'event', how:'recorded',
     en:'Quotation below the 6,000 Birr/m² floor without approval',

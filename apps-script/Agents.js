@@ -104,18 +104,6 @@ function got_(filed, reportId) {
   for (var i = 0; i < filed.length; i++) if (filed[i].report === reportId) hit = filed[i];
   return hit;
 }
-/* One answer added up across the sales people's own daily reports. null when
-   not one of them has filed it: nobody said zero, so the agents are not told
-   zero (8 Oct 2026, as questions move off Ephrata and onto the team). */
-function salesSum_(d, field) {
-  var any = false, total = 0;
-  ((d && d.filed) || []).forEach(function (f) {
-    if (!/-sales-daily$/.test(String(f.report || ''))) return;
-    var v = a_(f.fields || {}, field);
-    if (v !== null) { any = true; total += v; }
-  });
-  return any ? total : null;
-}
 function vals_(filed, reportId) {
   var f = got_(filed, reportId);
   return f ? (f.fields || {}) : {};
@@ -1008,10 +996,9 @@ var AGENTS = [
       leads_by_source: { social:a_(ephrata, 'leads_social'), showroom:a_(ephrata, 'leads_showroom'),
                          referral:a_(ephrata, 'leads_referral'), agent:a_(ephrata, 'leads_agent'), other:a_(ephrata, 'leads_other') },
       new_leads_called_within_24_hours: pair_(ephrata, 'resp_1hr'),
-      /* the salespeople book the appointments, so the figure is theirs added
-         up (the Chairman, 8 Oct 2026) — null while none of them has filed */
-      visits_booked: salesSum_(d, 'v_booked'),
-      visits_done: a_(ephrata, 'visits_done'), visits_late: a_(ephrata, 'visits_late'),
+      /* pre-measurement is Ephrata's: she assigns the designers, and the
+         salespeople are not asked (the Chairman, 8 Oct 2026) */
+      visits_booked: a_(ephrata, 'visits_booked'), visits_done: a_(ephrata, 'visits_done'), visits_late: a_(ephrata, 'visits_late'),
       quotes_issued: a_(ephrata, 'quotes_issued'), quotes_late: a_(ephrata, 'quotes_late'),
       contracts_signed: a_(ephrata, 'contracts'), contract_value: a_(ephrata, 'contract_value'),
       collected_today: a_(ephrata, 'collected_today'),

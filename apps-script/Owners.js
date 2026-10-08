@@ -127,7 +127,8 @@ function realtimeAlerts_(fresh, schedule) {
           sent += alertMany_(base + '-r1', [who, 'ephrata'], (p.of - p.done) + ' of ' + p.of + ' new leads in ' + from +
                              '’s report of ' + dayLabel_(day) + ' were not called within 24 hours. Call them now, and say here when each was called.', day);
         }
-        var late = a_(v, lead ? 'visits_late' : 'v_late');
+        /* pre-measurement is Ephrata's alone (8 Oct 2026) */
+        var late = lead ? a_(v, 'visits_late') : null;
         if (late > 0) {
           sent += alertMany_(base + '-v48', [who, 'ephrata'], late + ' lead' + (late === 1 ? ' has' : 's have') + ' waited over 48 hours for a pre-measurement visit (' +
                              from + ', ' + dayLabel_(day) + '). Book each visit today and close this with the dates.', day);

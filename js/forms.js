@@ -112,6 +112,7 @@ const REPORTS = [
       {id:'resp_1hr_why', en:'Which leads were not called within 24 hours, why, and have they been called now?', am:'በ24 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን? አሁን ተደውሎላቸዋል?', t:'area', show:{f:'resp_1hr', when:'short'}}
     ]},
     { en:'3 · Pre-measurement', am:'3 · ቅድመ ልኬት', fields:[
+      {id:'visits_booked', en:'How many pre-measurement appointments did you make today?', am:'ዛሬ ስንት የቅድመ ልኬት ቀጠሮ ያዙ?', t:'num'},
       {id:'visits_done', en:'How many pre-measurement visits were done today?', am:'ዛሬ ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num'},
       {id:'visits_list', en:'List each pre-measurement visit done today', am:'ዛሬ የተደረጉትን የቅድመ ልኬት ጉብኝቶች አንድ በአንድ ይዘርዝሩ', t:'table', addEn:'Add a visit', addAm:'ጉብኝት ጨምር',
         show:{f:'visits_done', when:'pos'},
@@ -3028,22 +3029,7 @@ const SALES_DAILY = {
              am:'የኮሚሽንዎ 1ኛ ደረጃ — ላመለጠ እያንዳንዱ –200 ብር'}},
       {id:'r_1hr_why', en:'Which leads were not called within 24 hours, and why?', am:'በ24 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን?', t:'area', show:{f:'r_1hr', when:'short'}}
     ]},
-    { en:'3 · Pre-measurement', am:'3 · ቅድመ ልኬት', fields:[
-      {id:'v_booked', en:'How many pre-measurement appointments did you make today?', am:'ዛሬ ስንት የቅድመ ልኬት ቀጠሮ ያዙ?', t:'num'},
-      {id:'v_done', en:'How many pre-measurement visits were done today?', am:'ዛሬ ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num'},
-      {id:'v_list', en:'List each pre-measurement visit done today', am:'ዛሬ የተደረጉትን የቅድመ ልኬት ጉብኝቶች አንድ በአንድ ይዘርዝሩ', t:'table', addEn:'Add a visit', addAm:'ጉብኝት ጨምር',
-        show:{f:'v_done', when:'pos'},
-        cols:[
-          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
-          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
-          {id:'designer', en:'Designer', am:'ዲዛይነር', t:'text'},
-          {id:'next', en:'Next step', am:'ቀጣይ እርምጃ', t:'text'}
-        ]},
-      {id:'v_late', en:'How many new leads have waited more than 48 hours for a pre-measurement appointment?', am:'ከ48 ሰዓት በላይ የቅድመ ልኬት ቀጠሮ ሳይያዝላቸው የቆዩ አዲስ ደንበኞች ስንት ናቸው?', t:'num',
-        tgt:{op:'lte', v:0, en:'–300 Birr each', am:'እያንዳንዱ –300 ብር'}},
-      {id:'v_late_why', en:'Which customers, why the delay, and on what day will each be visited?', am:'የየትኞቹ ደንበኞች ናቸው? ለምን ዘገየ? እያንዳንዳቸው በየትኛው ቀን ይጎበኛሉ?', t:'area', show:{f:'v_late', when:'pos'}}
-    ]},
-    { en:'4 · Quotations', am:'4 · ፕሮፎርማ', fields:[
+    { en:'3 · Quotations', am:'3 · ፕሮፎርማ', fields:[
       {id:'q_issued', en:'How many quotations did you present today?', am:'ዛሬ ስንት ፕሮፎርማ ቀረበ?', t:'num'},
       {id:'q_list', en:'List each quotation presented today', am:'ዛሬ የቀረቡትን ፕሮፎርማዎች ይዘርዝሩ', t:'table', addEn:'Add a quotation', addAm:'ፕሮፎርማ ጨምር',
         show:{f:'q_issued', when:'pos'},
@@ -3061,7 +3047,7 @@ const SALES_DAILY = {
       {id:'q_expiry', en:'Did every quotation state the 7-day expiry?', am:'ሁሉም ፕሮፎርማዎች የ7 ቀን ገደብ ተጽፎባቸዋል?', t:'yesno'},
       {id:'q_expiry_why', en:'Which ones did not, and have they been corrected?', am:'ያልተጻፈባቸው የትኞቹ ናቸው? ተስተካክለዋል?', t:'area', show:{f:'q_expiry', when:'no'}}
     ]},
-    { en:'5 · Contracts', am:'5 · ውሎች', fields:[
+    { en:'4 · Contracts', am:'4 · ውሎች', fields:[
       {id:'c_signed', en:'How many contracts did you sign today?', am:'ዛሬ ስንት ውል ተፈረመ?', t:'num'},
       {id:'c_list', en:'List each contract signed today', am:'ዛሬ የተፈረሙትን ውሎች ይዘርዝሩ', t:'table', addEn:'Add a contract', addAm:'ውል ጨምር',
         show:{f:'c_signed', when:'pos'},
@@ -3078,7 +3064,7 @@ const SALES_DAILY = {
       {id:'c_banked', en:'Did all of it go to the bank the same day?', am:'ሁሉም በዕለቱ ባንክ ገብቷል?', t:'yesno'},
       {id:'c_banked_why', en:'Why not, where is the money now, and when will it be banked?', am:'ለምን አልገባም? ገንዘቡ አሁን የት ነው? መቼ ባንክ ይገባል?', t:'area', show:{f:'c_banked', when:'no'}}
     ]},
-    { en:'6 · Cash collection', am:'6 · የገንዘብ ስብሰባ', fields:[
+    { en:'5 · Cash collection', am:'5 · የገንዘብ ስብሰባ', fields:[
       {id:'k_today', en:'How much did you collect from customers today?', am:'ዛሬ ከደንበኞች ስንት ብር ተሰበሰበ?', t:'money'},
       {id:'k_list', en:'From whom?', am:'ከማን ከማን?', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
         show:{f:'k_today', when:'pos'},
@@ -3096,7 +3082,7 @@ const SALES_DAILY = {
              am:'የሳምንቱ ዒላማዎ 2,000,000 ብር የተሰበሰበ ገንዘብ ነው'}},
       {id:'k_week_gap', en:'Which customers will close the gap to 2,000,000 Birr before the week ends, and for how much?', am:'ሳምንቱ ከማለቁ በፊት እስከ 2,000,000 ብር ያለውን ክፍተት የሚሞሉት የትኞቹ ደንበኞች ናቸው? በስንት ብር?', t:'area', show:{f:'k_week', when:'miss'}}
     ]},
-    { en:'7 · WhatsApp compliance', am:'7 · የዋትስአፕ ተገዢነት', fields:[
+    { en:'6 · WhatsApp compliance', am:'6 · የዋትስአፕ ተገዢነት', fields:[
       {id:'w_groups', en:'How many customer groups are you active in?', am:'በስንት የደንበኛ ግሩፖች ውስጥ ንቁ ነዎት?', t:'num'},
       {id:'w_stage', en:'How many required stage messages did you post today? (posted / required)', am:'ዛሬ ከሚገባው የደረጃ መልዕክት ስንቱ ተላከ? (የተላከ / የሚገባው)', t:'ratio',
         tgt:{op:'gte', v:100, en:'A missed stage message loses that stage’s commission',
@@ -3109,7 +3095,7 @@ const SALES_DAILY = {
         tgt:{op:'lte', v:0, en:'–1,000 Birr each', am:'እያንዳንዱ –1,000 ብር'}},
       {id:'w_comp_what', en:'Who complained, about what, and what was done?', am:'ቅሬታ ያቀረበው ማን ነው? ስለምን? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'w_comp', when:'pos'}}
     ]},
-    { en:'8 · After-sales', am:'8 · ከሽያጭ በኋላ', fields:[
+    { en:'7 · After-sales', am:'7 · ከሽያጭ በኋላ', fields:[
       {id:'fu_calls', en:'Of customers installed 48 hours ago, how many got their follow-up call? (called / due)', am:'ተከላቸው ከ48 ሰዓት በፊት ከተጠናቀቀ ደንበኞች ስንቱ የክትትል ጥሪ ተደረገላቸው? (የተደወለላቸው / መደወል የነበረባቸው)', t:'ratio'},
       {id:'fu_list', en:'Which customers were called?', am:'የትኞቹ ደንበኞች ተደወለላቸው?', t:'table', addEn:'Add a customer', addAm:'ደንበኛ ጨምር',
         show:{f:'fu_calls', when:'pos'}, cols:[
@@ -3121,7 +3107,7 @@ const SALES_DAILY = {
       {id:'fu_calls_why', en:'Who was not called, and when will they be?', am:'ያልተደወለላቸው እነማን ናቸው? መቼ ይደወልላቸዋል?', t:'area', show:{f:'fu_calls', when:'short'}},
       {id:'ref_logged', en:'How many referrals did you ask for and log today?', am:'ዛሬ ስንት ሪፈራል ተጠይቆ ተመዘገበ?', t:'num'}
     ]},
-    { en:'9 · Problems and solutions', am:'9 · ችግሮችና መፍትሔዎች', fields:[
+    { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'What was the biggest problem today?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
       {id:'cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', opt:1},
       {id:'action', en:'What was done about it, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
@@ -3129,7 +3115,7 @@ const SALES_DAILY = {
       {id:'need_lead', en:'Do you need a decision from Ephrata?', am:'የኤፍራታ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_lead_what', en:'What exactly should she decide (a discount beyond your window, a price change), and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? (ከፈቃድዎ በላይ ቅናሽ፣ የዋጋ ለውጥ) እስከ መቼ?', t:'area', show:{f:'need_lead', when:'yes'}}
     ]},
-    { en:"10 · Tomorrow's top 3", am:'10 · የነገ ሦስት ቅድሚያዎች', fields:[
+    { en:"9 · Tomorrow's top 3", am:'9 · የነገ ሦስት ቅድሚያዎች', fields:[
       {id:'p1', en:'Priority 1', am:'1ኛ ሥራ', t:'text'},
       {id:'p2', en:'Priority 2', am:'2ኛ ሥራ', t:'text'},
       {id:'p3', en:'Priority 3', am:'3ኛ ሥራ', t:'text'}
@@ -3173,7 +3159,6 @@ const SALES_WEEKLY = {
       {id:'lp_total', en:'How many new leads did you receive this week?', am:'በዚህ ሳምንት ስንት አዲስ ደንበኞች መጡ?', t:'num'},
       {id:'lp_1hr', en:'New leads this week: how many were called within 24 hours? (called within 24 hours / all new leads this week)', am:'በዚህ ሳምንት አዲስ የመጡ ደንበኞች፦ ስንቱ በ24 ሰዓት ውስጥ ተደወለላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / በዚህ ሳምንት የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'lp_total'},
       {id:'lp_1hr_why', en:'Which leads were missed, and why?', am:'ያመለጡት ደንበኞች እነማን ናቸው? ለምን?', t:'area', show:{f:'lp_1hr', when:'short'}},
-      {id:'lp_visits', en:'How many pre-measurement visits were done this week?', am:'በዚህ ሳምንት ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num'},
       {id:'lp_quotes', en:'How many quotations did you present this week?', am:'በዚህ ሳምንት ስንት ፕሮፎርማ ቀረበ?', t:'num'},
       {id:'lp_conv', en:'What share of your leads became contracts?', am:'ከደንበኞችዎ ስንት በመቶው ውል ፈረሙ?', t:'pct'},
       {id:'lp_follow', en:'What share of your leads did you follow up?', am:'ከደንበኞችዎ ስንት በመቶው ክትትል ተደረገላቸው?', t:'pct',

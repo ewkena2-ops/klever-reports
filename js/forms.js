@@ -252,9 +252,6 @@ const REPORTS = [
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   sections:[
     { en:'1 · Production', am:'1 · ምርት', fields:[
-      {id:'m2', en:'How many m² did the factory produce today?', am:'ፋብሪካው ዛሬ ስንት ካሬ ሜትር አመረተ?', t:'num',
-        tgt:{op:'gte', v:40, en:'Daily target 40 m²', am:'የቀን ዒላማ 40 ካሬ ሜትር'}},
-      {id:'m2_why', en:'Production is under 40 m². What held it back, and how will it be recovered (who, by when)?', am:'ምርቱ ከ40 ካሬ ሜትር በታች ነው። ምን አዘገየው? በምን ይካካሳል? በማን፣ እስከ መቼ?', t:'area', show:{f:'m2', when:'miss'}},
       {id:'waste', en:'What was today\'s waste, as a % of material used?', am:'የዛሬው ብክነት ከዋለው ዕቃ ስንት % ነው?', t:'pct',
         tgt:{op:'lte', v:20, en:'Must not exceed 20%', am:'ከ20% መብለጥ የለበትም'}},
       {id:'waste_why', en:'Waste is over 20%. On which job or machine, why, and what was done?', am:'ብክነቱ ከ20% በላይ ነው። በየትኛው ሥራ ወይም ማሽን? ለምን? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'waste', when:'miss'}},

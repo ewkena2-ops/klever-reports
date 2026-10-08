@@ -64,8 +64,8 @@ function opsPlanDays_(P, plan) {
     var d = hrWorkday_(plan.start, k);
     if (d < P.start || d > P.end) continue;
     var planned = a_(grid[k - 1] || {}, 'm2');
-    var made = a_(amaha[d], 'p_total'), from = 'Amaha';
-    if (made === null) { made = a_(liu[d], 'm2'); from = made === null ? null : 'Mahelet'; }
+    /* Amaha alone reports what was made (the Chairman, 8 Oct 2026) */
+    var made = a_(amaha[d], 'p_total'), from = made === null ? null : 'Amaha';
     days.push({ day: dayLabel_(d), iso: d, plan_day: k, planned_m2: planned, made_m2: made, made_from: from,
                 jobs_planned: String((grid[k - 1] || {}).jobs || '').trim(),
                 short_by_m2: planned !== null && made !== null && made < planned ? planned - made : 0 });

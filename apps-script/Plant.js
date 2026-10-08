@@ -60,10 +60,11 @@ function pmPlanDay_(plans, day) {
            jobs: k ? String(row.jobs || '').trim() : '' };
 }
 
-/* made on a day: Amaha's figure, else Mahelet's */
+/* made on a day: Amaha's figure. He is the only one asked for it (the
+   Chairman, 8 Oct 2026), so a day he did not file has no figure — null,
+   which reads as "not reported", never as a day of nothing. */
 function pmMade_(byReport, day) {
-  var a = a_((byReport['amaha-daily'] || {})[day], 'p_total');
-  return a !== null ? a : a_((byReport['liu-daily'] || {})[day], 'm2');
+  return a_((byReport['amaha-daily'] || {})[day], 'p_total');
 }
 
 /* OEE, as near as the reports allow: availability from Amaha's machine rows

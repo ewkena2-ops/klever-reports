@@ -732,7 +732,6 @@ function contradictions_(d) {
     var gap = Math.abs(a - b), scale = Math.max(Math.abs(a), Math.abs(b));
     if (scale && gap / scale > 0.1) out.push({ about: label, first: a, second: b });
   }
-  cmp('m² produced — Amaha against Mahelet', 'amaha-daily','p_total', 'liu-daily','m2');
   cmp('defects — Amaha against Wude', 'amaha-daily','qc_defects', 'wude-daily','d_total');
   cmp('defects — Wude against Mahelet', 'wude-daily','d_total', 'liu-daily','defects');
   cmp('waste % — Amaha against Mahelet', 'amaha-daily','w_pct', 'liu-daily','waste');
@@ -1332,7 +1331,9 @@ var AGENTS = [
     return {
       note: 'null means that report was not filed, or that question was left blank — it does not mean zero',
       not_filed: notFiled_(d),
-      amaha_m2: N('amaha-daily','p_total'),        mahelet_m2: N('liu-daily','m2'),
+      /* the m² is Amaha's alone now (the Chairman, 8 Oct 2026): Mahelet
+         is no longer asked, so there are no two figures to disagree */
+      amaha_m2: N('amaha-daily','p_total'),
       amaha_defects: N('amaha-daily','qc_defects'), wude_defects: N('wude-daily','d_total'),
       mahelet_defects: N('liu-daily','defects'),
       amaha_waste_pct: N('amaha-daily','w_pct'),   mahelet_waste_pct: N('liu-daily','waste'),

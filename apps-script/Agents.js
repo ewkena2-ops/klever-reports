@@ -787,6 +787,25 @@ var AGENTS = [
       'If today is more than 15% below the average of the days before it, say so first — '+
       'that is the drop the Chairman wants to hear about the same day.' },
 
+/* THE DAILY COO / PLANT MANAGER (8 Oct 2026). The production analyst reads
+   Amaha's day, and quality, store and purchasing read theirs; nobody ran the
+   plant as one. This does, each morning: yesterday against Mahelet's plan
+   and 40 m², the week against 240 m², whether today's plan can be made with
+   the machines, materials and people there are, jobs late or due today and
+   tomorrow, and what each person on the factory side does today. Every
+   figure and action is worked out in code (plantManager_ in Plant.js); the
+   morning's AI task list (Team.js) reads this finding. */
+{ id:'plantmanager', en:'Daily COO / Plant Manager', am:'የዕለቱ COO / የፋብሪካ ሥራ አስኪያጅ', words: 180,
+  said:['amaha-daily', 'liu-daily', 'wude-daily', 'yordanos-daily', 'getachew-daily', 'elyas-daily'],
+  facts: function (d) { return plantManager_(d); },
+  ask:'You run the plant this morning. First yesterday: made against the plan and the 40 m², and the '+
+      'one thing that cost the most. Then the week: on pace for 240 m² or not, and what each remaining '+
+      'working day now needs. Then today: the plan (m² and jobs) and whether it can be made — name the '+
+      'machine, material or people that stand in the way. Then jobs late against Mahelet’s plan or due '+
+      'today and the next working day, by code. If anything was produced without the four confirmations, '+
+      'say it first. End with TODAY, one line per person: their actions in today_actions, in that order, '+
+      'and only those. If a person has none, leave them out.' },
+
 { id:'quality', en:'Quality', am:'ጥራት',
   said:['wude-daily', 'wude-weekly', 'wude-monthly'],
   facts: function (d) {

@@ -504,6 +504,7 @@ import {
     ['finance',         66, 200, 'out'],
     ['commercial',     334, 200, 'out'],
     ['salesdirector',  362, 160, 'out'],
+    ['plantmanager',    92, 330, 'out'],
     ['site',           150, 352, 'out'],
     ['attendance',     258, 348, 'out'],
     ['purchasing',      86,  96, 'out'],

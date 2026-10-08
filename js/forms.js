@@ -1543,7 +1543,29 @@ const REPORTS = [
       ]}
     ]},
     { en:'5 · Materials and bottlenecks', am:'5 · ዕቃዎችና እንቅፋቶች', fields:[
-      {id:'plan_materials', en:'What materials does this plan need, and which are not yet in the store?', am:'ይህ ዕቅድ ምን ዕቃዎች ይፈልጋል? ከነሱ በመጋዘን ገና ያልገቡት የትኞቹ ናቸው?', t:'area'},
+      /* the production date is set before the material is bought (the Chairman,
+         8 Oct 2026), so the plan has to say what to buy. The same twelve
+         materials the store counts, so the plan, the store and purchasing
+         use one set of words. */
+      {id:'plan_mat', en:'Which materials does each job in this plan need?', am:'በዚህ ዕቅድ ውስጥ ያለው እያንዳንዱ ሥራ ምን ዕቃ ይፈልጋል?',
+       t:'table', addEn:'Add a material', addAm:'ዕቃ ጨምር', cols:[
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'mat',  en:'Material', am:'ዕቃ', t:'choice', opts:[
+            {v:'MDF 18mm',            en:'MDF 18mm',            am:'ኤምዲኤፍ 18ሚሜ'},
+            {v:'MDF 16mm',            en:'MDF 16mm',            am:'ኤምዲኤፍ 16ሚሜ'},
+            {v:'Melamine 18mm',       en:'Melamine 18mm',       am:'ሜላሚን 18ሚሜ'},
+            {v:'Melamine 16mm',       en:'Melamine 16mm',       am:'ሜላሚን 16ሚሜ'},
+            {v:'Plywood',             en:'Plywood',             am:'ፕላይውድ'},
+            {v:'Back panel 3mm',      en:'Back panel 3mm',      am:'የኋላ ሰሌዳ 3ሚሜ'},
+            {v:'Edge banding (m)',    en:'Edge banding (m)',    am:'ጠርዝ ማሰሪያ (ሜትር)'},
+            {v:'Hinges',              en:'Hinges',              am:'ማጠፊያዎች'},
+            {v:'Drawer slides',       en:'Drawer slides',       am:'የመሳቢያ ተንሸራታቾች'},
+            {v:'Handles',             en:'Handles',             am:'መያዣዎች'},
+            {v:'Legs and shelf pins', en:'Legs and shelf pins', am:'እግሮችና የመደርደሪያ ችንካሮች'},
+            {v:'Glue and screws',     en:'Glue and screws',     am:'ሙጫና ብሎኖች'}
+          ]},
+          {id:'qty',  en:'Quantity', am:'ብዛት', t:'num'}
+        ]},
       {id:'plan_block', en:'What could stop this plan, and what support is needed, from whom?', am:'ይህን ዕቅድ ምን ሊያቆመው ይችላል? ምን ድጋፍ ያስፈልጋል? ከማን?', t:'area', opt:1}
     ]},
     { en:'6 · Confirmation', am:'6 · ማረጋገጫ', fields:[

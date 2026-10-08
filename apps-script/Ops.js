@@ -51,6 +51,60 @@ function opsPlan_(P) {
   return hit;
 }
 
+/* WHAT THE PLAN NEEDS, AGAINST WHAT THE STORE HAS (the Chairman, 8 Oct
+   2026: "she'll plan the production date before they even get bought").
+   Mahelet's plan now names the material each job needs; Yordanos counts
+   the same twelve on his shelf. What the plan needs and the store has not
+   got is what Getachew must buy, and the job's planned start says by when. */
+function opsPlanMaterials_(P, plan) {
+  if (!plan) return null;
+  var want = rows_(plan.v.plan_mat).filter(function (r) { return r && r.mat && !blank_(r.qty); });
+  if (!want.length) return { note: 'The plan does not say what materials its jobs need (Mahelet’s 15-day plan, “Materials”).' };
+  /* when each job is due to start, from the queue above it */
+  var starts = {};
+  rows_(plan.v.plan_queue).forEach(function (q) {
+    if (q && q.code && q.start) starts[opsCode_(q.code)] = String(q.start).trim();
+  });
+  /* the store's latest count of the same twelve */
+  var yord = daysOf_(P, 'yordanos-daily');
+  var labels = pmGridLabels_(loadSchedule_(), 'yordanos-daily', 'k_stock');
+  var onHand = null, counted = null;
+  for (var i = yord.length - 1; i >= 0 && onHand === null; i--) {
+    var grid = rows_(yord[i].v.k_stock);
+    if (!grid.length) continue;
+    var any = false, map = {};
+    grid.forEach(function (r, k) {
+      var q = a_(r, 'qty');
+      if (q === null) q = a_(r, 'onhand');
+      if (q !== null && labels[k]) { map[labels[k]] = q; any = true; }
+    });
+    if (any) { onHand = map; counted = yord[i].day; }
+  }
+  var need = {};
+  want.forEach(function (r) {
+    var m = String(r.mat).trim();
+    (need[m] = need[m] || { material: m, needed: 0, jobs: [] });
+    need[m].needed += n_(r.qty);
+    var code = r.code ? opsCode_(r.code) : '';
+    need[m].jobs.push({ job: code, quantity: n_(r.qty), job_starts: starts[code] ? dayLabel_(starts[code]) : null });
+  });
+  var lines = Object.keys(need).map(function (m) {
+    var x = need[m];
+    x.on_hand = onHand ? (onHand[m] === undefined ? null : onHand[m]) : null;
+    x.short_by = x.on_hand === null ? null : Math.max(0, Math.round((x.needed - x.on_hand) * 100) / 100);
+    /* the first job that needs it is the date to buy against */
+    var days = x.jobs.map(function (j) { return j.job_starts; }).filter(Boolean).sort();
+    x.first_job_starts = days.length ? days[0] : null;
+    return x;
+  }).sort(function (a2, b2) { return (b2.short_by || 0) - (a2.short_by || 0); });
+  return {
+    store_counted_on: counted ? dayLabel_(counted) : null,
+    materials: lines,
+    to_buy: lines.filter(function (x) { return x.short_by; }),
+    not_counted_by_the_store: lines.filter(function (x) { return x.on_hand === null; }).map(function (x) { return x.material; })
+  };
+}
+
 /* Plan against what was made, day by day, for the working days of the week
    the plan covers. Made = Amaha's p_total; Mahelet's m2 if Amaha did not file. */
 function opsPlanDays_(P, plan) {
@@ -244,6 +298,7 @@ function opsFacts_(P, ops) {
     week: dayLabel_(P.start) + ' to ' + dayLabel_(P.end),
     plan_note: plan ? null : 'No 15-Day Production Plan covering this week was filed, so plan against made cannot be judged.',
     plan_against_made: opsPlanDays_(P, plan),
+    what_the_plan_needs_and_the_store_has_not: opsPlanMaterials_(P, plan),
     production: {
       m2_made: ops.production.m2_made, m2_target: ops.production.m2_target,
       daily_target_m2: OPS_DAY_M2_, days_below_40: ops.production.days_below_40,

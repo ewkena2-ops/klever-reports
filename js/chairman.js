@@ -424,6 +424,12 @@ import {
     cfo.appendChild(el('p', 'codenote', t('cfoNone')));
     root.appendChild(cfo);
 
+    /* --- the week from plan to site, read by operations (apps-script/Ops.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('opsTitle')));
+    var opsBox = el('div', 'chops');
+    opsBox.appendChild(el('p', 'codenote', t('opsNone')));
+    root.appendChild(opsBox);
+
     /* --- the week's people, read by HR (apps-script/Hr.js) --- */
     root.appendChild(el('p', 'eyebrow', t('hrTitle')));
     var hr = el('div', 'chhr');
@@ -460,7 +466,7 @@ import {
     watchCharges({ fines: charges, bonus: bonusBox, pay: payBox }, tOwed, tBonus);
     watchStanding(standing);
     watchEvents(record);
-    watchWeek(week, cfo, hr, legal);
+    watchWeek(week, cfo, hr, legal, opsBox);
     watchAsks(asks);
     watchReports(raw, tFiled, tMissing);
     watchCharts(charts);
@@ -2106,13 +2112,14 @@ import {
 
   /* ---------------- the week ---------------- */
 
-  function watchWeek(into, cfoInto, hrInto, legalInto) {
+  function watchWeek(into, cfoInto, hrInto, legalInto, opsInto) {
     onSnapshot(query(collection(db, 'packs'), orderBy('end', 'desc'), limit(4)), function (qs) {
       var packs = [];
       qs.forEach(function (d) { packs.push(d.data()); });
       var w = packs.filter(function (p) { return p.kind === 'week'; })[0];
       into.innerHTML = '';
       drawCfo(cfoInto, w);
+      drawOps(opsInto, w);
       drawHr(hrInto, w);
       drawLegal(legalInto, w);
       if (!w) { into.appendChild(el('p', 'codenote', t('chNoWeek'))); return; }
@@ -2128,7 +2135,7 @@ import {
       var f = el('div', 'chfind brief');
       f.appendChild(el('div', 'chft', w.text || ''));
       into.appendChild(f);
-    }, function (e) { failInto(into)(e); failInto(cfoInto)(e); failInto(hrInto)(e); failInto(legalInto)(e); });
+    }, function (e) { failInto(into)(e); failInto(cfoInto)(e); failInto(hrInto)(e); failInto(legalInto)(e); failInto(opsInto)(e); });
   }
 
   /* The CFO's week: three figures, the reading, and each spending line
@@ -2169,6 +2176,42 @@ import {
       tot.appendChild(el('span', 'chfv', birr(w.cfoSpent)));
       tbl.appendChild(tot);
     }
+    into.appendChild(tbl);
+  }
+
+  /* Operations' week: four figures, the reading, and each day of the week
+     the plan covers, made against planned. Every figure was worked out in
+     Ops.js; a day nobody reported is a dash, never a 0. */
+  function drawOps(into, w) {
+    into.innerHTML = '';
+    if (!w || !w.opsText) { into.appendChild(el('p', 'codenote', t('opsNone'))); return; }
+    var n = function (x) { return x == null ? '—' : String(x); };
+    var tiles = el('div', 'chtiles');
+    tiles.appendChild(tile(t('opsPlanMet'), w.opsPlanPct == null ? '—' : w.opsPlanPct + '%').box);
+    tiles.appendChild(tile(t('opsBehind'), n(w.opsBehind)).box);
+    tiles.appendChild(tile(t('opsStuck'), n(w.opsStuck)).box);
+    tiles.appendChild(tile(t('opsHold'), n(w.opsHold)).box);
+    into.appendChild(tiles);
+    var f = el('div', 'chfind ops');
+    f.appendChild(el('div', 'chft', w.opsText));
+    into.appendChild(f);
+    var days = w.opsDays || [];
+    if (!days.length) return;
+    var tbl = el('div', 'chcfo-lines chops-lines');
+    var head = el('div', 'chf chcfo-head');
+    head.appendChild(el('span', 'chfk', t('opsDay')));
+    head.appendChild(el('span', 'chfv', t('opsMadePlanned')));
+    tbl.appendChild(head);
+    days.forEach(function (d) {
+      var r = el('div', 'chf');
+      r.appendChild(el('span', 'chfk', prettyDay(d.day)));
+      var short = d.made != null && d.planned != null && d.made < d.planned;
+      var v = el('span', 'chfv' + (short ? ' fine' : ''));
+      v.appendChild(document.createTextNode(d.made == null ? '—' : birr(d.made)));
+      v.appendChild(el('span', 'chcfo-avg', ' · ' + (d.planned == null ? '—' : birr(d.planned))));
+      r.appendChild(v);
+      tbl.appendChild(r);
+    });
     into.appendChild(tbl);
   }
 

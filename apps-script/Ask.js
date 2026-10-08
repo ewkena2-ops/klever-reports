@@ -22,7 +22,7 @@
    the 1st without paying for a month of writing; the latest filing of every
    other report from the last four weeks; this month's and the last three
    weeks' figures added up in code; last month's summary and this month's
-   weekly ones; the CFO's, HR's and the legal check's last week; and the recent briefs — and told to
+   weekly ones; the CFO's, operations', HR's and the legal check's last week; and the recent briefs — and told to
    name the report and date behind every figure, to say "not reported"
    rather than guess, and to show any sum it does in one line so he can
    check it. The reports are staff's writing: data to read, never
@@ -307,6 +307,8 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
   if (lastWeek && lastWeek.hrJson) { try { hr = JSON.parse(lastWeek.hrJson); } catch (e) { hr = null; } }
   var legal = null;
   if (lastWeek && lastWeek.legalJson) { try { legal = JSON.parse(lastWeek.legalJson); } catch (e) { legal = null; } }
+  var opsW = null;
+  if (lastWeek && lastWeek.opsJson) { try { opsW = JSON.parse(lastWeek.opsJson); } catch (e) { opsW = null; } }
 
   var monday = addDays_(sundayOf_(day), -6);
   return {
@@ -330,6 +332,7 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
     cfo_last_week: cfo,
     hr_last_week: hr,
     legal_check_last_week: legal,
+    operations_last_week: opsW,
     last_week_summary: lastWeek ? { week_ending: lastWeek.end, text: lastWeek.text } : null,
     earlier_week_summaries_this_month: weeks.filter(function (w) { return w !== lastWeek && w.end >= monthStart; })
       .map(function (w) { return { week_ending: w.end, text: w.text }; }),

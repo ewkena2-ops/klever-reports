@@ -16,8 +16,9 @@
                   Chairman asked for and got — then the weekly reports and the
                   week's daily briefs for the model to read. With it, the
                   CFO's reading of where the week's money went (Cfo.js),
-                  HR's reading of the week's people (Hr.js) and the legal
-                  check of the month so far (Legal.js).
+                  operations from plan to site (Ops.js), HR's reading of
+                  the week's people (Hr.js) and the legal check of the month
+                  so far (Legal.js).
      monthlyPack  the 2nd, on the month just ended. The same, plus the
                   deductions: every person's penalties for the month, less
                   any the Chairman cancelled, as a table and a Sheet tab that
@@ -89,10 +90,16 @@ function weeklyPack_(endDay) {
   try { legal = legalFacts_(P, 'week'); }
   catch (e) { cfoWarn.push('Legal: ' + e.message); }
   if (legal) legalText = readOrSay_(function () { return legalRead_(legal, P); }, 'Legal', cfoWarn);
-  var extra = cfoSaved_(cfo, cfoText), more = [hrSaved_(hr, hrText), legalSaved_(legal, legalText)];
+  /* and operations, from Mahelet's plan to the site (Ops.js) */
+  var ops = null, opsText = '';
+  try { ops = opsFacts_(P, facts.operations); }
+  catch (e) { cfoWarn.push('Operations: ' + e.message); }
+  if (ops) opsText = readOrSay_(function () { return opsRead_(ops, P); }, 'Operations', cfoWarn);
+  var extra = cfoSaved_(cfo, cfoText);
+  var more = [hrSaved_(hr, hrText), legalSaved_(legal, legalText), opsSaved_(ops, opsText)];
   more.forEach(function (m) { Object.keys(m).forEach(function (k) { extra[k] = m[k]; }); });
   var warn = savePack_('week-' + end, 'week', P, facts, text, extra).concat(cfoWarn);
-  mailPack_('week', P, facts, text, cfo, cfoText, hr, hrText, legal, legalText);
+  mailPack_('week', P, facts, text, cfo, cfoText, hr, hrText, legal, legalText, ops, opsText);
   return { period: P.start + ' to ' + end, warn: warn,
            note: (facts.reporting.on_time_pct == null ? 'no reports' : facts.reporting.on_time_pct + '% on time') };
 }
@@ -629,7 +636,7 @@ function writePayTab_(month, pay) {
   sh.setFrozenRows(1);
 }
 
-function mailPack_(kind, P, facts, text, cfo, cfoText, hr, hrText, legal, legalText) {
+function mailPack_(kind, P, facts, text, cfo, cfoText, hr, hrText, legal, legalText, opsF, opsText) {
   var rep = facts.reporting, ops = facts.operations, ins = facts.instructions;
   var title = kind === 'week' ? 'Klever — the week' : 'Klever — ' + facts.month;
   var cell = 'padding:5px 8px;border-bottom:1px solid #e4e7e3';
@@ -647,12 +654,24 @@ function mailPack_(kind, P, facts, text, cfo, cfoText, hr, hrText, legal, legalT
     '<div style="background:#f3f4f1;border-left:3px solid #0f5c54;padding:14px 16px;' +
       'margin-bottom:24px;font-size:14px;line-height:1.65;white-space:pre-wrap">' + esc_(text) + '</div>';
 
+  /* Each reader's own part. One that throws loses its part, says so, and
+     takes nothing else with it: the summary always goes. */
+  var part = function (who, make) {
+    try { return make(); }
+    catch (e) {
+      Logger.log('%s part of the email: %s', who, e.message);
+      return '<p style="font-size:12.5px;color:#8f3020;margin:0 0 18px">' + esc_(who) +
+             ': this part could not be drawn (' + esc_(e.message) + '). The rest is complete.</p>';
+    }
+  };
   /* the week's money, read by the CFO (Cfo.js) */
-  if (kind === 'week' && cfo) html += cfoMailHtml_(cfo, cfoText);
+  if (kind === 'week' && cfo) html += part('CFO', function () { return cfoMailHtml_(cfo, cfoText); });
+  /* the week from plan to site, read by operations (Ops.js) */
+  if (kind === 'week' && opsF) html += part('Operations', function () { return opsMailHtml_(opsF, opsText); });
   /* the week's people, read by HR (Hr.js) */
-  if (kind === 'week' && hr) html += hrMailHtml_(hr, hrText);
+  if (kind === 'week' && hr) html += part('HR', function () { return hrMailHtml_(hr, hrText); });
   /* the deductions and the letters against the labour law (Legal.js) */
-  if (legal) html += legalMailHtml_(legal, legalText);
+  if (legal) html += part('Legal check', function () { return legalMailHtml_(legal, legalText); });
 
   /* the forecasts, judged in code */
   if (facts.forecasts) {

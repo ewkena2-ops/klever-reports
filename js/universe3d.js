@@ -171,7 +171,7 @@ const WATCH = {
   design: 'commercial', customer: 'commercial', site: 'site', compliance: 'chairman',
   penalties: 'chairman', contradictions: 'chairman', decide: 'chairman', brief: 'chairman',
   rovestone: 'chairman', sisters: 'chairman', salesdirector: 'commercial',
-  plantmanager: 'production', groupcfo: 'finance', gate: 'commercial', reconcile: 'finance', anomaly: 'production'
+  plantmanager: 'production', groupcfo: 'finance', gate: 'commercial', reconcile: 'finance', anomaly: 'production', route: 'site'
 };
 
 /* The camera looks at Klever from the side away from its galaxy's core, so

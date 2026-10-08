@@ -124,6 +124,17 @@ const REPORTS = [
           {id:'who', en:'Visited by', am:'የጎበኘው', t:'text'},
           {id:'next', en:'Next step', am:'ቀጣይ እርምጃ', t:'text'}
         ]},
+      /* tomorrow's visits, with the area, for the route (apps-script/Route.js, 8 Oct 2026) */
+      {id:'tm_visits_n', en:'How many pre-measurement visits are booked for tomorrow?', am:'ለነገ ስንት የቅድመ ልኬት ጉብኝት ተይዟል?', t:'num'},
+      {id:'tm_visits', en:'List each visit booked for tomorrow — the area is what the AI plans the route from', am:'ለነገ የተያዙትን ጉብኝቶች ይዘርዝሩ — AI መስመሩን የሚያቅደው ከአካባቢው ነው', t:'table', addEn:'Add a visit', addAm:'ጉብኝት ጨምር',
+        show:{f:'tm_visits_n', when:'pos'},
+        cols:[
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
+          {id:'where', en:'Area (e.g. Ayat, CMC, Lebu)', am:'አካባቢ (ለምሳሌ አያት፣ ሲኤምሲ፣ ለቡ)', t:'text'},
+          {id:'time', en:'Time (e.g. 10:00 AM)', am:'ሰዓት (ለምሳሌ 10:00 AM)', t:'text'},
+          {id:'who', en:'Who goes', am:'የሚሄደው', t:'text'}
+        ]},
       {id:'visits_late', en:'How many new leads have waited more than 48 hours for a pre-measurement appointment?', am:'ከ48 ሰዓት በላይ የቅድመ ልኬት ቀጠሮ ሳይያዝላቸው የቆዩ አዲስ ደንበኞች ስንት ናቸው?', t:'num',
         tgt:{op:'lte', v:0, en:'Should be 0', am:'0 መሆን አለበት'}},
       {id:'visits_late_why', en:'Which customers are waiting, why, and on what day will each be visited?', am:'የሚጠብቁት ደንበኞች እነማን ናቸው? ለምን ዘገየ? እያንዳንዳቸው በየትኛው ቀን ይጎበኛሉ?', t:'area', show:{f:'visits_late', when:'pos'}}
@@ -2621,7 +2632,7 @@ const REPORTS = [
       {id:'t_rows', en:'Which jobs are planned for tomorrow?', am:'ለነገ የታቀዱት ሥራዎች የትኞቹ ናቸው?',
        t:'table', addEn:'Add job', addAm:'ሥራ ጨምር', cols:[
         {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-        {id:'site', en:'Site', am:'ቦታ', t:'text'},
+        {id:'site', en:'Site and area (e.g. Ayat, near the roundabout)', am:'ቦታና አካባቢ (ለምሳሌ አያት፣ አደባባዩ አጠገብ)', t:'text'},
         {id:'crew', en:'Crew size', am:'የቡድን ብዛት', t:'num'},
         {id:'m2',   en:'Planned m²', am:'የታቀደ ካሬ ሜትር', t:'num'}
       ]},

@@ -30,6 +30,8 @@ var OWNERS_ = {
   plantmanager: ['liu', 'amaha'], commercial: ['ephrata'], salesdirector: ['ephrata'],
   site: ['elyas'], quality: ['wude'], store: ['yordanos', 'liu'], purchasing: ['getachew'],
   customer: ['ephrata', 'betty'], gate: ['ephrata', 'betty'], reconcile: ['betty', 'kidan'],
+  /* the Logistics Officer: Alex, who has no account — his messages reach Mahelet */
+  route: ['liu', 'elyas'],
   /* the Sunday readers (Cfo.js, Ops.js, Readers.js and after) */
   cfo: ['kidan', 'betty'], ops: ['elyas', 'liu'], forecast: ['kidan', 'liu'],
   procurement: ['getachew', 'kidan'], customers: ['ephrata'], maintenance: ['liu'],

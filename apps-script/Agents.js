@@ -825,6 +825,17 @@ var AGENTS = [
   ask:'You watch attendance for patterns. Name each worker with a pattern and what it is, as given — absent beside '+
       'the Sunday again and again, absent days running, often late. Say if yesterday had far more absences than '+
       'usual. Patterns are things to ask about, not to punish: say so. If there is no pattern, say so in one line.' },
+/* ROUTE OPTIMIZATION (8 Oct 2026, agent 29), figures in Route.js: the next
+   working day's truck and visits, in the shortest order. */
+{ id:'route', en:'Route optimization', am:'የጉዞ መስመር', words: 150,
+  said:['elyas-daily', 'ephrata-daily'],
+  facts: function (d) { return routeFacts_(d); },
+  ask:'You plan today’s trips. First Alex’s truck: the stops in best_order, with the job code, the area, the crew and m², '+
+      'the km and minutes of each leg as given, and the total; if it is not the same as Elyas’s order, say how many km '+
+      'it saves. Then each person’s pre-measurement visits, in order, and any visit that cannot be reached in time. '+
+      'Name visits close to a delivery that could go with the truck, sites not placed, and sites not confirmed ready. '+
+      'Say once that distances and times are estimates. End with TODAY, one line per person, from today_actions only. '+
+      'Call people by their names, never he or she. If neither plan was filed, say so in one line.' },
 { id:'quality', en:'Quality', am:'ጥራት',
   said:['wude-daily', 'wude-weekly', 'wude-monthly'],
   facts: function (d) {
@@ -1407,7 +1418,7 @@ function dailyRun_() {
   catch (e) { Logger.log('legal tab: %s', e.message); warn.push('Staff wages tab: ' + e.message); }
   /* and the tabs the specialists read: budgets, the legal & compliance
      register, the maintenance plan (Registers.js) */
-  try { registersEnsure_(); }
+  try { registersEnsure_(); routePlacesEnsure_(); }
   catch (e) { Logger.log('register tabs: %s', e.message); warn.push('Register tabs: ' + e.message); }
   /* a permit, licence or filing coming due — to its owner, at 14, 7 and 1 days (Owners.js) */
   try { permitAlerts_(todayAddis_(), loadSchedule_()); }
@@ -2158,6 +2169,8 @@ function runIfNew_() {
   /* the alerts that cannot wait for the morning: a lead not called, a
      delivery rejected, a new complaint (Owners.js) */
   try { realtimeAlerts_(fresh, loadSchedule_()); } catch (e) { Logger.log('alerts: %s', e.message); }
+  /* Elyas's or Ephrata's plan for tomorrow in: the route, drafted now (Route.js) */
+  try { routeRealtime_(fresh); } catch (e) { Logger.log('route: %s', e.message); }
   /* Getachew's report in: a supplier credit it says is paid has its
      reminders closed now, not tomorrow morning (Credit.js) */
   if (fresh.some(function (f) { return f.report === 'getachew-daily'; })) {

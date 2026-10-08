@@ -68,18 +68,21 @@ function legalStaffTab_(schedule) {
     sh.setFrozenRows(1);
     created = true;
   }
+  /* two columns added on 8 Oct 2026, for turnover (Registers.js) */
+  var h2 = sh.getRange(1, 7, 1, 2).getValues()[0] || [];
+  if (blank_(h2[0]) || blank_(h2[1])) sh.getRange(1, 7, 1, 2).setValues([['Started on (yyyy-mm-dd)', 'Left on (yyyy-mm-dd)']]);
   var last = sh.getLastRow();
-  var rows = last > 1 ? sh.getRange(2, 1, last - 1, 6).getValues() : [];
+  var rows = last > 1 ? sh.getRange(2, 1, last - 1, 8).getValues() : [];
   var byId = {};
   rows.forEach(function (r) {
     var id = String(r[0] || '').trim();
     if (!id) return;
     var wage = blank_(r[3]) ? null : n_(r[3]);
-    byId[id] = { wage: wage > 0 ? wage : null, signedOn: legalDay_(r[4]) };
+    byId[id] = { wage: wage > 0 ? wage : null, signedOn: legalDay_(r[4]), started: legalDay_(r[6]), left: legalDay_(r[7]) };
   });
   staff.forEach(function (p) {
     if (byId[p.id]) return;
-    sh.appendRow([p.id, cell_(p.en), cell_(p.roleEn), '', '', p.noLetter ? 'no terms letter yet' : '']);
+    sh.appendRow([p.id, cell_(p.en), cell_(p.roleEn), '', '', p.noLetter ? 'no terms letter yet' : '', p.from || '', '']);
     byId[p.id] = { wage: null, signedOn: null };
   });
   return { byId: byId, created: created };

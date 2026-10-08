@@ -4,7 +4,7 @@
 
 /* Tabs this endpoint must never write to — they belong to the ledger and the
    packs, and the figures in them come off people's pay. */
-var RESERVED_TABS_ = /^(Penalty Ledger|Daily Analysis|Deductions|Penalties|Bonuses|Pay |Staff Wages)/i;
+var RESERVED_TABS_ = /^(Penalty Ledger|Daily Analysis|Deductions|Penalties|Bonuses|Pay |Staff Wages|Budgets|Legal & Compliance|Maintenance Plan)/i;
 
 /* The few things in a report that should not wait for the morning brief.
    Checked here, in code, against the figures as filed; each one puts ALERT at

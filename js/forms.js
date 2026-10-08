@@ -157,7 +157,19 @@ const REPORTS = [
       {id:'contract_value', en:'What is the total value of today\'s contracts?', am:'የዛሬዎቹ ውሎች ጠቅላላ ዋጋ ስንት ነው?', t:'money'},
       {id:'advance', en:'How much advance was collected today?', am:'ዛሬ ስንት ቅድመ ክፍያ ተሰበሰበ?', t:'money'},
       {id:'advance_banked', en:'Was all of it banked today?', am:'ሁሉም ዛሬ ባንክ ገብቷል?', t:'yesno'},
-      {id:'advance_banked_why', en:'Why not, where is the money now, and when will it be banked?', am:'ለምን አልገባም? ገንዘቡ አሁን የት ነው? መቼ ባንክ ይገባል?', t:'area', show:{f:'advance_banked', when:'no'}}
+      {id:'advance_banked_why', en:'Why not, where is the money now, and when will it be banked?', am:'ለምን አልገባም? ገንዘቡ አሁን የት ነው? መቼ ባንክ ይገባል?', t:'area', show:{f:'advance_banked', when:'no'}},
+      /* change orders (8 Oct 2026), for the project control reader */
+      {id:'vo_any', en:'Did any customer change their order after signing, today?', am:'ዛሬ ውል ከፈረመ በኋላ ትዕዛዙን የቀየረ ደንበኛ አለ?', t:'yesno'},
+      {id:'vo_list', en:'Which jobs, what changed, and what did it do to the price?', am:'የትኞቹ ሥራዎች? ምን ተቀየረ? ዋጋውን እንዴት ቀየረው?', t:'table', addEn:'Add a change', addAm:'ለውጥ ጨምር',
+        show:{f:'vo_any', when:'yes'},
+        cols:[
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'what', en:'What changed', am:'የተቀየረው', t:'text'},
+          {id:'value', en:'Added to the price (Birr)', am:'በዋጋው ላይ የተጨመረ (ብር)', t:'money'},
+          {id:'less', en:'Taken off the price (Birr)', am:'ከዋጋው የተቀነሰ (ብር)', t:'money'},
+          {id:'ok', en:'Signed by the customer', am:'ደንበኛው ፈርመዋል', t:'yesno'}
+        ]},
     ]},
     { en:'6 · Cash collection', am:'6 · የገንዘብ ስብሰባ', fields:[
       {id:'collected_today', en:'How much was collected from customers today?', am:'ዛሬ ከደንበኞች ስንት ብር ተሰበሰበ?', t:'money'},
@@ -1334,7 +1346,27 @@ const REPORTS = [
           {id:'when', en:'Expected by', am:'የሚደርስበት ቀን', t:'text'}
         ]}
     ]},
-    { en:'6 · Problems and solutions', am:'6 · ችግሮችና መፍትሔዎች', fields:[
+    /* imports (8 Oct 2026), for the procurement reader */
+    { en:'6 · Imports', am:'6 · ከውጭ የሚገቡ ዕቃዎች', fields:[
+      {id:'imp_any', en:'Is anything being imported for Klever right now?', am:'አሁን ለክሌቨር ከውጭ የሚገባ ዕቃ አለ?', t:'yesno'},
+      {id:'imp_list', en:'List each import shipment and where it is now', am:'እያንዳንዱን ከውጭ የሚገባ ጭነትና አሁን ያለበትን ይዘርዝሩ', t:'table', addEn:'Add a shipment', addAm:'ጭነት ጨምር',
+        show:{f:'imp_any', when:'yes'},
+        cols:[
+          {id:'item', en:'Item', am:'ዕቃ', t:'text'},
+          {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
+          {id:'ref', en:'Order or shipment no.', am:'የትዕዛዝ ወይም የጭነት ቁጥር', t:'text'},
+          {id:'value', en:'Value (Birr)', am:'ዋጋ (ብር)', t:'money'},
+          {id:'stage', en:'Where it is', am:'ያለበት ደረጃ', t:'choice', opts:[
+            {v:'ordered', en:'Ordered', am:'ታዝዟል'},
+            {v:'shipped', en:'Shipped', am:'ተልኳል'},
+            {v:'port', en:'At port (Djibouti)', am:'ወደብ ላይ (ጅቡቲ)'},
+            {v:'customs', en:'In customs', am:'ጉምሩክ ላይ'},
+            {v:'cleared', en:'Cleared', am:'ተለቋል'},
+            {v:'delivered', en:'Delivered to us', am:'ደርሶናል'}]},
+          {id:'eta', en:'Expected at the factory', am:'ፋብሪካ የሚደርስበት ቀን', t:'date'}
+        ]}
+    ]},
+    { en:'7 · Problems and solutions', am:'7 · ችግሮችና መፍትሔዎች', fields:[
       {id:'w_problem', en:'What was the biggest problem this week, and what caused it?', am:'የዚህ ሳምንት ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
       {id:'w_action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
       {id:'w_need', en:'What do you need from Mahelet, Selam or the store next week?', am:'በሚቀጥለው ሳምንት ከማህሌት፣ ከሰላም ወይም ከመጋዘን ምን ያስፈልግዎታል?', t:'area', opt:1},
@@ -1918,6 +1950,16 @@ const REPORTS = [
           {id:'why', en:'Reason', am:'ምክንያት', t:'text'},
           {id:'valid', en:'Valid reason', am:'ተቀባይነት ያለው ምክንያት', t:'yesno'}
         ]},
+      /* overtime (8 Oct 2026), for the workforce reader */
+      {id:'ot_hours', en:'How many overtime hours were worked today, in total?', am:'ዛሬ በጠቅላላ ስንት የትርፍ ሰዓት ተሠራ?', t:'num'},
+      {id:'ot_list', en:'Who worked overtime, for how long, and was it approved?', am:'የትርፍ ሰዓት የሠራ ማን ነው? ለምን ያህል ሰዓት? ተፈቅዶ ነበር?', t:'table', addEn:'Add a worker', addAm:'ሰው ጨምር',
+        show:{f:'ot_hours', when:'pos'},
+        cols:[
+          {id:'name', en:'Worker', am:'ሠራተኛ', t:'text'},
+          {id:'hours', en:'Hours', am:'ሰዓት', t:'num'},
+          {id:'why', en:'Why', am:'ምክንያት', t:'text'},
+          {id:'ok', en:'Approved by Mahelet', am:'ማህሌት ፈቅዳለች', t:'yesno'}
+        ]},
       {id:'mp_behave', en:'How many behaviour issues were there today?', am:'ዛሬ ስንት የሥነ ምግባር ችግሮች ተከሰቱ?', t:'num',
         tgt:{op:'lte', v:0, en:'Unreported issues carry double the penalty', am:'ያልተነገረ ጉዳይ ቅጣቱ በእጥፍ ነው'}},
       {id:'mp_behave_what', en:'Who was involved, what happened, and was it reported to Mahelet?', am:'የተሳተፉት እነማን ናቸው? ምን ሆነ? ለማህሌት ተነግሯል?', t:'area', show:{f:'mp_behave', when:'pos'}},
@@ -2256,7 +2298,9 @@ const REPORTS = [
              am:'ከ2% በታች 1,000 ብር፤ ከ5% በላይ –500 ብር'}},
       {id:'r_rate_why', en:'Rework is above 2%. Which jobs drove it, and what would stop it happening again?', am:'ዳግም ሥራው ከ2% በላይ ነው። ያሳደጉት የትኞቹ ሥራዎች ናቸው? እንዳይደገም ምን መደረግ አለበት?', t:'area', show:{f:'r_rate', when:'miss'}},
       {id:'r_register', en:'Is the Rework Register up to date?', am:'የዳግም ሥራ መዝገቡ ተሟልቷል?', t:'yesno'},
-      {id:'r_register_why', en:'What is missing from it, and when will it be complete?', am:'ምን ጎድሎታል? መቼ ይሟላል?', t:'area', show:{f:'r_register', when:'no'}}
+      {id:'r_register_why', en:'What is missing from it, and when will it be complete?', am:'ምን ጎድሎታል? መቼ ይሟላል?', t:'area', show:{f:'r_register', when:'no'}},
+      /* rework cost (8 Oct 2026), for the quality reader */
+      {id:'r_cost', en:'What did today’s rework cost, in Birr (materials and hours)?', am:'የዛሬው ዳግም ሥራ ምን ያህል አስወጣ? በብር (ዕቃና ሰዓት)', t:'money', opt:1}
     ]},
     { en:'4 · Pressure to pass a defect — you are protected when you report it', am:'4 · ጉድለት እንዲያሳልፉ የሚደረግ ጫና — ካሳወቁ ይጠበቃሉ', fields:[
       {id:'pr_any', en:'Did anyone pressure you today to pass a defective product?', am:'ዛሬ ጉድለት ያለበትን ምርት እንዲያሳልፉ ማንም ጫና አድርጎብዎታል?', t:'yesno'},
@@ -3064,7 +3108,8 @@ const SALES_DAILY = {
         show:{f:'fu_calls', when:'pos'}, cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'happy', en:'Happy with the job', am:'በሥራው ረክተዋል', t:'yesno'}
+          {id:'happy', en:'Happy with the job', am:'በሥራው ረክተዋል', t:'yesno'},
+          {id:'score', en:'Score 0–10: how likely are they to recommend us?', am:'ውጤት 0–10፦ እኛን ለሌሎች የመምከር ዕድላቸው?', t:'num'}
         ]},
       {id:'fu_calls_why', en:'Who was not called, and when will they be?', am:'ያልተደወለላቸው እነማን ናቸው? መቼ ይደወልላቸዋል?', t:'area', show:{f:'fu_calls', when:'short'}},
       {id:'ref_logged', en:'How many referrals did you ask for and log today?', am:'ዛሬ ስንት ሪፈራል ተጠይቆ ተመዘገበ?', t:'num'}

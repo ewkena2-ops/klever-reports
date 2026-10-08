@@ -340,7 +340,9 @@ var RISK_ASK_ =
  *  Forecasting: 30, 60 and 90 days                                    *
  * ------------------------------------------------------------------ */
 
-var FC_WEIGHTS_ = { High: 0.8, Medium: 0.5, Low: 0.2 };
+/* Ephrata's confidence is stored as a code: high, med, low */
+var FC_WEIGHTS_ = { high: 0.8, med: 0.5, low: 0.2 };
+var FC_LABELS_ = { high: 'High', med: 'Medium', low: 'Low' };
 
 function forecastFacts_(P) {
   var end = P.end, back = addDays_(end, -27);
@@ -388,6 +390,23 @@ function forecastFacts_(P) {
   var projDay = Object.keys(eph['ephrata-projection'] || {}).sort().pop() || null;
   var proj = projDay ? eph['ephrata-projection'][projDay] : null;
   var projCollect = proj ? sumOrNull_(rows_(proj.proj_weeks).slice(0, 4).map(function (r) { return a_(r, 'tot'); })) : null;
+  /* thirteen weeks: weeks 1–4 money in from Ephrata's projection where she
+     gave it, otherwise the run rate; money out at the run rate */
+  var thirteen = [];
+  if (bank !== null && inWeek !== null && outWeek !== null) {
+    var projW = proj ? rows_(proj.proj_weeks).slice(0, 4).map(function (r) { return a_(r, 'tot'); }) : [];
+    var run = bank;
+    for (var k = 1; k <= 13; k++) {
+      var inK = projW[k - 1] !== undefined && projW[k - 1] !== null ? projW[k - 1] : inWeek;
+      run += inK - outWeek;
+      thirteen.push({ week: k, week_ending: dayLabel_(addDays_(sundayOf_(end), 7 * k)), money_in: inK, money_out: outWeek,
+                      bank: Math.round(run), below_the_floor: run < GC_FLOOR_ });
+    }
+  }
+  cash.thirteen_weeks = thirteen;
+  cash.thirteen_weeks_method = 'weeks 1–4 money in from Ephrata’s 4-week projection where she gave it, otherwise the run rate; money out at the run rate';
+  var firstLow = thirteen.filter(function (x) { return x.below_the_floor; })[0];
+  cash.first_week_below_the_floor = firstLow ? 'week ' + firstLow.week + ' (' + firstLow.week_ending + ')' : null;
   cash.known = { final_payments_owed_on_jobs: owed, supplier_credit_due_within_30_days: due30,
                  ephrata_projects_to_collect_in_4_weeks: projCollect, ephrata_projection_of: projDay ? dayLabel_(projDay) : null,
                  run_rate_collects_in_4_weeks: inWeek === null ? null : inWeek * 4 };
@@ -399,10 +418,11 @@ function forecastFacts_(P) {
   var perWeek = contracted !== null && daysRep ? Math.round(contracted / 4) : null;
   var pipe = { High: 0, Medium: 0, Low: 0 }, weighted = 0, nPipe = 0;
   rows_(proj && proj.proj_contracts).forEach(function (r) {
-    var v = n_(r.val), c = String(r.conf || '');
+    var v = n_(r.val), c = String(r.conf || '').toLowerCase();
+    if (c === 'medium') c = 'med';
     if (!v) return;
     nPipe++;
-    if (pipe[c] !== undefined) pipe[c] += v;
+    if (FC_LABELS_[c]) pipe[FC_LABELS_[c]] += v;
     weighted += v * (FC_WEIGHTS_[c] || 0);
   });
   var sales = { contracts_last_4_weeks: contracted, a_week_at_that_rate: perWeek,
@@ -442,7 +462,8 @@ function forecastFacts_(P) {
 
 var FORECAST_ASK_ =
   'You are the Chairman’s forecaster. In at most 150 words, short bullets: cash at 30, 60 and 90 days and '+
-  'whether and when it falls below the 6,000,000 floor, with the method in a few words; how the run rate '+
+  'whether and when it falls below the 6,000,000 floor, with the method in a few words, and the first week '+
+  'below the floor in the 13-week view if there is one; how the run rate '+
   'compares with what is known (final payments owed, credit due, Ephrata’s projection). Then sales at 30/60/90 '+
   'against Ephrata’s weighted pipeline, saying the weights are an assumption. Then production: output at this '+
   'pace against 40 m² a day, and how many working days of work are in hand. Say plainly where a figure is '+
@@ -513,10 +534,18 @@ function rdMailHtml_(r, tiles, text) {
 /* Every reader that runs this time: facts in code, then the model for all
    of them at once. Returns what the pack keeps, the email's part, and the
    facts by reader. */
+/* every reader: these three, the specialists (Specialists.js) and those
+   that read the Sheet's registers (Registers.js) — read at run time, so the
+   files may load in any order */
+function rdAll_() {
+  return READERS_.concat(typeof SPECIALISTS_ !== 'undefined' ? SPECIALISTS_ : [],
+                         typeof REGISTER_READERS_ !== 'undefined' ? REGISTER_READERS_ : []);
+}
+
 function runReaders_(kind, P, base, ctx, warn) {
   rdReset_();
   var done = [], results = {};
-  READERS_.forEach(function (r) {
+  rdAll_().forEach(function (r) {
     if (!r.when[kind]) return;
     try {
       var f = r.facts(P, base, kind, ctx || {}, results);

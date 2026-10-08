@@ -798,8 +798,8 @@ var AGENTS = [
 { id:'plantmanager', en:'Daily COO / Plant Manager', am:'የዕለቱ COO / የፋብሪካ ሥራ አስኪያጅ', words: 180,
   said:['amaha-daily', 'liu-daily', 'wude-daily', 'yordanos-daily', 'getachew-daily', 'elyas-daily'],
   facts: function (d) { return plantManager_(d); },
-  ask:'You run the plant this morning. First yesterday: made against the plan and the 40 m², and the '+
-      'one thing that cost the most. Then the week: on pace for 240 m² or not, and what each remaining '+
+  ask:'You run the plant this morning. First yesterday: made against the plan and the 40 m², the OEE '+
+      'where it is given (say it is approximate), and the one thing that cost the most. Then the week: on pace for 240 m² or not, and what each remaining '+
       'working day now needs. Then today: the plan (m² and jobs) and whether it can be made — name the '+
       'machine, material or people that stand in the way. Then jobs late against Mahelet’s plan or due '+
       'today and the next working day, by code. If anything was produced without the four confirmations, '+
@@ -1386,6 +1386,10 @@ function dailyRun_() {
      (Legal.js): made, and new staff added, before a Sunday needs it */
   try { legalStaffTab_(loadSchedule_()); }
   catch (e) { Logger.log('legal tab: %s', e.message); warn.push('Staff wages tab: ' + e.message); }
+  /* and the tabs the specialists read: budgets, the legal & compliance
+     register, the maintenance plan (Registers.js) */
+  try { registersEnsure_(); }
+  catch (e) { Logger.log('register tabs: %s', e.message); warn.push('Register tabs: ' + e.message); }
   /* his leads and jobs: built again (a lead goes quiet by the calendar
      alone) and the morning's note written (Register.js) */
   try { registerBuild_(todayAddis_(), true); }

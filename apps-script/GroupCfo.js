@@ -173,9 +173,12 @@ function groupCfo_(d) {
   overdue.forEach(function (c) { add('getachew', 'pay ' + c.supplier + ' ' + (c.birr_left ? fmt_(c.birr_left) + ' Birr ' : '') + 'or agree a new date with them', 'credit for ' + (c.item || 'an order') + ' was due ' + c.pay_by + ', ' + (-c.days) + ' days ago'); });
   dueSoon.filter(function (c) { return c.days <= GC_SOON_DAYS_; }).forEach(function (c) { add('getachew', 'make sure Selam has the cheque ready for ' + c.supplier + (c.birr_left ? ' (' + fmt_(c.birr_left) + ' Birr)' : ''), 'due ' + c.pay_by); });
   noDate.forEach(function (c) { add('getachew', 'agree a pay-by date with ' + c.supplier, 'credit bought ' + c.bought + ' with no date written'); });
-  ((expected && expected.payments) || []).filter(function (p) { return p.when === 'Today' || p.when === 'Tomorrow'; })
-    .sort(function (a, b) { return (a.when === 'Today' ? 0 : 1) - (b.when === 'Today' ? 0 : 1) || b.birr - a.birr; })
-    .forEach(function (p) { add('ephrata', 'collect ' + fmt_(p.birr) + ' Birr from ' + p.client + (p['for'] ? ' (' + p['for'] + ')' : ''), 'she expected it ' + p.when.toLowerCase() + ' in her report of ' + dayLabel_(eph.day)); });
+  /* the answers are stored as codes ('today', 'tomorrow', 'final'), not the words shown */
+  var whenOf = function (p) { return String(p.when || '').toLowerCase(); };
+  var kindL = choiceLabels_(d.schedule, 'ephrata-daily', 'expected_list', 'kind');
+  ((expected && expected.payments) || []).filter(function (p) { return whenOf(p) === 'today' || whenOf(p) === 'tomorrow'; })
+    .sort(function (a, b) { return (whenOf(a) === 'today' ? 0 : 1) - (whenOf(b) === 'today' ? 0 : 1) || b.birr - a.birr; })
+    .forEach(function (p) { add('ephrata', 'collect ' + fmt_(p.birr) + ' Birr from ' + p.client + (p['for'] ? ' (' + (kindL[p['for']] || p['for']) + ')' : ''), 'she expected it ' + whenOf(p) + ' in her report of ' + dayLabel_(eph.day)); });
   group.forEach(function (g, i) { if (!g.filed_the_day_read) add(GC_SISTERS_[i].id, 'send the daily report for ' + dayLabel_(d.day), g.company + '’s money in and out is not known for that day'); });
 
   var today_actions = {};

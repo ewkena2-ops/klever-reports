@@ -66,6 +66,31 @@ function pmMade_(byReport, day) {
   return a !== null ? a : a_((byReport['liu-daily'] || {})[day], 'm2');
 }
 
+/* OEE, as near as the reports allow: availability from Amaha's machine rows
+   (8 hours a machine, less the hours down), performance against 40 m², and
+   quality from Wude's pass rate (Amaha's checkpoints when Wude did not
+   inspect). Null when a part is not reported. */
+function pmOee_(amaha, wude, made) {
+  var rows = rows_(amaha.m_rows).filter(function (r) { return r && r.name; });
+  var avail = null;
+  if (rows.length) {
+    var planned = rows.length * 8, down = rows.reduce(function (a, r) { return a + Math.min(8, n_(r.down)); }, 0);
+    avail = (planned - down) / planned;
+  }
+  var perf = made === null ? null : Math.min(1, made / PM_DAY_M2_);
+  var it = a_(wude, 'i_total'), ip = a_(wude, 'i_pass'), qual = null;
+  if (it) qual = (ip || 0) / it;
+  else {
+    var p = 0, f = 0;
+    rows_(amaha.qc).forEach(function (r) { p += n_(r && r.pass); f += n_(r && r.fail); });
+    if (p + f) qual = p / (p + f);
+  }
+  var pct = function (x) { return x === null ? null : Math.round(x * 1000) / 10; };
+  return { availability_pct: pct(avail), performance_pct: pct(perf), quality_pct: pct(qual),
+           oee_pct: avail !== null && perf !== null && qual !== null ? pct(avail * perf * qual) : null,
+           method: 'availability: 8 hours a machine less hours down (Amaha); performance: made against 40 m²; quality: Wude’s pass rate' };
+}
+
 function plantManager_(d) {
   var names = {};
   ((d.schedule && d.schedule.people) || []).forEach(function (p) { names[p.id] = p.en; });
@@ -219,7 +244,8 @@ function plantManager_(d) {
       short_of_plan_m2: pY && pY.planned_m2 !== null && made !== null && made < pY.planned_m2 ? pY.planned_m2 - made : 0,
       waste_pct: a_(amaha, 'w_pct'), waste_limit_pct: 20,
       hours_lost: a_(amaha, 'w_lost'), what_held_it_up: String(amaha.w_block || '').trim(),
-      produced_without_the_four_confirmations: ay_(amaha, 'u_any')
+      produced_without_the_four_confirmations: ay_(amaha, 'u_any'),
+      oee: pmOee_(amaha, wude, made)
     },
     week: {
       from: dayLabel_(monday), working_days_so_far: owed, days_reported: known,

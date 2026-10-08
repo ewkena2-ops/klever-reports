@@ -261,7 +261,14 @@ const REPORTS = [
       {id:'downtime_list', en:'Which machines stopped, and why?', am:'የቆሙት የትኞቹ ማሽኖች ናቸው? ለምን?', t:'table', addEn:'Add a machine', addAm:'ማሽን ጨምር',
         show:{f:'downtime', when:'pos'},
         cols:[
-          {id:'machine', en:'Machine', am:'ማሽን', t:'text'},
+          {id:'machine', en:'Machine', am:'ማሽን', t:'choice', opts:[
+            {v:'Width cutter',  en:'Width cutter',  am:'የወርድ መቁረጫ'},
+            {v:'Length cutter', en:'Length cutter', am:'የርዝመት መቁረጫ'},
+            {v:'Edge bander',   en:'Edge bander',   am:'ጠርዝ ማሰሪያ'},
+            {v:'Hinge driller', en:'Hinge driller', am:'የማጠፊያ መብሻ'},
+            {v:'Compressor',    en:'Compressor',    am:'ኮምፕረሰር'},
+            {v:'Other',         en:'Other',         am:'ሌላ'}
+          ]},
           {id:'hours', en:'Hours stopped', am:'የቆመበት ሰዓት', t:'num'},
           {id:'cause', en:'Cause', am:'ምክንያት', t:'text'},
           {id:'told', en:'Chairman told at once', am:'ለሊቀመንበሩ ወዲያው ተነግሯል', t:'yesno'},
@@ -966,7 +973,14 @@ const REPORTS = [
       {id:'p_uptime_list', en:'Which machines lost the most hours?', am:'ብዙ ሰዓት የቆሙት የትኞቹ ማሽኖች ናቸው?', t:'table', addEn:'Add a machine', addAm:'ማሽን ጨምር',
         show:{f:'p_uptime', when:'miss'},
         cols:[
-          {id:'machine', en:'Machine', am:'ማሽን', t:'text'},
+          {id:'machine', en:'Machine', am:'ማሽን', t:'choice', opts:[
+            {v:'Width cutter',  en:'Width cutter',  am:'የወርድ መቁረጫ'},
+            {v:'Length cutter', en:'Length cutter', am:'የርዝመት መቁረጫ'},
+            {v:'Edge bander',   en:'Edge bander',   am:'ጠርዝ ማሰሪያ'},
+            {v:'Hinge driller', en:'Hinge driller', am:'የማጠፊያ መብሻ'},
+            {v:'Compressor',    en:'Compressor',    am:'ኮምፕረሰር'},
+            {v:'Other',         en:'Other',         am:'ሌላ'}
+          ]},
           {id:'hours', en:'Hours lost', am:'የባከነ ሰዓት', t:'num'},
           {id:'cause', en:'Cause', am:'ምክንያት', t:'text'},
           {id:'plan', en:'Maintenance planned', am:'የታቀደ ጥገና', t:'text'}
@@ -1918,7 +1932,14 @@ const REPORTS = [
       {id:'m_inspect_why', en:'Which were not, and why?', am:'ያልተፈተሹት የትኞቹ ናቸው? ለምን?', t:'area', show:{f:'m_inspect', when:'no'}},
       {id:'m_rows', en:'How did each machine run today?', am:'ዛሬ እያንዳንዱ ማሽን እንዴት ሠራ?',
        t:'table', addEn:'Add machine', addAm:'ማሽን ጨምር', cols:[
-        {id:'name', en:'Machine', am:'ማሽን', t:'text'},
+        {id:'name', en:'Machine', am:'ማሽን', t:'choice', opts:[
+          {v:'Width cutter',  en:'Width cutter',  am:'የወርድ መቁረጫ'},
+          {v:'Length cutter', en:'Length cutter', am:'የርዝመት መቁረጫ'},
+          {v:'Edge bander',   en:'Edge bander',   am:'ጠርዝ ማሰሪያ'},
+          {v:'Hinge driller', en:'Hinge driller', am:'የማጠፊያ መብሻ'},
+          {v:'Compressor',    en:'Compressor',    am:'ኮምፕረሰር'},
+          {v:'Other',         en:'Other',         am:'ሌላ'}
+        ]},
         {id:'run',  en:'Running', am:'እየሠራ ነው', t:'yesno'},
         {id:'down', en:'Downtime (hrs)', am:'የቆመበት ሰዓት', t:'num'},
         {id:'cause',en:'Cause', am:'ምክንያት', t:'text'}
@@ -2116,7 +2137,14 @@ const REPORTS = [
       {id:'m_break_list', en:'List each breakdown', am:'ብልሽቶቹን አንድ በአንድ ይዘርዝሩ', t:'table', addEn:'Add a breakdown', addAm:'ብልሽት ጨምር',
         show:{f:'m_break', when:'pos'},
         cols:[
-          {id:'machine', en:'Machine', am:'ማሽን', t:'text'},
+          {id:'machine', en:'Machine', am:'ማሽን', t:'choice', opts:[
+            {v:'Width cutter',  en:'Width cutter',  am:'የወርድ መቁረጫ'},
+            {v:'Length cutter', en:'Length cutter', am:'የርዝመት መቁረጫ'},
+            {v:'Edge bander',   en:'Edge bander',   am:'ጠርዝ ማሰሪያ'},
+            {v:'Hinge driller', en:'Hinge driller', am:'የማጠፊያ መብሻ'},
+            {v:'Compressor',    en:'Compressor',    am:'ኮምፕረሰር'},
+            {v:'Other',         en:'Other',         am:'ሌላ'}
+          ]},
           {id:'hours', en:'Hours down', am:'የቆመበት ሰዓት', t:'num'},
           {id:'cause', en:'Cause', am:'ምክንያት', t:'text'},
           {id:'told', en:'Reported within 30 min', am:'በ30 ደቂቃ ተነግሯል', t:'yesno'}

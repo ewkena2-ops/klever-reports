@@ -961,6 +961,26 @@ var AGENTS = [
       'answered late, not messages still unanswered — the written answer says whether they '+
       'have been answered since.' },
 
+/* THE DAILY SALES DIRECTOR (8 Oct 2026). The commercial analyst reads
+   Ephrata's day; nothing read the sales team as a team — each salesperson
+   against their own weekly target, who did the work and who did not, the
+   last four weeks of leads → visits → quotes → contracts and where the
+   leads came from, and, above all, which named customers each one must act
+   on today. Every figure here is worked out in code (salesDirector_ below);
+   the customers to act on come from the leads register (Register.js), ranked
+   in code. The morning's AI task list (Team.js) reads this finding, so what
+   it names becomes a task the Chairman can send. */
+{ id:'salesdirector', en:'Daily Sales Director', am:'የዕለቱ የሽያጭ ዳይሬክተር', words: 180,
+  said:['ephrata-daily', 'tsega-sales-daily', 'biruktayet-sales-daily'],
+  facts: function (d) { return salesDirector_(d); },
+  ask:'You run the sales team this morning. First, the week: for each person, collected so far '+
+      'against their target and what each remaining working day now needs — say plainly who will '+
+      'miss. Then yesterday: who did the work (leads called within the hour, visits, quotes, '+
+      'contracts) and who did not file; name any quote below the 6,000 Birr/m² floor. Then the last '+
+      'four weeks: lead to contract, and whether marketing posts are bringing real leads. End with '+
+      'TODAY, one line per salesperson: the customers in today_actions for them, by name, and what '+
+      'to do — only those, in that order. If a salesperson has none, say so.' },
+
 { id:'design', en:'Design', am:'ዲዛይን',
   said:['yohannis-design-daily', 'yonas-design-daily', 'abrham-g-design-daily', 'teklweld-design-daily', 'abrham-w-design-daily',
         'ermiyas-design-daily'],
@@ -1535,7 +1555,7 @@ function promptFor_(agent, facts, d) {
     'already see them. Write about what they mean. The arithmetic is right; an answer',
     'someone typed can still be wrong, and those found are listed below.',
     '',
-    'At most 120 words, short bullets. Write plainly, the way you would say it to the',
+    'At most ' + (agent.words || 120) + ' words, short bullets. Write plainly, the way you would say it to the',
     'Chairman standing in the factory: no adjectives doing the work of evidence, no',
     'headline labels in bold, nothing dressed up. "Edge banding stopped work for three',
     'hours" — not "edge banding is plaguing the shop floor". If your subject had an ordinary day,',

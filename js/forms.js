@@ -112,7 +112,6 @@ const REPORTS = [
       {id:'resp_1hr_why', en:'Which leads were not called within 24 hours, why, and have they been called now?', am:'በ24 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን? አሁን ተደውሎላቸዋል?', t:'area', show:{f:'resp_1hr', when:'short'}}
     ]},
     { en:'3 · Pre-measurement', am:'3 · ቅድመ ልኬት', fields:[
-      {id:'visits_booked', en:'How many pre-measurement appointments did you make today?', am:'ዛሬ ስንት የቅድመ ልኬት ቀጠሮ ያዙ?', t:'num'},
       {id:'visits_done', en:'How many pre-measurement visits were done today?', am:'ዛሬ ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num'},
       {id:'visits_list', en:'List each pre-measurement visit done today', am:'ዛሬ የተደረጉትን የቅድመ ልኬት ጉብኝቶች አንድ በአንድ ይዘርዝሩ', t:'table', addEn:'Add a visit', addAm:'ጉብኝት ጨምር',
         show:{f:'visits_done', when:'pos'},

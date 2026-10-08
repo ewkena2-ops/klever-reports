@@ -314,6 +314,8 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
   if (lastWeek && lastWeek.legalJson) { try { legal = JSON.parse(lastWeek.legalJson); } catch (e) { legal = null; } }
   var opsW = null;
   if (lastWeek && lastWeek.opsJson) { try { opsW = JSON.parse(lastWeek.opsJson); } catch (e) { opsW = null; } }
+  var spec = null;
+  if (lastWeek && lastWeek.readersJson) { try { spec = JSON.parse(lastWeek.readersJson); } catch (e) { spec = null; } }
 
   var monday = addDays_(sundayOf_(day), -6);
   return {
@@ -338,6 +340,7 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
     hr_last_week: hr,
     legal_check_last_week: legal,
     operations_last_week: opsW,
+    specialists_last_week: spec,
     last_week_summary: lastWeek ? { week_ending: lastWeek.end, text: lastWeek.text } : null,
     earlier_week_summaries_this_month: weeks.filter(function (w) { return w !== lastWeek && w.end >= monthStart; })
       .map(function (w) { return { week_ending: w.end, text: w.text }; }),

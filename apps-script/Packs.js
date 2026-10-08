@@ -95,11 +95,15 @@ function weeklyPack_(endDay) {
   try { ops = opsFacts_(P, facts.operations); }
   catch (e) { cfoWarn.push('Operations: ' + e.message); }
   if (ops) opsText = readOrSay_(function () { return opsRead_(ops, P); }, 'Operations', cfoWarn);
+  /* and the specialists — audit, risk, forecast and the rest (Readers.js) */
+  var rd = { saved: {}, html: '' };
+  try { rd = runReaders_('week', P, facts, { cfo: cfo, hr: hr, legal: legal, ops: ops }, cfoWarn); }
+  catch (e) { cfoWarn.push('Specialists: ' + e.message); }
   var extra = cfoSaved_(cfo, cfoText);
-  var more = [hrSaved_(hr, hrText), legalSaved_(legal, legalText), opsSaved_(ops, opsText)];
+  var more = [hrSaved_(hr, hrText), legalSaved_(legal, legalText), opsSaved_(ops, opsText), rd.saved];
   more.forEach(function (m) { Object.keys(m).forEach(function (k) { extra[k] = m[k]; }); });
   var warn = savePack_('week-' + end, 'week', P, facts, text, extra).concat(cfoWarn);
-  mailPack_('week', P, facts, text, cfo, cfoText, hr, hrText, legal, legalText, ops, opsText);
+  mailPack_('week', P, facts, text, cfo, cfoText, hr, hrText, legal, legalText, ops, opsText, rd.html);
   return { period: P.start + ' to ' + end, warn: warn,
            note: (facts.reporting.on_time_pct == null ? 'no reports' : facts.reporting.on_time_pct + '% on time') };
 }
@@ -149,8 +153,14 @@ function monthlyPack_(month) {
   try { legal = legalFacts_(P, 'month'); }
   catch (e) { legalWarn.push('Legal: ' + e.message); }
   if (legal) legalText = readOrSay_(function () { return legalRead_(legal, P); }, 'Legal', legalWarn);
-  var warn = savePack_('month-' + start.slice(0, 7), 'month', P, facts, text, legalSaved_(legal, legalText)).concat(legalWarn);
-  mailPack_('month', P, facts, text, null, '', null, '', legal, legalText);
+  /* the specialists that read a whole month — the audit (Readers.js) */
+  var rdm = { saved: {}, html: '' };
+  try { rdm = runReaders_('month', P, facts, { legal: legal }, legalWarn); }
+  catch (e) { legalWarn.push('Specialists: ' + e.message); }
+  var mextra = legalSaved_(legal, legalText);
+  Object.keys(rdm.saved).forEach(function (k) { mextra[k] = rdm.saved[k]; });
+  var warn = savePack_('month-' + start.slice(0, 7), 'month', P, facts, text, mextra).concat(legalWarn);
+  mailPack_('month', P, facts, text, null, '', null, '', legal, legalText, null, '', rdm.html);
   return { period: start.slice(0, 7), warn: warn.concat((monthDoc.errors || []).map(function (e) { return 'Month rules: ' + e; })),
            note: fmt_(facts.reporting.birr_owed || 0) + ' Birr in report deductions; Pay tab written' };
 }
@@ -636,7 +646,7 @@ function writePayTab_(month, pay) {
   sh.setFrozenRows(1);
 }
 
-function mailPack_(kind, P, facts, text, cfo, cfoText, hr, hrText, legal, legalText, opsF, opsText) {
+function mailPack_(kind, P, facts, text, cfo, cfoText, hr, hrText, legal, legalText, opsF, opsText, readersHtml) {
   var rep = facts.reporting, ops = facts.operations, ins = facts.instructions;
   var title = kind === 'week' ? 'Klever — the week' : 'Klever — ' + facts.month;
   var cell = 'padding:5px 8px;border-bottom:1px solid #e4e7e3';
@@ -672,6 +682,8 @@ function mailPack_(kind, P, facts, text, cfo, cfoText, hr, hrText, legal, legalT
   if (kind === 'week' && hr) html += part('HR', function () { return hrMailHtml_(hr, hrText); });
   /* the deductions and the letters against the labour law (Legal.js) */
   if (legal) html += part('Legal check', function () { return legalMailHtml_(legal, legalText); });
+  /* the specialists, each already drawn alone (Readers.js) */
+  if (readersHtml) html += readersHtml;
 
   /* the forecasts, judged in code */
   if (facts.forecasts) {

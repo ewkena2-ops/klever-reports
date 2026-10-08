@@ -70,7 +70,8 @@ function adviseContext_(day) {
     this_mornings_readings: adviseReadings_(day),
     weekly_readers_last_week: {
       cfo: reports.cfo_last_week, operations: reports.operations_last_week,
-      hr: reports.hr_last_week, legal_check: reports.legal_check_last_week
+      hr: reports.hr_last_week, legal_check: reports.legal_check_last_week,
+      specialists: reports.specialists_last_week
     },
     open_decisions: (typeof DECISIONS !== 'undefined' ? DECISIONS : []).map(function (d) {
       return { what: d.what, detail: d.detail, blocks: d.blocks || '', his_call: !!d.yours };
@@ -87,7 +88,7 @@ function advisePrompt_(q, ctx) {
   var r = ctx.the_reports;
   var slim = {};
   Object.keys(r).forEach(function (k) {
-    if (['cfo_last_week', 'operations_last_week', 'hr_last_week', 'legal_check_last_week'].indexOf(k) < 0) slim[k] = r[k];
+    if (['cfo_last_week', 'operations_last_week', 'hr_last_week', 'legal_check_last_week', 'specialists_last_week'].indexOf(k) < 0) slim[k] = r[k];
   });
   var head = JSON.stringify({ today: ctx.today, house_rules: ctx.house_rules, this_mornings_readings: ctx.this_mornings_readings,
                               open_decisions: ctx.open_decisions, already_decided: ctx.already_decided,

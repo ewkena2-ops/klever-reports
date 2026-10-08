@@ -447,6 +447,12 @@ import {
     legal.appendChild(el('p', 'codenote', t('legalNone')));
     root.appendChild(legal);
 
+    /* --- the specialists: audit, risk, forecast and the rest (apps-script/Readers.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('rdTitle')));
+    var specialists = el('div', 'chrds');
+    specialists.appendChild(el('p', 'codenote', t('rdNone')));
+    root.appendChild(specialists);
+
     /* --- and the day it was made of --- */
     root.appendChild(el('p', 'eyebrow', t('chRaw')));
     var raw = el('div', 'chraw');
@@ -471,7 +477,7 @@ import {
     watchCharges({ fines: charges, bonus: bonusBox, pay: payBox }, tOwed, tBonus);
     watchStanding(standing);
     watchEvents(record);
-    watchWeek(week, cfo, hr, legal, opsBox);
+    watchWeek(week, cfo, hr, legal, opsBox, specialists);
     watchAsks(asks, 'ask');
     watchAsks(advice, 'advise');
     watchReports(raw, tFiled, tMissing);
@@ -2121,7 +2127,7 @@ import {
 
   /* ---------------- the week ---------------- */
 
-  function watchWeek(into, cfoInto, hrInto, legalInto, opsInto) {
+  function watchWeek(into, cfoInto, hrInto, legalInto, opsInto, rdInto) {
     onSnapshot(query(collection(db, 'packs'), orderBy('end', 'desc'), limit(4)), function (qs) {
       var packs = [];
       qs.forEach(function (d) { packs.push(d.data()); });
@@ -2129,6 +2135,7 @@ import {
       into.innerHTML = '';
       drawCfo(cfoInto, w);
       drawOps(opsInto, w);
+      drawReaders(rdInto, w);
       drawHr(hrInto, w);
       drawLegal(legalInto, w);
       if (!w) { into.appendChild(el('p', 'codenote', t('chNoWeek'))); return; }
@@ -2144,7 +2151,7 @@ import {
       var f = el('div', 'chfind brief');
       f.appendChild(el('div', 'chft', w.text || ''));
       into.appendChild(f);
-    }, function (e) { failInto(into)(e); failInto(cfoInto)(e); failInto(hrInto)(e); failInto(legalInto)(e); failInto(opsInto)(e); });
+    }, function (e) { failInto(into)(e); failInto(cfoInto)(e); failInto(hrInto)(e); failInto(legalInto)(e); failInto(opsInto)(e); failInto(rdInto)(e); });
   }
 
   /* The CFO's week: three figures, the reading, and each spending line
@@ -2186,6 +2193,41 @@ import {
       tbl.appendChild(tot);
     }
     into.appendChild(tbl);
+  }
+
+  /* The specialists: one card each, folded — the title and its first figure
+     on the fold, the figures and the reading inside. A risk register brings
+     its heat map: impact 5 to 1 down, likelihood 1 to 5 across. */
+  function drawReaders(into, w) {
+    into.innerHTML = '';
+    var rs = (w && w.readers) || [];
+    if (!rs.length) { into.appendChild(el('p', 'codenote', t('rdNone'))); return; }
+    rs.forEach(function (r) {
+      var card = el('details', 'chrd');
+      var sum = el('summary', 'chrd-s');
+      sum.appendChild(el('span', 'chrd-t', L(r)));
+      var first = (r.tiles || [])[0];
+      if (first) sum.appendChild(el('span', 'chrd-v', L(first) + ' ' + first.v));
+      card.appendChild(sum);
+      var tiles = el('div', 'chtiles');
+      (r.tiles || []).forEach(function (x) { tiles.appendChild(tile(L(x), x.v).box); });
+      card.appendChild(tiles);
+      if (r.heat && r.heat.length === 25) {
+        var g = el('div', 'chheat');
+        g.setAttribute('aria-label', t('rdHeat'));
+        r.heat.forEach(function (n, i) {
+          var imp = 5 - Math.floor(i / 5), lk = (i % 5) + 1, sc = imp * lk;
+          var c = el('div', 'chheat-c ' + (sc >= 15 ? 'red' : sc >= 8 ? 'amber' : 'green') + (n ? ' on' : ''), n ? String(n) : '');
+          g.appendChild(c);
+        });
+        card.appendChild(g);
+        card.appendChild(el('p', 'chheat-k', t('rdHeat')));
+      }
+      var f = el('div', 'chfind rd');
+      f.appendChild(el('div', 'chft', r.text || ''));
+      card.appendChild(f);
+      into.appendChild(card);
+    });
   }
 
   /* Operations' week: four figures, the reading, and each day of the week

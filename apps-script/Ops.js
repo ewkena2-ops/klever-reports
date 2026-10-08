@@ -192,7 +192,8 @@ function opsBottlenecks_(P, ops) {
     days_a_material_was_short: short.length,
     materials_short: short.map(function (x) { return dayLabel_(x.day).split(' ')[0] + ': ' + String(x.v.shortage_what || 'not named').trim(); }),
     site_hours_lost: ops.site.hours_lost_to_site,
-    jobs_failed_qc: sumOf_(liu, 'qc_fail'),
+    /* Wude's own count: quality is hers (the Chairman, 8 Oct 2026) */
+    jobs_failed_qc: sumOf_(daysOf_(P, 'wude-daily'), 'i_fail'),
     job_files_returned_incomplete: sumOf_(liu, 'jf_rej'),
     supplier_deliveries_outstanding_last_day: liu.length ? a_(liu[liu.length - 1].v, 'deliv_pending') : null
   };

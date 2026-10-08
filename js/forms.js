@@ -277,20 +277,7 @@ const REPORTS = [
       {id:'workers', en:'How many workers came to work today? (present / assigned)', am:'ዛሬ ስንት ሠራተኞች ተገኙ? (የተገኙ / የተመደቡ)', t:'ratio'},
       {id:'workers_why', en:'Who was absent, and was it with permission?', am:'የቀሩት እነማን ናቸው? በፈቃድ ነው?', t:'area', show:{f:'workers', when:'short'}}
     ]},
-    { en:'2 · Quality control', am:'2 · የጥራት ቁጥጥር', fields:[
-      {id:'qc_fail', en:'How many jobs failed QC today?', am:'ዛሬ ስንት ሥራዎች QC አላለፉም?', t:'num'},
-      {id:'qc_fail_list', en:'Which jobs failed, and why?', am:'ያላለፉት የትኞቹ ሥራዎች ናቸው? ለምን?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
-        show:{f:'qc_fail', when:'pos'},
-        cols:[
-          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'why', en:'Why it failed', am:'ያላለፈበት ምክንያት', t:'text'},
-          {id:'fix', en:'Fixed by (date)', am:'የሚስተካከልበት ቀን', t:'text'}
-        ]},
-      {id:'defects', en:'How many defects were found today?', am:'ዛሬ ስንት ጉድለቶች ተገኙ?', t:'num'},
-      {id:'defects_what', en:'What were they, on which jobs, and at which stage did they start (cutting, assembly, edging, material)?', am:'ጉድለቶቹ ምን ነበሩ? በየትኞቹ ሥራዎች? ከየትኛው ደረጃ ጀመሩ (ቁረጣ፣ መገጣጠም፣ ጠርዝ፣ ዕቃ)?', t:'area', show:{f:'defects', when:'pos'}},
-      {id:'qc_action', en:'What was done about today\'s failures and defects?', am:'በዛሬዎቹ ውድቀቶችና ጉድለቶች ላይ ምን እርምጃ ተወሰደ?', t:'area', opt:1}
-    ]},
-    { en:'3 · Store & inventory', am:'3 · መጋዘንና ክምችት', fields:[
+    { en:'2 · Store & inventory', am:'2 · መጋዘንና ክምችት', fields:[
       {id:'mat_in', en:'How many material items were received into the store today?', am:'ዛሬ ወደ መጋዘን ስንት ዕቃዎች ገቡ?', t:'num'},
       {id:'mat_out', en:'How many material items were issued from the store today?', am:'ዛሬ ከመጋዘን ስንት ዕቃዎች ወጡ?', t:'num'},
       {id:'mat_out_signed', en:'Did every issue carry your signed approval?', am:'እያንዳንዱ የወጣ ዕቃ በእርስዎ የተፈረመ ፈቃድ ነበረው?', t:'yesno', show:{f:'mat_out', when:'pos'}},
@@ -299,7 +286,7 @@ const REPORTS = [
       {id:'shortage_what', en:'If yes, which material?', am:'አዎ ከሆነ የትኛው ዕቃ?', t:'text', opt:1},
       {id:'shortage_hit', en:'Which jobs does the shortage hold up, and when will the material arrive?', am:'እጥረቱ የትኞቹን ሥራዎች ያቆማል? ዕቃው መቼ ይደርሳል?', t:'area', show:{f:'shortage', when:'yes'}}
     ]},
-    { en:'4 · Purchasing', am:'4 · ግዥ', fields:[
+    { en:'3 · Purchasing', am:'3 · ግዥ', fields:[
       {id:'pr_sub', en:'How many purchase requests were submitted today?', am:'ዛሬ ስንት የግዥ ጥያቄዎች ቀረቡ?', t:'num'},
       {id:'pr_app', en:'How many purchase requests were approved today?', am:'ዛሬ ስንት የግዥ ጥያቄዎች ጸደቁ?', t:'num'},
       {id:'orders', en:'How many orders were placed with suppliers today?', am:'ዛሬ ለአቅራቢዎች ስንት ትዕዛዞች ተሰጡ?', t:'num'},
@@ -315,7 +302,7 @@ const REPORTS = [
           {id:'due', en:'Expected', am:'የሚጠበቅበት ቀን', t:'text'}
         ]}
     ]},
-    { en:'5 · Delivery & installation', am:'5 · ማድረስና ተከላ', fields:[
+    { en:'4 · Delivery & installation', am:'4 · ማድረስና ተከላ', fields:[
       {id:'delivered', en:'How many jobs were delivered to customers today?', am:'ዛሬ ስንት ሥራዎች ለደንበኞች ደረሱ?', t:'num'},
       {id:'delivered_list', en:'Which jobs left the factory today?', am:'ዛሬ ከፋብሪካ የወጡት የትኞቹ ሥራዎች ናቸው?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
         show:{f:'delivered', when:'pos'},
@@ -334,13 +321,13 @@ const REPORTS = [
         tgt:{op:'lte', v:0, en:'KPI bonus needs zero', am:'ለKPI ቦነስ ዜሮ መሆን አለበት'}},
       {id:'complaints_what', en:'Which customer, what was the complaint, which department caused it, and what was done?', am:'የትኛው ደንበኛ? ቅሬታው ምንድን ነው? ያስከተለው የትኛው ክፍል ነው? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'complaints', when:'pos'}}
     ]},
-    { en:'6 · Job File handoff', am:'6 · የጆብ ፋይል ርክክብ', fields:[
+    { en:'5 · Job File handoff', am:'5 · የጆብ ፋይል ርክክብ', fields:[
       {id:'jf_recv', en:'How many Job Files did you receive from Ephrata today?', am:'ዛሬ ከኤፍራታ ስንት ጆብ ፋይሎች ደረሱዎት?', t:'num'},
       {id:'jf_acc', en:'How many did you accept and sign for in the handover log?', am:'ስንቱን ተቀብለው በርክክብ መዝገቡ ፈረሙ?', t:'num'},
       {id:'jf_rej', en:'How many did you return to Ephrata as incomplete?', am:'ስንቱን ያልተሟሉ ስለሆኑ ለኤፍራታ መለሱ?', t:'num'},
       {id:'jf_reason', en:'Which files were returned, and what was missing from each?', am:'የተመለሱት የትኞቹ ፋይሎች ናቸው? በእያንዳንዱ ምን ጎደለ?', t:'area', opt:1}
     ]},
-    { en:'7 · WhatsApp compliance', am:'7 · የዋትስአፕ ተገዢነት', fields:[
+    { en:'6 · WhatsApp compliance', am:'6 · የዋትስአፕ ተገዢነት', fields:[
       {id:'wa_req', en:'How many operations messages were due in customer groups today?', am:'ዛሬ በደንበኛ ግሩፖች ስንት የኦፕሬሽን መልዕክቶች መላክ ነበረባቸው?', t:'num'},
       {id:'wa_posted', en:'How many of them were posted on time?', am:'ከነዚህ ስንቱ በሰዓቱ ተለጠፉ?', t:'num'},
       {id:'wa_missed', en:'If any were missed: which groups, and why?', am:'ያልተለጠፈ ካለ፦ በየትኞቹ ግሩፖች? ለምን?', t:'area', opt:1},
@@ -349,7 +336,7 @@ const REPORTS = [
       {id:'wa_unanswered', en:'How many customer messages waited more than 2 hours for an operations answer?', am:'ስንት የደንበኛ መልዕክቶች ከ2 ሰዓት በላይ የኦፕሬሽን ምላሽ ሳያገኙ ቆዩ?', t:'num'},
       {id:'wa_unanswered_why', en:'Which customers, who should have answered, and have they been answered now?', am:'የየትኞቹ ደንበኞች ናቸው? መመለስ የነበረበት ማን ነበር? አሁን ምላሽ አግኝተዋል?', t:'area', show:{f:'wa_unanswered', when:'pos'}}
     ]},
-    { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
+    { en:'7 · Problems and solutions', am:'7 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'What was the biggest problem today?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
       {id:'cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', opt:1},
       {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
@@ -359,7 +346,7 @@ const REPORTS = [
       {id:'need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_chair_what', en:'What exactly should he decide, what are the options, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_chair', when:'yes'}}
     ]},
-    { en:"9 · Tomorrow's top 3 priorities", am:'9 · ነገ የሚሠሩ ዋና ሦስት ሥራዎች', fields:[
+    { en:"8 · Tomorrow's top 3 priorities", am:'8 · ነገ የሚሠሩ ዋና ሦስት ሥራዎች', fields:[
       {id:'p1', en:'Priority 1', am:'1ኛ ሥራ', t:'text'},
       {id:'p2', en:'Priority 2', am:'2ኛ ሥራ', t:'text'},
       {id:'p3', en:'Priority 3', am:'3ኛ ሥራ', t:'text'}

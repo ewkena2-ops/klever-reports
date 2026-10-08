@@ -79,7 +79,6 @@ var REG_SOURCES_ = [
   { r: 'betty-weekly-cx', f: 'cx_new_list', k: 'complaint', cust: 'cust', job: 'job', what: 'issue', state: 'state' },
   { r: 'liu-plan', f: 'plan_queue', k: 'plan', cust: 'cust', job: 'code', start: 'start', done: 'done', qc: 'qc', del: 'del' },
   { r: 'liu-daily', f: 'delivered_list', k: 'delivered', cust: 'cust', job: 'code', ok: 'fin' },
-  { r: 'liu-daily', f: 'qc_fail_list', k: 'qcfail', job: 'code', what: 'why' },
   { r: 'liu-weekly', f: 'pl_delayed_list', k: 'delay', job: 'code', what: 'why', date: 'new' },
   { r: 'amaha-daily', f: 'p_jobs', k: 'production', job: 'code', state: 'st' },
   { r: 'wude-daily', f: 'i_jobs', k: 'qc', cust: 'cust', job: 'code', ok: 'pass', what: 'why' },
@@ -363,9 +362,6 @@ function regFold_(events, today, names, sellers) {
       case 'qc':
         if (e.ok === 'yes') J.qcPassed = e.day;
         else if (e.ok === 'no') { J.qcFailed = e.day; J.qcWhy = e.what || ''; }
-        break;
-      case 'qcfail':
-        J.qcFailed = e.day; J.qcWhy = e.what || J.qcWhy || '';
         break;
       case 'delivered':
         if (!J.delivered) J.delivered = e.day;

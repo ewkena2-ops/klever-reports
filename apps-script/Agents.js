@@ -733,7 +733,6 @@ function contradictions_(d) {
     if (scale && gap / scale > 0.1) out.push({ about: label, first: a, second: b });
   }
   cmp('defects — Amaha against Wude', 'amaha-daily','qc_defects', 'wude-daily','d_total');
-  cmp('defects — Wude against Mahelet', 'wude-daily','d_total', 'liu-daily','defects');
   cmp('waste % — Amaha against Mahelet', 'amaha-daily','w_pct', 'liu-daily','waste');
   /* jobs against jobs: Elyas's m² against Mahelet's count of jobs (6 against
      1) was reported as a disagreement */
@@ -1335,7 +1334,6 @@ var AGENTS = [
          is no longer asked, so there are no two figures to disagree */
       amaha_m2: N('amaha-daily','p_total'),
       amaha_defects: N('amaha-daily','qc_defects'), wude_defects: N('wude-daily','d_total'),
-      mahelet_defects: N('liu-daily','defects'),
       amaha_waste_pct: N('amaha-daily','w_pct'),   mahelet_waste_pct: N('liu-daily','waste'),
       amaha_stopped_for_board: ay_(amaha, 'b_short'),
       amaha_which_board: amaha.b_shortw || '',
@@ -1343,8 +1341,8 @@ var AGENTS = [
       yordanos_stopped_production: ay_(yord, 'sh_stopped'),
       yordanos_which: yord.sh_what || '',
       wude_pass_rate: N('wude-daily','i_rate'),
-      /* the jobs that passed are Wude's count alone (the Chairman, 8 Oct 2026) */
-      mahelet_qc_fail: N('liu-daily','qc_fail'),
+      /* quality is Wude's alone now (the Chairman, 8 Oct 2026): Mahelet is
+         not asked, so there is no second count to disagree with hers */
       elyas_jobs_finished: N('elyas-daily','j_done'), mahelet_jobs_installed: N('liu-daily','installed'),
       offcut_m2_received_by_store: N('yordanos-daily','k_offin'),
       offcut_m2_sent_by_factory: sentOut,

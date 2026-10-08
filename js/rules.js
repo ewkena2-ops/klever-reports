@@ -49,8 +49,8 @@ const RULES = [
     en:'All seven operations KPIs met for the month',
     am:'በወሩ ሰባቱም የኦፕሬሽን ዒላማዎች ተሟልተዋል',
     src:'Mahelet’s letter — “Monthly KPI bonus 6,000 Birr per month All targets must be met”',
-    note:'Monthly rates are the mean of the weekly percentages, the complaint count is every operations complaint (the letter says valid), and 3+ WhatsApp failures in a week cancel it (liu-wa-repeat-kpi-cancel).',
-    test:{ at:'month', needFiled:['liu-daily', 'liu-weekly'], when:{ all:[[{ avg:'liu-weekly.d_ontime' }, '>=', 95], [{ ratio:['liu-weekly.q_pass', 'liu-weekly.q_checked'] }, '>=', 98], [{ avg:'liu-weekly.s_accuracy' }, '>=', 99], [{ avg:'liu-weekly.pu_acc' }, '>=', 95], [{ avg:'liu-weekly.d_inst_ontime' }, '>=', 95], [{ sum:'liu-daily.complaints' }, '==', 0], [{ min:'liu-weekly.wa_rate' }, '>=', 100]] } } },
+    note:'Monthly rates are the mean of the weekly percentages, the complaint count is Elyas’s own, at the site (the Chairman, 8 Oct 2026: complaints are reported by the person who is there; the letter says valid), and 3+ WhatsApp failures in a week cancel it (liu-wa-repeat-kpi-cancel).',
+    test:{ at:'month', needFiled:['liu-daily', 'liu-weekly'], when:{ all:[[{ avg:'liu-weekly.d_ontime' }, '>=', 95], [{ ratio:['liu-weekly.q_pass', 'liu-weekly.q_checked'] }, '>=', 98], [{ avg:'liu-weekly.s_accuracy' }, '>=', 99], [{ avg:'liu-weekly.pu_acc' }, '>=', 95], [{ avg:'liu-weekly.d_inst_ontime' }, '>=', 95], [{ sum:'elyas-daily.ac_complaints' }, '==', 0], [{ min:'liu-weekly.wa_rate' }, '>=', 100]] } } },
 
   { id:'liu-uptime-bonus-90', who:['liu'], kind:'bonus', birr:200, per:'month', how:'auto',
     en:'Machine uptime 90% to 94.9% for the month',

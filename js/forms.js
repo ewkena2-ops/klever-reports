@@ -286,24 +286,19 @@ const REPORTS = [
       {id:'shortage_what', en:'If yes, which material?', am:'አዎ ከሆነ የትኛው ዕቃ?', t:'text', opt:1},
       {id:'shortage_hit', en:'Which jobs does the shortage hold up, and when will the material arrive?', am:'እጥረቱ የትኞቹን ሥራዎች ያቆማል? ዕቃው መቼ ይደርሳል?', t:'area', show:{f:'shortage', when:'yes'}}
     ]},
-    { en:'3 · Delivery & installation', am:'3 · ማድረስና ተከላ', fields:[
+    { en:'3 · Delivery out of the factory', am:'3 · ከፋብሪካ መውጣት', fields:[
+      /* what is installed at the site, whether it was on time, the
+         acceptance signed and the complaints are Elyas's — he is there
+         (the Chairman, 8 Oct 2026). Hers is the gate out of the factory:
+         nothing leaves without Selam's clearance. */
       {id:'delivered', en:'How many jobs were delivered to customers today?', am:'ዛሬ ስንት ሥራዎች ለደንበኞች ደረሱ?', t:'num'},
       {id:'delivered_list', en:'Which jobs left the factory today?', am:'ዛሬ ከፋብሪካ የወጡት የትኞቹ ሥራዎች ናቸው?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
         show:{f:'delivered', when:'pos'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
-          {id:'fin', en:'Selam cleared', am:'ሰላም አጽድቃለች', t:'yesno'}
-        ]},
-      {id:'installed', en:'How many jobs were installed today?', am:'ዛሬ ስንት ሥራዎች ተተከሉ?', t:'num'},
-      {id:'site_ready', en:'Was every site confirmed ready before the installers went?', am:'ገጣጣሚዎች ከመሄዳቸው በፊት እያንዳንዱ ቦታ ዝግጁ መሆኑ ተረጋግጦ ነበር?', t:'yesno', show:{f:'installed', when:'pos'}},
-      {id:'site_ready_why', en:'Which site was not confirmed, and what happened there?', am:'ያልተረጋገጠው የትኛው ቦታ ነው? እዚያ ምን ሆነ?', t:'area', show:{f:'site_ready', when:'no'}},
-      {id:'ontime', en:'How many of today\'s deliveries and installations were on time? (on time / all)', am:'ከዛሬዎቹ ርክክቦችና ተከላዎች ስንቱ በሰዓቱ ነበሩ? (በሰዓቱ / ሁሉም)', t:'ratio'},
-      {id:'ontime_why', en:'Which jobs were late, by how long, and why?', am:'የዘገዩት የትኞቹ ሥራዎች ናቸው? በምን ያህል? ለምን?', t:'area', show:{f:'ontime', when:'short'}},
-      {id:'accept_signed', en:'How many customers signed their acceptance today?', am:'ዛሬ ስንት ደንበኞች የተቀባይነት ቅጽ ፈረሙ?', t:'num'},
-      {id:'complaints', en:'How many complaints about operations came in today?', am:'ዛሬ ስለ ኦፕሬሽን ስንት ቅሬታዎች ደረሱ?', t:'num',
-        tgt:{op:'lte', v:0, en:'KPI bonus needs zero', am:'ለKPI ቦነስ ዜሮ መሆን አለበት'}},
-      {id:'complaints_what', en:'Which customer, what was the complaint, which department caused it, and what was done?', am:'የትኛው ደንበኛ? ቅሬታው ምንድን ነው? ያስከተለው የትኛው ክፍል ነው? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'complaints', when:'pos'}}
+          {id:'fin',  en:'Selam cleared', am:'ሰላም አጽድቃለች', t:'yesno'}
+        ]}
     ]},
     { en:'4 · Job File handoff', am:'4 · የጆብ ፋይል ርክክብ', fields:[
       {id:'jf_recv', en:'How many Job Files did you receive from Ephrata today?', am:'ዛሬ ከኤፍራታ ስንት ጆብ ፋይሎች ደረሱዎት?', t:'num'},

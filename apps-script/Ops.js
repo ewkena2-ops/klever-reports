@@ -206,23 +206,32 @@ function opsBottlenecks_(P, ops) {
   };
 }
 
+/* Mahelet reports what leaves the factory; Elyas reports what happens at
+   the site, job by job (the Chairman, 8 Oct 2026). */
 function opsDelivery_(P) {
-  var liu = daysOf_(P, 'liu-daily');
-  var onA = 0, onB = 0, known = 0;
-  liu.forEach(function (x) {
-    var p = pair_(x.v, 'ontime');
-    if (p && p.done !== null && p.of !== null && !p.cannot_be_right) { onA += p.done; onB += p.of; known++; }
+  var liu = daysOf_(P, 'liu-daily'), ely = daysOf_(P, 'elyas-daily');
+  /* on time, from Elyas's own row for each job */
+  var onA = 0, onB = 0, known = false;
+  ely.forEach(function (x) {
+    rows_(x.v.j_rows).forEach(function (r) {
+      var ok = ay_(r, 'ontime');
+      if (ok === null) return;
+      known = true; onB++; if (ok) onA++;
+    });
   });
   return {
     days_reported: liu.length,
+    days_reported_by_the_site: ely.length,
     jobs_delivered: sumOf_(liu, 'delivered'),
-    jobs_installed: sumOf_(liu, 'installed'),
+    jobs_installed: sumOf_(ely, 'j_done'),
+    m2_installed: sumOf_(ely, 'j_m2'),
     on_time: known ? onA : null,
     of_all: known ? onB : null,
     on_time_pct: onB ? Math.round(onA / onB * 1000) / 10 : null,
-    days_a_site_was_not_confirmed_ready: liu.filter(function (x) { return ay_(x.v, 'site_ready') === false; }).length,
-    customer_acceptances_signed: sumOf_(liu, 'accept_signed'),
-    operations_complaints: sumOf_(liu, 'complaints')
+    jobs_the_site_was_not_ready_for: sumOf_(ely, 'r_notready'),
+    hours_lost_because_a_site_was_not_ready: sumOf_(ely, 'r_lost'),
+    customer_acceptances_signed: sumOf_(ely, 'ac_signed'),
+    operations_complaints: sumOf_(ely, 'ac_complaints')
   };
 }
 

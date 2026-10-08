@@ -736,7 +736,6 @@ function contradictions_(d) {
   cmp('waste % — Amaha against Mahelet', 'amaha-daily','w_pct', 'liu-daily','waste');
   /* jobs against jobs: Elyas's m² against Mahelet's count of jobs (6 against
      1) was reported as a disagreement */
-  cmp('jobs installed — Elyas against Mahelet', 'elyas-daily','j_done', 'liu-daily','installed');
   return out;
 }
 
@@ -1343,7 +1342,8 @@ var AGENTS = [
       wude_pass_rate: N('wude-daily','i_rate'),
       /* quality is Wude's alone now (the Chairman, 8 Oct 2026): Mahelet is
          not asked, so there is no second count to disagree with hers */
-      elyas_jobs_finished: N('elyas-daily','j_done'), mahelet_jobs_installed: N('liu-daily','installed'),
+      /* the site is Elyas's alone now (the Chairman, 8 Oct 2026) */
+      elyas_jobs_finished: N('elyas-daily','j_done'),
       offcut_m2_received_by_store: N('yordanos-daily','k_offin'),
       offcut_m2_sent_by_factory: sentOut,
       /* already checked in code: pairs that differ by more than a tenth, where

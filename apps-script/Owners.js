@@ -177,7 +177,6 @@ function realtimeAlerts_(fresh, schedule) {
         });
       }
       if (rep === 'elyas-daily' && a_(v, 'ac_complaints') > 0) complaint('s', String(v.ac_complaints_what || a_(v, 'ac_complaints') + ' complaint(s) at the site').trim() + '.', 'site');
-      if (rep === 'liu-daily' && a_(v, 'complaints') > 0) complaint('o', String(v.complaints_what || a_(v, 'complaints') + ' complaint(s) about operations').trim() + '.', String(v.complaints_what || 'production'));
       if (/-design-daily$/.test(rep)) {
         rows_(v.cp_list).forEach(function (r, i) {
           if (r && (r.cust || r.what)) complaint('d' + i, String(r.cust || '').trim() + ' — ' + String(r.what || 'not described').trim() + '.', 'design');

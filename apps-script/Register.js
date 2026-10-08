@@ -61,7 +61,6 @@ var REG_SOURCES_ = [
   { r: 'yordanos-daily', f: 'rec_list', k: 'received', job: 'code', what: 'item', ok: 'ok' },
   { r: 'betty-daily', f: 'final_req_list', k: 'finalreq', cust: 'cust', job: 'code', amount: 'amount' },
   { r: 'betty-joblist', f: 'jl_held_list', k: 'held', cust: 'cust', job: 'code', amount: 'owed', what: 'expect' },
-  { r: 'liu-daily', f: 'deliv_pending_list', k: 'matpending', job: 'code', what: 'mat', state: 'due' },
   { r: 'amaha-daily', f: 'qc_defects_list', k: 'defect', job: 'code', what: 'what' },
   { r: 'amaha-weekly', f: 'j_done_list', k: 'jobdone', job: 'code', ok: 'rework' },
   { r: 'wude-daily', f: 'd_rows', k: 'defect', job: 'code', what: 'type', state: 'act' },
@@ -84,7 +83,10 @@ var REG_SOURCES_ = [
   { r: 'wude-daily', f: 'i_jobs', k: 'qc', cust: 'cust', job: 'code', ok: 'pass', what: 'why' },
   { r: 'wude-weekly', f: 'c_recv_list', k: 'complaint', cust: 'cust', job: 'code', what: 'what' },
   { r: 'elyas-daily', f: 'j_rows', k: 'site', cust: 'cust', job: 'code', ok: 'ontime' },
-  { r: 'getachew-daily', f: 'sup_delay_list', k: 'matdelay', job: 'code', what: 'item', ok: 'stops' }
+  { r: 'getachew-daily', f: 'sup_delay_list', k: 'matdelay', job: 'code', what: 'item', ok: 'stops' },
+  /* the same list says the job is waiting, and the day it is now promised
+     (the Chairman, 8 Oct 2026: purchasing is Getachew's to report) */
+  { r: 'getachew-daily', f: 'sup_delay_list', k: 'matpending', job: 'code', what: 'item', state: 'now' }
 ];
 
 /* the steps of a lead, in order */
@@ -520,9 +522,12 @@ function regFold_(events, today, names, sellers) {
                  (J.held.expect ? ', expected ' + J.held.expect : '') + ' (Selam, ' + pushDay_(J.held.day) + ')');
     }
     if (J.matDelay && !J.made) holds.push('Material late: ' + J.matDelay.what + ' (Getachew, ' + pushDay_(J.matDelay.day) + ')');
-    if (J.matPending && !(J.receivedLast && J.receivedLast > J.matPending.day) && !J.made) {
+    /* both come from Getachew's late-delivery list, so a material that is
+       holding up production is said once, as "late", not twice */
+    if (J.matPending && !(J.receivedLast && J.receivedLast > J.matPending.day) && !J.made
+        && !(J.matDelay && J.matDelay.what === J.matPending.what)) {
       holds.push('Waiting for material: ' + J.matPending.what + (J.matPending.expect ? ', expected ' + J.matPending.expect : '') +
-                 ' (Mahelet, ' + pushDay_(J.matPending.day) + ')');
+                 ' (Getachew, ' + pushDay_(J.matPending.day) + ')');
     }
     if (J.siteFails && !(J.siteLast && J.siteLast > J.siteFails.day)) {
       holds.push('Site not ready: ' + J.siteFails.what + ' (Elyas, ' + pushDay_(J.siteFails.day) + ')');

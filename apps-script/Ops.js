@@ -195,7 +195,14 @@ function opsBottlenecks_(P, ops) {
     /* Wude's own count: quality is hers (the Chairman, 8 Oct 2026) */
     jobs_failed_qc: sumOf_(daysOf_(P, 'wude-daily'), 'i_fail'),
     job_files_returned_incomplete: sumOf_(liu, 'jf_rej'),
-    supplier_deliveries_outstanding_last_day: liu.length ? a_(liu[liu.length - 1].v, 'deliv_pending') : null
+    /* purchasing is Getachew's (the Chairman, 8 Oct 2026): the deliveries
+       he last reported late, with the supplier and the job */
+    supplier_deliveries_late_last_day: (function () {
+      var g = daysOf_(P, 'getachew-daily');
+      if (!g.length) return null;
+      return rows_(g[g.length - 1].v.sup_delay_list)
+        .filter(function (r) { return r && (r.item || r.sup || r.code); }).length;
+    })()
   };
 }
 

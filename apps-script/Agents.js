@@ -1322,6 +1322,10 @@ function dailyRun_() {
      Getachew (Credit.js) — every morning, Sunday too, before any return */
   try { creditReminders_(todayAddis_()); }
   catch (e) { Logger.log('credit reminders: %s', e.message); warn.push('Credit reminders: ' + e.message); }
+  /* the Sheet tab the legal check reads wages and signing dates from
+     (Legal.js): made, and new staff added, before a Sunday needs it */
+  try { legalStaffTab_(loadSchedule_()); }
+  catch (e) { Logger.log('legal tab: %s', e.message); warn.push('Staff wages tab: ' + e.message); }
   /* his leads and jobs: built again (a lead goes quiet by the calendar
      alone) and the morning's note written (Register.js) */
   try { registerBuild_(todayAddis_(), true); }

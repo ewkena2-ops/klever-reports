@@ -15,8 +15,9 @@
                   sales, whether last week's forecasts came true, what the
                   Chairman asked for and got — then the weekly reports and the
                   week's daily briefs for the model to read. With it, the
-                  CFO's reading of where the week's money went (Cfo.js)
-                  and HR's reading of the week's people (Hr.js).
+                  CFO's reading of where the week's money went (Cfo.js),
+                  HR's reading of the week's people (Hr.js) and the legal
+                  check of the month so far (Legal.js).
      monthlyPack  the 2nd, on the month just ended. The same, plus the
                   deductions: every person's penalties for the month, less
                   any the Chairman cancelled, as a table and a Sheet tab that
@@ -80,19 +81,31 @@ function weeklyPack_(endDay) {
   }
   /* and HR's reading of the week's people (Hr.js), the same way */
   var hr = null, hrText = '';
-  try {
-    hr = hrFacts_(P, facts.reporting);
-    hrText = hrRead_(hr, P);
-  } catch (e) {
-    hr = null;
-    cfoWarn.push('HR: ' + e.message);
-  }
-  var extra = cfoSaved_(cfo, cfoText), hrExtra = hrSaved_(hr, hrText);
-  Object.keys(hrExtra).forEach(function (k) { extra[k] = hrExtra[k]; });
+  try { hr = hrFacts_(P, facts.reporting); }
+  catch (e) { cfoWarn.push('HR: ' + e.message); }
+  if (hr) hrText = readOrSay_(function () { return hrRead_(hr, P); }, 'HR', cfoWarn);
+  /* and the legal check of the month so far (Legal.js) */
+  var legal = null, legalText = '';
+  try { legal = legalFacts_(P, 'week'); }
+  catch (e) { cfoWarn.push('Legal: ' + e.message); }
+  if (legal) legalText = readOrSay_(function () { return legalRead_(legal, P); }, 'Legal', cfoWarn);
+  var extra = cfoSaved_(cfo, cfoText), more = [hrSaved_(hr, hrText), legalSaved_(legal, legalText)];
+  more.forEach(function (m) { Object.keys(m).forEach(function (k) { extra[k] = m[k]; }); });
   var warn = savePack_('week-' + end, 'week', P, facts, text, extra).concat(cfoWarn);
-  mailPack_('week', P, facts, text, cfo, cfoText, hr, hrText);
+  mailPack_('week', P, facts, text, cfo, cfoText, hr, hrText, legal, legalText);
   return { period: P.start + ' to ' + end, warn: warn,
            note: (facts.reporting.on_time_pct == null ? 'no reports' : facts.reporting.on_time_pct + '% on time') };
+}
+
+/* A reading whose figures are already worked out: if only the model call
+   fails, the figures still go — on his page and in the email — with a line
+   saying the reading did not come, rather than the whole section vanishing. */
+function readOrSay_(read, who, warn) {
+  try { return read(); }
+  catch (e) {
+    warn.push(who + ' reading: ' + e.message);
+    return '(The written reading did not come — ' + e.message + '. The figures below are complete.)';
+  }
 }
 
 /* The calendar month before this one, or a month given as 'yyyy-mm'. */
@@ -124,8 +137,13 @@ function monthlyPack_(month) {
   writeDeductionsTab_(start.slice(0, 7), facts.deductions);
   writePayTab_(start.slice(0, 7), facts.pay);
   var text = askPack_(MONTH_ASK_, facts, P);
-  var warn = savePack_('month-' + start.slice(0, 7), 'month', P, facts, text);
-  mailPack_('month', P, facts, text);
+  /* the legal check of the whole month, before payroll (Legal.js) */
+  var legal = null, legalText = '', legalWarn = [];
+  try { legal = legalFacts_(P, 'month'); }
+  catch (e) { legalWarn.push('Legal: ' + e.message); }
+  if (legal) legalText = readOrSay_(function () { return legalRead_(legal, P); }, 'Legal', legalWarn);
+  var warn = savePack_('month-' + start.slice(0, 7), 'month', P, facts, text, legalSaved_(legal, legalText)).concat(legalWarn);
+  mailPack_('month', P, facts, text, null, '', null, '', legal, legalText);
   return { period: start.slice(0, 7), warn: warn.concat((monthDoc.errors || []).map(function (e) { return 'Month rules: ' + e; })),
            note: fmt_(facts.reporting.birr_owed || 0) + ' Birr in report deductions; Pay tab written' };
 }
@@ -611,7 +629,7 @@ function writePayTab_(month, pay) {
   sh.setFrozenRows(1);
 }
 
-function mailPack_(kind, P, facts, text, cfo, cfoText, hr, hrText) {
+function mailPack_(kind, P, facts, text, cfo, cfoText, hr, hrText, legal, legalText) {
   var rep = facts.reporting, ops = facts.operations, ins = facts.instructions;
   var title = kind === 'week' ? 'Klever — the week' : 'Klever — ' + facts.month;
   var cell = 'padding:5px 8px;border-bottom:1px solid #e4e7e3';
@@ -633,6 +651,8 @@ function mailPack_(kind, P, facts, text, cfo, cfoText, hr, hrText) {
   if (kind === 'week' && cfo) html += cfoMailHtml_(cfo, cfoText);
   /* the week's people, read by HR (Hr.js) */
   if (kind === 'week' && hr) html += hrMailHtml_(hr, hrText);
+  /* the deductions and the letters against the labour law (Legal.js) */
+  if (legal) html += legalMailHtml_(legal, legalText);
 
   /* the forecasts, judged in code */
   if (facts.forecasts) {

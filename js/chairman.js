@@ -430,6 +430,12 @@ import {
     hr.appendChild(el('p', 'codenote', t('hrNone')));
     root.appendChild(hr);
 
+    /* --- the month's deductions and letters against the labour law (apps-script/Legal.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('legalTitle')));
+    var legal = el('div', 'chlegal');
+    legal.appendChild(el('p', 'codenote', t('legalNone')));
+    root.appendChild(legal);
+
     /* --- and the day it was made of --- */
     root.appendChild(el('p', 'eyebrow', t('chRaw')));
     var raw = el('div', 'chraw');
@@ -454,7 +460,7 @@ import {
     watchCharges({ fines: charges, bonus: bonusBox, pay: payBox }, tOwed, tBonus);
     watchStanding(standing);
     watchEvents(record);
-    watchWeek(week, cfo, hr);
+    watchWeek(week, cfo, hr, legal);
     watchAsks(asks);
     watchReports(raw, tFiled, tMissing);
     watchCharts(charts);
@@ -2100,7 +2106,7 @@ import {
 
   /* ---------------- the week ---------------- */
 
-  function watchWeek(into, cfoInto, hrInto) {
+  function watchWeek(into, cfoInto, hrInto, legalInto) {
     onSnapshot(query(collection(db, 'packs'), orderBy('end', 'desc'), limit(4)), function (qs) {
       var packs = [];
       qs.forEach(function (d) { packs.push(d.data()); });
@@ -2108,6 +2114,7 @@ import {
       into.innerHTML = '';
       drawCfo(cfoInto, w);
       drawHr(hrInto, w);
+      drawLegal(legalInto, w);
       if (!w) { into.appendChild(el('p', 'codenote', t('chNoWeek'))); return; }
 
       into.appendChild(el('p', 'skysub', prettyDay(w.start) + ' – ' + prettyDay(w.end)));
@@ -2121,7 +2128,7 @@ import {
       var f = el('div', 'chfind brief');
       f.appendChild(el('div', 'chft', w.text || ''));
       into.appendChild(f);
-    }, function (e) { failInto(into)(e); failInto(cfoInto)(e); failInto(hrInto)(e); });
+    }, function (e) { failInto(into)(e); failInto(cfoInto)(e); failInto(hrInto)(e); failInto(legalInto)(e); });
   }
 
   /* The CFO's week: three figures, the reading, and each spending line
@@ -2195,6 +2202,42 @@ import {
       v.appendChild(document.createTextNode(p.onTime + '/' + p.due + ' · ' + pct(p.pct)));
       v.appendChild(el('span', 'chcfo-avg', ' · ' + pct(p.before) +
         (p.trend === 'worse' ? ' · ' + t('hrWorse') : p.trend === 'better' ? ' · ' + t('hrBetter') : '')));
+      r.appendChild(v);
+      tbl.appendChild(r);
+    });
+    into.appendChild(tbl);
+  }
+
+  /* The legal check of the month so far: four figures, the reading, and
+     each person fined against a third of their wage. Every figure was
+     worked out in Legal.js; a wage not entered is said, never guessed. */
+  function drawLegal(into, w) {
+    into.innerHTML = '';
+    if (!w || !w.legalText) { into.appendChild(el('p', 'codenote', t('legalNone'))); return; }
+    var n = function (x) { return x == null ? '—' : String(x); };
+    var tiles = el('div', 'chtiles');
+    tiles.appendChild(tile(t('legalOver'), n(w.legalOver)).box);
+    tiles.appendChild(tile(t('legalNear'), n(w.legalNear)).box);
+    tiles.appendChild(tile(t('legalNoWage'), n(w.legalNoWage)).box);
+    tiles.appendChild(tile(t('legalUnsigned'), w.legalUnsigned == null ? '—' : short(w.legalUnsigned),
+                           w.legalUnsigned == null ? null : exact(w.legalUnsigned)).box);
+    into.appendChild(tiles);
+    var f = el('div', 'chfind legal');
+    f.appendChild(el('div', 'chft', w.legalText));
+    into.appendChild(f);
+    var rows = w.legalRows || [];
+    if (!rows.length) return;
+    var tbl = el('div', 'chcfo-lines chlegal-lines');
+    var head = el('div', 'chf chcfo-head');
+    head.appendChild(el('span', 'chfk', t('legalPerson')));
+    head.appendChild(el('span', 'chfv', t('legalFinesCap')));
+    tbl.appendChild(head);
+    rows.forEach(function (p) {
+      var r = el('div', 'chf');
+      r.appendChild(el('span', 'chfk', p.name));
+      var v = el('span', 'chfv' + (p.status === 'over a third' ? ' fine' : ''));
+      v.appendChild(document.createTextNode(birr(p.fines)));
+      v.appendChild(el('span', 'chcfo-avg', ' · ' + (p.cap == null ? t('legalWageMissing') : birr(p.cap))));
       r.appendChild(v);
       tbl.appendChild(r);
     });

@@ -278,7 +278,6 @@ const REPORTS = [
       {id:'workers_why', en:'Who was absent, and was it with permission?', am:'የቀሩት እነማን ናቸው? በፈቃድ ነው?', t:'area', show:{f:'workers', when:'short'}}
     ]},
     { en:'2 · Quality control', am:'2 · የጥራት ቁጥጥር', fields:[
-      {id:'qc_pass', en:'How many jobs passed QC today?', am:'ዛሬ ስንት ሥራዎች QC አለፉ?', t:'num'},
       {id:'qc_fail', en:'How many jobs failed QC today?', am:'ዛሬ ስንት ሥራዎች QC አላለፉም?', t:'num'},
       {id:'qc_fail_list', en:'Which jobs failed, and why?', am:'ያላለፉት የትኞቹ ሥራዎች ናቸው? ለምን?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
         show:{f:'qc_fail', when:'pos'},

@@ -1343,7 +1343,8 @@ var AGENTS = [
       yordanos_stopped_production: ay_(yord, 'sh_stopped'),
       yordanos_which: yord.sh_what || '',
       wude_pass_rate: N('wude-daily','i_rate'),
-      mahelet_qc_pass: N('liu-daily','qc_pass'), mahelet_qc_fail: N('liu-daily','qc_fail'),
+      /* the jobs that passed are Wude's count alone (the Chairman, 8 Oct 2026) */
+      mahelet_qc_fail: N('liu-daily','qc_fail'),
       elyas_jobs_finished: N('elyas-daily','j_done'), mahelet_jobs_installed: N('liu-daily','installed'),
       offcut_m2_received_by_store: N('yordanos-daily','k_offin'),
       offcut_m2_sent_by_factory: sentOut,

@@ -1836,6 +1836,9 @@ const REPORTS = [
         {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
         {id:'tgt',  en:'m² target', am:'የታቀደ ካሬ ሜትር', t:'num'},
         {id:'done', en:'m² produced', am:'የተመረተ ካሬ ሜትር', t:'num'},
+        /* a count anyone can give — "1 MDF, 2 MDF" (the Chairman, 8 Oct 2026).
+           The waste is worked out from it, so nobody estimates a percentage. */
+        {id:'sheets', en:'Sheets used', am:'የዋሉ ሉሆች', t:'num'},
         {id:'st',   en:'Status', am:'ሁኔታ', t:'choice', opts:[
           {v:'done', en:'Complete', am:'ተጠናቋል'},
           {v:'wip',  en:'In progress', am:'በሂደት ላይ'}

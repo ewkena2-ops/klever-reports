@@ -104,6 +104,49 @@ function got_(filed, reportId) {
   for (var i = 0; i < filed.length; i++) if (filed[i].report === reportId) hit = filed[i];
   return hit;
 }
+/* THE SALESPEOPLE'S OWN FIGURES, ADDED UP (8 Oct 2026). Leads, and whether
+   they were called, are reported by the person who took them; Ephrata used
+   to re-type the total and the two disagreed. null when not one of them has
+   filed it — nobody said zero, so no agent is told zero. */
+function salesSum_(d, field) {
+  var any = false, total = 0;
+  ((d && d.filed) || []).forEach(function (f) {
+    if (!/-sales-daily$/.test(String(f.report || ''))) return;
+    var v = a_(f.fields || {}, field);
+    if (v !== null) { any = true; total += v; }
+  });
+  return any ? total : null;
+}
+function salesPair_(d, field) {
+  var any = false, done = 0, of = 0, bad = 0;
+  ((d && d.filed) || []).forEach(function (f) {
+    if (!/-sales-daily$/.test(String(f.report || ''))) return;
+    var p = pair_(f.fields || {}, field);
+    if (!p || p.done === null || p.of === null) return;
+    /* 11 called out of 10 cannot be right: it is left out of the total, and
+       said to be, rather than quietly making the total wrong */
+    if (p.cannot_be_right) { bad++; return; }
+    any = true; done += p.done; of += p.of;
+  });
+  if (!any) return bad ? { cannot_be_right: bad + ' report(s) answered this in a way that cannot be right' } : null;
+  var out = { done: done, of: of };
+  if (bad) out.reports_left_out_as_impossible = bad;
+  return out;
+}
+/* the same, for each of the last seven days, oldest first */
+function salesSeries_(d, field) {
+  var out = [];
+  for (var i = 6; i >= 0; i--) {
+    var day = addDays_(d.day, -i), t = null;
+    (d.recent || []).forEach(function (f) {
+      if (!/-sales-daily$/.test(String(f.report || '')) || f.day !== day) return;
+      var x = a_(f.fields || {}, field);
+      if (x !== null) t = (t === null ? 0 : t) + x;
+    });
+    out.push(t);
+  }
+  return out;
+}
 function vals_(filed, reportId) {
   var f = got_(filed, reportId);
   return f ? (f.fields || {}) : {};
@@ -992,10 +1035,12 @@ var AGENTS = [
     var tsega = vals_(d.filed, 'tsega-sales-daily');
     var biruk = vals_(d.filed, 'biruktayet-sales-daily');
     return {
-      leads_today: a_(ephrata, 'leads_total'),
-      leads_by_source: { social:a_(ephrata, 'leads_social'), showroom:a_(ephrata, 'leads_showroom'),
-                         referral:a_(ephrata, 'leads_referral'), agent:a_(ephrata, 'leads_agent'), other:a_(ephrata, 'leads_other') },
-      new_leads_called_within_24_hours: pair_(ephrata, 'resp_1hr'),
+      /* the leads are the salespeople's own, added up here: Ephrata no longer
+         re-types them (the Chairman, 8 Oct 2026) */
+      leads_today: salesSum_(d, 'l_total'),
+      leads_by_source: { social:salesSum_(d, 'l_social'), showroom:salesSum_(d, 'l_show'),
+                         referral:salesSum_(d, 'l_ref'), agent:salesSum_(d, 'l_agent'), other:salesSum_(d, 'l_other') },
+      new_leads_called_within_24_hours: salesPair_(d, 'r_1hr'),
       /* pre-measurement is Ephrata's: she assigns the designers, and the
          salespeople are not asked (the Chairman, 8 Oct 2026) */
       visits_booked: a_(ephrata, 'visits_booked'), visits_done: a_(ephrata, 'visits_done'), visits_late: a_(ephrata, 'visits_late'),
@@ -1018,7 +1063,7 @@ var AGENTS = [
       /* Monday to Saturday; the first live run said "tomorrow cannot close
          the gap" on a Thursday, with Friday and Saturday both still to come */
       working_days_left_this_week: Math.max(0, 6 - dow_(d.day)),
-      leads_last_7_days: series_(d, 'ephrata-daily', 'leads_total'),
+      leads_last_7_days: salesSeries_(d, 'l_total'),
       contracts_last_7_days: series_(d, 'ephrata-daily', 'contracts'),
       /* what she expects to collect, added up in code */
       expected_collections: expectedOf_(ephrata)

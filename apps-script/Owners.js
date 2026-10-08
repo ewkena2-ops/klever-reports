@@ -122,7 +122,8 @@ function realtimeAlerts_(fresh, schedule) {
          for a visit, quotes below the margin floor */
       if (/-sales-daily$/.test(rep) || rep === 'ephrata-daily') {
         var lead = rep === 'ephrata-daily';
-        var p = pair_(v, lead ? 'resp_1hr' : 'r_1hr');
+        /* the leads are the salespeople's to report (8 Oct 2026) */
+        var p = lead ? null : pair_(v, 'r_1hr');
         if (p && p.done !== null && p.of !== null && p.of > p.done) {
           sent += alertMany_(base + '-r1', [who, 'ephrata'], (p.of - p.done) + ' of ' + p.of + ' new leads in ' + from +
                              '’s report of ' + dayLabel_(day) + ' were not called within 24 hours. Call them now, and say here when each was called.', day);

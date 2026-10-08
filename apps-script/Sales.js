@@ -32,7 +32,7 @@ var SD_SALES_F_ = { leads: 'l_total', called: 'r_1hr', quotes: 'q_issued',
 var SD_TEAM_ = [
   { id: 'ephrata', report: 'ephrata-daily', target: 3000000,
     target_is: 'collected this week — Ephrata’s commission starts at 3,000,000 Birr',
-    f: { leads: 'leads_total', called: 'resp_1hr', visits: 'visits_done', visitsLate: 'visits_late', quotes: 'quotes_issued',
+    f: { visits: 'visits_done', visitsLate: 'visits_late', quotes: 'quotes_issued',
          contracts: 'contracts', value: 'contract_value', collected: 'collected_today', week: 'week_total', unans: 'wa_unanswered' } },
   { id: 'tsega', report: 'tsega-sales-daily', target: 2000000,
     target_is: 'collected this week, bank-confirmed — the salesperson’s weekly target', f: SD_SALES_F_ },
@@ -110,10 +110,20 @@ function sdMember_(m, byDay, d, monday, from, left, names) {
       quote_to_contract_pct: sdPct_(contracts, quotes)
     }
   };
-  /* only Ephrata is asked about pre-measurement, so only her row carries it */
+  /* each row carries only what that person is actually asked: pre-measurement
+     is Ephrata's, the leads are the salespeople's (the Chairman, 8 Oct 2026) */
   if (!f.visits) {
     if (out.the_day_read) { delete out.the_day_read.visits_done; delete out.the_day_read.leads_waiting_over_48h_for_a_visit; }
     delete out.last_4_weeks.visits;
+  }
+  if (!f.leads) {
+    if (out.the_day_read) delete out.the_day_read.leads;
+    delete out.last_4_weeks.leads;
+    delete out.last_4_weeks.lead_to_contract_pct;
+  }
+  if (!f.called) {
+    if (out.the_day_read) delete out.the_day_read.called_within_24_hours;
+    delete out.last_4_weeks.called_within_24_hours;
   }
   /* a salesperson's quotes: below the margin floor, by customer */
   if (f.quoteList && v) {
@@ -125,13 +135,26 @@ function sdMember_(m, byDay, d, monday, from, left, names) {
   return out;
 }
 
-/* Ephrata's marketing figures over the window, and what she said worked */
-function sdMarketing_(byDay, from, to) {
+/* Ephrata's marketing figures over the window, and what she said worked.
+   The posts and the inquiries are hers; the leads they brought are counted
+   from the salespeople, who log every lead (the Chairman, 8 Oct 2026). */
+function sdMarketing_(hist, from, to) {
+  var byDay = hist[SD_LEAD_] || {};
   var days = Object.keys(byDay).filter(function (x) { return x >= from && x <= to; }).sort();
+  var teamSum = function (field) {
+    var t = null;
+    SD_TEAM_.forEach(function (m) {
+      if (m.id === SD_LEAD_) return;
+      var by = hist[m.id] || {};
+      var v = sdSum_(by, Object.keys(by).filter(function (x) { return x >= from && x <= to; }).sort(), field);
+      if (v !== null) t = (t === null ? 0 : t) + v;
+    });
+    return t;
+  };
   var src = {};
-  [['social', 'leads_social'], ['showroom', 'leads_showroom'], ['referral', 'leads_referral'],
-   ['agent', 'leads_agent'], ['other', 'leads_other']].forEach(function (s) { src[s[0]] = sdSum_(byDay, days, s[1]); });
-  var leads = sdSum_(byDay, days, 'leads_total');
+  [['social', 'l_social'], ['showroom', 'l_show'], ['referral', 'l_ref'],
+   ['agent', 'l_agent'], ['other', 'l_other']].forEach(function (s) { src[s[0]] = teamSum(s[1]); });
+  var leads = teamSum('l_total');
   var posts = sdSum_(byDay, days, 'posts'), mkt = sdSum_(byDay, days, 'mkt_leads');
   return {
     days_reported: days.length,
@@ -252,8 +275,8 @@ function salesDirector_(d) {
     working_days_left_this_week: left,
     window_from: dayLabel_(from),
     team: SD_TEAM_.map(function (m) { return sdMember_(m, hist[m.id] || {}, d, monday, from, left, names); }),
-    never_add_people_together: 'Ephrata’s figures already include the salespeople’s; do not add the three.',
-    marketing: sdMarketing_(hist[SD_LEAD_] || {}, from, d.day),
+    never_add_people_together: 'Each figure belongs to one person: the leads and the calls are the salespeople’s, pre-measurement is Ephrata’s. Her collections and contracts still cover the whole team, so do not add the three.',
+    marketing: sdMarketing_(hist, from, d.day),
     pipeline: pipe,
     today_actions: acts
   };

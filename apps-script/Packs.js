@@ -245,6 +245,14 @@ function packData_(start, end) {
 
 /* the figures of one report on each day it was filed in the period — the
    last filing of a day, since a second one is a correction */
+/* every salesperson's day: the leads are theirs to report (8 Oct 2026) */
+function salesDaysOf_(P) {
+  var by = {};
+  P.filings.forEach(function (f) {
+    if (/-sales-daily$/.test(String(f.report || '')) && f.day >= P.start && f.day <= P.end) by[f.report + '|' + f.day] = f.fields || {};
+  });
+  return Object.keys(by).sort().map(function (k) { return { day: k.split('|')[1], v: by[k] }; });
+}
 function daysOf_(P, reportId) {
   var by = {};
   P.filings.forEach(function (f) {
@@ -368,7 +376,7 @@ function operations_(P) {
     },
     sales: {
       days_reported: eph.length,
-      leads: sumOf_(eph, 'leads_total'),
+      leads: sumOf_(salesDaysOf_(P), 'l_total'),
       contracts: sumOf_(eph, 'contracts'),
       contract_value: sumOf_(eph, 'contract_value'),
       collected: sumOf_(eph, 'collected_today')

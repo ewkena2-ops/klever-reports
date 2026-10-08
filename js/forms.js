@@ -97,21 +97,11 @@ const REPORTS = [
   penEn:'Late –500 Birr · Missing –1,000 Birr', penAm:'ዘግይቶ –500 ብር · ካልተላከ –1,000 ብር',
   sections:[
     { en:'1 · Leads today', am:'1 · ዛሬ የመጡ አዲስ ደንበኞች', fields:[
-      {id:'leads_total', en:'How many new leads came in today?', am:'ዛሬ ስንት አዲስ ደንበኞች መጡ?', t:'num',
-        parts:{of:['leads_social','leads_showroom','leads_referral','leads_agent','leads_other'], all:1}},
-      {id:'leads_social', en:'From social media', am:'ከሶሻል ሚዲያ', t:'num', i:1},
-      {id:'leads_showroom', en:'Walked into the showroom', am:'ሾውሩም የመጡ', t:'num', i:1},
-      {id:'leads_referral', en:'Referred by someone', am:'በሪፈራል', t:'num', i:1},
-      {id:'leads_agent', en:'Through an agent', am:'በኤጀንት', t:'num', i:1},
-      {id:'leads_other', en:'Anywhere else', am:'ከሌላ ቦታ', t:'num', i:1},
-      {id:'leads_best', en:'Which of today\'s leads is the most serious, and what is the next step with them?', am:'ከዛሬዎቹ ደንበኞች ውስጥ በጣም ተስፋ ያለው ማን ነው? ቀጣዩ እርምጃስ ምንድን ነው?', t:'area', show:{f:'leads_total', when:'pos'}}
+      /* the counts are the salespeople's to report — they log every lead by
+         name (the Chairman, 8 Oct 2026). Hers is the judgement over them. */
+      {id:'leads_best', en:'Which of today\'s leads is the most serious, and what is the next step with them?', am:'ከዛሬዎቹ ደንበኞች ውስጥ በጣም አሳሳቢው የትኛው ነው? ቀጣዩ እርምጃስ?', t:'area', opt:1}
     ]},
-    { en:'2 · Lead response compliance', am:'2 · የምላሽ ፍጥነት', fields:[
-      /* 24 hours, not 1 (the Chairman, 8 Oct 2026); the letters still say 1 hour */
-      {id:'resp_1hr', en:'New leads today: how many did you call within 24 hours? (called within 24 hours / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ24 ሰዓት ውስጥ ደወሉላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'leads_total'},
-      {id:'resp_1hr_why', en:'Which leads were not called within 24 hours, why, and have they been called now?', am:'በ24 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን? አሁን ተደውሎላቸዋል?', t:'area', show:{f:'resp_1hr', when:'short'}}
-    ]},
-    { en:'3 · Pre-measurement', am:'3 · ቅድመ ልኬት', fields:[
+    { en:'2 · Pre-measurement', am:'2 · ቅድመ ልኬት', fields:[
       {id:'visits_booked', en:'How many pre-measurement appointments did you make today?', am:'ዛሬ ስንት የቅድመ ልኬት ቀጠሮ ያዙ?', t:'num'},
       {id:'visits_done', en:'How many pre-measurement visits were done today?', am:'ዛሬ ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num'},
       {id:'visits_list', en:'List each pre-measurement visit done today', am:'ዛሬ የተደረጉትን የቅድመ ልኬት ጉብኝቶች አንድ በአንድ ይዘርዝሩ', t:'table', addEn:'Add a visit', addAm:'ጉብኝት ጨምር',
@@ -138,7 +128,7 @@ const REPORTS = [
         tgt:{op:'lte', v:0, en:'Should be 0', am:'0 መሆን አለበት'}},
       {id:'visits_late_why', en:'Which customers are waiting, why, and on what day will each be visited?', am:'የሚጠብቁት ደንበኞች እነማን ናቸው? ለምን ዘገየ? እያንዳንዳቸው በየትኛው ቀን ይጎበኛሉ?', t:'area', show:{f:'visits_late', when:'pos'}}
     ]},
-    { en:'4 · Quotations', am:'4 · ፕሮፎርማ', fields:[
+    { en:'3 · Quotations', am:'3 · ፕሮፎርማ', fields:[
       {id:'quotes_issued', en:'How many quotations went out today?', am:'ዛሬ ስንት ፕሮፎርማ ተሰጠ?', t:'num'},
       {id:'quotes_list', en:'List each quotation sent today', am:'ዛሬ የተሰጡትን ፕሮፎርማዎች ይዘርዝሩ', t:'table', addEn:'Add a quotation', addAm:'ፕሮፎርማ ጨምር',
         show:{f:'quotes_issued', when:'pos'},
@@ -152,7 +142,7 @@ const REPORTS = [
         tgt:{op:'lte', v:0, en:'Should be 0', am:'0 መሆን አለበት'}},
       {id:'quotes_late_why', en:'Which customers, what is holding each one up, and when will it go out?', am:'የየትኞቹ ደንበኞች ናቸው? እያንዳንዱን ምን ያዘው? መቼ ይላካል?', t:'area', show:{f:'quotes_late', when:'pos'}}
     ]},
-    { en:'5 · Contracts', am:'5 · ውሎች', fields:[
+    { en:'4 · Contracts', am:'4 · ውሎች', fields:[
       {id:'contracts', en:'How many contracts were signed today?', am:'ዛሬ ስንት ውል ተፈረመ?', t:'num'},
       {id:'contracts_list', en:'List each contract signed today', am:'ዛሬ የተፈረሙትን ውሎች ይዘርዝሩ', t:'table', addEn:'Add a contract', addAm:'ውል ጨምር',
         show:{f:'contracts', when:'pos'},
@@ -181,7 +171,7 @@ const REPORTS = [
           {id:'ok', en:'Signed by the customer', am:'ደንበኛው ፈርመዋል', t:'yesno'}
         ]},
     ]},
-    { en:'6 · Cash collection', am:'6 · የገንዘብ ስብሰባ', fields:[
+    { en:'5 · Cash collection', am:'5 · የገንዘብ ስብሰባ', fields:[
       {id:'collected_today', en:'How much was collected from customers today?', am:'ዛሬ ከደንበኞች ስንት ብር ተሰበሰበ?', t:'money'},
       {id:'collected_list', en:'From whom?', am:'ከማን ከማን?', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
         show:{f:'collected_today', when:'pos'},
@@ -216,7 +206,7 @@ const REPORTS = [
             {v:'later', en:'Later', am:'ከዚያ በኋላ'}]}
         ]},
     ]},
-    { en:'7 · WhatsApp compliance', am:'7 · የዋትስአፕ ተገዢነት', fields:[
+    { en:'6 · WhatsApp compliance', am:'6 · የዋትስአፕ ተገዢነት', fields:[
       {id:'wa_groups', en:'How many customer groups are active?', am:'ስንት የደንበኛ ግሩፖች ንቁ ናቸው?', t:'num'},
       {id:'wa_stage', en:'How many required stage messages were posted? (posted / required)', am:'ከሚገባው የደረጃ መልዕክት ስንቱ ተላከ? (የተላከ / የሚገባው)', t:'ratio'},
       {id:'wa_stage_why', en:'Which groups missed their stage message, and why?', am:'የደረጃ መልዕክት ያልደረሳቸው የትኞቹ ግሩፖች ናቸው? ለምን?', t:'area', show:{f:'wa_stage', when:'short'}},
@@ -229,7 +219,7 @@ const REPORTS = [
       {id:'wa_violations', en:'How many team members broke the WhatsApp rules today?', am:'ዛሬ ስንት የቡድን አባላት የዋትስአፕ ደንብ ጣሱ?', t:'num'},
       {id:'wa_violations_who', en:'Who, what did they do, and what was the consequence?', am:'እነማን ናቸው? ምን አደረጉ? ምን ቅጣት ተሰጠ?', t:'area', show:{f:'wa_violations', when:'pos'}}
     ]},
-    { en:'8 · Marketing & social media', am:'8 · ማርኬቲንግ እና ሶሻል ሚዲያ', fields:[
+    { en:'7 · Marketing & social media', am:'7 · ማርኬቲንግ እና ሶሻል ሚዲያ', fields:[
       {id:'posts', en:'How many posts went up today?', am:'ዛሬ ስንት ፖስት ተለጠፈ?', t:'num'},
       {id:'platform', en:'On which pages?', am:'በየትኛው ገጽ? (FB / IG / TikTok)', t:'text', opt:1},
       {id:'inq', en:'How many inquiries came in?', am:'ስንት ጥያቄዎች ደረሱ?', t:'num'},
@@ -237,7 +227,7 @@ const REPORTS = [
       {id:'mkt_leads', en:'How many real leads came from marketing today?', am:'ዛሬ ከማርኬቲንግ ስንት እውነተኛ ደንበኞች መጡ?', t:'num'},
       {id:'mkt_best', en:'Which post or channel brought the most, and why do you think it worked?', am:'በጣም ውጤታማ የነበረው የትኛው ፖስት ወይም ገጽ ነው? ለምን የሠራ ይመስልዎታል?', t:'area', opt:1}
     ]},
-    { en:'9 · Problems and solutions', am:'9 · ችግሮችና መፍትሔዎች', fields:[
+    { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'What was the biggest problem today?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
       {id:'cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', opt:1},
       {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
@@ -245,7 +235,7 @@ const REPORTS = [
       {id:'need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_chair_what', en:'What exactly should he decide, what are the options, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_chair', when:'yes'}}
     ]},
-    { en:"10 · Tomorrow's top 3 priorities", am:'10 · ነገ የሚሠሩ ዋና ሦስት ሥራዎች', fields:[
+    { en:"9 · Tomorrow's top 3 priorities", am:'9 · ነገ የሚሠሩ ዋና ሦስት ሥራዎች', fields:[
       {id:'p1', en:'Priority 1', am:'1ኛ ሥራ', t:'text'},
       {id:'p2', en:'Priority 2', am:'2ኛ ሥራ', t:'text'},
       {id:'p3', en:'Priority 3', am:'3ኛ ሥራ', t:'text'}

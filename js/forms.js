@@ -688,10 +688,11 @@ const REPORTS = [
           {id:'qty', en:'Quantity', am:'ብዛት', t:'num'},
           {id:'ok', en:'Matches the BOM?', am:'ከBOM ጋር ይስማማል?', t:'yesno'}
         ]},
-      {id:'rec_checked', en:'How many were checked against the Job File / BOM? (checked / delivered)', am:'ስንቱ ከጆብ ፋይል / BOM ጋር ተመሳከሩ? (የተመሳከሩ / የደረሱ)', t:'ratio'},
+      /* "how many" of what? They are deliveries (the Chairman, 9 Oct 2026) */
+      {id:'rec_checked', en:'How many of those deliveries were checked against the Job File / BOM? (checked / delivered)', am:'ከነዚህ ርክክቦች ስንቱ ከጆብ ፋይል / BOM ጋር ተመሳከሩ? (የተመሳከሩ / የደረሱ)', t:'ratio'},
       {id:'rec_checked_why', en:'Which deliveries went in unchecked, and why?', am:'ሳይመሳከሩ የገቡት የትኞቹ ርክክቦች ናቸው? ለምን?', t:'area', show:{f:'rec_checked', when:'short'}},
-      {id:'rec_accepted', en:'How many were accepted into the store?', am:'ስንቱ ወደ መጋዘን ገቡ?', t:'num'},
-      {id:'rec_rejected', en:'How many did you reject?', am:'ስንቱን ውድቅ አደረጉ?', t:'num'},
+      {id:'rec_accepted', en:'How many of them were accepted into the store?', am:'ከነሱ ስንቱ ርክክቦች ወደ መጋዘን ገቡ?', t:'num'},
+      {id:'rec_rejected', en:'How many of them did you reject?', am:'ከነሱ ስንቱን ርክክቦች ውድቅ አደረጉ?', t:'num'},
       {id:'rec_grn', en:'How many goods received notes did you sign?', am:'ስንት የዕቃ መረከቢያ ወረቀት ፈረሙ?', t:'num'}
     ]},
     { en:'2 · Anything rejected today', am:'2 · ዛሬ ውድቅ የተደረጉ ዕቃዎች', fields:[

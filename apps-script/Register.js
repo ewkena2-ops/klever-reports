@@ -212,7 +212,15 @@ function regEventsOf_(filing) {
         if (!bad.length) return;            /* a site found ready is no news */
         e.what = bad.join(', ');
       }
-      if (e.job) e.job = regJob_(e.job);
+      /* a bare number in a job-code column is a job: Elyas wrote "167" and
+         "192" for KK-167 and KK-192 and the register held them as jobs of
+         their own (the Chairman, 9 Oct 2026). A lead's own four-digit number
+         never comes through here — it arrives as `lead`, from its own
+         column — so only a number short enough to be a KK job is prefixed. */
+      if (e.job) {
+        e.job = regJob_(e.job);
+        if (/^\d{1,3}$/.test(e.job)) e.job = 'KK-' + e.job;
+      }
       if (!e.cust && !e.job && !e.lead) return;
       out.push(e);
     });
@@ -885,8 +893,10 @@ function registerUpdate_(fresh) {
    raise it and the register is built again from the reports themselves,
    which is how a change to the way an answer is read reaches the history.
    V2, 8 Oct 2026 — regJob_ now strips dots and equals signs, so the jobs
-   written "K.K=165" and "kk165" come back together as one. */
-var REGISTER_BACKFILL_KEY_ = 'REGISTER_BACKFILLED_V2';
+   written "K.K=165" and "kk165" come back together as one.
+   V3, 9 Oct 2026 — a bare number in a job column is a KK job, so "167"
+   joins KK-167 instead of standing alone. */
+var REGISTER_BACKFILL_KEY_ = 'REGISTER_BACKFILLED_V3';
 function registerBackfill_() {
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty(REGISTER_BACKFILL_KEY_)) return false;

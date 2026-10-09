@@ -881,13 +881,19 @@ function registerUpdate_(fresh) {
 
 /* Once: every report since counting started, for the tables to begin
    complete (from the watch, like the Sheet's reset). */
+/* Once, from every report since counting began. The key carries a version:
+   raise it and the register is built again from the reports themselves,
+   which is how a change to the way an answer is read reaches the history.
+   V2, 8 Oct 2026 — regJob_ now strips dots and equals signs, so the jobs
+   written "K.K=165" and "kk165" come back together as one. */
+var REGISTER_BACKFILL_KEY_ = 'REGISTER_BACKFILLED_V2';
 function registerBackfill_() {
   var props = PropertiesService.getScriptProperties();
-  if (props.getProperty('REGISTER_BACKFILLED')) return false;
+  if (props.getProperty(REGISTER_BACKFILL_KEY_)) return false;
   var start = prop_('LEDGER_START', '') || addDays_(todayAddis_(), -30);
   var all = fsQuery_('reports', [['at', 'GREATER_THAN_OR_EQUAL', dayStart_(start)]], 'at');
   all.forEach(function (f) { regStore_(f); });
   registerBuild_(todayAddis_(), false);
-  props.setProperty('REGISTER_BACKFILLED', new Date().toISOString() + ' · ' + all.length + ' reports');
+  props.setProperty(REGISTER_BACKFILL_KEY_, new Date().toISOString() + ' · ' + all.length + ' reports');
   return true;
 }

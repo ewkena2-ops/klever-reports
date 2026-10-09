@@ -1819,10 +1819,13 @@ export function mount(root, opts) {
      planet or a person lifts the floor (see pick), because flying to one is
      meant to go right up to it. */
   function zoomFloor() {
-    /* never nearer than a few times the sun's own radius: the old floor of 3
-       was inside it (SUN_R is 8), which is why scrolling in ended at a wall
-       of light with nothing left to steer by */
-    return Math.max(SUN_R * 2.5, (views.company ? views.company.d : 100) * 0.09);
+    /* Close enough to read the planets, far enough that the sun stays small.
+       The old floor was 3, and the sun's own radius is 8 — scrolling in put
+       the camera inside it, and the screen became a wall of light with the
+       heading washed out and nothing left to steer by. The sun covers 28° of
+       the 45° frame at a tenth of the fitting distance and 9° at a quarter
+       of it, so a quarter is where this stops. */
+    return Math.max(12, (views.company ? views.company.d : 100) * 0.28);
   }
   function goCompany(id) {
     if (id) cur = id;

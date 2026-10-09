@@ -595,6 +595,12 @@ export function mount(root, opts) {
   controls.dampingFactor = 0.07;
   controls.enablePan = false;
   controls.rotateSpeed = 0.5;
+  /* A wheel step moves the camera 5% closer, and a trackpad flick is dozens
+     of steps — at full speed one flick crossed the whole system and left the
+     camera inside the sun, with nothing in view to scroll back out by (the
+     Chairman, 9 Oct 2026: "it goes too far, I can't come back by
+     scrolling"). Half speed, and a floor to stop at: see zoomFloor. */
+  controls.zoomSpeed = 0.45;
   controls.maxPolarAngle = Math.PI * 0.47;
   controls.autoRotate = !reduce;
   controls.autoRotateSpeed = 0.18;
@@ -1700,6 +1706,25 @@ export function mount(root, opts) {
      if so, a change of window size leaves their view alone */
   let userMoved = false;
   controls.addEventListener('start', () => { userMoved = true; });
+
+  /* A sideways swipe turns the view.
+
+     OrbitControls reads only deltaY from a wheel — that is the zoom — and
+     panning is off here (a pan in open space loses the centre). So a
+     two-finger swipe to the right did nothing whatsoever, and the only way
+     to see what sat at the edge of the frame was to drag (the Chairman,
+     9 Oct 2026: "why can't I scroll right here"). A swipe that is more
+     sideways than up-and-down now turns the camera the way a drag would,
+     around the same centre, and counts as taking the view. */
+  canvas.addEventListener('wheel', e => {
+    if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    userMoved = true;
+    const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+    sph.theta -= e.deltaX * 0.0022;
+    camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(sph));
+    controls.update();
+  }, { passive: false });
   const views = {};
   function band() {
     const top = (document.querySelector('.top') || hud).getBoundingClientRect().bottom;
@@ -1788,13 +1813,24 @@ export function mount(root, opts) {
     wrap.classList.add('at-group'); wrap.classList.remove('at-company');
     heading();
   }
+  /* How close the wheel may take you when nothing is picked: close enough
+     that one company fills the frame, far enough that the system is still
+     recognisable and one flick of the wheel brings it back. Picking a
+     planet or a person lifts the floor (see pick), because flying to one is
+     meant to go right up to it. */
+  function zoomFloor() {
+    /* never nearer than a few times the sun's own radius: the old floor of 3
+       was inside it (SUN_R is 8), which is why scrolling in ended at a wall
+       of light with nothing left to steer by */
+    return Math.max(SUN_R * 2.5, (views.company ? views.company.d : 100) * 0.09);
+  }
   function goCompany(id) {
     if (id) cur = id;
     level = 'company';
     computeViews();
     const far = camera.position.distanceTo(views.company.target) > 5000;
     flyTo(views.company, far ? 5600 : 2200, far ? 2.2 : 1);
-    controls.minDistance = 3; controls.maxDistance = views.company.d * 2.5;
+    controls.minDistance = zoomFloor(); controls.maxDistance = views.company.d * 2.5;
     controls.autoRotateSpeed = 0.18;
     wrap.classList.add('at-company'); wrap.classList.remove('at-group');
     heading();
@@ -1809,15 +1845,18 @@ export function mount(root, opts) {
     computeViews();
     if (!p) {
       follow = null;
-      if (level === 'company') { computeViews(); flyTo(views.company, 1600); }
+      if (level === 'company') { computeViews(); controls.minDistance = zoomFloor(); flyTo(views.company, 1600); }
       return;
     }
     if (p.kind === 'company' || p.kind === 'ai') return;
     const home = p.kind === 'head' || p.kind === 'crew' ? String(p.id).split(':')[0] : 'klever';
     if (level !== 'company' || cur !== home) {
-      level = 'company'; cur = home; controls.minDistance = 3;
+      level = 'company'; cur = home;
       wrap.classList.add('at-company'); wrap.classList.remove('at-group'); heading();
     }
+    /* flying to a thing is meant to go right up to it, so the floor comes
+       off while one is picked — it goes back on at the next tap on nothing */
+    controls.minDistance = 3;
     let P, dist, sunAt = sunPos, live = null;
     if (p.kind === 'head') { const m = minors[p.id]; P = m.c0.clone(); dist = m.sR * 6.5; sunAt = m.c0; }
     else if (p.kind === 'crew') { const [cid, i] = p.id.split(':'); const m = minors[cid], c = m.crew[+i]; live = c.pos; dist = c.r * 7 + 10; sunAt = m.c0; }
@@ -2088,6 +2127,11 @@ export function mount(root, opts) {
     pointScale();
     remeasure();
     computeViews();
+    /* the frame changed shape, so the distance that fits it changed with it */
+    if (level === 'company') {
+      if (!picked) controls.minDistance = zoomFloor();
+      controls.maxDistance = views.company.d * 2.5;
+    }
     /* refit the frame to the new shape only if nobody has taken the camera
        since the last flight; someone who has turned the view keeps it */
     if (!tween && !picked && !userMoved) {

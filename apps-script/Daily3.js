@@ -100,9 +100,6 @@ function reconcileFacts_(d) {
   recCheck_(c, 'Cheques listed against the cheques total', 'cheques listed', recSum_(get.chq_list, 'amount'), 'cheques total', a_(get, 'chq_value'), 'Getachew');
   var chq = a_(get, 'chq_value'), zz = a_(sel, 'zz_transfer');
   var cover = chq !== null && zz !== null ? { cheques_written: chq, moved_to_zamzam: zz, cheques_beyond_the_transfer: Math.max(0, chq - zz) } : null;
-  var so = a_(yor, 'st_open'), si = a_(yor, 'st_in'), su = a_(yor, 'st_out');
-  recCheck_(c, 'The store’s stock arithmetic', 'opening + in − out', so === null || si === null || su === null ? null : so + si - su,
-            'closing', a_(yor, 'st_close'), 'Yordanos', 0);
   var acc = a_(yor, 'rec_accepted'), rej = a_(yor, 'rec_rejected');
   recCheck_(c, 'Deliveries accepted and rejected against deliveries received', 'accepted + rejected', acc === null && rej === null ? null : (acc || 0) + (rej || 0),
             'received', a_(yor, 'rec_deliv'), 'Yordanos', 0);

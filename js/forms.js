@@ -700,11 +700,11 @@ const REPORTS = [
       {id:'rej_photo', en:'Was each rejection photographed?', am:'ውድቅ የተደረገው እያንዳንዱ ዕቃ ፎቶ ተነስቷል?', t:'yesno', opt:1},
       {id:'rej_reported', en:'Were Getachew and Selam told the same day?', am:'ለጌታቸውና ለሰላም በዚያው ቀን ተነግሯል?', t:'yesno', opt:1}
     ]},
-    { en:'3 · Stock record', am:'3 · የክምችት መዝገብ', fields:[
-      {id:'st_open', en:'How many stock items were on hand at opening?', am:'በመክፈቻ ሰዓት ስንት የክምችት ዕቃዎች ነበሩ?', t:'num'},
-      {id:'st_in', en:'How many came in today?', am:'ዛሬ ስንት ገቡ?', t:'num'},
-      {id:'st_out', en:'How many went out today?', am:'ዛሬ ስንት ወጡ?', t:'num'},
-      {id:'st_close', en:'How many are on hand at close?', am:'በመዝጊያ ሰዓት ስንት አሉ?', t:'num'},
+    /* the four totals that used to stand here added sheets, hinges and
+       metres of edge banding into one number (the Chairman, 9 Oct 2026:
+       "went out what?"). What goes in and out is counted material by
+       material on the shelf grid below, where it can be added up. */
+    { en:'3 · The record against the shelf', am:'3 · መዝገቡ ከመደርደሪያው ጋር', fields:[
       {id:'st_disc', en:'How many differences did you find between the record and the shelf?', am:'በመዝገቡና በመደርደሪያው መካከል ስንት ልዩነት ተገኘ?', t:'num',
         tgt:{op:'lte', v:0, en:'–500 Birr each · report same day', am:'እያንዳንዱ –500 ብር · በዕለቱ ማሳወቅ'}},
       {id:'st_disc_list', en:'What does not match?', am:'የማይስማማው ምንድን ነው?', t:'table', addEn:'Add an item', addAm:'ዕቃ ጨምር',
@@ -745,8 +745,8 @@ const REPORTS = [
       {id:'sec_sep', en:'Are job materials kept apart from consumables?', am:'የሥራ ዕቃዎች ከፍጆታ ዕቃዎች ተለይተው ተቀምጠዋል?', t:'yesno'}
     ]},
     { en:'8 · What is on the shelf, and how long it lasts', am:'8 · በመጋዘን ያለውና ምን ያህል እንደሚቆይ', fields:[
-      {id:'k_stock', en:'For each material: how much is on hand at close, how much was used this week, and how many days will it last?',
-       am:'ለእያንዳንዱ ዕቃ፦ በመዝጊያ ሰዓት ስንት አለ? በዚህ ሳምንት ስንት ዋለ? ለስንት ቀን ይበቃል?',
+      {id:'k_stock', en:'For each material: how much is on hand at close, how much went out today, and how many days will it last?',
+       am:'ለእያንዳንዱ ዕቃ፦ በመዝጊያ ሰዓት ስንት አለ? ዛሬ ስንት ወጣ? ለስንት ቀን ይበቃል?',
        t:'grid', rows:[
         {en:'MDF 18mm', am:'ኤምዲኤፍ 18ሚሜ'},
         {en:'MDF 16mm', am:'ኤምዲኤፍ 16ሚሜ'},
@@ -762,7 +762,7 @@ const REPORTS = [
         {en:'Glue and screws', am:'ሙጫና ብሎኖች'}
       ], cols:[
         {id:'qty',  en:'On hand', am:'በእጅ ያለ', t:'num'},
-        {id:'used', en:'Used this week', am:'በሳምንቱ የዋለ', t:'num'},
+        {id:'out', en:'Out today', am:'ዛሬ የወጣ', t:'num'},
         {id:'days', en:'Days of cover', am:'የሚበቃበት ቀን', t:'num'}
       ]},
       {id:'k_low', en:'Will anything run out in 5 days or less?', am:'በ5 ቀን ወይም ከዚያ በፊት የሚያልቅ ዕቃ አለ?', t:'yesno',

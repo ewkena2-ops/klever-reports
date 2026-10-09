@@ -1707,6 +1707,25 @@ export function mount(root, opts) {
   let userMoved = false;
   controls.addEventListener('start', () => { userMoved = true; });
 
+  /* TOUCHING THE VIEW ENDS THE FLIGHT.
+
+     A flight turns the controls off for as long as it lasts — up to five and
+     a half seconds — and OrbitControls ignores every wheel and every drag
+     while it is off. The page opens with a flight, and every tap on a
+     planet, a person or the breadcrumb starts another one, so for seconds at
+     a time scrolling did nothing whatsoever (the Chairman, 9 Oct 2026: "the
+     problem is I can't scroll"). Anyone reaching for the view means to have
+     it: the flight stops where it has got to and hands the camera over. */
+  function landNow() {
+    if (!tween) return;
+    tween = null;
+    controls.enabled = true;
+    userMoved = true;
+    if (camera.fov !== 45) { camera.fov = 45; camera.updateProjectionMatrix(); }
+    if (follow) lastF.copy(follow);
+  }
+  canvas.addEventListener('pointerdown', landNow);
+
   /* A sideways swipe turns the view.
 
      OrbitControls reads only deltaY from a wheel — that is the zoom — and
@@ -1717,6 +1736,7 @@ export function mount(root, opts) {
      sideways than up-and-down now turns the camera the way a drag would,
      around the same centre, and counts as taking the view. */
   canvas.addEventListener('wheel', e => {
+    landNow();
     if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
     e.preventDefault();
     userMoved = true;

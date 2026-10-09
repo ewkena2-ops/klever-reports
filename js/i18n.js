@@ -50,6 +50,14 @@ const T = {
     ready:'Ready to send',
     preview:'Report preview',
 
+    /* the figures the form counts from the rows, so nobody types them twice */
+    countedFromRows:'counted from your rows',
+    workedOut:'Worked out from your answers — nothing to fill in.',
+    fromYourWeek:'Added up from your own daily reports this week.',
+    fromYourWeekRows:'Gathered from your own daily reports this week — you listed these as they happened.',
+    weekHadNone:'Nothing of this kind in your daily reports this week.',
+    weekLoading:'Reading your week…',
+
     flags:'FLAGS',
     below:'below target',
     above:'above limit',
@@ -705,6 +713,13 @@ const T = {
     findNext:'ቀጣዩን ለማግኘት ይንኩ',
     ready:'ለመላክ ዝግጁ',
     preview:'የሚላከው ሪፖርት',
+
+    countedFromRows:'ከረድፎችዎ የተቆጠረ',
+    workedOut:'ከመልሶችዎ የተሰራ — የሚሞላ ነገር የለም።',
+    fromYourWeek:'በዚህ ሳምንት ከራስዎ ዕለታዊ ሪፖርቶች የተደመረ።',
+    fromYourWeekRows:'በዚህ ሳምንት ከራስዎ ዕለታዊ ሪፖርቶች የተሰበሰበ — በወቅቱ እርስዎ ዘርዝረዋቸዋል።',
+    weekHadNone:'በዚህ ሳምንት ዕለታዊ ሪፖርቶችዎ ውስጥ ይህን የሚመስል የለም።',
+    weekLoading:'ሳምንትዎን በማንበብ ላይ…',
 
     flags:'ማስጠንቀቂያ',
     below:'ከዒላማ በታች',

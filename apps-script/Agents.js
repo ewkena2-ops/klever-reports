@@ -1320,11 +1320,13 @@ var AGENTS = [
     var N = function (rid, f) { return nOrNull_(d.filed, rid, f); };
     var amaha = vals_(d.filed, 'amaha-daily');
     var yord = vals_(d.filed, 'yordanos-daily');
-    /* offcuts leaving the factory are recorded per board row, not as a total */
+    /* offcuts leaving the factory are recorded per material row, not as a
+       total (the rows moved from b_rows to p_mat on 9 Oct 2026, when the
+       boards and the accessories became one list) */
     var sentOut = null;
     if (got_(d.filed, 'amaha-daily')) {
       sentOut = 0;
-      rows_(amaha.b_rows).forEach(function (r) { sentOut += a_(r, 'boff') || 0; });
+      rows_(amaha.p_mat).forEach(function (r) { sentOut += a_(r, 'off') || 0; });
     }
     return {
       note: 'null means that report was not filed, or that question was left blank — it does not mean zero',

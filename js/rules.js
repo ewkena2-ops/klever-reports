@@ -147,8 +147,8 @@ const RULES = [
     en:'Operations message not posted on time',
     am:'የኦፕሬሽን መልዕክት በሰዓቱ አልተለጠፈም',
     src:'Mahelet’s letter — “Operations message not posted on time –200 Birr each”',
-    note:'Charged 200 for each operations message due today that was not posted on time (wa_req - wa_posted).',
-    test:{ at:'day', when:[{ diff:['liu-daily.wa_req', 'liu-daily.wa_posted'] }, '>', 0], count:{ diff:['liu-daily.wa_req', 'liu-daily.wa_posted'] } } },
+    note:'Charged 200 for each operations message due today that was not posted on time — the two boxes of one question since 9 Oct 2026 (due − posted on time).',
+    test:{ at:'day', when:[{ diff:['liu-daily.wa_ops__b', 'liu-daily.wa_ops__a'] }, '>', 0], count:{ diff:['liu-daily.wa_ops__b', 'liu-daily.wa_ops__a'] } } },
 
   { id:'liu-wa-assembler-progress', who:['liu'], kind:'penalty', birr:300, per:'event', how:'auto',
     en:'Assembler daily progress not posted in the customer group',

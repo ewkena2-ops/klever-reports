@@ -156,6 +156,30 @@
       });
     },
 
+    /* One person's own filed reports since `since`, answers and all, as
+       [{report, person, at, values}] — fetched once, not watched.
+
+       This is what lets a weekly report add up its own week instead of
+       asking someone to add up six daily reports they already filed. The
+       rules hand over a person's own reports (match /reports), so this asks
+       for one person by name and nothing else. */
+    ownReports: function (person, since) {
+      return ready.then(function () {
+        if (!db) return [];
+        var q = F.query(F.collection(db, 'reports'),
+                        F.where('person', '==', person), F.where('at', '>=', since));
+        return F.getDocs(q).then(function (snap) {
+          var out = [];
+          snap.forEach(function (d) {
+            var x = d.data({ serverTimestamps: 'estimate' });
+            out.push({ report: x.report, person: x.person,
+                       at: timeOf(x.at).getTime(), values: x.values || {} });
+          });
+          return out;
+        });
+      });
+    },
+
     /* Put the filed report in front of the people it is addressed to.
 
        A report that is filed and not read is a report nobody acted on. Every

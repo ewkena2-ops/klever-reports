@@ -315,8 +315,9 @@ function opsFacts_(P, ops) {
     bottlenecks: opsBottlenecks_(P, ops),
     delivery_and_installation: opsDelivery_(P),
     mahelet_said: {
+      /* one question now asks the problem, its cause and what is being done
+         (9 Oct 2026), so there is no separate `cause` to read */
       problems: hrSaid_(liu, 'problem'),
-      causes: hrSaid_(liu, 'cause'),
       help_needed: hrSaid_(liu, 'need_help'),
       decisions_asked_of_the_chairman: hrSaid_(liu.filter(function (x) { return ay_(x.v, 'need_chair') === true; }), 'need_chair_what')
     }

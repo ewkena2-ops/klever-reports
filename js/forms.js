@@ -84,6 +84,43 @@ const PEOPLE = [
   { id:'bereke', en:'Bereke', am:'በረከ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production' }
 ];
 
+/* ------------------------------------------------------------------ *
+ *  The twelve materials                                               *
+ * ------------------------------------------------------------------ *
+
+   One material, one name, everywhere: the store counts these, the 15-day
+   plan asks for these, purchasing buys these and production uses these. The
+   list used to be typed out again in each of those places, which is how the
+   same board ended up as "MDF 18mm" in one form and "mdf 18" in another, and
+   why nothing could be added up across them (the Chairman, 9 Oct 2026:
+   "went out what?"). Adding a material here adds it to all of them.          */
+const MATERIALS = [
+  { v:'MDF 18mm',            en:'MDF 18mm',            am:'ኤምዲኤፍ 18ሚሜ' },
+  { v:'MDF 16mm',            en:'MDF 16mm',            am:'ኤምዲኤፍ 16ሚሜ' },
+  { v:'Melamine 18mm',       en:'Melamine 18mm',       am:'ሜላሚን 18ሚሜ' },
+  { v:'Melamine 16mm',       en:'Melamine 16mm',       am:'ሜላሚን 16ሚሜ' },
+  { v:'Plywood',             en:'Plywood',             am:'ፕላይውድ' },
+  { v:'Back panel 3mm',      en:'Back panel 3mm',      am:'የኋላ ሰሌዳ 3ሚሜ' },
+  { v:'Edge banding (m)',    en:'Edge banding (m)',    am:'ጠርዝ ማሰሪያ (ሜትር)' },
+  { v:'Hinges',              en:'Hinges',              am:'ማጠፊያዎች' },
+  { v:'Drawer slides',       en:'Drawer slides',       am:'የመሳቢያ ተንሸራታቾች' },
+  { v:'Handles',             en:'Handles',             am:'መያዣዎች' },
+  { v:'Legs and shelf pins', en:'Legs and shelf pins', am:'እግሮችና የመደርደሪያ ችንካሮች' },
+  { v:'Glue and screws',     en:'Glue and screws',     am:'ሙጫና ብሎኖች' }
+];
+/* a delivery or an issue can also be something off that list */
+const MATERIAL_OPTS = MATERIALS.concat([
+  { v:'Consumables', en:'Consumables (blades, sandpaper, bits)', am:'ፍጆታ ዕቃዎች (ቢላ፣ ሳንድፔፐር፣ ቁፋሮ)' },
+  { v:'Tools',       en:'Tools',                                 am:'መሣሪያዎች' },
+  { v:'Other',       en:'Other',                                 am:'ሌላ' }
+]);
+/* the same twelve as the fixed rows of a grid */
+const MATERIAL_ROWS = MATERIALS.map(function (m) { return { en:m.en, am:m.am }; });
+/* the ones that come as sheets, and the ones that come as pieces — a sheet
+   count and a hinge count cannot be added to each other */
+const BOARDS = ['MDF 18mm', 'MDF 16mm', 'Melamine 18mm', 'Melamine 16mm', 'Plywood', 'Back panel 3mm'];
+const ACCESSORIES = ['Hinges', 'Drawer slides', 'Handles', 'Legs and shelf pins'];
+
 const REPORTS = [
 
 /* ============================ EPHRATA — DAILY ============================ */
@@ -103,9 +140,9 @@ const REPORTS = [
     ]},
     { en:'2 · Pre-measurement', am:'2 · ቅድመ ልኬት', fields:[
       {id:'visits_booked', en:'How many pre-measurement appointments did you make today?', am:'ዛሬ ስንት የቅድመ ልኬት ቀጠሮ ያዙ?', t:'num'},
-      {id:'visits_done', en:'How many pre-measurement visits were done today?', am:'ዛሬ ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num'},
-      {id:'visits_list', en:'List each pre-measurement visit done today', am:'ዛሬ የተደረጉትን የቅድመ ልኬት ጉብኝቶች አንድ በአንድ ይዘርዝሩ', t:'table', addEn:'Add a visit', addAm:'ጉብኝት ጨምር',
-        show:{f:'visits_done', when:'pos'},
+      {id:'visits_any', en:'Was any pre-measurement visit done today?', am:'ዛሬ የተደረገ የቅድመ ልኬት ጉብኝት አለ?', t:'yesno'},
+      {id:'visits_list', en:'Each pre-measurement visit done today', am:'ዛሬ የተደረገ እያንዳንዱ የቅድመ ልኬት ጉብኝት', t:'table', addEn:'Add a visit', addAm:'ጉብኝት ጨምር',
+        show:{f:'visits_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
@@ -113,10 +150,12 @@ const REPORTS = [
           {id:'who', en:'Visited by', am:'የጎበኘው', t:'text'},
           {id:'next', en:'Next step', am:'ቀጣይ እርምጃ', t:'text'}
         ]},
+      {id:'visits_done', en:'How many pre-measurement visits were done today?', am:'ዛሬ ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num',
+        auto:{rows:'visits_list'}, sumEn:'visits done', sumAm:'ጉብኝቶች ተደርገዋል'},
       /* tomorrow's visits, with the area, for the route (apps-script/Route.js, 8 Oct 2026) */
-      {id:'tm_visits_n', en:'How many pre-measurement visits are booked for tomorrow?', am:'ለነገ ስንት የቅድመ ልኬት ጉብኝት ተይዟል?', t:'num'},
-      {id:'tm_visits', en:'List each visit booked for tomorrow — the area is what the AI plans the route from', am:'ለነገ የተያዙትን ጉብኝቶች ይዘርዝሩ — AI መስመሩን የሚያቅደው ከአካባቢው ነው', t:'table', addEn:'Add a visit', addAm:'ጉብኝት ጨምር',
-        show:{f:'tm_visits_n', when:'pos'},
+      {id:'tm_any', en:'Is any pre-measurement visit booked for tomorrow?', am:'ለነገ የተያዘ የቅድመ ልኬት ጉብኝት አለ?', t:'yesno'},
+      {id:'tm_visits', en:'Each visit booked for tomorrow — the area is what the AI plans the route from', am:'ለነገ የተያዘ እያንዳንዱ ጉብኝት — AI መስመሩን የሚያቅደው ከአካባቢው ነው', t:'table', addEn:'Add a visit', addAm:'ጉብኝት ጨምር',
+        show:{f:'tm_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
@@ -124,38 +163,49 @@ const REPORTS = [
           {id:'time', en:'Time (e.g. 10:00 AM)', am:'ሰዓት (ለምሳሌ 10:00 AM)', t:'text'},
           {id:'who', en:'Who goes', am:'የሚሄደው', t:'text'}
         ]},
+      {id:'tm_visits_n', en:'How many pre-measurement visits are booked for tomorrow?', am:'ለነገ ስንት የቅድመ ልኬት ጉብኝት ተይዟል?', t:'num',
+        auto:{rows:'tm_visits'}, sumEn:'booked for tomorrow', sumAm:'ለነገ ተይዘዋል'},
       {id:'visits_late', en:'How many new leads have waited more than 48 hours for a pre-measurement appointment?', am:'ከ48 ሰዓት በላይ የቅድመ ልኬት ቀጠሮ ሳይያዝላቸው የቆዩ አዲስ ደንበኞች ስንት ናቸው?', t:'num',
         tgt:{op:'lte', v:0, en:'Should be 0', am:'0 መሆን አለበት'}},
       {id:'visits_late_why', en:'Which customers are waiting, why, and on what day will each be visited?', am:'የሚጠብቁት ደንበኞች እነማን ናቸው? ለምን ዘገየ? እያንዳንዳቸው በየትኛው ቀን ይጎበኛሉ?', t:'area', show:{f:'visits_late', when:'pos'}}
     ]},
     { en:'3 · Quotations', am:'3 · ፕሮፎርማ', fields:[
-      {id:'quotes_issued', en:'How many quotations went out today?', am:'ዛሬ ስንት ፕሮፎርማ ተሰጠ?', t:'num'},
-      {id:'quotes_list', en:'List each quotation sent today', am:'ዛሬ የተሰጡትን ፕሮፎርማዎች ይዘርዝሩ', t:'table', addEn:'Add a quotation', addAm:'ፕሮፎርማ ጨምር',
-        show:{f:'quotes_issued', when:'pos'},
+      {id:'quotes_any', en:'Did any quotation go out today?', am:'ዛሬ የተሰጠ ፕሮፎርማ አለ?', t:'yesno'},
+      {id:'quotes_list', en:'Each quotation sent today', am:'ዛሬ የተሰጠ እያንዳንዱ ፕሮፎርማ', t:'table', addEn:'Add a quotation', addAm:'ፕሮፎርማ ጨምር',
+        show:{f:'quotes_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'value', en:'Value', am:'ዋጋ', t:'money'},
           {id:'who', en:'Prepared by', am:'ያዘጋጀው', t:'text'}
         ]},
+      {id:'quotes_issued', en:'How many quotations went out today?', am:'ዛሬ ስንት ፕሮፎርማ ተሰጠ?', t:'num',
+        auto:{rows:'quotes_list'}, sumEn:'quotations', sumAm:'ፕሮፎርማዎች'},
+      {id:'quotes_value', en:'What is the total value of today\'s quotations?', am:'የዛሬዎቹ ፕሮፎርማዎች ጠቅላላ ዋጋ ስንት ነው?', t:'money',
+        auto:{sum:'quotes_list.value'}, sumEn:'quoted', sumAm:'የቀረበ ዋጋ'},
       {id:'quotes_late', en:'How many quotations are waiting more than 48 hours?', am:'ከ48 ሰዓት በላይ የዘገዩ ፕሮፎርማዎች ስንት ናቸው?', t:'num',
         tgt:{op:'lte', v:0, en:'Should be 0', am:'0 መሆን አለበት'}},
       {id:'quotes_late_why', en:'Which customers, what is holding each one up, and when will it go out?', am:'የየትኞቹ ደንበኞች ናቸው? እያንዳንዱን ምን ያዘው? መቼ ይላካል?', t:'area', show:{f:'quotes_late', when:'pos'}}
     ]},
     { en:'4 · Contracts', am:'4 · ውሎች', fields:[
-      {id:'contracts', en:'How many contracts were signed today?', am:'ዛሬ ስንት ውል ተፈረመ?', t:'num'},
-      {id:'contracts_list', en:'List each contract signed today', am:'ዛሬ የተፈረሙትን ውሎች ይዘርዝሩ', t:'table', addEn:'Add a contract', addAm:'ውል ጨምር',
-        show:{f:'contracts', when:'pos'},
+      {id:'contracts_any', en:'Was any contract signed today?', am:'ዛሬ የተፈረመ ውል አለ?', t:'yesno'},
+      {id:'contracts_list', en:'Each contract signed today', am:'ዛሬ የተፈረመ እያንዳንዱ ውል', t:'table', addEn:'Add a contract', addAm:'ውል ጨምር',
+        show:{f:'contracts_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Lead no. (4 digits)', am:'የደንበኛ ቁጥር (4 አሃዝ)', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'value', en:'Contract value', am:'የውል ዋጋ', t:'money'},
           {id:'adv', en:'Advance paid', am:'የተከፈለ ቅድመ ክፍያ', t:'money'},
+          {id:'margin', en:'Margin per m²', am:'ህዳግ በካሬ ሜትር', t:'money'},
           {id:'sp', en:'Salesperson', am:'ሻጭ', t:'text'}
         ]},
-      {id:'contract_value', en:'What is the total value of today\'s contracts?', am:'የዛሬዎቹ ውሎች ጠቅላላ ዋጋ ስንት ነው?', t:'money'},
-      {id:'advance', en:'How much advance was collected today?', am:'ዛሬ ስንት ቅድመ ክፍያ ተሰበሰበ?', t:'money'},
+      {id:'contracts', en:'How many contracts were signed today?', am:'ዛሬ ስንት ውል ተፈረመ?', t:'num',
+        auto:{rows:'contracts_list'}, sumEn:'contracts', sumAm:'ውሎች'},
+      {id:'contract_value', en:'What is the total value of today\'s contracts?', am:'የዛሬዎቹ ውሎች ጠቅላላ ዋጋ ስንት ነው?', t:'money',
+        auto:{sum:'contracts_list.value'}, sumEn:'signed', sumAm:'የተፈረመ'},
+      {id:'advance', en:'How much advance was collected today?', am:'ዛሬ ስንት ቅድመ ክፍያ ተሰበሰበ?', t:'money',
+        auto:{sum:'contracts_list.adv'}, sumEn:'advance collected', sumAm:'የተሰበሰበ ቅድመ ክፍያ'},
       {id:'advance_banked', en:'Was all of it banked today?', am:'ሁሉም ዛሬ ባንክ ገብቷል?', t:'yesno'},
       {id:'advance_banked_why', en:'Why not, where is the money now, and when will it be banked?', am:'ለምን አልገባም? ገንዘቡ አሁን የት ነው? መቼ ባንክ ይገባል?', t:'area', show:{f:'advance_banked', when:'no'}},
       /* change orders (8 Oct 2026), for the project control reader */
@@ -172,9 +222,9 @@ const REPORTS = [
         ]},
     ]},
     { en:'5 · Cash collection', am:'5 · የገንዘብ ስብሰባ', fields:[
-      {id:'collected_today', en:'How much was collected from customers today?', am:'ዛሬ ከደንበኞች ስንት ብር ተሰበሰበ?', t:'money'},
+      {id:'collected_any', en:'Was money collected from any customer today?', am:'ዛሬ ከደንበኛ ገንዘብ ተሰብስቧል?', t:'yesno'},
       {id:'collected_list', en:'From whom?', am:'ከማን ከማን?', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
-        show:{f:'collected_today', when:'pos'},
+        show:{f:'collected_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
@@ -184,6 +234,8 @@ const REPORTS = [
             {v:'final', en:'Final payment', am:'የመጨረሻ ክፍያ'},
             {v:'other', en:'Other', am:'ሌላ'}]}
         ]},
+      {id:'collected_today', en:'How much was collected from customers today?', am:'ዛሬ ከደንበኞች ስንት ብር ተሰበሰበ?', t:'money',
+        auto:{sum:'collected_list.amount'}, sumEn:'collected', sumAm:'ተሰብስቧል'},
       {id:'week_total', en:'How much has come in this week so far?', am:'በዚህ ሳምንት እስካሁን ስንት ብር ገባ?', t:'money',
         tgt:{op:'gte', v:3000000, en:'Commission starts at 3,000,000 Birr/week', am:'ኮሚሽን የሚጀምረው በሳምንት ከ3,000,000 ብር ነው'}},
       {id:'week_gap', en:'The week is below 3,000,000 Birr. Which customers will close the gap by Saturday, and for how much?', am:'ሳምንቱ ከ3,000,000 ብር በታች ነው። እስከ ቅዳሜ ክፍተቱን የሚሞሉት የትኞቹ ደንበኞች ናቸው? በስንት ብር?', t:'area', show:{f:'week_total', when:'miss'}},
@@ -220,17 +272,39 @@ const REPORTS = [
       {id:'wa_violations_who', en:'Who, what did they do, and what was the consequence?', am:'እነማን ናቸው? ምን አደረጉ? ምን ቅጣት ተሰጠ?', t:'area', show:{f:'wa_violations', when:'pos'}}
     ]},
     { en:'7 · Marketing & social media', am:'7 · ማርኬቲንግ እና ሶሻል ሚዲያ', fields:[
-      {id:'posts', en:'How many posts went up today?', am:'ዛሬ ስንት ፖስት ተለጠፈ?', t:'num'},
-      {id:'platform', en:'On which pages?', am:'በየትኛው ገጽ? (FB / IG / TikTok)', t:'text', opt:1},
+      /* a row a post, so the week's split by page comes out of it and the
+         page is never written as a note nobody can add up */
+      {id:'posts_any', en:'Did any post go up today?', am:'ዛሬ የተለጠፈ ፖስት አለ?', t:'yesno'},
+      {id:'posts_list', en:'Each post that went up today', am:'ዛሬ የተለጠፈ እያንዳንዱ ፖስት', t:'table', addEn:'Add a post', addAm:'ፖስት ጨምር',
+        show:{f:'posts_any', when:'yes'},
+        cols:[
+          {id:'page', en:'Page', am:'ገጽ', t:'choice', opts:[
+            {v:'fb', en:'Facebook',  am:'ፌስቡክ'},
+            {v:'ig', en:'Instagram', am:'ኢንስታግራም'},
+            {v:'tt', en:'TikTok',    am:'ቲክቶክ'},
+            {v:'other', en:'Somewhere else', am:'ሌላ ቦታ'}
+          ]},
+          {id:'what', en:'What it was about', am:'ስለምን ነበር', t:'text'},
+          {id:'leads', en:'Leads it brought', am:'ያመጣው ደንበኛ', t:'num'}
+        ]},
+      {id:'posts', en:'How many posts went up today?', am:'ዛሬ ስንት ፖስት ተለጠፈ?', t:'num',
+        auto:{rows:'posts_list'}, sumEn:'posts', sumAm:'ፖስቶች'},
+      {id:'posts_fb', en:'On Facebook', am:'በፌስቡክ', t:'num', i:1,
+        auto:{rows:'posts_list', when:{col:'page', is:'fb'}}, sumEn:'on Facebook', sumAm:'በፌስቡክ'},
+      {id:'posts_ig', en:'On Instagram', am:'በኢንስታግራም', t:'num', i:1,
+        auto:{rows:'posts_list', when:{col:'page', is:'ig'}}, sumEn:'on Instagram', sumAm:'በኢንስታግራም'},
+      {id:'posts_tt', en:'On TikTok', am:'በቲክቶክ', t:'num', i:1,
+        auto:{rows:'posts_list', when:{col:'page', is:'tt'}}, sumEn:'on TikTok', sumAm:'በቲክቶክ'},
+      {id:'platform', en:'On which pages?', am:'በየትኛው ገጽ?', t:'text',
+        auto:{list:'posts_list.page'}},
       {id:'inq', en:'How many inquiries came in?', am:'ስንት ጥያቄዎች ደረሱ?', t:'num'},
       {id:'inq_1hr', en:'How many were answered within 1 hour? (answered / all inquiries)', am:'ስንቱ በ1 ሰዓት ውስጥ ምላሽ አገኙ? (ምላሽ ያገኙ / ሁሉም)', t:'ratio', whole:'inq'},
-      {id:'mkt_leads', en:'How many real leads came from marketing today?', am:'ዛሬ ከማርኬቲንግ ስንት እውነተኛ ደንበኞች መጡ?', t:'num'},
+      {id:'mkt_leads', en:'How many real leads came from marketing today?', am:'ዛሬ ከማርኬቲንግ ስንት እውነተኛ ደንበኞች መጡ?', t:'num',
+        auto:{sum:'posts_list.leads'}, sumEn:'leads from the posts', sumAm:'ከፖስቶቹ የመጡ ደንበኞች'},
       {id:'mkt_best', en:'Which post or channel brought the most, and why do you think it worked?', am:'በጣም ውጤታማ የነበረው የትኛው ፖስት ወይም ገጽ ነው? ለምን የሠራ ይመስልዎታል?', t:'area', opt:1}
     ]},
     { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'problem', en:'What was the biggest problem today?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
-      {id:'cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
+      {id:'problem', en:'What was the biggest problem today — what caused it, and what is being done (who, by when)?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
       {id:'need_help', en:'What do you need from another department, and from whom?', am:'ከሌላ ክፍል ምን ያስፈልግዎታል? ከማን?', t:'area', opt:1},
       {id:'need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_chair_what', en:'What exactly should he decide, what are the options, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_chair', when:'yes'}}
@@ -257,9 +331,9 @@ const REPORTS = [
       {id:'waste_why', en:'Waste is over 20%. On which job or machine, why, and what was done?', am:'ብክነቱ ከ20% በላይ ነው። በየትኛው ሥራ ወይም ማሽን? ለምን? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'waste', when:'miss'}},
       {id:'machines', en:'How many machines ran today? (running / all machines)', am:'ዛሬ ስንት ማሽኖች ሠሩ? (የሠሩ / ሁሉም ማሽኖች)', t:'ratio'},
       {id:'machines_why', en:'Which machines did not run, why, and when will each be back?', am:'ያልሠሩት የትኞቹ ማሽኖች ናቸው? ለምን? እያንዳንዳቸው መቼ ይመለሳሉ?', t:'area', show:{f:'machines', when:'short'}},
-      {id:'downtime', en:'How many hours of machine downtime were there today?', am:'ዛሬ ማሽኖች በድምሩ ስንት ሰዓት ቆሙ?', t:'num'},
+      {id:'downtime_any', en:'Did any machine stop today?', am:'ዛሬ የቆመ ማሽን አለ?', t:'yesno'},
       {id:'downtime_list', en:'Which machines stopped, and why?', am:'የቆሙት የትኞቹ ማሽኖች ናቸው? ለምን?', t:'table', addEn:'Add a machine', addAm:'ማሽን ጨምር',
-        show:{f:'downtime', when:'pos'},
+        show:{f:'downtime_any', when:'yes'},
         cols:[
           {id:'machine', en:'Machine', am:'ማሽን', t:'choice', opts:[
             {v:'Width cutter',  en:'Width cutter',  am:'የወርድ መቁረጫ'},
@@ -274,6 +348,8 @@ const REPORTS = [
           {id:'told', en:'Chairman told at once', am:'ለሊቀመንበሩ ወዲያው ተነግሯል', t:'yesno'},
           {id:'back', en:'Back in service', am:'ወደ ሥራ የሚመለስበት', t:'text'}
         ]},
+      {id:'downtime', en:'How many hours of machine downtime were there today?', am:'ዛሬ ማሽኖች በድምሩ ስንት ሰዓት ቆሙ?', t:'num',
+        auto:{sum:'downtime_list.hours'}, sumEn:'hours stopped', sumAm:'ሰዓት ቆመዋል'},
       {id:'workers', en:'How many workers came to work today? (present / assigned)', am:'ዛሬ ስንት ሠራተኞች ተገኙ? (የተገኙ / የተመደቡ)', t:'ratio'},
       {id:'workers_why', en:'Who was absent, and was it with permission?', am:'የቀሩት እነማን ናቸው? በፈቃድ ነው?', t:'area', show:{f:'workers', when:'short'}}
     ]},
@@ -291,34 +367,47 @@ const REPORTS = [
          acceptance signed and the complaints are Elyas's — he is there
          (the Chairman, 8 Oct 2026). Hers is the gate out of the factory:
          nothing leaves without Selam's clearance. */
-      {id:'delivered', en:'How many jobs were delivered to customers today?', am:'ዛሬ ስንት ሥራዎች ለደንበኞች ደረሱ?', t:'num'},
+      {id:'delivered_any', en:'Did any job leave the factory today?', am:'ዛሬ ከፋብሪካ የወጣ ሥራ አለ?', t:'yesno'},
       {id:'delivered_list', en:'Which jobs left the factory today?', am:'ዛሬ ከፋብሪካ የወጡት የትኞቹ ሥራዎች ናቸው?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
-        show:{f:'delivered', when:'pos'},
+        show:{f:'delivered_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'fin',  en:'Selam cleared', am:'ሰላም አጽድቃለች', t:'yesno'}
-        ]}
+        ]},
+      {id:'delivered', en:'How many jobs were delivered to customers today?', am:'ዛሬ ስንት ሥራዎች ለደንበኞች ደረሱ?', t:'num',
+        auto:{rows:'delivered_list'}, sumEn:'jobs out', sumAm:'ሥራዎች ወጥተዋል'},
+      {id:'delivered_cleared', en:'How many of them had Selam\'s clearance?', am:'ከነሱ ስንቱ የሰላም ማጽደቅ ነበረው?', t:'num',
+        auto:{rows:'delivered_list', when:{col:'fin', is:'yes'}}, sumEn:'cleared by Selam', sumAm:'በሰላም ተጽድቀዋል'}
     ]},
+    /* the three counts were a chain — received, accepted, returned — where
+       the third is the first less the second, and the list of what was
+       returned says it better than any of them */
     { en:'4 · Job File handoff', am:'4 · የጆብ ፋይል ርክክብ', fields:[
       {id:'jf_recv', en:'How many Job Files did you receive from Ephrata today?', am:'ዛሬ ከኤፍራታ ስንት ጆብ ፋይሎች ደረሱዎት?', t:'num'},
-      {id:'jf_acc', en:'How many did you accept and sign for in the handover log?', am:'ስንቱን ተቀብለው በርክክብ መዝገቡ ፈረሙ?', t:'num'},
-      {id:'jf_rej', en:'How many did you return to Ephrata as incomplete?', am:'ስንቱን ያልተሟሉ ስለሆኑ ለኤፍራታ መለሱ?', t:'num'},
-      {id:'jf_reason', en:'Which files were returned, and what was missing from each?', am:'የተመለሱት የትኞቹ ፋይሎች ናቸው? በእያንዳንዱ ምን ጎደለ?', t:'area', opt:1}
+      {id:'jf_rej_any', en:'Did you return any of them to Ephrata as incomplete?', am:'ያልተሟሉ ስለሆኑ ለኤፍራታ የመለሱት አለ?', t:'yesno', show:{f:'jf_recv', when:'pos'}},
+      {id:'jf_rej_list', en:'Which files were returned, and what was missing from each?', am:'የተመለሱት የትኞቹ ፋይሎች ናቸው? በእያንዳንዱ ምን ጎደለ?', t:'table', addEn:'Add a file', addAm:'ፋይል ጨምር',
+        show:{f:'jf_rej_any', when:'yes'},
+        cols:[
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'what', en:'What was missing', am:'የጎደለው', t:'text'}
+        ]},
+      {id:'jf_rej', en:'How many did you return to Ephrata as incomplete?', am:'ስንቱን ያልተሟሉ ስለሆኑ ለኤፍራታ መለሱ?', t:'num',
+        auto:{rows:'jf_rej_list'}, sumEn:'returned', sumAm:'ተመልሰዋል'},
+      {id:'jf_acc', en:'How many did you accept and sign for in the handover log?', am:'ስንቱን ተቀብለው በርክክብ መዝገቡ ፈረሙ?', t:'num',
+        auto:{minus:['jf_recv', 'jf_rej']}, sumEn:'accepted and signed for', sumAm:'ተቀብለው ተፈርመዋል'}
     ]},
     { en:'5 · WhatsApp compliance', am:'5 · የዋትስአፕ ተገዢነት', fields:[
-      {id:'wa_req', en:'How many operations messages were due in customer groups today?', am:'ዛሬ በደንበኛ ግሩፖች ስንት የኦፕሬሽን መልዕክቶች መላክ ነበረባቸው?', t:'num'},
-      {id:'wa_posted', en:'How many of them were posted on time?', am:'ከነዚህ ስንቱ በሰዓቱ ተለጠፉ?', t:'num'},
-      {id:'wa_missed', en:'If any were missed: which groups, and why?', am:'ያልተለጠፈ ካለ፦ በየትኞቹ ግሩፖች? ለምን?', t:'area', opt:1},
+      {id:'wa_ops', en:'How many operations messages were posted on time? (posted on time / due today)', am:'ከሚገባው የኦፕሬሽን መልዕክት ስንቱ በሰዓቱ ተለጠፈ? (በሰዓቱ የተለጠፈ / ዛሬ መላክ የነበረበት)', t:'ratio'},
+      {id:'wa_missed', en:'Which groups missed theirs, and why?', am:'ያልተለጠፈባቸው የትኞቹ ግሩፖች ናቸው? ለምን?', t:'area', show:{f:'wa_ops', when:'short'}},
       {id:'wa_assembler', en:'Did the assemblers post their daily progress in every customer group?', am:'ገጣጣሚዎች በሁሉም የደንበኛ ግሩፖች ዕለታዊ ሂደታቸውን ለጠፉ?', t:'yesno'},
       {id:'wa_assembler_why', en:'Which groups were missed, by which assembler, and why?', am:'በየትኞቹ ግሩፖች አልተለጠፈም? የትኛው ገጣጣሚ? ለምን?', t:'area', show:{f:'wa_assembler', when:'no'}},
       {id:'wa_unanswered', en:'How many customer messages waited more than 2 hours for an operations answer?', am:'ስንት የደንበኛ መልዕክቶች ከ2 ሰዓት በላይ የኦፕሬሽን ምላሽ ሳያገኙ ቆዩ?', t:'num'},
       {id:'wa_unanswered_why', en:'Which customers, who should have answered, and have they been answered now?', am:'የየትኞቹ ደንበኞች ናቸው? መመለስ የነበረበት ማን ነበር? አሁን ምላሽ አግኝተዋል?', t:'area', show:{f:'wa_unanswered', when:'pos'}}
     ]},
     { en:'6 · Problems and solutions', am:'6 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'problem', en:'What was the biggest problem today?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
-      {id:'cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
+      {id:'problem', en:'What was the biggest problem today — what caused it, and what is being done (who, by when)?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
       {id:'resist', en:'Did anyone refuse or work around an operations rule today?', am:'ዛሬ የኦፕሬሽን ደንብን የተቃወመ ወይም ያለፈ ሰው ነበር?', t:'yesno'},
       {id:'resist_what', en:'Who, which rule, and what did you do about it?', am:'ማን ነው? የትኛውን ደንብ? ምን እርምጃ ወሰዱ?', t:'area', show:{f:'resist', when:'yes'}},
       {id:'need_help', en:'What do you need from another department, and from whom?', am:'ከሌላ ክፍል ምን ያስፈልግዎታል? ከማን?', t:'area', opt:1},
@@ -343,9 +432,9 @@ const REPORTS = [
   derived:1,
   sections:[
     { en:'1 · Cash', am:'1 · ጥሬ ገንዘብ', fields:[
-      {id:'cash_in', en:'How much cash came in today?', am:'ዛሬ ስንት ብር ጥሬ ገንዘብ ገባ?', t:'money'},
+      {id:'cash_any', en:'Did any cash come in today?', am:'ዛሬ የገባ ጥሬ ገንዘብ አለ?', t:'yesno'},
       {id:'cash_in_list', en:'Where did it come from? One row per receipt', am:'ከየት መጣ? ለእያንዳንዱ ደረሰኝ አንድ መስመር', t:'table', addEn:'Add a receipt', addAm:'ደረሰኝ ጨምር',
-        show:{f:'cash_in', when:'pos'},
+        show:{f:'cash_any', when:'yes'},
         cols:[
           {id:'from', en:'From', am:'ከማን', t:'text'},
           {id:'kind', en:'For', am:'የምን', t:'choice', opts:[
@@ -355,6 +444,8 @@ const REPORTS = [
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'receipt', en:'Receipt no.', am:'የደረሰኝ ቁጥር', t:'text'}
         ]},
+      {id:'cash_in', en:'How much cash came in today?', am:'ዛሬ ስንት ብር ጥሬ ገንዘብ ገባ?', t:'money',
+        auto:{sum:'cash_in_list.amount'}, sumEn:'came in', sumAm:'ገብቷል'},
       {id:'cash_banked', en:'Was all of today\'s cash banked today?', am:'የዛሬው ገንዘብ ሁሉ ዛሬ ባንክ ገብቷል?', t:'yesno'},
       {id:'cash_banked_why', en:'How much was not banked, where is it tonight, who holds it, and when will it be banked?', am:'ምን ያህል ባንክ አልገባም? ዛሬ ማታ የት ነው ያለው? ማን ይዞታል? መቼ ባንክ ይገባል?', t:'area', show:{f:'cash_banked', when:'no'}},
       {id:'cash_hand', en:'How much cash is on hand at close?', am:'በመዝጊያ ሰዓት በእጅ ስንት ብር አለ?', t:'money',
@@ -380,10 +471,12 @@ const REPORTS = [
       {id:'bank_total_why', en:'The balance is below the 6,000,000 Birr reserve. Why, which payments were still made today, and what is frozen until it recovers?', am:'ቀሪው ከ6,000,000 ብር ክምችት በታች ነው። ለምን? ዛሬ የትኞቹ ክፍያዎች ተፈጸሙ? እስኪመለስ ድረስ ምን ቆመ?', t:'area', show:{f:'bank_total', when:'miss'}},
       {id:'below6_reported', en:'If it is below 6M, was the Chairman told today?', am:'ከ6ሚ በታች ከሆነ ዛሬ ለሊቀመንበሩ ተነግሯል?', t:'yesno', opt:1}
     ]},
+    /* Four money totals and two counts stood over these three lists, and
+       every one of them was the list added up (the Chairman, 9 Oct 2026). */
     { en:'3 · Collections & payments', am:'3 · ገቢና ክፍያ', fields:[
-      {id:'adv_in', en:'How much came in as advance payments today?', am:'ዛሬ ስንት ብር ቅድመ ክፍያ ገባ?', t:'money'},
-      {id:'adv_in_list', en:'List each advance received today', am:'ዛሬ የገቡትን ቅድመ ክፍያዎች ይዘርዝሩ', t:'table', addEn:'Add an advance', addAm:'ቅድመ ክፍያ ጨምር',
-        show:{f:'adv_in', when:'pos'},
+      {id:'adv_any', en:'Did any advance payment come in today?', am:'ዛሬ የገባ ቅድመ ክፍያ አለ?', t:'yesno'},
+      {id:'adv_in_list', en:'Each advance received today', am:'ዛሬ የገባ እያንዳንዱ ቅድመ ክፍያ', t:'table', addEn:'Add an advance', addAm:'ቅድመ ክፍያ ጨምር',
+        show:{f:'adv_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
@@ -391,38 +484,62 @@ const REPORTS = [
           {id:'file', en:'Job File opened', am:'ጆብ ፋይል ተከፍቷል', t:'yesno'},
           {id:'group', en:'WhatsApp group created', am:'ዋትስአፕ ግሩፕ ተከፍቷል', t:'yesno'}
         ]},
-      {id:'final_in', en:'How much came in as final payments today?', am:'ዛሬ ስንት ብር የመጨረሻ ክፍያ ገባ?', t:'money'},
-      {id:'final_in_list', en:'List each final payment received today', am:'ዛሬ የገቡትን የመጨረሻ ክፍያዎች ይዘርዝሩ', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
-        show:{f:'final_in', when:'pos'},
+      {id:'adv_in', en:'How much came in as advance payments today?', am:'ዛሬ ስንት ብር ቅድመ ክፍያ ገባ?', t:'money',
+        auto:{sum:'adv_in_list.amount'}, sumEn:'in advances', sumAm:'በቅድመ ክፍያ'},
+      {id:'jf_created', en:'How many Job Files were opened today?', am:'ዛሬ ስንት ጆብ ፋይሎች ተከፈቱ?', t:'num',
+        auto:{rows:'adv_in_list', when:{col:'file', is:'yes'}}, sumEn:'Job Files opened', sumAm:'ጆብ ፋይሎች ተከፍተዋል'},
+      {id:'wa_created', en:'How many customer WhatsApp groups were created today?', am:'ዛሬ ስንት የደንበኛ ዋትስአፕ ግሩፖች ተከፈቱ?', t:'num',
+        auto:{rows:'adv_in_list', when:{col:'group', is:'yes'}}, sumEn:'groups created', sumAm:'ግሩፖች ተከፍተዋል'},
+      {id:'final_any', en:'Did any final payment come in today?', am:'ዛሬ የገባ የመጨረሻ ክፍያ አለ?', t:'yesno'},
+      {id:'final_in_list', en:'Each final payment received today', am:'ዛሬ የገባ እያንዳንዱ የመጨረሻ ክፍያ', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
+        show:{f:'final_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'prod', en:'Mahelet told production may start', am:'ምርት እንዲጀመር ለማህሌት ተነግሯል', t:'yesno'}
         ]},
-      {id:'pay_approved', en:'How many payments did you approve today?', am:'ዛሬ ስንት ክፍያዎችን አጸደቁ?', t:'num'},
-      {id:'pay_list', en:'List each payment approved today', am:'ዛሬ የጸደቁትን ክፍያዎች ይዘርዝሩ', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
-        show:{f:'pay_approved', when:'pos'},
+      {id:'final_in', en:'How much came in as final payments today?', am:'ዛሬ ስንት ብር የመጨረሻ ክፍያ ገባ?', t:'money',
+        auto:{sum:'final_in_list.amount'}, sumEn:'in final payments', sumAm:'በመጨረሻ ክፍያ'},
+      {id:'prod_confirmed', en:'How many production go-aheads did you give Mahelet today?', am:'ዛሬ ለማህሌት ስንት የምርት ፈቃድ ሰጡ?', t:'num',
+        auto:{rows:'final_in_list', when:{col:'prod', is:'yes'}}, sumEn:'told to Mahelet', sumAm:'ለማህሌት ተነግረዋል'},
+      {id:'pay_any', en:'Did you approve any payment today?', am:'ዛሬ ያጸደቁት ክፍያ አለ?', t:'yesno'},
+      {id:'pay_list', en:'Each payment approved today', am:'ዛሬ የጸደቀ እያንዳንዱ ክፍያ', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
+        show:{f:'pay_any', when:'yes'},
         cols:[
           {id:'to', en:'Paid to', am:'ተከፋይ', t:'text'},
           {id:'for', en:'For (job code or purpose)', am:'ለምን (የሥራ ኮድ ወይም ዓላማ)', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'kidan', en:'Kidan\'s approval (over 50,000)', am:'የኪዳን ፈቃድ (ከ50,000 በላይ)', t:'yesno'}
         ]},
-      {id:'pay_value', en:'What is the total value of payments approved today?', am:'ዛሬ የጸደቁት ክፍያዎች ጠቅላላ ዋጋ ስንት ነው?', t:'money'},
-      {id:'pay_kidan', en:'How many payments over 50,000 Birr went to Kidan for approval?', am:'ከ50,000 ብር በላይ የሆኑ ስንት ክፍያዎች ለኪዳን ፈቃድ ተላኩ?', t:'num'},
+      {id:'pay_approved', en:'How many payments did you approve today?', am:'ዛሬ ስንት ክፍያዎችን አጸደቁ?', t:'num',
+        auto:{rows:'pay_list'}, sumEn:'payments', sumAm:'ክፍያዎች'},
+      {id:'pay_value', en:'What is the total value of payments approved today?', am:'ዛሬ የጸደቁት ክፍያዎች ጠቅላላ ዋጋ ስንት ነው?', t:'money',
+        auto:{sum:'pay_list.amount'}, sumEn:'approved', sumAm:'ተጽድቋል'},
+      {id:'pay_kidan', en:'How many payments over 50,000 Birr went to Kidan for approval?', am:'ከ50,000 ብር በላይ የሆኑ ስንት ክፍያዎች ለኪዳን ፈቃድ ተላኩ?', t:'num',
+        auto:{rows:'pay_list', when:{col:'kidan', is:'yes'}}, sumEn:'went to Kidan', sumAm:'ለኪዳን ቀርበዋል'},
+      {id:'pay_big_unapproved', en:'How many payments over 50,000 Birr went out without Kidan?', am:'ከ50,000 ብር በላይ ያለኪዳን ፈቃድ የወጡ ክፍያዎች ስንት ናቸው?', t:'num',
+        auto:{rows:'pay_list', when:[{col:'amount', gte:50001}, {col:'kidan', is:'no'}]},
+        tgt:{op:'lte', v:0, en:'Over 50,000 Birr needs Kidan first', am:'ከ50,000 ብር በላይ የኪዳን ፈቃድ ይጠይቃል'}},
+      {id:'pay_big_why', en:'Which ones, and why did they go without his approval?', am:'የትኞቹ ናቸው? ያለእሱ ፈቃድ ለምን ወጡ?', t:'area', show:{f:'pay_big_unapproved', when:'pos'}},
       {id:'pay_kidan_state', en:'Which ones, and has each been approved yet?', am:'የትኞቹ ናቸው? እያንዳንዱ በኪዳን ጸድቋል?', t:'area', show:{f:'pay_kidan', when:'pos'}}
     ]},
     { en:'4 · ZamZam Bank', am:'4 · ዘምዘም ባንክ', fields:[
-      {id:'zz_transfer', en:'How much was transferred to ZamZam Bank today?', am:'ዛሬ ወደ ዘምዘም ባንክ ስንት ብር ተላለፈ?', t:'money'},
+      {id:'zz_any', en:'Was anything transferred to ZamZam Bank today?', am:'ዛሬ ወደ ዘምዘም ባንክ የተላለፈ ገንዘብ አለ?', t:'yesno'},
       {id:'zz_list', en:'Which approved purchase request does each transfer cover?', am:'እያንዳንዱ ዝውውር የትኛውን የጸደቀ የግዥ ጥያቄ ይሸፍናል?', t:'table', addEn:'Add a transfer', addAm:'ዝውውር ጨምር',
-        show:{f:'zz_transfer', when:'pos'},
+        show:{f:'zz_any', when:'yes'},
         cols:[
           {id:'req', en:'Purchase request', am:'የግዥ ጥያቄ', t:'text'},
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'match', en:'Same as the approved amount', am:'ከጸደቀው መጠን ጋር እኩል ነው', t:'yesno'}
         ]},
+      {id:'zz_transfer', en:'How much was transferred to ZamZam Bank today?', am:'ዛሬ ወደ ዘምዘም ባንክ ስንት ብር ተላለፈ?', t:'money',
+        auto:{sum:'zz_list.amount'}, sumEn:'transferred', sumAm:'ተላልፏል'},
+      {id:'zz_count', en:'How many transfers was that?', am:'ስንት ዝውውሮች ነበሩ?', t:'num',
+        auto:{rows:'zz_list'}, sumEn:'transfers', sumAm:'ዝውውሮች'},
+      {id:'zz_off', en:'How many transfers were not the approved amount?', am:'ከጸደቀው መጠን የተለዩ ዝውውሮች ስንት ናቸው?', t:'num',
+        auto:{rows:'zz_list', when:{col:'match', is:'no'}}, sumEn:'not the approved amount', sumAm:'ከጸደቀው የተለዩ'},
       {id:'zz_confirmed', en:'Was every cheque written today covered by funds confirmed to Getachew first? (Yes if no cheque today)', am:'ዛሬ የተጻፈ እያንዳንዱ ቼክ ገንዘቡ ለጌታቸው ቀድሞ ተረጋግጦለት ነበር? (ዛሬ ቼክ ካልተጻፈ አዎ)', t:'yesno'},
       {id:'zz_confirmed_why', en:'Which cheque went out before the funds were confirmed, for how much, and why?', am:'ገንዘቡ ሳይረጋገጥ የወጣው የትኛው ቼክ ነው? ስንት ብር? ለምን?', t:'area', show:{f:'zz_confirmed', when:'no'}},
       {id:'zz_register', en:'Is every transfer recorded in the ZamZam Payment Register?', am:'እያንዳንዱ ዝውውር በዘምዘም የክፍያ መዝገብ ተመዝግቧል?', t:'yesno'},
@@ -431,40 +548,55 @@ const REPORTS = [
         tgt:{op:'lte', v:0, en:'Report to Kidan same day', am:'በዕለቱ ለኪዳን ማሳወቅ'}},
       {id:'zz_disc_what', en:'How much is each, what caused it, who handled it, and was Kidan told today?', am:'እያንዳንዱ ስንት ብር ነው? ምን አመጣው? ማን ያዘው? ዛሬ ለኪዳን ተነግሯል?', t:'area', show:{f:'zz_disc', when:'pos'}}
     ]},
-    { en:'5 · Job Files & WhatsApp groups', am:'5 · ጆብ ፋይልና ዋትስአፕ ግሩፕ', fields:[
-      {id:'jf_created', en:'How many Job Files were opened today?', am:'ዛሬ ስንት ጆብ ፋይሎች ተከፈቱ?', t:'num'},
-      {id:'wa_created', en:'How many customer WhatsApp groups were created today?', am:'ዛሬ ስንት የደንበኛ ዋትስአፕ ግሩፖች ተከፈቱ?', t:'num'},
-      {id:'final_req', en:'How many final payment requests went to customers today?', am:'ዛሬ ለደንበኞች ስንት የመጨረሻ ክፍያ ጥያቄዎች ተላኩ?', t:'num'},
+    /* The Job Files opened, the groups created and the production go-aheads
+       were counted here and ticked again in the payment rows of section 3,
+       which is where they actually happen (the Chairman, 9 Oct 2026). They
+       are counted from those rows now, and this section keeps what is its
+       own: the final payment requests that went out. */
+    { en:'5 · Final payment requests', am:'5 · የመጨረሻ ክፍያ ጥያቄዎች', fields:[
+      {id:'final_req_any', en:'Did any final payment request go to a customer today?', am:'ዛሬ ለደንበኛ የተላከ የመጨረሻ ክፍያ ጥያቄ አለ?', t:'yesno'},
       {id:'final_req_list', en:'Which customers, and for how much?', am:'ለየትኞቹ ደንበኞች? ስንት ብር?', t:'table', addEn:'Add a request', addAm:'ጥያቄ ጨምር',
-        show:{f:'final_req', when:'pos'}, cols:[
+        show:{f:'final_req_any', when:'yes'}, cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'amount', en:'Amount asked', am:'የተጠየቀው መጠን', t:'money'}
         ]},
-      {id:'prod_confirmed', en:'How many production go-aheads did you give Mahelet today?', am:'ዛሬ ለማህሌት ስንት የምርት ማረጋገጫዎች ሰጡ?', t:'num'},
-      {id:'prod_list', en:'Which job codes, and was the final payment confirmed in the bank for each?', am:'የትኞቹ የሥራ ኮዶች ናቸው? የእያንዳንዳቸው የመጨረሻ ክፍያ ባንክ መግባቱ ተረጋግጧል?', t:'area', show:{f:'prod_confirmed', when:'pos'}}
+      {id:'final_req', en:'How many final payment requests went to customers today?', am:'ዛሬ ለደንበኞች ስንት የመጨረሻ ክፍያ ጥያቄዎች ተላኩ?', t:'num',
+        auto:{rows:'final_req_list'}, sumEn:'requests out', sumAm:'ጥያቄዎች ተልከዋል'},
+      {id:'final_req_value', en:'For how much in total?', am:'በጠቅላላው ስንት ብር?', t:'money',
+        auto:{sum:'final_req_list.amount'}, sumEn:'asked for', sumAm:'ተጠይቋል'},
+      {id:'prod_list', en:'Which job codes went to production today, and was the final payment confirmed in the bank for each?', am:'ዛሬ የትኞቹ የሥራ ኮዶች ወደ ምርት ገቡ? የእያንዳንዳቸው የመጨረሻ ክፍያ ባንክ መግባቱ ተረጋግጧል?', t:'area', show:{f:'prod_confirmed', when:'pos'}}
     ]},
     { en:'6 · Assembler payments', am:'6 · የገጣጣሚዎች ክፍያ', fields:[
-      {id:'asm_reserved', en:'How much was reserved today for assembler payments?', am:'ዛሬ ለተከላ ሠራተኞች ክፍያ ስንት ብር ተያዘ?', t:'money'},
+      {id:'asm_res_any', en:'Was money reserved for any assembler payment today?', am:'ዛሬ ለገጣጣሚ ክፍያ የተያዘ ገንዘብ አለ?', t:'yesno'},
       {id:'asm_reserved_list', en:'For which jobs?', am:'ለየትኞቹ ሥራዎች?', t:'table', addEn:'Add job', addAm:'ሥራ ጨምር',
-        show:{f:'asm_reserved', when:'pos'},
+        show:{f:'asm_res_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'amount', en:'Reserved', am:'የተያዘ', t:'money'},
           {id:'slip', en:'Slip given to Elyas', am:'ወረቀቱ ለኤልያስ ተሰጥቷል', t:'yesno'}
         ]},
+      {id:'asm_reserved', en:'How much was reserved today for assembler payments?', am:'ዛሬ ለተከላ ሠራተኞች ክፍያ ስንት ብር ተያዘ?', t:'money',
+        auto:{sum:'asm_reserved_list.amount'}, sumEn:'reserved', sumAm:'ተይዟል'},
+      {id:'asm_slips', en:'How many Payment Confirmation Slips were given out?', am:'ስንት የክፍያ ማረጋገጫ ወረቀቶች ተሰጡ?', t:'num',
+        auto:{rows:'asm_reserved_list', when:{col:'slip', is:'yes'}}, sumEn:'slips to Elyas', sumAm:'ወረቀቶች ለኤልያስ'},
       {id:'asm_unreserved', en:'Is any job being installed without its assembler payment reserved?', am:'የገጣጣሚዎች ክፍያ ሳይያዝለት እየተተከለ ያለ ሥራ አለ?', t:'yesno'},
       {id:'asm_unreserved_what', en:'Which job, why was it missed, and when will the money be reserved?', am:'የትኛው ሥራ ነው? ለምን ቀረ? ገንዘቡ መቼ ይያዛል?', t:'area', show:{f:'asm_unreserved', when:'yes'}},
-      {id:'asm_released', en:'How many assembler payments were released today?', am:'ዛሬ ስንት የገጣጣሚዎች ክፍያዎች ተለቀቁ?', t:'num'},
-      {id:'asm_released_list', en:'List each payment released today', am:'ዛሬ የተለቀቁትን ክፍያዎች ይዘርዝሩ', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
-        show:{f:'asm_released', when:'pos'},
+      {id:'asm_rel_any', en:'Was any assembler payment released today?', am:'ዛሬ የተለቀቀ የገጣጣሚ ክፍያ አለ?', t:'yesno'},
+      {id:'asm_released_list', en:'Each payment released today', am:'ዛሬ የተለቀቀ እያንዳንዱ ክፍያ', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
+        show:{f:'asm_rel_any', when:'yes'},
         cols:[
           {id:'who', en:'Assembler', am:'ገጣጣሚ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'days', en:'Working days after acceptance', am:'ደንበኛው ከተቀበለ በኋላ የሥራ ቀናት', t:'num'}
         ]},
-      {id:'asm_slips', en:'How many Payment Confirmation Slips were given out?', am:'ስንት የክፍያ ማረጋገጫ ወረቀቶች ተሰጡ?', t:'num'},
+      {id:'asm_released', en:'How many assembler payments were released today?', am:'ዛሬ ስንት የገጣጣሚዎች ክፍያዎች ተለቀቁ?', t:'num',
+        auto:{rows:'asm_released_list'}, sumEn:'payments released', sumAm:'ክፍያዎች ተለቀዋል'},
+      {id:'asm_rel_value', en:'How much was released?', am:'ስንት ብር ተለቀቀ?', t:'money',
+        auto:{sum:'asm_released_list.amount'}, sumEn:'released', sumAm:'ተለቋል'},
+      {id:'asm_rel_late', en:'How many were released more than 3 working days after acceptance?', am:'ደንበኛው ከተቀበለ ከ3 የሥራ ቀናት በኋላ የተለቀቁ ስንት ናቸው?', t:'num',
+        auto:{rows:'asm_released_list', when:{col:'days', gte:4}}, sumEn:'later than 3 days', sumAm:'ከ3 ቀን በኋላ'},
       {id:'asm_disputes', en:'How many payment disputes are open?', am:'ስንት የክፍያ ክርክሮች ክፍት ናቸው?', t:'num',
         tgt:{op:'lte', v:0, en:'Resolve within 48 hours', am:'በ48 ሰዓት ውስጥ መፍታት'}},
       {id:'asm_disputes_what', en:'Who, about what, open since when, and when will each be settled?', am:'የማን? ስለምን? ከመቼ ጀምሮ? እያንዳንዱ መቼ ይፈታል?', t:'area', show:{f:'asm_disputes', when:'pos'}}
@@ -472,25 +604,29 @@ const REPORTS = [
     { en:'7 · Job Tracking Board', am:'7 · የሥራ መከታተያ ቦርድ', fields:[
       {id:'board_moved', en:'How many job cards were moved today?', am:'ዛሬ ስንት የሥራ ካርዶች ተንቀሳቀሱ?', t:'num'},
       {id:'board_match', en:'Does the board match the physical Job Files tonight?', am:'ዛሬ ማታ ቦርዱ ከጆብ ፋይሎቹ ጋር ይመሳሰላል?', t:'yesno'},
-      {id:'board_mismatch', en:'How many mismatches were found today?', am:'ዛሬ ስንት አለመጣጣሞች ተገኙ?', t:'num'},
+      /* only asked when the board does not match — it was asked every day,
+         and on a day it matched the answer was always nought */
+      {id:'board_mismatch', en:'How many mismatches were found today?', am:'ዛሬ ስንት አለመጣጣሞች ተገኙ?', t:'num',
+        show:{f:'board_match', when:'no'}},
       {id:'board_mismatch_what', en:'Which job cards, what did not match, who moved them, and was the Chairman told today?', am:'የትኞቹ ካርዶች ናቸው? ምኑ አልተመሳሰለም? ማን አንቀሳቀሳቸው? ዛሬ ለሊቀመንበሩ ተነግሯል?', t:'area', show:{f:'board_mismatch', when:'pos'}}
     ]},
     { en:'8 · Documents', am:'8 · ሰነዶች', fields:[
       {id:'doc_inv', en:'How many supplier invoices were collected today?', am:'ዛሬ ስንት የአቅራቢ ደረሰኞች ተሰበሰቡ?', t:'num'},
       {id:'doc_dn', en:'How many delivery notes were collected today?', am:'ዛሬ ስንት የርክክብ ወረቀቶች ተሰበሰቡ?', t:'num'},
-      {id:'doc_missing', en:'How many documents are still missing?', am:'እስካሁን ስንት ሰነዶች ጎድለዋል?', t:'num'},
+      {id:'doc_any', en:'Is any document still missing?', am:'ገና የጎደለ ሰነድ አለ?', t:'yesno'},
       {id:'doc_missing_list', en:'Which ones?', am:'የትኞቹ?', t:'table', addEn:'Add a document', addAm:'ሰነድ ጨምር',
-        show:{f:'doc_missing', when:'pos'},
+        show:{f:'doc_any', when:'yes'},
         cols:[
           {id:'doc', en:'Document', am:'ሰነድ', t:'text'},
           {id:'from', en:'From (supplier or staff)', am:'ከማን (አቅራቢ ወይም ሠራተኛ)', t:'text'},
           {id:'since', en:'Missing since', am:'ከመቼ ጀምሮ', t:'text'},
           {id:'chase', en:'Who is chasing it', am:'የሚከታተለው', t:'text'}
-        ]}
+        ]},
+      {id:'doc_missing', en:'How many documents are still missing?', am:'እስካሁን ስንት ሰነዶች ጎድለዋል?', t:'num',
+        auto:{rows:'doc_missing_list'}, sumEn:'still missing', sumAm:'ገና ጎድለዋል'}
     ]},
     { en:'9 · Problems and solutions', am:'9 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'problem', en:'What was the biggest problem today, and what caused it?', am:'የዛሬው ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
+      {id:'problem', en:'What was the biggest problem today — what caused it, and what is being done (who, by when)?', am:'የዛሬው ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
       {id:'need_help', en:'What do you need from another department, and from whom?', am:'ከሌላ ክፍል ምን ያስፈልግዎታል? ከማን?', t:'area', opt:1},
       {id:'need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_chair_what', en:'What exactly should the Chairman decide, what are the options, and by when?', am:'ሊቀመንበሩ በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_chair', when:'yes'}}
@@ -511,33 +647,53 @@ const REPORTS = [
   derived:1,
   sections:[
     { en:'1 · Purchase requests', am:'1 · የግዥ ጥያቄዎች', fields:[
-      {id:'pr_prep', en:'How many purchase requests did you prepare today?', am:'ዛሬ ስንት የግዥ ጥያቄ አዘጋጁ?', t:'num'},
-      {id:'pr_list', en:'List each request prepared today', am:'ዛሬ የተዘጋጁትን ጥያቄዎች አንድ በአንድ ይዘርዝሩ', t:'table', addEn:'Add a request', addAm:'ጥያቄ ጨምር',
-        show:{f:'pr_prep', when:'pos'},
+      /* Four counts and a two-box question stood around this list —
+         prepared, sent to Selam, approved, returned, and how many carried
+         three quotes. Every one of them is a column of the row now (the
+         Chairman, 9 Oct 2026), and the row says which job and which
+         material, which none of the counts could. */
+      {id:'pr_any', en:'Did you prepare any purchase request today?', am:'ዛሬ ያዘጋጁት የግዥ ጥያቄ አለ?', t:'yesno'},
+      {id:'pr_list', en:'Each request prepared today', am:'ዛሬ የተዘጋጀ እያንዳንዱ ጥያቄ', t:'table', addEn:'Add a request', addAm:'ጥያቄ ጨምር',
+        show:{f:'pr_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'item', en:'Materials', am:'ዕቃዎች', t:'text'},
+          {id:'item', en:'Materials', am:'ዕቃዎች', t:'choice', opts:MATERIAL_OPTS},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
-          {id:'quotes', en:'Quotes', am:'ፕሮፎርማዎች', t:'num'}
+          {id:'quotes', en:'Quotes attached', am:'የተያዙ ፕሮፎርማዎች', t:'num'},
+          {id:'state', en:'Where it stands', am:'የደረሰበት', t:'choice', opts:[
+            {v:'app',  en:'Selam approved it',    am:'ሰላም አጽድቃዋለች'},
+            {v:'sent', en:'With Selam, waiting',  am:'በሰላም እጅ፣ በመጠበቅ ላይ'},
+            {v:'ret',  en:'Returned or rejected', am:'ተመልሷል ወይም ውድቅ ሆኗል'},
+            {v:'held', en:'Not sent to her yet',  am:'ገና አልቀረበም'}
+          ]}
         ]},
-      {id:'pr_sub', en:'How many went to Selam for approval?', am:'ስንቱ ለሰላም ለማጽደቅ ቀረቡ?', t:'num'},
-      {id:'pr_app', en:'How many did Selam approve?', am:'ሰላም ስንቱን አጸደቀች?', t:'num'},
-      {id:'pr_ret', en:'How many were returned or rejected?', am:'ስንቱ ተመለሱ ወይም ውድቅ ሆኑ?', t:'num'},
+      {id:'pr_prep', en:'How many purchase requests did you prepare today?', am:'ዛሬ ስንት የግዥ ጥያቄ አዘጋጁ?', t:'num',
+        auto:{rows:'pr_list'}, sumEn:'requests', sumAm:'ጥያቄዎች'},
+      {id:'pr_sub', en:'How many went to Selam for approval?', am:'ስንቱ ለሰላም ለማጽደቅ ቀረቡ?', t:'num',
+        auto:{rows:'pr_list', when:{col:'state', in:['app','sent','ret']}}, sumEn:'went to Selam', sumAm:'ለሰላም ቀርበዋል'},
+      {id:'pr_app', en:'How many did Selam approve?', am:'ሰላም ስንቱን አጸደቀች?', t:'num',
+        auto:{rows:'pr_list', when:{col:'state', is:'app'}}, sumEn:'approved', sumAm:'ተጽድቀዋል'},
+      {id:'pr_ret', en:'How many were returned or rejected?', am:'ስንቱ ተመለሱ ወይም ውድቅ ሆኑ?', t:'num',
+        auto:{rows:'pr_list', when:{col:'state', is:'ret'}}, sumEn:'returned', sumAm:'ተመልሰዋል'},
       {id:'pr_ret_why', en:'Which ones, what did Selam find wrong, and when will each go back?', am:'የትኞቹ ናቸው? ሰላም ምን ስህተት አገኘች? እያንዳንዱ መቼ ተስተካክሎ ይመለሳል?', t:'area', show:{f:'pr_ret', when:'pos'}},
-      {id:'pr_quotes', en:'How many requests carried 3 or more supplier quotes? (with 3 quotes / all requests)', am:'ስንቱ ጥያቄ 3 እና ከዚያ በላይ የአቅራቢ ፕሮፎርማ ነበረው? (3 ፕሮፎርማ ያላቸው / ሁሉም ጥያቄዎች)', t:'ratio'},
+      {id:'pr_quotes', en:'How many requests carried 3 or more supplier quotes? (with 3 quotes / all requests)', am:'ስንቱ ጥያቄ 3 እና ከዚያ በላይ የአቅራቢ ፕሮፎርማ ነበረው? (3 ፕሮፎርማ ያላቸው / ሁሉም ጥያቄዎች)', t:'ratio',
+        auto:{a:{rows:'pr_list', when:{col:'quotes', gte:3}}, b:{rows:'pr_list'}}},
       {id:'pr_quotes_why', en:'Which requests had fewer than 3 quotes, and why could a third not be found?', am:'ከ3 ያነሰ ፕሮፎርማ የነበራቸው የትኞቹ ናቸው? ሦስተኛው ለምን አልተገኘም?', t:'area', show:{f:'pr_quotes', when:'short'}}
     ]},
     { en:'2 · ZamZam Bank cheques', am:'2 · የዘምዘም ባንክ ቼኮች', fields:[
-      {id:'chq_issued', en:'How many ZamZam cheques did you issue today?', am:'ዛሬ ስንት የዘምዘም ቼክ ሰጡ?', t:'num'},
-      {id:'chq_list', en:'List each cheque issued today', am:'ዛሬ የተሰጡትን ቼኮች ይዘርዝሩ', t:'table', addEn:'Add a cheque', addAm:'ቼክ ጨምር',
-        show:{f:'chq_issued', when:'pos'},
+      {id:'chq_any', en:'Did you issue any ZamZam cheque today?', am:'ዛሬ የሰጡት የዘምዘም ቼክ አለ?', t:'yesno'},
+      {id:'chq_list', en:'Each cheque issued today', am:'ዛሬ የተሰጠ እያንዳንዱ ቼክ', t:'table', addEn:'Add a cheque', addAm:'ቼክ ጨምር',
+        show:{f:'chq_any', when:'yes'},
         cols:[
           {id:'no', en:'Cheque no.', am:'የቼክ ቁጥር', t:'text'},
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'}
         ]},
-      {id:'chq_value', en:'What is the total value of today\'s cheques?', am:'የዛሬዎቹ ቼኮች ጠቅላላ ዋጋ ስንት ነው?', t:'money'},
+      {id:'chq_issued', en:'How many ZamZam cheques did you issue today?', am:'ዛሬ ስንት የዘምዘም ቼክ ሰጡ?', t:'num',
+        auto:{rows:'chq_list'}, sumEn:'cheques', sumAm:'ቼኮች'},
+      {id:'chq_value', en:'What is the total value of today\'s cheques?', am:'የዛሬዎቹ ቼኮች ጠቅላላ ዋጋ ስንት ነው?', t:'money',
+        auto:{sum:'chq_list.amount'}, sumEn:'in cheques', sumAm:'በቼክ'},
       {id:'chq_confirmed', en:'Did Selam confirm the funds in ZamZam before every cheque?', am:'ከእያንዳንዱ ቼክ በፊት ሰላም ገንዘቡ ዘምዘም መግባቱን አረጋግጣለች?', t:'yesno'},
       {id:'chq_confirmed_why', en:'Which cheque went out without confirmation, for how much, to whom, and why?', am:'ያለማረጋገጫ የተሰጠው የትኛው ቼክ ነው? በስንት ብር? ለማን? ለምን?', t:'area', show:{f:'chq_confirmed', when:'no'}},
       {id:'chq_match', en:'Was every cheque for the approved amount, to the approved supplier?', am:'እያንዳንዱ ቼክ በጸደቀው መጠንና ለጸደቀው አቅራቢ ነበር?', t:'yesno'},
@@ -546,13 +702,13 @@ const REPORTS = [
       {id:'chq_secure_why', en:'Where was it, who could reach it, and is it locked away now?', am:'የት ነበር? ማን ሊደርስበት ይችል ነበር? አሁን ተቆልፎበታል?', t:'area', show:{f:'chq_secure', when:'no'}}
     ]},
     { en:'3 · Orders placed', am:'3 · የተሰጡ ትዕዛዞች', fields:[
-      {id:'ord_placed', en:'How many orders did you place today?', am:'ዛሬ ስንት ትዕዛዝ ሰጡ?', t:'num'},
-      {id:'ord_list', en:'List each order and the delivery date the supplier promised', am:'እያንዳንዱን ትዕዛዝና አቅራቢው ቃል የገባውን የርክክብ ቀን ይዘርዝሩ', t:'table', addEn:'Add an order', addAm:'ትዕዛዝ ጨምር',
-        show:{f:'ord_placed', when:'pos'},
+      {id:'ord_any', en:'Did you place any order today?', am:'ዛሬ የሰጡት ትዕዛዝ አለ?', t:'yesno'},
+      {id:'ord_list', en:'Each order, and the delivery date the supplier promised', am:'እያንዳንዱ ትዕዛዝና አቅራቢው ቃል የገባው የርክክብ ቀን', t:'table', addEn:'Add an order', addAm:'ትዕዛዝ ጨምር',
+        show:{f:'ord_any', when:'yes'},
         cols:[
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'item', en:'Material', am:'ዕቃ', t:'text'},
+          {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'paid', en:'Cheque given, or on credit?', am:'ቼክ ተሰጥቷል ወይስ በዱቤ?', t:'choice', opts:[
             {v:'cheque', en:'Cheque given', am:'ቼክ ተሰጥቷል'},
@@ -561,18 +717,26 @@ const REPORTS = [
           {id:'due', en:'If on credit: pay by', am:'በዱቤ ከሆነ፦ የሚከፈልበት ቀን', t:'date'},
           {id:'date', en:'Promised delivery', am:'ቃል የተገባው ርክክብ', t:'text'}
         ]},
-      {id:'ord_suppliers', en:'With which suppliers?', am:'ከየትኞቹ አቅራቢዎች?', t:'text', opt:1},
-      {id:'ord_dates', en:'For how many of today\'s orders is the delivery date confirmed?', am:'ከዛሬዎቹ ትዕዛዞች ስንቱ የርክክብ ቀን ተረጋግጧል?', t:'num'}
+      {id:'ord_placed', en:'How many orders did you place today?', am:'ዛሬ ስንት ትዕዛዝ ሰጡ?', t:'num',
+        auto:{rows:'ord_list'}, sumEn:'orders', sumAm:'ትዕዛዞች'},
+      {id:'ord_value', en:'What were today\'s orders worth?', am:'የዛሬዎቹ ትዕዛዞች ዋጋ ስንት ነው?', t:'money',
+        auto:{sum:'ord_list.amount'}, sumEn:'ordered', sumAm:'ታዟል'},
+      {id:'ord_dates', en:'For how many of today\'s orders is the delivery date confirmed?', am:'ከዛሬዎቹ ትዕዛዞች ስንቱ የርክክብ ቀን ተረጋግጧል?', t:'num',
+        auto:{rows:'ord_list', when:{col:'date'}}, sumEn:'with a promised date', sumAm:'ቀን የተገባላቸው'},
+      {id:'ord_suppliers', en:'With which suppliers?', am:'ከየትኞቹ አቅራቢዎች?', t:'text',
+        auto:{list:'ord_list.sup'}}
     ]},
     { en:'4 · Supplier credit', am:'4 · የአቅራቢ ዱቤ', fields:[
       {id:'cr_owed', en:'How much does Klever owe suppliers on credit right now, in total?', am:'ክሌቨር አሁን ለአቅራቢዎች በዱቤ በጠቅላላ ስንት ብር አለበት?', t:'money', parts:{of:['cr_overdue']}},
-      {id:'cr_paid', en:'How much earlier credit did you pay back today, by cheque?', am:'ዛሬ ቀድሞ የተወሰደ ዱቤ ስንት ብር በቼክ ተከፈለ?', t:'money', opt:1},
+      {id:'cr_paid_any', en:'Did you pay back any earlier credit today?', am:'ዛሬ ቀድሞ የተወሰደ ዱቤ ከፍለዋል?', t:'yesno'},
       {id:'cr_paid_list', en:'Which suppliers were paid, and with which cheque?', am:'የትኞቹ አቅራቢዎች ተከፈላቸው? በየትኛው ቼክ?', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
-        show:{f:'cr_paid', when:'pos'}, cols:[
+        show:{f:'cr_paid_any', when:'yes'}, cols:[
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'chq', en:'Cheque no.', am:'የቼክ ቁጥር', t:'text'}
         ]},
+      {id:'cr_paid', en:'How much earlier credit did you pay back today, by cheque?', am:'ዛሬ ቀድሞ የተወሰደ ዱቤ ስንት ብር በቼክ ተከፈለ?', t:'money',
+        auto:{sum:'cr_paid_list.amount'}, sumEn:'paid back', sumAm:'ተመልሷል'},
       {id:'cr_overdue', en:'How much of what we owe is past the date we promised to pay?', am:'ካለብን ዕዳ ውስጥ ለመክፈል ቃል የገባንበት ቀን ያለፈው ስንት ነው?', t:'money',
         tgt:{op:'lte', v:0, en:'Should be 0 — a supplier owed past the date can stop delivering',
              am:'ዜሮ መሆን አለበት — ቀኑ ያለፈበት አቅራቢ ዕቃ ማቅረብ ሊያቆም ይችላል'}},
@@ -585,25 +749,31 @@ const REPORTS = [
         ]}
     ]},
     { en:'5 · Deliveries', am:'5 · ርክክብ', fields:[
-      {id:'del_recv', en:'How many deliveries reached the store today?', am:'ዛሬ ስንት ርክክብ መጋዘን ደረሰ?', t:'num'},
-      {id:'del_rej', en:'How many materials did the store reject?', am:'መጋዘኑ ስንት ዕቃ አልተቀበለም?', t:'num'},
+      /* How many deliveries reached the store was asked of the store too, on
+         the same day, about the same lorries (the Chairman, 9 Oct 2026). It
+         is Yordanos's count — she signs for them. What is Getachew's is the
+         chase afterwards: a rejection is his to put right with the supplier. */
+      {id:'del_rej_any', en:'Did the store reject anything you ordered today?', am:'ዛሬ ካዘዙት ዕቃ መጋዘኑ ያልተቀበለው አለ?', t:'yesno'},
       {id:'del_rej_list', en:'What was rejected, and what happens next?', am:'ምን ውድቅ ተደረገ? ቀጥሎ ምን ይሆናል?', t:'table', addEn:'Add a rejected item', addAm:'ዕቃ ጨምር',
-        show:{f:'del_rej', when:'pos'},
+        show:{f:'del_rej_any', when:'yes'},
         cols:[
-          {id:'item', en:'Material', am:'ዕቃ', t:'text'},
+          {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'why', en:'Reason', am:'ምክንያት', t:'text'},
+          {id:'asked', en:'Supplier asked for a replacement or refund?', am:'አቅራቢው ምትክ ወይም ተመላሽ ተጠይቋል?', t:'yesno'},
           {id:'fix', en:'Replacement or refund, and when', am:'ምትክ ወይም ተመላሽ፣ መቼ', t:'text'}
         ]},
-      {id:'del_repl', en:'Has the supplier been asked for a replacement or refund?', am:'አቅራቢው ምትክ ወይም ተመላሽ እንዲሰጥ ተጠይቋል?', t:'yesno', opt:1}
+      {id:'del_rej', en:'How many materials did the store reject?', am:'መጋዘኑ ስንት ዕቃ አልተቀበለም?', t:'num',
+        auto:{rows:'del_rej_list'}, sumEn:'rejected', sumAm:'ውድቅ ተደርገዋል'},
+      {id:'del_repl', en:'Has the supplier been asked for a replacement or refund?', am:'አቅራቢው ምትክ ወይም ተመላሽ እንዲሰጥ ተጠይቋል?', t:'yesno',
+        auto:{all:'del_rej_list.asked'}}
     ]},
     { en:'6 · Documents to Selam', am:'6 · ለሰላም የተላኩ ሰነዶች', fields:[
       {id:'doc_24', en:'How many purchase documents reached Selam within 24 hours? (on time / all due)', am:'ስንት የግዥ ሰነዶች በ24 ሰዓት ውስጥ ለሰላም ደረሱ? (በሰዓቱ / መድረስ የነበረባቸው)', t:'ratio'},
-      {id:'doc_missing', en:'How many documents are still outstanding?', am:'እስካሁን ያልቀረቡ ሰነዶች ስንት ናቸው?', t:'num',
-        tgt:{op:'lte', v:0, en:'–200 Birr per document', am:'በሰነድ –200 ብር'}},
+      {id:'doc_any', en:'Is any purchase document still outstanding?', am:'ገና ያልቀረበ የግዥ ሰነድ አለ?', t:'yesno'},
       {id:'doc_missing_list', en:'Which documents, for which jobs, and when will each reach Selam?', am:'የትኞቹ ሰነዶች? ለየትኞቹ ሥራዎች? እያንዳንዱ መቼ ለሰላም ይደርሳል?', t:'table', addEn:'Add a document', addAm:'ሰነድ ጨምር',
-        show:{f:'doc_missing', when:'pos'},
+        show:{f:'doc_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'doc', en:'Document', am:'ሰነድ', t:'choice', opts:[
@@ -614,21 +784,31 @@ const REPORTS = [
             {v:'warranty', en:'Warranty', am:'የዋስትና ሰነድ'}]},
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'when', en:'Expected by', am:'የሚደርስበት ቀን', t:'text'}
-        ]}
+        ]},
+      {id:'doc_missing', en:'How many documents are still outstanding?', am:'እስካሁን ያልቀረቡ ሰነዶች ስንት ናቸው?', t:'num',
+        auto:{rows:'doc_missing_list'},
+        tgt:{op:'lte', v:0, en:'–200 Birr per document', am:'በሰነድ –200 ብር'}}
     ]},
     { en:'7 · Supplier issues', am:'7 · የአቅራቢ ችግሮች', fields:[
-      {id:'sup_delay', en:'How many supplier delays were there today?', am:'ዛሬ ስንት የአቅራቢ መዘግየት ነበር?', t:'num'},
+      {id:'sup_delay_any', en:'Is any supplier delivery late?', am:'የዘገየ የአቅራቢ ርክክብ አለ?', t:'yesno'},
       {id:'sup_delay_list', en:'Which deliveries are late?', am:'የዘገዩት የትኞቹ ርክክቦች ናቸው?', t:'table', addEn:'Add a delay', addAm:'መዘግየት ጨምር',
-        show:{f:'sup_delay', when:'pos'},
+        show:{f:'sup_delay_any', when:'yes'},
         cols:[
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'item', en:'Material', am:'ዕቃ', t:'text'},
+          {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
           {id:'was', en:'Promised date', am:'ቃል የተገባው ቀን', t:'text'},
           {id:'now', en:'New date', am:'አዲሱ ቀን', t:'text'},
           {id:'stops', en:'Holds up production?', am:'ምርት ያቆማል?', t:'yesno'}
         ]},
-      {id:'sup_price', en:'How many suppliers changed a price today?', am:'ዛሬ ስንት አቅራቢዎች ዋጋ ቀየሩ?', t:'num'},
+      {id:'sup_delay', en:'How many supplier delays were there today?', am:'ዛሬ ስንት የአቅራቢ መዘግየት ነበር?', t:'num',
+        auto:{rows:'sup_delay_list'}, sumEn:'late deliveries', sumAm:'የዘገዩ ርክክቦች'},
+      {id:'sup_delay_stop', en:'How many of them hold up production?', am:'ከነሱ ስንቱ ምርት ያቆማል?', t:'num',
+        auto:{rows:'sup_delay_list', when:{col:'stops', is:'yes'}}, sumEn:'holding up production', sumAm:'ምርት የሚያቆሙ'},
+      /* counted from the price list in section 8, where the old price and the
+         new one are written side by side */
+      {id:'sup_price', en:'How many suppliers put a price up today?', am:'ዛሬ ስንት አቅራቢዎች ዋጋ ጨመሩ?', t:'num',
+        auto:{rows:'p_rows', when:{col:'pchg', pos:1}}, sumEn:'put a price up', sumAm:'ዋጋ ጨምረዋል'},
       {id:'sup_price_what', en:'Which suppliers, on what material, and from what price to what?', am:'የትኞቹ አቅራቢዎች? በየትኛው ዕቃ? ከስንት ወደ ስንት?', t:'area', show:{f:'sup_price', when:'pos'}},
       {id:'sup_quality', en:'How many quality problems came from suppliers today?', am:'ዛሬ ከአቅራቢዎች ስንት የጥራት ችግር መጣ?', t:'num'},
       {id:'sup_quality_what', en:'Which supplier, what was wrong, and what have they agreed to do?', am:'የትኛው አቅራቢ? ምን ችግር ነበር? ምን ለማድረግ ተስማሙ?', t:'area', show:{f:'sup_quality', when:'pos'}},
@@ -636,9 +816,9 @@ const REPORTS = [
       {id:'sup_reported_why', en:'Which issue was not reported, and why?', am:'ያልተነገረው የትኛው ችግር ነው? ለምን?', t:'area', show:{f:'sup_reported', when:'no'}}
     ]},
     { en:'8 · What we paid, against last time', am:'8 · ካለፈው ጋር ሲነጻጸር የከፈልነው', fields:[
-      {id:'p_rows', en:'List each material bought today, with its price against last time', am:'ዛሬ የተገዛውን እያንዳንዱን ዕቃ ከቀድሞው ዋጋው ጋር ይዘርዝሩ',
+      {id:'p_rows', en:'Each material bought today, with its price against last time', am:'ዛሬ የተገዛ እያንዳንዱ ዕቃ፣ ከቀድሞው ዋጋው ጋር',
        t:'table', addEn:'Add material', addAm:'ዕቃ ጨምር', cols:[
-        {id:'pitem', en:'Material', am:'ዕቃ', t:'text'},
+        {id:'pitem', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
         {id:'psup',  en:'Supplier', am:'አቅራቢ', t:'text'},
         {id:'punit', en:'Unit', am:'መለኪያ', t:'text'},
         {id:'pnow',  en:'Price now', am:'የአሁን ዋጋ', t:'money'},
@@ -647,6 +827,7 @@ const REPORTS = [
         {id:'pquot', en:'Quotes compared', am:'የተነጻጸሩ ዋጋዎች', t:'num'}
       ]},
       {id:'p_up', en:'How many materials went up more than 10%?', am:'ስንት ዕቃዎች ከ10% በላይ ጨመሩ?', t:'num',
+        auto:{rows:'p_rows', when:{col:'pchg', gte:10}}, sumEn:'up more than 10%', sumAm:'ከ10% በላይ ጨምረዋል',
         tgt:{op:'lte', v:0, en:'The margin floor is 6,000 Birr/m² — a 10% rise must reach Ephrata before the next quote',
              am:'የትርፍ ወለሉ 6,000 ብር/ካሬ ሜትር ነው — የ10% ጭማሪ ከቀጣዩ ዋጋ በፊት ኤፍራታ ጋር መድረስ አለበት'}},
       {id:'p_up_what', en:'Which materials, by how much, and which open quotations does it affect?', am:'የትኞቹ ዕቃዎች? በስንት ጨመሩ? የትኞቹን ክፍት ፕሮፎርማዎች ይነካል?', t:'area', show:{f:'p_up', when:'pos'}},
@@ -656,8 +837,7 @@ const REPORTS = [
       {id:'p_subok', en:'If yes, did Wude approve it before it was bought?', am:'አዎ ከሆነ ውዱ ከመገዛቱ በፊት አጽድቃለች?', t:'yesno', opt:1, i:1}
     ]},
     { en:'9 · Problems and solutions', am:'9 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'problem', en:'What was the biggest problem today, and what caused it?', am:'የዛሬው ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
+      {id:'problem', en:'What was the biggest problem today — what caused it, and what is being done (who, by when)?', am:'የዛሬው ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
       {id:'need_help', en:'What do you need from Mahelet, Selam or the store, and by when?', am:'ከማህሌት፣ ከሰላም ወይም ከመጋዘን ምን ያስፈልግዎታል? እስከ መቼ?', t:'area', opt:1},
       {id:'need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_chair_what', en:'What exactly should he decide, what are the options, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_chair', when:'yes'}}
@@ -677,62 +857,129 @@ const REPORTS = [
   penEn:'Reports are mandatory daily', penAm:'ሪፖርት በየቀኑ ግዴታ ነው',
   derived:1,
   sections:[
+    /* The list is the answer. Six figures used to stand around it — how many
+       came in, how many were checked, how many taken in, how many rejected,
+       how many notes signed — and every one of them was in the rows already
+       (the Chairman, 9 Oct 2026: the questions repeat themselves). They are
+       counted from the rows now, under the table, and the row carries what
+       the figures could not: which supplier, which job, what it was. */
     { en:'1 · Receiving', am:'1 · ዕቃ መረከብ', fields:[
-      {id:'rec_deliv', en:'How many deliveries came into the store today?', am:'ዛሬ ስንት ርክክብ መጋዘን ገባ?', t:'num'},
-      {id:'rec_list', en:'List each delivery received today', am:'ዛሬ የደረሱትን ርክክቦች አንድ በአንድ ይዘርዝሩ', t:'table', addEn:'Add a delivery', addAm:'ርክክብ ጨምር',
-        show:{f:'rec_deliv', when:'pos'},
+      {id:'rec_any', en:'Did any delivery reach the store today?', am:'ዛሬ ወደ መጋዘን የደረሰ ርክክብ አለ?', t:'yesno'},
+      {id:'rec_list', en:'Each delivery that came in today — one row each',
+       am:'ዛሬ የደረሰ እያንዳንዱ ርክክብ — በረድፍ አንድ', t:'table', addEn:'Add a delivery', addAm:'ርክክብ ጨምር',
+        show:{f:'rec_any', when:'yes'},
         cols:[
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'item', en:'Material', am:'ዕቃ', t:'text'},
+          {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
           {id:'qty', en:'Quantity', am:'ብዛት', t:'num'},
-          {id:'ok', en:'Matches the BOM?', am:'ከBOM ጋር ይስማማል?', t:'yesno'}
+          /* one tap where there used to be two questions and a ratio: whether
+             it was checked at all, and whether it matched */
+          {id:'ok', en:'Against the Job File / BOM', am:'ከጆብ ፋይል / BOM አንጻር', t:'choice', opts:[
+            {v:'yes',  en:'Checked — matches the BOM',      am:'ተመሳክሯል — ከBOM ጋር ይስማማል'},
+            {v:'diff', en:'Checked — does not match',       am:'ተመሳክሯል — አይስማማም'},
+            {v:'no',   en:'Not checked',                    am:'አልተመሳከረም'}
+          ]},
+          {id:'take', en:'Taken in, or rejected?', am:'ገባ ወይስ ውድቅ ተደረገ?', t:'choice', opts:[
+            {v:'in',   en:'Taken into the store', am:'ወደ መጋዘን ገባ'},
+            {v:'part', en:'Part taken in',        am:'በከፊል ገባ'},
+            {v:'out',  en:'Rejected',             am:'ውድቅ ተደረገ'}
+          ]},
+          {id:'why', en:'If rejected or short: why', am:'ውድቅ ከሆነ ወይም ከጎደለ፦ ለምን', t:'text'},
+          {id:'grn', en:'Goods received note signed?', am:'የዕቃ መረከቢያ ወረቀት ተፈርሟል?', t:'yesno'}
         ]},
+      {id:'rec_deliv', en:'How many deliveries came into the store today?', am:'ዛሬ ስንት ርክክብ መጋዘን ገባ?', t:'num',
+        auto:{rows:'rec_list'}, sumEn:'deliveries', sumAm:'ርክክቦች'},
+      {id:'rec_accepted', en:'How many of them were accepted into the store?', am:'ከነሱ ስንቱ ርክክቦች ወደ መጋዘን ገቡ?', t:'num',
+        auto:{rows:'rec_list', when:{col:'take', not:'out'}}, sumEn:'taken in', sumAm:'ገብተዋል'},
+      {id:'rec_rejected', en:'How many of them did you reject?', am:'ከነሱ ስንቱን ርክክቦች ውድቅ አደረጉ?', t:'num',
+        auto:{rows:'rec_list', when:{col:'take', is:'out'}}, sumEn:'rejected', sumAm:'ውድቅ ተደርገዋል'},
+      {id:'rec_grn', en:'How many goods received notes did you sign?', am:'ስንት የዕቃ መረከቢያ ወረቀት ፈረሙ?', t:'num',
+        auto:{rows:'rec_list', when:{col:'grn', is:'yes'}}, sumEn:'notes signed', sumAm:'ወረቀቶች ተፈርመዋል'},
       /* "how many" of what? They are deliveries (the Chairman, 9 Oct 2026) */
-      {id:'rec_checked', en:'How many of those deliveries were checked against the Job File / BOM? (checked / delivered)', am:'ከነዚህ ርክክቦች ስንቱ ከጆብ ፋይል / BOM ጋር ተመሳከሩ? (የተመሳከሩ / የደረሱ)', t:'ratio'},
-      {id:'rec_checked_why', en:'Which deliveries went in unchecked, and why?', am:'ሳይመሳከሩ የገቡት የትኞቹ ርክክቦች ናቸው? ለምን?', t:'area', show:{f:'rec_checked', when:'short'}},
-      {id:'rec_accepted', en:'How many of them were accepted into the store?', am:'ከነሱ ስንቱ ርክክቦች ወደ መጋዘን ገቡ?', t:'num'},
-      {id:'rec_rejected', en:'How many of them did you reject?', am:'ከነሱ ስንቱን ርክክቦች ውድቅ አደረጉ?', t:'num'},
-      {id:'rec_grn', en:'How many goods received notes did you sign?', am:'ስንት የዕቃ መረከቢያ ወረቀት ፈረሙ?', t:'num'}
+      {id:'rec_checked', en:'How many of those deliveries were checked against the Job File / BOM? (checked / delivered)', am:'ከነዚህ ርክክቦች ስንቱ ከጆብ ፋይል / BOM ጋር ተመሳከሩ? (የተመሳከሩ / የደረሱ)', t:'ratio',
+        auto:{a:{rows:'rec_list', when:{col:'ok', not:'no'}}, b:{rows:'rec_list'}},
+        sumEn:'checked against the BOM', sumAm:'ከBOM ጋር ተመሳክረዋል'},
+      {id:'rec_bom_off', en:'How many did not match the BOM?', am:'ከBOM ጋር ያልተስማሙ ስንት ናቸው?', t:'num',
+        auto:{rows:'rec_list', when:{col:'ok', is:'diff'}}, sumEn:'did not match', sumAm:'አልተስማሙም'},
+      {id:'rec_checked_why', en:'Which deliveries went in unchecked, and why?', am:'ሳይመሳከሩ የገቡት የትኞቹ ርክክቦች ናቸው? ለምን?', t:'area', show:{f:'rec_checked', when:'short'}}
     ]},
+    /* only asked when a row says something was rejected; the what, the
+       supplier and the why are in that row already */
     { en:'2 · Anything rejected today', am:'2 · ዛሬ ውድቅ የተደረጉ ዕቃዎች', fields:[
-      {id:'rej_reason', en:'What was rejected, from which supplier, and why?', am:'ምን ውድቅ ተደረገ? ከየትኛው አቅራቢ? ለምን?', t:'area', opt:1},
-      {id:'rej_photo', en:'Was each rejection photographed?', am:'ውድቅ የተደረገው እያንዳንዱ ዕቃ ፎቶ ተነስቷል?', t:'yesno', opt:1},
-      {id:'rej_reported', en:'Were Getachew and Selam told the same day?', am:'ለጌታቸውና ለሰላም በዚያው ቀን ተነግሯል?', t:'yesno', opt:1}
+      {id:'rej_photo', en:'Was each rejection photographed?', am:'ውድቅ የተደረገው እያንዳንዱ ዕቃ ፎቶ ተነስቷል?', t:'yesno', show:{f:'rec_rejected', when:'pos'}},
+      {id:'rej_reported', en:'Were Getachew and Selam told the same day?', am:'ለጌታቸውና ለሰላም በዚያው ቀን ተነግሯል?', t:'yesno', show:{f:'rec_rejected', when:'pos'}}
     ]},
     /* the four totals that used to stand here added sheets, hinges and
        metres of edge banding into one number (the Chairman, 9 Oct 2026:
        "went out what?"). What goes in and out is counted material by
        material on the shelf grid below, where it can be added up. */
     { en:'3 · The record against the shelf', am:'3 · መዝገቡ ከመደርደሪያው ጋር', fields:[
-      {id:'st_disc', en:'How many differences did you find between the record and the shelf?', am:'በመዝገቡና በመደርደሪያው መካከል ስንት ልዩነት ተገኘ?', t:'num',
-        tgt:{op:'lte', v:0, en:'–500 Birr each · report same day', am:'እያንዳንዱ –500 ብር · በዕለቱ ማሳወቅ'}},
+      {id:'st_any', en:'Did anything on the shelf not match the record today?', am:'ዛሬ በመደርደሪያው ላይ ከመዝገቡ ጋር ያልተስማማ ነገር አለ?', t:'yesno'},
       {id:'st_disc_list', en:'What does not match?', am:'የማይስማማው ምንድን ነው?', t:'table', addEn:'Add an item', addAm:'ዕቃ ጨምር',
-        show:{f:'st_disc', when:'pos'},
+        show:{f:'st_any', when:'yes'},
         cols:[
-          {id:'item', en:'Material', am:'ዕቃ', t:'text'},
+          {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
           {id:'book', en:'On record', am:'በመዝገብ', t:'num'},
           {id:'shelf', en:'On the shelf', am:'በመደርደሪያ', t:'num'},
           {id:'why', en:'Likely reason', am:'ሊሆን የሚችል ምክንያት', t:'text'},
           {id:'told', en:'Mahelet and Selam told today?', am:'ለማህሌትና ለሰላም ዛሬ ተነግሯል?', t:'yesno'}
-        ]}
+        ]},
+      {id:'st_disc', en:'How many differences did you find between the record and the shelf?', am:'በመዝገቡና በመደርደሪያው መካከል ስንት ልዩነት ተገኘ?', t:'num',
+        auto:{rows:'st_disc_list'},
+        tgt:{op:'lte', v:0, en:'–500 Birr each · report same day', am:'እያንዳንዱ –500 ብር · በዕለቱ ማሳወቅ'}}
     ]},
+    /* What went out used to be one number and two yes/nos covering the whole
+       day, so "something went out without approval" never said what, to whom
+       or for which job. A row an issue answers all three, and the three
+       figures below come out of the rows. */
     { en:'4 · Issuing materials', am:'4 · ዕቃ ማውጣት', fields:[
-      {id:'iss_count', en:'How many times were materials issued today?', am:'ዛሬ ስንት ጊዜ ዕቃ ከመጋዘን ወጣ?', t:'num'},
-      {id:'iss_approved', en:'Did every issue carry Mahelet\'s signed approval?', am:'እያንዳንዱ ዕቃ በማህሌት ፊርማ ፈቃድ ወጥቷል?', t:'yesno'},
+      {id:'iss_any', en:'Did anything go out of the store today?', am:'ዛሬ ከመጋዘን የወጣ ዕቃ አለ?', t:'yesno'},
+      {id:'iss_list', en:'Each issue out of the store today — one row each',
+       am:'ዛሬ ከመጋዘን የወጣ እያንዳንዱ ዕቃ — በረድፍ አንድ', t:'table', addEn:'Add an issue', addAm:'የወጣ ዕቃ ጨምር',
+        show:{f:'iss_any', when:'yes'},
+        cols:[
+          {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
+          {id:'qty', en:'Quantity', am:'ብዛት', t:'num'},
+          {id:'code', en:'For which job', am:'ለየትኛው ሥራ', t:'text'},
+          {id:'who', en:'Taken by', am:'የወሰደው', t:'text'},
+          {id:'appr', en:'Mahelet\'s signed approval?', am:'የማህሌት ፊርማ ፈቃድ አለው?', t:'yesno'},
+          {id:'right', en:'Went to the job it was meant for?', am:'ለታሰበለት ሥራ ሄዷል?', t:'yesno'}
+        ]},
+      {id:'iss_count', en:'How many times were materials issued today?', am:'ዛሬ ስንት ጊዜ ዕቃ ከመጋዘን ወጣ?', t:'num',
+        auto:{rows:'iss_list'}, sumEn:'issues', sumAm:'የወጡ'},
+      {id:'iss_approved', en:'Did every issue carry Mahelet\'s signed approval?', am:'እያንዳንዱ ዕቃ በማህሌት ፊርማ ፈቃድ ወጥቷል?', t:'yesno',
+        auto:{all:'iss_list.appr'}},
       {id:'iss_approved_why', en:'What went out without it, to whom, for which job, and who allowed it?', am:'ያለፈቃድ የወጣው ምንድን ነው? ለማን? ለየትኛው ሥራ? ማን ፈቀደ?', t:'area', show:{f:'iss_approved', when:'no'}},
-      {id:'iss_correct', en:'Did everything go to the correct job?', am:'ሁሉም ለትክክለኛው ሥራ ወጥቷል?', t:'yesno'},
-      {id:'iss_correct_why', en:'What went to the wrong job, and has it been put right?', am:'ወደ ተሳሳተ ሥራ የሄደው ምንድን ነው? ተስተካክሏል?', t:'area', show:{f:'iss_correct', when:'no'}}
+      {id:'iss_correct', en:'Did everything go to the correct job?', am:'ሁሉም ለትክክለኛው ሥራ ወጥቷል?', t:'yesno',
+        auto:{all:'iss_list.right'}},
+      {id:'iss_correct_why', en:'What went to the wrong job, and has it been put right?', am:'ወደ ተሳሳተ ሥራ የሄደው ምንድን ነው? ተስተካክሏል?', t:'area', show:{f:'iss_correct', when:'no'}},
+      {id:'con_today', en:'How many consumable items were issued today?', am:'ዛሬ ስንት የፍጆታ ዕቃ ወጣ?', t:'num',
+        auto:{sum:'iss_list.qty', when:{col:'item', is:'Consumables'}}, sumEn:'of them consumables', sumAm:'ከነሱ ፍጆታ ዕቃዎች'}
     ]},
     { en:'5 · Shortages', am:'5 · እጥረቶች', fields:[
-      {id:'sh_flagged', en:'How many shortages did you flag today?', am:'ዛሬ ስንት እጥረት ጠቆሙ?', t:'num'},
-      {id:'sh_flagged_who', en:'Who was told, and when is each expected in?', am:'ለማን ተነገረ? እያንዳንዱ መቼ ይደርሳል?', t:'area', show:{f:'sh_flagged', when:'pos'}},
+      {id:'sh_any', en:'Did you have to flag a shortage today?', am:'ዛሬ እጥረት ማሳወቅ አስፈልጓል?', t:'yesno'},
+      {id:'sh_list', en:'Which materials are short?', am:'የትኞቹ ዕቃዎች አጥረዋል?', t:'table', addEn:'Add a shortage', addAm:'እጥረት ጨምር',
+        show:{f:'sh_any', when:'yes'},
+        cols:[
+          {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
+          {id:'code', en:'Jobs waiting on it', am:'የሚጠብቁት ሥራዎች', t:'text'},
+          {id:'told', en:'Told to', am:'የተነገረው ለ', t:'text'},
+          {id:'due', en:'Expected in', am:'የሚጠበቅበት ቀን', t:'date'}
+        ]},
+      {id:'sh_flagged', en:'How many shortages did you flag today?', am:'ዛሬ ስንት እጥረት ጠቆሙ?', t:'num',
+        auto:{rows:'sh_list'}, sumEn:'shortages flagged', sumAm:'የታወቁ እጥረቶች'},
+      /* named, not counted: the morning agents and the Chairman's line read
+         which materials are short and who is waiting on whom, and the rows
+         already say both (apps-script/Agents.js WAIT_FIELDS_) */
+      {id:'sh_what', en:'Which materials are short?', am:'የትኞቹ ዕቃዎች አጥረዋል?', t:'text',
+        auto:{list:'sh_list.item'}},
+      {id:'sh_flagged_who', en:'Who was told, and when is each expected in?', am:'ለማን ተነገረ? እያንዳንዱ መቼ ይደርሳል?', t:'text',
+        auto:{list:'sh_list.told'}},
       {id:'sh_stopped', en:'Did production stop today because something ran out?', am:'ዛሬ አንድ ዕቃ በማለቁ ምርት ቆሟል?', t:'yesno'},
-      {id:'sh_stopped_what', en:'Which job stopped, for how long, and had the shortage been flagged before?', am:'የትኛው ሥራ ቆመ? ለምን ያህል ጊዜ? እጥረቱ አስቀድሞ ተጠቁሞ ነበር?', t:'area', show:{f:'sh_stopped', when:'yes'}},
-      {id:'sh_what', en:'Which materials are short?', am:'የትኞቹ ዕቃዎች አጥረዋል?', t:'text', opt:1}
+      {id:'sh_stopped_what', en:'Which job stopped, for how long, and had the shortage been flagged before?', am:'የትኛው ሥራ ቆመ? ለምን ያህል ጊዜ? እጥረቱ አስቀድሞ ተጠቁሞ ነበር?', t:'area', show:{f:'sh_stopped', when:'yes'}}
     ]},
     { en:'6 · Factory consumables', am:'6 · የፋብሪካ ፍጆታ ዕቃዎች', fields:[
-      {id:'con_today', en:'How many consumable items were issued today?', am:'ዛሬ ስንት የፍጆታ ዕቃ ወጣ?', t:'num'},
       {id:'con_mtd', en:'How much has been spent on consumables this month so far?', am:'በዚህ ወር እስካሁን ለፍጆታ ዕቃ ስንት ብር ወጣ?', t:'money',
         tgt:{op:'lte', v:30000, en:'Budget 30,000 Birr/month', am:'የወር በጀት 30,000 ብር'}},
       {id:'con_mtd_why', en:'The month is over 30,000 Birr. What drove it, and has the Chairman approved the extra?', am:'የወሩ ወጪ ከ30,000 ብር አልፏል። ምን አሳደገው? ተጨማሪውን ሊቀመንበሩ አጽድቀዋል?', t:'area', show:{f:'con_mtd', when:'miss'}}
@@ -773,8 +1020,7 @@ const REPORTS = [
       {id:'k_offout', en:'How many m² of offcuts went back out for a job?', am:'ስንት ካሬ ሜትር ቁራጭ ለሥራ ተመልሶ ወጣ?', t:'num'}
     ]},
     { en:'9 · Problems and solutions', am:'9 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'problem', en:'What was the biggest problem in the store today, and what caused it?', am:'በመጋዘኑ የዛሬው ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
+      {id:'problem', en:'What was the biggest problem in the store today — what caused it, and what is being done (who, by when)?', am:'በመጋዘኑ የዛሬው ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
       {id:'need_help', en:'What do you need from Mahelet, Getachew or Selam, and by when?', am:'ከማህሌት፣ ከጌታቸው ወይም ከሰላም ምን ያስፈልግዎታል? እስከ መቼ?', t:'area', opt:1},
       {id:'need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_chair_what', en:'What exactly should he decide, what are the options, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_chair', when:'yes'}}
@@ -794,18 +1040,27 @@ const REPORTS = [
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Sales performance', am:'1 · የሽያጭ አፈጻጸም', fields:[
-      {id:'w_contracts', en:'How many contracts were signed this week?', am:'በዚህ ሳምንት ስንት ውል ተፈረመ?', t:'num'},
-      {id:'w_contracts_list', en:'List each contract signed this week', am:'በዚህ ሳምንት የተፈረሙትን ውሎች ይዘርዝሩ', t:'table', addEn:'Add a contract', addAm:'ውል ጨምር',
-        show:{f:'w_contracts', when:'pos'},
+      /* The week's contracts were typed out here a second time, each one
+         already a row in the daily report that signed it (the Chairman,
+         9 Oct 2026). They gather themselves, and the two figures follow. */
+      {id:'w_contracts_list', en:'Each contract signed this week', am:'በዚህ ሳምንት የተፈረመ እያንዳንዱ ውል', t:'table',
+        auto:{weekRows:'contracts_list', dayCol:'day'},
         cols:[
+          {id:'day', en:'Signed on', am:'የተፈረመበት', t:'text'},
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Lead no. (4 digits)', am:'የደንበኛ ቁጥር (4 አሃዝ)', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'value', en:'Contract value', am:'የውል ዋጋ', t:'money'},
           {id:'adv', en:'Advance paid', am:'የተከፈለ ቅድመ ክፍያ', t:'money'},
+          {id:'margin', en:'Margin per m²', am:'ህዳግ በካሬ ሜትር', t:'money'},
           {id:'sp', en:'Salesperson', am:'ሻጭ', t:'text'}
         ]},
-      {id:'w_value', en:'What is the total value of this week\'s contracts?', am:'የዚህ ሳምንት ውሎች ጠቅላላ ዋጋ ስንት ነው?', t:'money'},
+      {id:'w_contracts', en:'How many contracts were signed this week?', am:'በዚህ ሳምንት ስንት ውል ተፈረመ?', t:'num',
+        auto:{rows:'w_contracts_list'}, sumEn:'contracts', sumAm:'ውሎች'},
+      {id:'w_value', en:'What is the total value of this week\'s contracts?', am:'የዚህ ሳምንት ውሎች ጠቅላላ ዋጋ ስንት ነው?', t:'money',
+        auto:{sum:'w_contracts_list.value'}, sumEn:'signed', sumAm:'የተፈረመ'},
+      {id:'w_adv', en:'How much advance came with them?', am:'ከነሱ ጋር ስንት ቅድመ ክፍያ ገባ?', t:'money',
+        auto:{sum:'w_contracts_list.adv'}, sumEn:'in advances', sumAm:'በቅድመ ክፍያ'},
       {id:'w_external', en:'How much was collected from external customers this week?', am:'በዚህ ሳምንት ከውጭ ደንበኞች ስንት ብር ተሰበሰበ?', t:'money',
         tgt:{op:'gte', v:3000000, en:'Below 3,000,000 Birr is a failed week — no commission',
              am:'ከ3,000,000 ብር በታች ከሆነ ሳምንቱ ወድቋል — ኮሚሽን የለም'}},
@@ -819,19 +1074,22 @@ const REPORTS = [
       {id:'w_leads', en:'How many new leads came in this week?', am:'በዚህ ሳምንት ስንት አዲስ ደንበኞች መጡ?', t:'num'},
       {id:'w_leads_1hr', en:'New leads this week: how many were called within 24 hours? (called within 24 hours / all new leads this week)', am:'በዚህ ሳምንት አዲስ የመጡ ደንበኞች፦ ስንቱ በ24 ሰዓት ውስጥ ተደወለላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / በዚህ ሳምንት የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'w_leads'},
       {id:'w_leads_1hr_why', en:'Which leads were missed, whose leads were they, and why?', am:'ያመለጡት ደንበኞች እነማን ናቸው? የማን ደንበኞች ነበሩ? ለምን?', t:'area', show:{f:'w_leads_1hr', when:'short'}},
-      {id:'w_visits', en:'How many pre-measurement visits were done this week?', am:'በዚህ ሳምንት ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num'},
-      {id:'w_quotes', en:'How many quotations went out this week?', am:'በዚህ ሳምንት ስንት ፕሮፎርማ ተሰጠ?', t:'num'},
+      {id:'w_visits', en:'How many pre-measurement visits were done this week?', am:'በዚህ ሳምንት ስንት የቅድመ ልኬት ጉብኝት ተካሄደ?', t:'num', auto:{week:'visits_done'}},
+      {id:'w_quotes', en:'How many quotations went out this week?', am:'በዚህ ሳምንት ስንት ፕሮፎርማ ተሰጠ?', t:'num', auto:{week:'quotes_issued'}},
       {id:'w_quotes_48h', en:'How many went out within 48 hours of measuring? (on time / all quotations)', am:'ስንቱ ልኬት በተወሰደ በ48 ሰዓት ውስጥ ተሰጠ? (በሰዓቱ / ሁሉም)', t:'ratio'},
       {id:'w_quotes_48h_why', en:'Which customers waited longer, and what held each one up?', am:'ከዚያ በላይ የጠበቁት የትኞቹ ደንበኞች ናቸው? እያንዳንዱን ምን ያዘው?', t:'area', show:{f:'w_quotes_48h', when:'short'}},
-      {id:'w_conv', en:'What share of this week\'s leads became contracts?', am:'በዚህ ሳምንት ከመጡት ደንበኞች ስንት በመቶው ውል ፈረሙ?', t:'pct'}
+      {id:'w_conv', en:'What share of this week\'s leads became contracts?', am:'በዚህ ሳምንት ከመጡት ደንበኞች ስንት በመቶው ውል ፈረሙ?', t:'pct',
+        auto:{pct:['w_contracts', 'w_leads']}}
     ]},
     { en:'3 · Margin performance', am:'3 · የትርፍ ህዳግ አፈጻጸም', fields:[
       {id:'w_margin', en:'What was the average margin per m² on this week\'s external contracts?', am:'የዚህ ሳምንት የውጭ ውሎች አማካይ ህዳግ በካሬ ሜትር ስንት ነው?', t:'num',
+        auto:{div:[{sum:'w_contracts_list.margin'}, {rows:'w_contracts_list', when:{col:'margin'}}]},
         tgt:{op:'gte', v:6000, en:'Margin floor 6,000 Birr/m²', am:'ዝቅተኛው ህዳግ 6,000 ብር በካሬ'}},
       {id:'w_below_margin', en:'How many contracts were signed below the margin floor?', am:'ከህዳጉ በታች ስንት ውል ተፈረመ?', t:'num',
+        auto:{rows:'w_contracts_list', when:{col:'margin', lt:6000}},
         tgt:{op:'lte', v:0, en:'–5,000 Birr each without Chairman approval',
              am:'ያለ ሊቀመንበር ፈቃድ እያንዳንዱ –5,000 ብር'}},
-      {id:'w_below_margin_list', en:'List each one, and who approved it', am:'እያንዳንዱን ይዘርዝሩ፤ ማን እንዳጸደቀውም', t:'table', addEn:'Add a contract', addAm:'ውል ጨምር',
+      {id:'w_below_margin_list', en:'Which of them, and who approved it', am:'የትኞቹ ናቸው? ማን አጸደቀው?', t:'table', addEn:'Add a contract', addAm:'ውል ጨምር',
         show:{f:'w_below_margin', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
@@ -842,36 +1100,40 @@ const REPORTS = [
     ]},
     { en:'4 · WhatsApp compliance', am:'4 · የዋትስአፕ ተገዢነት', fields:[
       {id:'w_wa_groups', en:'How many customer groups were active this week?', am:'በዚህ ሳምንት ስንት የደንበኛ ግሩፖች ንቁ ነበሩ?', t:'num'},
-      {id:'w_wa_msgs', en:'How many required stage messages were posted? (posted / required)', am:'ከሚገባው የደረጃ መልዕክት ስንቱ ተላከ? (የተላከ / የሚገባው)', t:'ratio'},
+      {id:'w_wa_msgs', en:'How many required stage messages were posted? (posted / required)', am:'ከሚገባው የደረጃ መልዕክት ስንቱ ተላከ? (የተላከ / የሚገባው)', t:'ratio', auto:{a:{week:'wa_stage__a'}, b:{week:'wa_stage__b'}}},
       {id:'w_wa_msgs_why', en:'Which groups missed a stage message, whose groups were they, and why?', am:'የደረጃ መልዕክት ያልደረሳቸው የትኞቹ ግሩፖች ናቸው? የማን ግሩፖች ናቸው? ለምን?', t:'area', show:{f:'w_wa_msgs', when:'short'}},
       {id:'w_wa_rate', en:'What was the compliance rate this week?', am:'የዚህ ሳምንት የተገዢነት መጠን ስንት ነው?', t:'pct',
+        auto:{pct:['w_wa_msgs__a', 'w_wa_msgs__b']},
         tgt:{op:'gte', v:100, en:'100% required for the team bonus', am:'ለቡድን ቦነስ 100% መሆን አለበት'}},
-      {id:'w_wa_unans', en:'How many messages waited more than 2 hours for an answer?', am:'ከ2 ሰዓት በላይ ምላሽ ሳያገኙ የቆዩ መልዕክቶች ስንት ናቸው?', t:'num'},
+      {id:'w_wa_unans', en:'How many messages waited more than 2 hours for an answer?', am:'ከ2 ሰዓት በላይ ምላሽ ሳያገኙ የቆዩ መልዕክቶች ስንት ናቸው?', t:'num', auto:{week:'wa_unanswered'}},
       {id:'w_wa_unans_why', en:'Which customers, who should have answered, and what was done?', am:'የየትኞቹ ደንበኞች ናቸው? መመለስ የነበረበት ማን ነበር? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'w_wa_unans', when:'pos'}},
-      {id:'w_wa_complaints', en:'How many customers complained about WhatsApp handling?', am:'ስንት ደንበኞች በዋትስአፕ አያያዝ ላይ ቅሬታ አቀረቡ?', t:'num'},
+      {id:'w_wa_complaints', en:'How many customers complained about WhatsApp handling?', am:'ስንት ደንበኞች በዋትስአፕ አያያዝ ላይ ቅሬታ አቀረቡ?', t:'num', auto:{week:'wa_complaints'}},
       {id:'w_wa_complaints_what', en:'Who complained, about what, and how was it resolved?', am:'ቅሬታ ያቀረበው ማን ነው? ስለምን? እንዴት ተፈታ?', t:'area', show:{f:'w_wa_complaints', when:'pos'}},
       {id:'w_wa_viol', en:'How many WhatsApp violations did the team make this week?', am:'ቡድኑ በዚህ ሳምንት ስንት የዋትስአፕ ጥሰት ፈጸመ?', t:'num'},
       {id:'w_wa_viol_who', en:'Who, what happened, and what penalty was applied?', am:'እነማን ናቸው? ምን ተፈጠረ? ምን ቅጣት ተሰጠ?', t:'area', show:{f:'w_wa_viol', when:'pos'}}
     ]},
     { en:'5 · Marketing performance', am:'5 · የማርኬቲንግ አፈጻጸም', fields:[
-      {id:'w_posts', en:'How many posts went up this week?', am:'በዚህ ሳምንት ስንት ፖስት ተለጠፈ?', t:'num',
+      {id:'w_posts', en:'How many posts went up this week?', am:'በዚህ ሳምንት ስንት ፖስት ተለጠፈ?', t:'num', auto:{week:'posts'},
         tgt:{op:'gte', v:3, en:'At least 3 per week — –300 Birr per missed post',
              am:'በሳምንት ቢያንስ 3 — ላልተለጠፈ እያንዳንዱ –300 ብር'}},
       {id:'w_posts_why', en:'Why fewer than 3, and on which days will next week\'s posts go up?', am:'ለምን ከ3 ያነሰ ሆነ? የሚቀጥለው ሳምንት ፖስቶች በየትኞቹ ቀናት ይለጠፋሉ?', t:'area', show:{f:'w_posts', when:'miss'}},
-      {id:'w_fb', en:'On Facebook', am:'በፌስቡክ', t:'num', i:1},
-      {id:'w_ig', en:'On Instagram', am:'በኢንስታግራም', t:'num', i:1},
-      {id:'w_tt', en:'On TikTok', am:'በቲክቶክ', t:'num', i:1},
-      {id:'w_inq', en:'How many social media inquiries came in?', am:'ከሶሻል ሚዲያ ስንት ጥያቄዎች ደረሱ?', t:'num'},
-      {id:'w_inq_1hr', en:'How many of them were answered within 1 hour?', am:'ከእነርሱ ስንቱ በ1 ሰዓት ውስጥ ምላሽ አገኙ?', t:'num'},
+      {id:'w_fb', en:'On Facebook', am:'በፌስቡክ', t:'num', i:1, auto:{week:'posts_fb'}},
+      {id:'w_ig', en:'On Instagram', am:'በኢንስታግራም', t:'num', i:1, auto:{week:'posts_ig'}},
+      {id:'w_tt', en:'On TikTok', am:'በቲክቶክ', t:'num', i:1, auto:{week:'posts_tt'}},
+      {id:'w_inq', en:'How many social media inquiries came in?', am:'ከሶሻል ሚዲያ ስንት ጥያቄዎች ደረሱ?', t:'num',
+        auto:{week:'inq'}},
+      {id:'w_inq_1hr', en:'How many of them were answered within 1 hour?', am:'ከእነርሱ ስንቱ በ1 ሰዓት ውስጥ ምላሽ አገኙ?', t:'num',
+        auto:{week:'inq_1hr__a'}},
       {id:'w_mkt_leads', en:'How many qualified leads came from marketing this week?', am:'በዚህ ሳምንት ከማርኬቲንግ ስንት ብቁ ደንበኞች መጡ?', t:'num',
+        auto:{week:'mkt_leads'},
         tgt:{op:'gte', v:15, en:'15 or more earns 1,000 Birr', am:'15 እና ከዚያ በላይ 1,000 ብር ያስገኛል'}},
       {id:'w_mkt_leads_plan', en:'What will change next week to bring in more leads?', am:'ተጨማሪ ደንበኞች እንዲመጡ በሚቀጥለው ሳምንት ምን ይቀየራል?', t:'area', opt:1, show:{f:'w_mkt_leads', when:'miss'}},
       {id:'w_mkt_contracts', en:'How many contracts came from marketing leads?', am:'ከማርኬቲንግ ደንበኞች ስንት ውል ተገኘ?', t:'num'}
     ]},
     { en:'6 · Customer satisfaction', am:'6 · የደንበኛ እርካታ', fields:[
-      {id:'w_comp_in', en:'How many complaints came in this week?', am:'በዚህ ሳምንት ስንት ቅሬታዎች ደረሱ?', t:'num'},
+      {id:'w_comp_any', en:'Did any complaint come in this week?', am:'በዚህ ሳምንት የደረሰ ቅሬታ አለ?', t:'yesno'},
       {id:'w_comp_list', en:'List each complaint', am:'እያንዳንዱን ቅሬታ ይዘርዝሩ', t:'table', addEn:'Add a complaint', addAm:'ቅሬታ ጨምር',
-        show:{f:'w_comp_in', when:'pos'},
+        show:{f:'w_comp_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
@@ -881,17 +1143,19 @@ const REPORTS = [
             {v:'resolved', en:'Resolved', am:'ተፈቷል'},
             {v:'open', en:'Still open', am:'ገና አልተፈታም'}]}
         ]},
-      {id:'w_comp_done', en:'How many were resolved?', am:'ስንቱ ተፈቱ?', t:'num'},
+      {id:'w_comp_in', en:'How many complaints came in this week?', am:'በዚህ ሳምንት ስንት ቅሬታዎች ደረሱ?', t:'num',
+        auto:{rows:'w_comp_list'}, sumEn:'complaints', sumAm:'ቅሬታዎች'},
+      {id:'w_comp_done', en:'How many were resolved?', am:'ስንቱ ተፈቱ?', t:'num',
+        auto:{rows:'w_comp_list', when:{col:'state', is:'resolved'}}, sumEn:'resolved', sumAm:'ተፈተዋል'},
       {id:'w_comp_open', en:'How many are still open?', am:'ስንቱ ገና አልተፈቱም?', t:'num',
+        auto:{rows:'w_comp_list', when:{col:'state', is:'open'}}, sumEn:'still open', sumAm:'አልተፈቱም',
         tgt:{op:'lte', v:0, en:'Zero valid complaints required for the team bonus',
              am:'ለቡድን ቦነስ ዜሮ ቅሬታ ያስፈልጋል'}},
       {id:'w_comp_open_plan', en:'What is still needed on each open complaint, and by when will it be closed?', am:'ለእያንዳንዱ ያልተፈታ ቅሬታ ምን ይቀራል? እስከ መቼ ይዘጋል?', t:'area', show:{f:'w_comp_open', when:'pos'}},
       {id:'w_sat', en:'What was the average satisfaction score this week, out of 5?', am:'የዚህ ሳምንት አማካይ የእርካታ ነጥብ ከ5 ስንት ነው?', t:'num'}
     ]},
     { en:'7 · Problems and solutions', am:'7 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'w_problem', en:'What was the biggest problem this week?', am:'የዚህ ሳምንት ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
-      {id:'w_cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', show:{f:'w_problem', when:'any'}},
-      {id:'w_action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
+      {id:'w_problem', en:'What was the biggest problem this week — what caused it, and what is being done (who, by when)?', am:'የዚህ ሳምንት ትልቁ ችግር ምን ነበር? መንስኤው ምንድን ነው? ምን እየተደረገ ነው (በማን፣ እስከ መቸ)?', t:'area', opt:1},
       {id:'w_open', en:'What is still unresolved and carries into next week?', am:'ገና ያልተፈታና ወደ ሚቀጥለው ሳምንት የሚሻገር ምንድን ነው?', t:'area', opt:1},
       {id:'w_need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'w_need_chair_what', en:'What exactly should he decide, what are the options, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'w_need_chair', when:'yes'}}
@@ -929,8 +1193,9 @@ const REPORTS = [
         tgt:{op:'gte', v:240, en:'Weekly target 240 m²', am:'የሳምንቱ ዒላማ 240 ካሬ ሜትር'}},
       {id:'p_total_why', en:'The week is under 240 m². Which days fell short, why, and what changes next week?', am:'ሳምንቱ ከ240 ካሬ ሜትር በታች ነው። የትኞቹ ቀናት ጎደሉ? ለምን? በሚቀጥለው ሳምንት ምን ይቀየራል?', t:'area', show:{f:'p_total', when:'miss'}},
       {id:'p_avg', en:'What was the average production per working day, in m²?', am:'በአንድ የሥራ ቀን አማካይ ምርቱ ስንት ካሬ ሜትር ነበር?', t:'num',
+        auto:{div:['p_total', 6]},
         tgt:{op:'gte', v:40, en:'Daily target 40 m²', am:'የቀን ዒላማ 40 ካሬ ሜትር'}},
-      {id:'p_waste', en:'What was this week\'s waste, as a % of material used?', am:'የዚህ ሳምንት ብክነት ከዋለው ዕቃ ስንት % ነው?', t:'pct',
+      {id:'p_waste', en:'What was this week\'s waste, as a % of material used?', am:'የዚህ ሳምንት ብክነት ከዋለው ዕቃ ስንት % ነው?', t:'pct', auto:{week:'waste', how:'avg'},
         tgt:{op:'lte', v:20, en:'Must not exceed 20%', am:'ከ20% መብለጥ የለበትም'}},
       {id:'p_waste_why', en:'Waste is over 20%. Where did it come from, and what is being changed?', am:'ብክነቱ ከ20% በላይ ነው። ከየት መጣ? ምን እየተቀየረ ነው?', t:'area', show:{f:'p_waste', when:'miss'}},
       {id:'p_uptime', en:'What % of working hours did the machines run this week?', am:'በዚህ ሳምንት ማሽኖች ከሥራ ሰዓቱ ስንት % ሠሩ?', t:'pct',
@@ -952,18 +1217,24 @@ const REPORTS = [
           {id:'plan', en:'Maintenance planned', am:'የታቀደ ጥገና', t:'text'}
         ]}
     ]},
+    /* Her QC figures stay hers to give: the rulebook pays her on them, and
+       the morning "reports that disagree" reader sets them against Wude's
+       and Amaha's. What simply follows from them does not stay. */
     { en:'2 · Quality control', am:'2 · የጥራት ቁጥጥር', fields:[
       {id:'q_checked', en:'How many jobs went through QC this week?', am:'በዚህ ሳምንት ስንት ሥራዎች በQC ተመረመሩ?', t:'num'},
       {id:'q_pass', en:'How many passed?', am:'ስንቱ አለፉ?', t:'num'},
-      {id:'q_fail', en:'How many failed?', am:'ስንቱ አላለፉም?', t:'num'},
+      {id:'q_fail', en:'How many failed?', am:'ስንቱ አላለፉም?', t:'num',
+        auto:{minus:['q_checked', 'q_pass']}, sumEn:'failed', sumAm:'አላለፉም'},
+      {id:'q_fail_any', en:'Did any job fail QC this week?', am:'በዚህ ሳምንት QC ያላለፈ ሥራ አለ?', t:'yesno'},
       {id:'q_fail_list', en:'Which jobs failed, and why?', am:'ያላለፉት የትኞቹ ሥራዎች ናቸው? ለምን?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
-        show:{f:'q_fail', when:'pos'},
+        show:{f:'q_fail_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'why', en:'Why it failed', am:'ያላለፈበት ምክንያት', t:'text'},
           {id:'fixed', en:'Fixed and passed', am:'ተስተካክሎ አልፏል', t:'yesno'}
         ]},
       {id:'q_rate', en:'What was the QC pass rate this week?', am:'በዚህ ሳምንት የQC ማለፊያ መጠን ስንት ነበር?', t:'pct',
+        auto:{pct:['q_pass', 'q_checked']},
         tgt:{op:'gte', v:98, en:'Target ≥98% — below is –500 Birr/month',
              am:'ዒላማ ≥98% — በታች ከሆነ በወር –500 ብር'}},
       {id:'q_rate_why', en:'The pass rate is under 98%. What is the main cause, and what will change on the floor?', am:'የማለፊያ መጠኑ ከ98% በታች ነው። ዋናው መንስኤ ምንድን ነው? በምርት ክፍሉ ምን ይቀየራል?', t:'area', show:{f:'q_rate', when:'miss'}}
@@ -971,15 +1242,17 @@ const REPORTS = [
     { en:'3 · Store & inventory', am:'3 · መጋዘንና ክምችት', fields:[
       {id:'s_accuracy', en:'How accurate was the stock count this week, in %?', am:'በዚህ ሳምንት የክምችት ቆጠራው ስንት % ትክክል ነበር?', t:'pct',
         tgt:{op:'gte', v:99, en:'Target ≥99%', am:'ዒላማ ≥99%'}},
-      {id:'s_disc', en:'How many stock discrepancies were found?', am:'ስንት የክምችት ልዩነቶች ተገኙ?', t:'num'},
+      {id:'s_disc_any', en:'Did the count find any difference this week?', am:'በዚህ ሳምንት ቆጠራው ልዩነት አገኘ?', t:'yesno'},
       {id:'s_disc_list', en:'Which items did not match?', am:'ያልተመሳከሩት የትኞቹ ዕቃዎች ናቸው?', t:'table', addEn:'Add an item', addAm:'ዕቃ ጨምር',
-        show:{f:'s_disc', when:'pos'},
+        show:{f:'s_disc_any', when:'yes'},
         cols:[
           {id:'item', en:'Item', am:'ዕቃ', t:'text'},
           {id:'rec', en:'Recorded', am:'በመዝገብ', t:'num'},
           {id:'cnt', en:'Counted', am:'የተቆጠረ', t:'num'},
           {id:'why', en:'Explanation', am:'ማብራሪያ', t:'text'}
         ]},
+      {id:'s_disc', en:'How many stock discrepancies were found?', am:'ስንት የክምችት ልዩነቶች ተገኙ?', t:'num',
+        auto:{rows:'s_disc_list'}, sumEn:'differences', sumAm:'ልዩነቶች'},
       {id:'s_short', en:'How many material shortages were reported this week?', am:'በዚህ ሳምንት ስንት የዕቃ እጥረቶች ተነገሩ?', t:'num'},
       {id:'s_short_what', en:'Which materials ran short, which jobs did it hold up, and for how long?', am:'ያጠሩት የትኞቹ ዕቃዎች ናቸው? የትኞቹን ሥራዎች አቆሙ? ለምን ያህል ጊዜ?', t:'area', show:{f:'s_short', when:'pos'}}
     ]},
@@ -1000,9 +1273,9 @@ const REPORTS = [
       {id:'d_inst_ontime', en:'What % of installations were on time?', am:'ከተከላዎቹ ስንት % በሰዓቱ ነበሩ?', t:'pct',
         tgt:{op:'gte', v:95, en:'Target ≥95%', am:'ዒላማ ≥95%'}},
       {id:'d_inst_ontime_why', en:'Which installations were late, by how long, and why?', am:'የዘገዩት የትኞቹ ተከላዎች ናቸው? በምን ያህል? ለምን?', t:'area', show:{f:'d_inst_ontime', when:'miss'}},
-      {id:'d_complaints', en:'How many customer complaints came in this week?', am:'በዚህ ሳምንት ስንት የደንበኛ ቅሬታዎች ደረሱ?', t:'num'},
+      {id:'d_comp_any', en:'Did any customer complaint come in this week?', am:'በዚህ ሳምንት የደረሰ የደንበኛ ቅሬታ አለ?', t:'yesno'},
       {id:'d_complaints_list', en:'List each complaint', am:'ቅሬታዎቹን አንድ በአንድ ይዘርዝሩ', t:'table', addEn:'Add a complaint', addAm:'ቅሬታ ጨምር',
-        show:{f:'d_complaints', when:'pos'},
+        show:{f:'d_comp_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
@@ -1010,12 +1283,16 @@ const REPORTS = [
           {id:'dept', en:'Caused by (department)', am:'ያስከተለው ክፍል', t:'text'},
           {id:'done', en:'Resolved', am:'ተፈቷል', t:'yesno'}
         ]},
-      {id:'d_resolved', en:'How many of them are resolved?', am:'ከነዚህ ስንቱ ተፈቱ?', t:'num'}
+      {id:'d_complaints', en:'How many customer complaints came in this week?', am:'በዚህ ሳምንት ስንት የደንበኛ ቅሬታዎች ደረሱ?', t:'num',
+        auto:{rows:'d_complaints_list'}, sumEn:'complaints', sumAm:'ቅሬታዎች'},
+      {id:'d_resolved', en:'How many of them are resolved?', am:'ከነዚህ ስንቱ ተፈቱ?', t:'num',
+        auto:{rows:'d_complaints_list', when:{col:'done', is:'yes'}}, sumEn:'resolved', sumAm:'ተፈተዋል'}
     ]},
     { en:'6 · Job File handoff', am:'6 · የጆብ ፋይል ርክክብ', fields:[
-      {id:'j_recv', en:'How many Job Files did you receive from Ephrata this week?', am:'በዚህ ሳምንት ከኤፍራታ ስንት ጆብ ፋይሎች ደረሱዎት?', t:'num'},
-      {id:'j_acc', en:'How many did you accept?', am:'ስንቱን ተቀበሉ?', t:'num'},
-      {id:'j_rej', en:'How many did you return as incomplete?', am:'ስንቱን ያልተሟሉ ስለሆኑ መለሱ?', t:'num'},
+      {id:'j_recv', en:'How many Job Files did you receive from Ephrata this week?', am:'በዚህ ሳምንት ከኤፍራታ ስንት ጆብ ፋይሎች ደረሱዎት?', t:'num', auto:{week:'jf_recv'}},
+      {id:'j_rej', en:'How many did you return as incomplete?', am:'ስንቱን ያልተሟሉ ስለሆኑ መለሱ?', t:'num', auto:{week:'jf_rej'}},
+      {id:'j_acc', en:'How many did you accept?', am:'ስንቱን ተቀበሉ?', t:'num',
+        auto:{minus:['j_recv', 'j_rej']}, sumEn:'accepted', sumAm:'ተቀብለዋል'},
       {id:'j_reason', en:'What was missing from the returned files, and is the same thing going missing again?', am:'በተመለሱት ፋይሎች ምን ጎደለ? ያው ነገር በተደጋጋሚ እየጎደለ ነው?', t:'area', opt:1}
     ]},
     { en:'7 · WhatsApp compliance', am:'7 · የዋትስአፕ ተገዢነት', fields:[
@@ -1032,15 +1309,17 @@ const REPORTS = [
       {id:'pl_sent', en:'Did the 15-day plan reach the Chairman by Saturday 3:00 PM?', am:'የ15 ቀን ዕቅዱ እስከ ቅዳሜ 9፡00 ለሊቀመንበሩ ደርሷል?', t:'yesno'},
       {id:'pl_sent_why', en:'Why was it late, and when did it reach him?', am:'ለምን ዘገየ? መቼ ደረሳቸው?', t:'area', show:{f:'pl_sent', when:'no'}},
       {id:'pl_onsched', en:'How many planned jobs were finished on schedule? (on schedule / due this week)', am:'ከታቀዱት ሥራዎች ስንቱ በዕቅዱ ቀን ተጠናቀቁ? (በሰዓቱ / በዚህ ሳምንት የሚደርሱ)', t:'ratio'},
-      {id:'pl_delayed', en:'How many jobs are behind the plan?', am:'ስንት ሥራዎች ከዕቅዱ ወደኋላ ቀርተዋል?', t:'num'},
+      {id:'pl_delayed_any', en:'Is any job behind the plan?', am:'ከዕቅዱ ወደኋላ የቀረ ሥራ አለ?', t:'yesno'},
       {id:'pl_delayed_list', en:'Which jobs are behind?', am:'ወደኋላ የቀሩት የትኞቹ ሥራዎች ናቸው?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
-        show:{f:'pl_delayed', when:'pos'},
+        show:{f:'pl_delayed_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'days', en:'Days behind', am:'የዘገየበት ቀን', t:'num'},
           {id:'why', en:'Reason', am:'ምክንያት', t:'text'},
           {id:'new', en:'New date', am:'አዲሱ ቀን', t:'text'}
         ]},
+      {id:'pl_delayed', en:'How many jobs are behind the plan?', am:'ስንት ሥራዎች ከዕቅዱ ወደኋላ ቀርተዋል?', t:'num',
+        auto:{rows:'pl_delayed_list'}, sumEn:'behind the plan', sumAm:'ከዕቅዱ ወደኋላ'},
       {id:'pl_reason', en:'What is the main reason for the delays?', am:'የመዘግየቱ ዋና ምክንያት ምንድን ነው?', t:'area', opt:1},
       {id:'pl_unpaid', en:"How many jobs went into the plan without Selam's written payment confirmation?",
         am:'ያለ ሰላም የጽሑፍ የክፍያ ማረጋገጫ ስንት ሥራዎች ወደ ዕቅዱ ገቡ?', t:'num',
@@ -1074,9 +1353,10 @@ const REPORTS = [
   derived:1,
   sections:[
     { en:'1 · Collections this week', am:'1 · የዚህ ሳምንት ገቢ', fields:[
-      {id:'f_adv', en:'How much came in as advance payments this week?', am:'በዚህ ሳምንት ስንት ብር ቅድመ ክፍያ ገባ?', t:'money'},
-      {id:'f_final', en:'How much came in as final payments this week?', am:'በዚህ ሳምንት ስንት ብር የመጨረሻ ክፍያ ገባ?', t:'money'},
-      {id:'f_total', en:'How much was collected in total this week?', am:'በዚህ ሳምንት በጠቅላላ ስንት ብር ተሰበሰበ?', t:'money'},
+      {id:'f_adv', en:'How much came in as advance payments this week?', am:'በዚህ ሳምንት ስንት ብር ቅድመ ክፍያ ገባ?', t:'money', auto:{week:'adv_in'}},
+      {id:'f_final', en:'How much came in as final payments this week?', am:'በዚህ ሳምንት ስንት ብር የመጨረሻ ክፍያ ገባ?', t:'money', auto:{week:'final_in'}},
+      {id:'f_total', en:'How much was collected in total this week?', am:'በዚህ ሳምንት በጠቅላላ ስንት ብር ተሰበሰበ?', t:'money',
+        auto:{plus:['f_adv', 'f_final']}},
       {id:'f_banked', en:'Was all cash banked the same day, every day this week?', am:'በዚህ ሳምንት በየዕለቱ ገንዘቡ ሁሉ በዕለቱ ባንክ ገብቷል?', t:'yesno'},
       {id:'f_banked_why', en:'On which days, how much stayed out overnight, and why?', am:'በየትኞቹ ቀናት? ስንት ብር ከባንክ ውጭ አደረ? ለምን?', t:'area', show:{f:'f_banked', when:'no'}}
     ]},
@@ -1086,10 +1366,9 @@ const REPORTS = [
       {id:'f_bank_why', en:'The balance is below the 6,000,000 Birr reserve. Why, what was frozen, and when will it recover?', am:'ቀሪው ከ6,000,000 ብር ክምችት በታች ነው። ለምን? ምን ቆመ? መቼ ይመለሳል?', t:'area', show:{f:'f_bank', when:'miss'}},
       {id:'f_recon', en:'Was the full bank reconciliation done on Monday?', am:'ሙሉ የባንክ ማስታረቅ ሰኞ ተሠርቷል?', t:'yesno'},
       {id:'f_recon_why', en:'Why not, and when will it be done?', am:'ለምን አልተሠራም? መቼ ይሠራል?', t:'area', show:{f:'f_recon', when:'no'}},
-      {id:'f_disc', en:'How many cash discrepancies were found this week?', am:'በዚህ ሳምንት ስንት የገንዘብ ልዩነቶች ተገኙ?', t:'num',
-        tgt:{op:'lte', v:0, en:'–500 Birr each', am:'እያንዳንዱ –500 ብር'}},
+      {id:'f_disc_any', en:'Was any cash discrepancy found this week?', am:'በዚህ ሳምንት የተገኘ የገንዘብ ልዩነት አለ?', t:'yesno'},
       {id:'f_disc_list', en:'List each discrepancy', am:'እያንዳንዱን ልዩነት ይዘርዝሩ', t:'table', addEn:'Add a discrepancy', addAm:'ልዩነት ጨምር',
-        show:{f:'f_disc', when:'pos'},
+        show:{f:'f_disc_any', when:'yes'},
         cols:[
           {id:'day', en:'Day', am:'ቀን', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
@@ -1097,14 +1376,21 @@ const REPORTS = [
           {id:'who', en:'Who handled the money', am:'ገንዘቡን የያዘው', t:'text'},
           {id:'done', en:'What was done', am:'የተወሰደ እርምጃ', t:'text'}
         ]},
+      {id:'f_disc', en:'How many cash discrepancies were found this week?', am:'በዚህ ሳምንት ስንት የገንዘብ ልዩነቶች ተገኙ?', t:'num',
+        auto:{rows:'f_disc_list'}, sumEn:'discrepancies', sumAm:'ልዩነቶች',
+        tgt:{op:'lte', v:0, en:'–500 Birr each', am:'እያንዳንዱ –500 ብር'}},
+      {id:'f_disc_value', en:'How much did they come to?', am:'በጠቅላላ ስንት ብር ነበሩ?', t:'money',
+        auto:{sum:'f_disc_list.amount'}, sumEn:'in all', sumAm:'በጠቅላላ'},
       {id:'f_shortfall', en:'Was every expected cash shortfall flagged in advance?', am:'የሚጠበቅ የገንዘብ እጥረት ሁሉ አስቀድሞ ተነግሯል?', t:'yesno', opt:1},
       {id:'f_shortfall_why', en:'Which shortfall was not flagged in time, and why?', am:'በጊዜ ያልተነገረው የትኛው እጥረት ነው? ለምን?', t:'area', show:{f:'f_shortfall', when:'no'}}
     ]},
     { en:'3 · ZamZam Bank reconciliation', am:'3 · የዘምዘም ባንክ ማስታረቅ', fields:[
       {id:'z_recon', en:'Was ZamZam Bank reconciled this Monday?', am:'የዘምዘም ባንክ በዚህ ሰኞ ታርቋል?', t:'yesno'},
       {id:'z_recon_why', en:'Why not, and when will it be done?', am:'ለምን አልታረቀም? መቼ ይታረቃል?', t:'area', show:{f:'z_recon', when:'no'}},
-      {id:'z_transfers', en:'How many transfers were made to ZamZam this week?', am:'በዚህ ሳምንት ወደ ዘምዘም ስንት ዝውውሮች ተደረጉ?', t:'num'},
-      {id:'z_value', en:'What was the total transferred?', am:'በጠቅላላ ስንት ብር ተላለፈ?', t:'money'},
+      {id:'z_transfers', en:'How many transfers were made to ZamZam this week?', am:'በዚህ ሳምንት ወደ ዘምዘም ስንት ዝውውሮች ተደረጉ?', t:'num',
+        auto:{week:'zz_count'}},
+      {id:'z_value', en:'What was the total transferred?', am:'በጠቅላላ ስንት ብር ተላለፈ?', t:'money',
+        auto:{week:'zz_transfer'}},
       {id:'z_matched', en:'How many transfers match an approved purchase request? (matched / all transfers)', am:'ስንቱ ዝውውር ከጸደቀ የግዥ ጥያቄ ጋር ይመሳሰላል? (የተመሳሰለ / ሁሉም ዝውውሮች)', t:'ratio'},
       {id:'z_matched_why', en:'Which transfers have no approved request behind them, for how much, and why?', am:'የጸደቀ ጥያቄ የሌላቸው የትኞቹ ዝውውሮች ናቸው? ስንት ብር? ለምን?', t:'area', show:{f:'z_matched', when:'short'}},
       {id:'z_cheques', en:'How many cheques match a supplier invoice? (matched / all cheques)', am:'ስንቱ ቼክ ከአቅራቢ ደረሰኝ ጋር ይመሳሰላል? (የተመሳሰለ / ሁሉም ቼኮች)', t:'ratio'},
@@ -1115,27 +1401,37 @@ const REPORTS = [
       {id:'z_errors_what', en:'What were they, how much, and was Kidan told the same day?', am:'ምን ምን ነበሩ? ስንት ብር? በዕለቱ ለኪዳን ተነግሯል?', t:'area', show:{f:'z_errors', when:'pos'}}
     ]},
     { en:'4 · Payments approved', am:'4 · የጸደቁ ክፍያዎች', fields:[
-      {id:'a_count', en:'How many payments were approved this week?', am:'በዚህ ሳምንት ስንት ክፍያዎች ጸደቁ?', t:'num'},
-      {id:'a_value', en:'What was their total value?', am:'ጠቅላላ ዋጋቸው ስንት ነው?', t:'money'},
-      {id:'a_kidan', en:'How many payments over 50,000 Birr went to Kidan?', am:'ከ50,000 ብር በላይ ስንት ክፍያዎች ለኪዳን ተላኩ?', t:'num'},
-      {id:'a_unauth', en:'How many payments went out without proper approval?', am:'ስንት ክፍያዎች ያለ ተገቢ ፈቃድ ተፈጸሙ?', t:'num',
-        tgt:{op:'lte', v:0, en:'–5,000 Birr each', am:'እያንዳንዱ –5,000 ብር'}},
+      {id:'a_count', en:'How many payments were approved this week?', am:'በዚህ ሳምንት ስንት ክፍያዎች ጸደቁ?', t:'num',
+        auto:{week:'pay_approved'}},
+      {id:'a_value', en:'What was their total value?', am:'ጠቅላላ ዋጋቸው ስንት ነው?', t:'money',
+        auto:{week:'pay_value'}},
+      {id:'a_kidan', en:'How many payments over 50,000 Birr went to Kidan?', am:'ከ50,000 ብር በላይ ስንት ክፍያዎች ለኪዳን ተላኩ?', t:'num',
+        auto:{week:'pay_kidan'}},
+      {id:'a_unauth_any', en:'Did any payment go out without proper approval this week?', am:'በዚህ ሳምንት ያለ ተገቢ ፈቃድ የተፈጸመ ክፍያ አለ?', t:'yesno'},
       {id:'a_unauth_list', en:'List each one', am:'እያንዳንዱን ይዘርዝሩ', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
-        show:{f:'a_unauth', when:'pos'},
+        show:{f:'a_unauth_any', when:'yes'},
         cols:[
           {id:'to', en:'Paid to', am:'ተከፋይ', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'by', en:'Who authorised it', am:'ያዘዘው', t:'text'},
           {id:'why', en:'Why', am:'ለምን', t:'text'}
-        ]}
+        ]},
+      {id:'a_unauth', en:'How many payments went out without proper approval?', am:'ስንት ክፍያዎች ያለ ተገቢ ፈቃድ ተፈጸሙ?', t:'num',
+        auto:{rows:'a_unauth_list'}, sumEn:'without approval', sumAm:'ያለ ፈቃድ',
+        tgt:{op:'lte', v:0, en:'–5,000 Birr each', am:'እያንዳንዱ –5,000 ብር'}}
     ]},
     { en:'5 · Assembler payments', am:'5 · የገጣጣሚዎች ክፍያ', fields:[
-      {id:'as_reserved', en:'How much was reserved for assemblers this week?', am:'በዚህ ሳምንት ለተከላ ሠራተኞች ስንት ብር ተያዘ?', t:'money'},
-      {id:'as_released', en:'How many assembler payments were released?', am:'ስንት የገጣጣሚዎች ክፍያዎች ተለቀቁ?', t:'num'},
+      {id:'as_reserved', en:'How much was reserved for assemblers this week?', am:'በዚህ ሳምንት ለተከላ ሠራተኞች ስንት ብር ተያዘ?', t:'money',
+        auto:{week:'asm_reserved'}},
+      {id:'as_released', en:'How many assembler payments were released?', am:'ስንት የገጣጣሚዎች ክፍያዎች ተለቀቁ?', t:'num', auto:{week:'asm_released'}},
+      {id:'as_rel_value', en:'How much did that come to?', am:'በጠቅላላ ስንት ብር ሆነ?', t:'money',
+        auto:{week:'asm_rel_value'}},
       {id:'as_late', en:'How many were released more than 3 working days after customer acceptance?', am:'ስንቱ ደንበኛው ከተቀበለ ከ3 የሥራ ቀናት በኋላ ተለቀቁ?', t:'num',
+        auto:{week:'asm_rel_late'},
         tgt:{op:'lte', v:0, en:'–300 Birr per day late', am:'በዘገየ ቀን –300 ብር'}},
+      {id:'as_late_any', en:'Was any released later than that?', am:'ከዚያ ዘግይቶ የተለቀቀ አለ?', t:'yesno'},
       {id:'as_late_list', en:'Which ones?', am:'የትኞቹ?', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
-        show:{f:'as_late', when:'pos'},
+        show:{f:'as_late_any', when:'yes'},
         cols:[
           {id:'who', en:'Assembler', am:'ገጣጣሚ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
@@ -1150,7 +1446,7 @@ const REPORTS = [
       {id:'r_registers_why', en:'Which register is behind, by how much, and when will it be current?', am:'የትኛው መዝገብ ወደኋላ ቀርቷል? በምን ያህል? መቼ ይሟላል?', t:'area', show:{f:'r_registers', when:'no'}},
       {id:'r_board', en:'Did the board match the physical files all week?', am:'ቦርዱ ሳምንቱን ሙሉ ከፋይሎቹ ጋር ተመሳስሏል?', t:'yesno'},
       {id:'r_board_why', en:'Which job cards did not match, and what was fixed?', am:'የትኞቹ ካርዶች አልተመሳሰሉም? ምን ተስተካከለ?', t:'area', show:{f:'r_board', when:'no'}},
-      {id:'r_docs_missing', en:'How many documents are still missing?', am:'እስካሁን ስንት ሰነዶች ጎድለዋል?', t:'num'},
+      {id:'r_docs_missing', en:'How many documents are still missing?', am:'እስካሁን ስንት ሰነዶች ጎድለዋል?', t:'num', auto:{week:'doc_missing', how:'last'}},
       {id:'r_docs_list', en:'Which documents, from whom, and since when?', am:'የትኞቹ ሰነዶች? ከማን? ከመቼ ጀምሮ?', t:'area', show:{f:'r_docs_missing', when:'pos'}},
       {id:'r_joblist', en:'Did the payment-confirmed job list reach Mahelet by Saturday 1:00 PM?',
         am:'የክፍያ ማረጋገጫ ዝርዝሩ ቅዳሜ ከቀኑ 7፡00 በፊት ለማህሌት ደርሷል?', t:'yesno'},
@@ -1194,16 +1490,16 @@ const REPORTS = [
   sections:[
     { en:'1 · Customer pulse last week', am:'1 · ያለፈው ሳምንት የደንበኛ ስሜት', fields:[
       {id:'cx_groups', en:'How many customer groups were watched last week?', am:'ባለፈው ሳምንት ስንት የደንበኛ ግሩፖች ተከታተሉ?', t:'num'},
-      {id:'cx_contacted', en:'How many customers did you speak to directly?', am:'ስንት ደንበኞችን በቀጥታ አነጋገሩ?', t:'num'},
+      {id:'cx_contacted', en:'How many customers did you speak to directly?', am:'ስንት ደንበኞችን በቀጥታ አነጋገሩ?', t:'num', auto:{week:'pl_called'}},
       {id:'cx_reports', en:'How many daily pulse reports went out on time? (on time / due)', am:'ስንቱ ዕለታዊ የደንበኛ ስሜት ሪፖርት በሰዓቱ ተላከ? (በሰዓቱ / የሚገባው)', t:'ratio',
         tgt:{op:'gte', v:5, en:'All 5 on time earns the 3,000 Birr bonus',
              am:'አምስቱም በሰዓቱ ከተላኩ 3,000 ብር ቦነስ'}},
       {id:'cx_reports_why', en:'Which days were late or missed, and why?', am:'የትኞቹ ቀናት ዘገዩ ወይም ቀሩ? ለምን?', t:'area', show:{f:'cx_reports', when:'short'}}
     ]},
     { en:'2 · Complaints', am:'2 · ቅሬታዎች', fields:[
-      {id:'cx_new', en:'How many new complaints came in last week?', am:'ባለፈው ሳምንት ስንት አዲስ ቅሬታዎች መጡ?', t:'num'},
+      {id:'cx_new_any', en:'Did any new complaint come in last week?', am:'ባለፈው ሳምንት የደረሰ አዲስ ቅሬታ አለ?', t:'yesno'},
       {id:'cx_new_list', en:'List each new complaint', am:'እያንዳንዱን አዲስ ቅሬታ ይዘርዝሩ', t:'table', addEn:'Add complaint', addAm:'ቅሬታ ጨምር',
-        show:{f:'cx_new', when:'pos'},
+        show:{f:'cx_new_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'job', en:'Job code', am:'የሥራ ኮድ', t:'text'},
@@ -1214,6 +1510,8 @@ const REPORTS = [
             {v:'working',en:'Being worked on', am:'በሥራ ላይ'},
             {v:'closed', en:'Resolved', am:'ተፈቷል'}]}
         ]},
+      {id:'cx_new', en:'How many new complaints came in last week?', am:'ባለፈው ሳምንት ስንት አዲስ ቅሬታዎች መጡ?', t:'num',
+        auto:{rows:'cx_new_list'}, sumEn:'complaints', sumAm:'ቅሬታዎች'},
       {id:'cx_resolved', en:'How many were resolved?', am:'ስንቱ ተፈቱ?', t:'num'},
       {id:'cx_open', en:'How many are still open?', am:'ስንቱ ገና አልተፈቱም?', t:'num'},
       {id:'cx_open_why', en:'Which ones, who owns each, what is stopping it, and when will it be closed?', am:'የትኞቹ ናቸው? እያንዳንዱን የያዘው ማን ነው? ምን አቆመው? መቼ ይዘጋል?', t:'area', show:{f:'cx_open', when:'pos'}},
@@ -1251,11 +1549,12 @@ const REPORTS = [
   derived:1,
   sections:[
     { en:'1 · Purchase requests', am:'1 · የግዥ ጥያቄዎች', fields:[
-      {id:'g_prep', en:'How many purchase requests did you prepare this week?', am:'በዚህ ሳምንት ስንት የግዥ ጥያቄ አዘጋጁ?', t:'num'},
-      {id:'g_app', en:'How many did Selam approve?', am:'ሰላም ስንቱን አጸደቀች?', t:'num'},
-      {id:'g_ret', en:'How many were returned or rejected?', am:'ስንቱ ተመለሱ ወይም ውድቅ ሆኑ?', t:'num'},
+      {id:'g_prep', en:'How many purchase requests did you prepare this week?', am:'በዚህ ሳምንት ስንት የግዥ ጥያቄ አዘጋጁ?', t:'num', auto:{week:'pr_prep'}},
+      {id:'g_app', en:'How many did Selam approve?', am:'ሰላም ስንቱን አጸደቀች?', t:'num', auto:{week:'pr_app'}},
+      {id:'g_ret', en:'How many were returned or rejected?', am:'ስንቱ ተመለሱ ወይም ውድቅ ሆኑ?', t:'num', auto:{week:'pr_ret'}},
       {id:'g_ret_why', en:'What were the reasons, and what will change so it stops happening?', am:'ምክንያቶቹ ምን ነበሩ? እንዳይደገም ምን ይቀየራል?', t:'area', show:{f:'g_ret', when:'pos'}},
-      {id:'g_quotes', en:'How many requests carried 3 or more quotes? (with 3 quotes / all requests)', am:'ስንቱ ጥያቄ 3 እና ከዚያ በላይ ፕሮፎርማ ነበረው? (3 ፕሮፎርማ ያላቸው / ሁሉም ጥያቄዎች)', t:'ratio'},
+      {id:'g_quotes', en:'How many requests carried 3 or more quotes? (with 3 quotes / all requests)', am:'ስንቱ ጥያቄ 3 እና ከዚያ በላይ ፕሮፎርማ ነበረው? (3 ፕሮፎርማ ያላቸው / ሁሉም ጥያቄዎች)', t:'ratio',
+        auto:{a:{week:'pr_quotes__a'}, b:{week:'pr_quotes__b'}}},
       {id:'g_quotes_why', en:'Which requests had fewer than 3 quotes, and why?', am:'ከ3 ያነሰ ፕሮፎርማ የነበራቸው የትኞቹ ጥያቄዎች ናቸው? ለምን?', t:'area', show:{f:'g_quotes', when:'short'}},
       {id:'g_acc', en:'What was your purchase accuracy this week?', am:'በዚህ ሳምንት የግዥ ትክክለኛነትዎ ስንት በመቶ ነበር?', t:'pct',
         tgt:{op:'gte', v:95, en:'Target ≥95% — below is –500 Birr/month',
@@ -1263,8 +1562,9 @@ const REPORTS = [
       {id:'g_acc_why', en:'Which purchases went wrong, how, and what will you do differently?', am:'የትኞቹ ግዥዎች ተሳሳቱ? እንዴት? ከዚህ በኋላ ምን በተለየ መንገድ ይሠራሉ?', t:'area', show:{f:'g_acc', when:'miss'}}
     ]},
     { en:'2 · ZamZam Bank cheques', am:'2 · የዘምዘም ባንክ ቼኮች', fields:[
-      {id:'g_chq', en:'How many cheques did you issue this week?', am:'በዚህ ሳምንት ስንት ቼክ ሰጡ?', t:'num'},
-      {id:'g_chq_val', en:'What is the total value of this week\'s cheques?', am:'የዚህ ሳምንት ቼኮች ጠቅላላ ዋጋ ስንት ነው?', t:'money'},
+      {id:'g_chq', en:'How many cheques did you issue this week?', am:'በዚህ ሳምንት ስንት ቼክ ሰጡ?', t:'num',
+        auto:{week:'chq_issued'}},
+      {id:'g_chq_val', en:'What is the total value of this week\'s cheques?', am:'የዚህ ሳምንት ቼኮች ጠቅላላ ዋጋ ስንት ነው?', t:'money', auto:{week:'chq_value'}},
       {id:'g_chq_err', en:'How many cheque errors were there?', am:'ስንት የቼክ ስህተት ነበር?', t:'num',
         tgt:{op:'lte', v:0, en:'Zero errors earns the 1,000 Birr bonus',
              am:'ዜሮ ስህተት 1,000 ብር ቦነስ ያስገኛል'}},
@@ -1273,17 +1573,20 @@ const REPORTS = [
       {id:'g_chq_secure_why', en:'Which nights not, and why?', am:'የትኞቹ ምሽቶች አልተቆለፈበትም? ለምን?', t:'area', show:{f:'g_chq_secure', when:'no'}}
     ]},
     { en:'3 · Suppliers and savings', am:'3 · አቅራቢዎችና ቁጠባ', fields:[
-      {id:'g_sup', en:'How many suppliers did you buy from this week?', am:'በዚህ ሳምንት ከስንት አቅራቢዎች ገዙ?', t:'num'},
-      {id:'g_delays', en:'How many supplier deliveries were late?', am:'ስንት የአቅራቢ ርክክቦች ዘገዩ?', t:'num'},
+      {id:'g_sup', en:'How many suppliers did you buy from this week?', am:'በዚህ ሳምንት ከስንት አቅራቢዎች ገዙ?', t:'num',
+        auto:{week:'ord_placed'}},
+      {id:'g_delays_any', en:'Was any supplier delivery late this week?', am:'በዚህ ሳምንት የዘገየ የአቅራቢ ርክክብ አለ?', t:'yesno'},
       {id:'g_delays_list', en:'Which suppliers were late, and what did it cost us?', am:'የዘገዩት የትኞቹ አቅራቢዎች ናቸው? ምን አሳጣን?', t:'table', addEn:'Add a supplier', addAm:'አቅራቢ ጨምር',
-        show:{f:'g_delays', when:'pos'},
+        show:{f:'g_delays_any', when:'yes'},
         cols:[
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'times', en:'Times late', am:'የዘገየበት ብዛት', t:'num'},
           {id:'days', en:'Days late', am:'የዘገየበት ቀን', t:'num'},
           {id:'effect', en:'Effect on production', am:'በምርት ላይ ያደረሰው', t:'text'}
         ]},
-      {id:'g_quality', en:'How many quality problems came from suppliers?', am:'ከአቅራቢዎች ስንት የጥራት ችግር መጣ?', t:'num'},
+      {id:'g_delays', en:'How many supplier deliveries were late?', am:'ስንት የአቅራቢ ርክክቦች ዘገዩ?', t:'num',
+        auto:{rows:'g_delays_list'}, sumEn:'late deliveries', sumAm:'የዘገዩ ርክክቦች'},
+      {id:'g_quality', en:'How many quality problems came from suppliers?', am:'ከአቅራቢዎች ስንት የጥራት ችግር መጣ?', t:'num', auto:{week:'sup_quality'}},
       {id:'g_quality_what', en:'Which suppliers, what went wrong, and should we keep buying from them?', am:'የትኞቹ አቅራቢዎች? ምን ችግር ነበር? ከእነሱ መግዛታችንን መቀጠል አለብን?', t:'area', show:{f:'g_quality', when:'pos'}},
       {id:'g_saving', en:'How much below the last price paid did you buy this week?', am:'በዚህ ሳምንት ከመጨረሻው የተከፈለ ዋጋ በታች በስንት ብር ገዙ?', t:'money', opt:1},
       {id:'g_saving_how', en:'On which purchases, and how was the saving made?', am:'በየትኞቹ ግዥዎች? ቁጠባው እንዴት ተገኘ?', t:'area', show:{f:'g_saving', when:'pos'}},
@@ -1291,8 +1594,10 @@ const REPORTS = [
     ]},
     { en:'4 · Supplier credit', am:'4 · የአቅራቢ ዱቤ', fields:[
       {id:'g_cr_new', en:'How much did you buy on credit this week — no cheque given yet?', am:'በዚህ ሳምንት በዱቤ — ቼክ ሳይሰጥ — ስንት ብር ገዙ?', t:'money'},
-      {id:'g_cr_paid', en:'How much earlier credit did you pay this week, by cheque?', am:'በዚህ ሳምንት ቀድሞ የተወሰደ ዱቤ ስንት ብር በቼክ ተከፈለ?', t:'money'},
-      {id:'g_cr_owed', en:'How much does Klever owe suppliers in total now?', am:'ክሌቨር አሁን ለአቅራቢዎች በጠቅላላ ስንት ብር አለበት?', t:'money', parts:{of:['g_cr_overdue', 'g_cr_next']}},
+      {id:'g_cr_paid', en:'How much earlier credit did you pay this week, by cheque?', am:'በዚህ ሳምንት ቀድሞ የተወሰደ ዱቤ ስንት ብር በቼክ ተከፈለ?', t:'money',
+        auto:{week:'cr_paid'}},
+      {id:'g_cr_owed', en:'How much does Klever owe suppliers in total now?', am:'ክሌቨር አሁን ለአቅራቢዎች በጠቅላላ ስንት ብር አለበት?', t:'money',
+        auto:{week:'cr_owed', how:'last'}, parts:{of:['g_cr_overdue', 'g_cr_next']}},
       {id:'g_cr_list', en:'Who is owed, how much, and by when?', am:'ለማን ዕዳ አለ? ስንት? እስከ መቼ?', t:'table', addEn:'Add a supplier', addAm:'አቅራቢ ጨምር', opt:1, cols:[
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'amount', en:'Owed', am:'ዕዳ', t:'money'},
@@ -1300,14 +1605,16 @@ const REPORTS = [
         ]},
       {id:'g_cr_next', en:'How much of it falls due next week?', am:'ከዚህ ውስጥ በሚቀጥለው ሳምንት የሚደርሰው ስንት ነው?', t:'money', opt:1},
       {id:'g_cr_overdue', en:'How much is already past the date we promised?', am:'ቃል የገባንበት ቀን ያለፈው ስንት ነው?', t:'money',
+        auto:{week:'cr_overdue', how:'last'},
         tgt:{op:'lte', v:0, en:'Should be 0 — a supplier owed past the date can stop delivering',
              am:'ዜሮ መሆን አለበት — ቀኑ ያለፈበት አቅራቢ ዕቃ ማቅረብ ሊያቆም ይችላል'}},
       {id:'g_cr_overdue_why', en:'Which suppliers, and why are they not paid?', am:'የትኞቹ አቅራቢዎች? ለምን አልተከፈላቸውም?', t:'area', show:{f:'g_cr_overdue', when:'miss'}},
       {id:'g_cr_risk', en:'Is any supplier refusing to deliver until paid, or stopping our credit?', am:'እስኪከፈለው ዕቃ ላለማቅረብ የሚል ወይም ዱቤ ያቆመ አቅራቢ አለ?', t:'area', opt:1}
     ]},
     { en:'5 · Documents to Selam', am:'5 · ለሰላም የተላኩ ሰነዶች', fields:[
-      {id:'g_doc24', en:'How many documents reached Selam within 24 hours? (on time / all due)', am:'ስንት ሰነዶች በ24 ሰዓት ውስጥ ለሰላም ደረሱ? (በሰዓቱ / መድረስ የነበረባቸው)', t:'ratio'},
-      {id:'g_doc_missing', en:'How many documents are still outstanding?', am:'እስካሁን ያልቀረቡ ሰነዶች ስንት ናቸው?', t:'num',
+      {id:'g_doc24', en:'How many documents reached Selam within 24 hours? (on time / all due)', am:'ስንት ሰነዶች በ24 ሰዓት ውስጥ ለሰላም ደረሱ? (በሰዓቱ / መድረስ የነበረባቸው)', t:'ratio',
+        auto:{a:{week:'doc_24__a'}, b:{week:'doc_24__b'}}},
+      {id:'g_doc_missing', en:'How many documents are still outstanding?', am:'እስካሁን ያልቀረቡ ሰነዶች ስንት ናቸው?', t:'num', auto:{week:'doc_missing', how:'last'},
         tgt:{op:'lte', v:0, en:'–200 Birr per document', am:'በሰነድ –200 ብር'}},
       {id:'g_doc_missing_list', en:'Which documents, for which jobs, and when will each reach Selam?', am:'የትኞቹ ሰነዶች? ለየትኞቹ ሥራዎች? እያንዳንዱ መቼ ለሰላም ይደርሳል?', t:'table', addEn:'Add a document', addAm:'ሰነድ ጨምር',
         show:{f:'g_doc_missing', when:'pos'},
@@ -1370,11 +1677,9 @@ const REPORTS = [
         tgt:{op:'gte', v:99, en:'Target ≥99% — 2,000 Birr KPI bonus',
              am:'ዒላማ ≥99% — 2,000 ብር ቦነስ'}},
       {id:'y_accuracy_why', en:'Below 99%: what caused the gaps, and what will change in how the store is run?', am:'ከ99% በታች ነው፦ ልዩነቱን ምን አመጣው? የመጋዘኑ አሠራር ምን ይቀየራል?', t:'area', show:{f:'y_accuracy', when:'miss'}},
-      {id:'y_disc', en:'How many differences did the count find?', am:'ቆጠራው ስንት ልዩነት አገኘ?', t:'num',
-        tgt:{op:'lte', v:0, en:'Zero earns the 1,000 Birr accuracy bonus',
-             am:'ዜሮ ከሆነ 1,000 ብር ቦነስ'}},
+      {id:'y_disc_any', en:'Did the count find any difference this week?', am:'በዚህ ሳምንት ቆጠራው ልዩነት አገኘ?', t:'yesno'},
       {id:'y_disc_list', en:'List each difference', am:'እያንዳንዱን ልዩነት ይዘርዝሩ', t:'table', addEn:'Add an item', addAm:'ዕቃ ጨምር',
-        show:{f:'y_disc', when:'pos'},
+        show:{f:'y_disc_any', when:'yes'},
         cols:[
           {id:'item', en:'Material', am:'ዕቃ', t:'text'},
           {id:'book', en:'On record', am:'በመዝገብ', t:'num'},
@@ -1382,27 +1687,34 @@ const REPORTS = [
           {id:'why', en:'Reason', am:'ምክንያት', t:'text'},
           {id:'told', en:'Reported the same day?', am:'በዚያው ቀን ተነግሯል?', t:'yesno'}
         ]},
+      {id:'y_disc', en:'How many differences did the count find?', am:'ቆጠራው ስንት ልዩነት አገኘ?', t:'num',
+        auto:{rows:'y_disc_list'}, sumEn:'differences', sumAm:'ልዩነቶች',
+        tgt:{op:'lte', v:0, en:'Zero earns the 1,000 Birr accuracy bonus',
+             am:'ዜሮ ከሆነ 1,000 ብር ቦነስ'}},
       {id:'y_missing', en:'How many materials are missing?', am:'ስንት ዕቃዎች ጠፍተዋል?', t:'num',
         tgt:{op:'lte', v:0, en:'–1,000 Birr each', am:'እያንዳንዱ –1,000 ብር'}},
       {id:'y_missing_what', en:'What is missing, what is it worth, and who was told?', am:'ምን ጠፋ? ዋጋው ስንት ነው? ለማን ተነገረ?', t:'area', show:{f:'y_missing', when:'pos'}}
     ]},
     { en:'2 · Receiving this week', am:'2 · የዚህ ሳምንት ርክክብ', fields:[
-      {id:'y_deliv', en:'How many deliveries came in this week?', am:'በዚህ ሳምንት ስንት ርክክብ ገባ?', t:'num'},
-      {id:'y_accepted', en:'How many were accepted into the store?', am:'ስንቱ ወደ መጋዘን ገቡ?', t:'num'},
-      {id:'y_rejected', en:'How many did you reject?', am:'ስንቱን ውድቅ አደረጉ?', t:'num'},
+      {id:'y_deliv', en:'How many deliveries came in this week?', am:'በዚህ ሳምንት ስንት ርክክብ ገባ?', t:'num',
+        auto:{week:'rec_deliv'}},
+      {id:'y_accepted', en:'How many were accepted into the store?', am:'ስንቱ ወደ መጋዘን ገቡ?', t:'num',
+        auto:{week:'rec_accepted'}},
+      {id:'y_rejected', en:'How many did you reject?', am:'ስንቱን ውድቅ አደረጉ?', t:'num',
+        auto:{week:'rec_rejected'}},
       {id:'y_rejected_what', en:'What was rejected, from which suppliers, and has it been replaced?', am:'ምን ውድቅ ተደረገ? ከየትኞቹ አቅራቢዎች? ተተክቷል?', t:'area', show:{f:'y_rejected', when:'pos'}},
       {id:'y_grn', en:'Was everything received against a Job File or BOM?', am:'ሁሉም ከጆብ ፋይል ወይም BOM ጋር ተመሳክሮ ተረክቧል?', t:'yesno'},
       {id:'y_grn_why', en:'What came in without one, and why?', am:'ያለ ጆብ ፋይል ወይም BOM የገባው ምንድን ነው? ለምን?', t:'area', show:{f:'y_grn', when:'no'}}
     ]},
     { en:'3 · Issuing', am:'3 · ዕቃ ማውጣት', fields:[
-      {id:'y_issues', en:'How many times were materials issued this week?', am:'በዚህ ሳምንት ስንት ጊዜ ዕቃ ከመጋዘን ወጣ?', t:'num'},
+      {id:'y_issues', en:'How many times were materials issued this week?', am:'በዚህ ሳምንት ስንት ጊዜ ዕቃ ከመጋዘን ወጣ?', t:'num', auto:{week:'iss_count'}},
       {id:'y_approved', en:'Did every issue carry Mahelet\'s signed approval?', am:'እያንዳንዱ ዕቃ በማህሌት ፊርማ ፈቃድ ወጥቷል?', t:'yesno'},
       {id:'y_approved_why', en:'What went out without it, for which job, and who allowed it?', am:'ያለፈቃድ የወጣው ምንድን ነው? ለየትኛው ሥራ? ማን ፈቀደ?', t:'area', show:{f:'y_approved', when:'no'}},
       {id:'y_correct', en:'Did everything go to the correct job?', am:'ሁሉም ለትክክለኛው ሥራ ወጥቷል?', t:'yesno'},
       {id:'y_correct_why', en:'What went to the wrong job, and has it been put right?', am:'ወደ ተሳሳተ ሥራ የሄደው ምንድን ነው? ተስተካክሏል?', t:'area', show:{f:'y_correct', when:'no'}}
     ]},
     { en:'4 · Shortages', am:'4 · እጥረቶች', fields:[
-      {id:'y_short', en:'How many shortages did you flag this week?', am:'በዚህ ሳምንት ስንት እጥረት ጠቆሙ?', t:'num'},
+      {id:'y_short', en:'How many shortages did you flag this week?', am:'በዚህ ሳምንት ስንት እጥረት ጠቆሙ?', t:'num', auto:{week:'sh_flagged'}},
       {id:'y_short_what', en:'Which materials, and did each arrive before it was needed?', am:'የትኞቹ ዕቃዎች? እያንዳንዱ ከመፈለጉ በፊት ደረሰ?', t:'area', show:{f:'y_short', when:'pos'}},
       {id:'y_stopped', en:'How many times did production stop because a shortage was not reported?',
         am:'ባልተነገረ እጥረት ምርት ስንት ጊዜ ቆመ?', t:'num',
@@ -1410,8 +1722,8 @@ const REPORTS = [
       {id:'y_stopped_what', en:'Which jobs, for how long, and why was the shortage not reported in time?', am:'የትኞቹ ሥራዎች? ለምን ያህል ጊዜ? እጥረቱ በጊዜ ለምን አልተነገረም?', t:'area', show:{f:'y_stopped', when:'pos'}}
     ]},
     { en:'5 · Factory consumables', am:'5 · የፋብሪካ ፍጆታ ዕቃዎች', fields:[
-      {id:'y_con_week', en:'How many consumable items were issued this week?', am:'በዚህ ሳምንት ስንት የፍጆታ ዕቃ ወጣ?', t:'num'},
-      {id:'y_con_mtd', en:'How much has been spent on consumables this month so far?', am:'በዚህ ወር እስካሁን ለፍጆታ ዕቃ ስንት ብር ወጣ?', t:'money',
+      {id:'y_con_week', en:'How many consumable items were issued this week?', am:'በዚህ ሳምንት ስንት የፍጆታ ዕቃ ወጣ?', t:'num', auto:{week:'con_today'}},
+      {id:'y_con_mtd', en:'How much has been spent on consumables this month so far?', am:'በዚህ ወር እስካሁን ለፍጆታ ዕቃ ስንት ብር ወጣ?', t:'money', auto:{week:'con_mtd', how:'last'},
         tgt:{op:'lte', v:30000, en:'Budget 30,000 Birr/month — above needs Chairman approval',
              am:'የወር በጀት 30,000 ብር — በላይ ከሆነ የሊቀመንበር ፈቃድ'}},
       {id:'y_con_mtd_why', en:'The month is over 30,000 Birr. What drove it, and has the Chairman approved the extra?', am:'የወሩ ወጪ ከ30,000 ብር አልፏል። ምን አሳደገው? ተጨማሪውን ሊቀመንበሩ አጽድቀዋል?', t:'area', show:{f:'y_con_mtd', when:'miss'}}
@@ -1677,10 +1989,9 @@ const REPORTS = [
       {id:'jl_rule_why', en:'Which job is not fully paid, and why is it on the list?', am:'ሙሉ ያልተከፈለው የትኛው ሥራ ነው? ለምን በዝርዝሩ ገባ?', t:'area', show:{f:'jl_rule', when:'no'}},
       {id:'jl_bank', en:'Was every payment on this list checked in the bank, not only on a receipt?', am:'በዝርዝሩ ያለ እያንዳንዱ ክፍያ በደረሰኝ ብቻ ሳይሆን በባንክ ተረጋግጧል?', t:'yesno'},
       {id:'jl_bank_why', en:'Which payments are not yet seen in the bank, and when will they be checked?', am:'ገና በባንክ ያልታዩት የትኞቹ ክፍያዎች ናቸው? መቼ ይረጋገጣሉ?', t:'area', show:{f:'jl_bank', when:'no'}},
-      {id:'jl_held', en:'How many jobs are held back because payment is incomplete?',
-       am:'ክፍያቸው ስላልተጠናቀቀ ስንት ሥራዎች ቀሩ?', t:'num'},
+      {id:'jl_held_any', en:'Is any job held back because payment is incomplete?', am:'ክፍያው ባልተጠናቀቀ ምክንያት የቆመ ሥራ አለ?', t:'yesno'},
       {id:'jl_held_list', en:'Which jobs are held back?', am:'የቀሩት የትኞቹ ሥራዎች ናቸው?', t:'table', addEn:'Add job', addAm:'ሥራ ጨምር',
-        show:{f:'jl_held', when:'pos'},
+        show:{f:'jl_held_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
@@ -1688,6 +1999,9 @@ const REPORTS = [
           {id:'asked', en:'Final request sent on', am:'የመጨረሻ ክፍያ ጥያቄ የተላከበት ቀን', t:'text'},
           {id:'expect', en:'Payment expected on', am:'ክፍያው የሚጠበቅበት ቀን', t:'text'}
         ]},
+      {id:'jl_held', en:'How many jobs are held back because payment is incomplete?',
+       am:'ክፍያቸው ስላልተጠናቀቀ ስንት ሥራዎች ቀሩ?', t:'num',
+        auto:{rows:'jl_held_list'}, sumEn:'held back', sumAm:'ቆመዋል'},
       {id:'jl_note', en:'Anything Mahelet should know — a customer pressing for a date, a job paid late in the week?', am:'ማህሌት ሊያውቁት የሚገባ ነገር አለ? — ቀን የሚጠይቅ ደንበኛ፣ በሳምንቱ መጨረሻ የተከፈለ ሥራ?', t:'area', opt:1}
     ]}
   ]
@@ -1746,15 +2060,17 @@ const REPORTS = [
       {id:'cf7_freeze_what', en:'Which payments, and until when?', am:'የትኞቹ ክፍያዎች? እስከ መቼ?', t:'area', show:{f:'cf7_freeze', when:'yes'}}
     ]},
     { en:'5 · Due today', am:'5 · ዛሬ የሚከፈሉ', fields:[
-      {id:'cf7_due', en:'How many payments are due today?', am:'ዛሬ ስንት ክፍያዎች ይከፈላሉ?', t:'num'},
+      {id:'cf7_due_any', en:'Is any payment due today?', am:'ዛሬ የሚከፈል ክፍያ አለ?', t:'yesno'},
       {id:'cf7_due_list', en:'Which payments are due today?', am:'ዛሬ የሚከፈሉት የትኞቹ ክፍያዎች ናቸው?', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
-        show:{f:'cf7_due', when:'pos'},
+        show:{f:'cf7_due_any', when:'yes'},
         cols:[
           {id:'to', en:'Paid to', am:'ተከፋይ', t:'text'},
           {id:'for', en:'For', am:'ለምን', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'ready', en:'Funds ready', am:'ገንዘቡ ዝግጁ ነው', t:'yesno'}
         ]},
+      {id:'cf7_due', en:'How many payments are due today?', am:'ዛሬ ስንት ክፍያዎች ይከፈላሉ?', t:'num',
+        auto:{rows:'cf7_due_list'}, sumEn:'due today', sumAm:'ዛሬ የሚከፈሉ'},
       {id:'cf7_due_val', en:'What is the total due today?', am:'የዛሬው ክፍያ በጠቅላላ ስንት ነው?', t:'money'},
       {id:'cf7_kidan', en:'How many of them need Kidan\'s approval?', am:'ከነዚህ ስንቱ የኪዳን ፈቃድ ያስፈልጋቸዋል?', t:'num'},
       {id:'cf7_kidan_state', en:'Which ones, and has each been approved yet?', am:'የትኞቹ ናቸው? እያንዳንዱ ጸድቋል?', t:'area', show:{f:'cf7_kidan', when:'pos'}}
@@ -1784,15 +2100,17 @@ const REPORTS = [
     ]},
     { en:'2 · How customers sound', am:'2 · የደንበኞች ስሜት', fields:[
       {id:'pl_happy', en:'How many customers sound satisfied?', am:'ስንት ደንበኞች የረኩ ይመስላሉ?', t:'num'},
-      {id:'pl_unhappy', en:'How many sound unhappy?', am:'ስንቱ ያልረኩ ይመስላሉ?', t:'num'},
+      {id:'pl_unhappy_any', en:'Did any of them sound unhappy?', am:'ካልረኩት ውስጥ የሆነ አለ?', t:'yesno'},
       {id:'pl_unhappy_who', en:'Who, and why?', am:'እነማን ናቸው? ለምን?', t:'table', addEn:'Add customer', addAm:'ደንበኛ ጨምር',
-        show:{f:'pl_unhappy', when:'pos'},
+        show:{f:'pl_unhappy_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'job', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'why', en:'Why', am:'ለምን', t:'text'},
           {id:'next', en:'Next step', am:'ቀጣይ እርምጃ', t:'text'}
         ]},
+      {id:'pl_unhappy', en:'How many sound unhappy?', am:'ስንቱ ያልረኩ ይመስላሉ?', t:'num',
+        auto:{rows:'pl_unhappy_who'}, sumEn:'sound unhappy', sumAm:'ያልረኩ'},
       {id:'pl_silent', en:'How many customers have gone quiet for 3 days or more?',
        am:'ከ3 ቀናት በላይ ዝም ያሉ ደንበኞች ስንት ናቸው?', t:'num'},
       {id:'pl_silent_who', en:'Who, what stage is each job at, and who will call them tomorrow?', am:'እነማን ናቸው? የእያንዳንዳቸው ሥራ በምን ደረጃ ላይ ነው? ነገ ማን ይደውልላቸዋል?', t:'area', show:{f:'pl_silent', when:'pos'}},
@@ -1842,28 +2160,76 @@ const REPORTS = [
   dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   sections:[
+    /* The day's work, job by job, is the whole of this section. The four
+       figures that used to stand above it — the day's m², the external
+       share, the internal share, the sheets — were all in the rows, typed a
+       second time (the Chairman, 9 Oct 2026). They are counted from the rows
+       now, and the row says which customer the m² belong to, which is what
+       the two share figures were for. */
     { en:'1 · Production output', am:'1 · የዕለቱ ምርት', fields:[
-      {id:'p_total', en:'How many m² did the factory produce today?', am:'ፋብሪካው ዛሬ ስንት ካሬ ሜትር አመረተ?', t:'num',
-        parts:{of:['p_ext','p_rove']},
-        tgt:{op:'gte', v:40, en:'Daily target 40 m² — below is –300 Birr/day from commission',
-             am:'የቀኑ ዒላማ 40 ካሬ ሜትር — ከዚህ በታች ከኮሚሽን –300 ብር'}},
-      {id:'p_total_why', en:'Production is under 40 m². What held it back, and how will it be recovered tomorrow?', am:'ምርቱ ከ40 ካሬ ሜትር በታች ነው። ምን አዘገየው? ነገ በምን ይካካሳል?', t:'area', show:{f:'p_total', when:'miss'}},
-      {id:'p_ext', en:'For external customers', am:'ለውጭ ደንበኞች', t:'num', i:1},
-      {id:'p_rove', en:'For Rovestone / internal', am:'ለሮቭስቶን / ለውስጥ', t:'num', i:1},
-      {id:'p_rove_ok', en:'Which Rovestone or internal jobs were these, and is each one approved in the plan?', am:'እነዚህ የትኞቹ የሮቭስቶን ወይም የውስጥ ሥራዎች ናቸው? እያንዳንዳቸው በዕቅዱ ጸድቀዋል?', t:'area', show:{f:'p_rove', when:'pos'}},
       {id:'p_jobs', en:'Which jobs were worked on today?', am:'ዛሬ የተሠሩት የትኞቹ ሥራዎች ናቸው?',
        t:'table', addEn:'Add job', addAm:'ሥራ ጨምር', cols:[
         {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
         {id:'tgt',  en:'m² target', am:'የታቀደ ካሬ ሜትር', t:'num'},
         {id:'done', en:'m² produced', am:'የተመረተ ካሬ ሜትር', t:'num'},
-        /* a count anyone can give — "1 MDF, 2 MDF" (the Chairman, 8 Oct 2026).
-           The waste is worked out from it, so nobody estimates a percentage. */
-        {id:'sheets', en:'Sheets used', am:'የዋሉ ሉሆች', t:'num'},
+        {id:'for',  en:'Whose job', am:'የማን ሥራ', t:'choice', opts:[
+          {v:'ext',  en:'External customer',     am:'የውጭ ደንበኛ'},
+          {v:'rove', en:'Rovestone / internal',  am:'ሮቭስቶን / የውስጥ'}
+        ]},
         {id:'st',   en:'Status', am:'ሁኔታ', t:'choice', opts:[
           {v:'done', en:'Complete', am:'ተጠናቋል'},
           {v:'wip',  en:'In progress', am:'በሂደት ላይ'}
         ]}
-      ]}
+      ]},
+      {id:'p_total', en:'How many m² did the factory produce today?', am:'ፋብሪካው ዛሬ ስንት ካሬ ሜትር አመረተ?', t:'num',
+        auto:{sum:'p_jobs.done'},
+        tgt:{op:'gte', v:40, en:'Daily target 40 m² — below is –300 Birr/day from commission',
+             am:'የቀኑ ዒላማ 40 ካሬ ሜትር — ከዚህ በታች ከኮሚሽን –300 ብር'}},
+      {id:'p_ext', en:'For external customers', am:'ለውጭ ደንበኞች', t:'num', i:1,
+        auto:{sum:'p_jobs.done', when:{col:'for', is:'ext'}}, sumEn:'m² for external customers', sumAm:'ካሬ ሜትር ለውጭ ደንበኞች'},
+      {id:'p_rove', en:'For Rovestone / internal', am:'ለሮቭስቶን / ለውስጥ', t:'num', i:1,
+        auto:{sum:'p_jobs.done', when:{col:'for', is:'rove'}}, sumEn:'m² for Rovestone / internal', sumAm:'ካሬ ሜትር ለሮቭስቶን / ለውስጥ'},
+      {id:'p_total_why', en:'Production is under 40 m². What held it back, and how will it be recovered tomorrow?', am:'ምርቱ ከ40 ካሬ ሜትር በታች ነው። ምን አዘገየው? ነገ በምን ይካካሳል?', t:'area', show:{f:'p_total', when:'miss'}},
+      {id:'p_rove_ok', en:'Which Rovestone or internal jobs were these, and is each one approved in the plan?', am:'እነዚህ የትኞቹ የሮቭስቶን ወይም የውስጥ ሥራዎች ናቸው? እያንዳንዳቸው በዕቅዱ ጸድቀዋል?', t:'area', show:{f:'p_rove', when:'pos'}}
+    ]},
+    /* What the day actually ate, material by material: the MDF and the
+       melamine, the edge banding by the metre, the hinges, the slides, the
+       handles (the Chairman, 9 Oct 2026 — "what happens on production, MDF,
+       accessories"). The same twelve names the store issues against, so
+       what the factory says it used and what the store says it gave out can
+       be put side by side. The sheet count, the edge metres and the yield
+       all come out of these rows, so none of them is typed twice. */
+    { en:'2 · What went into the work', am:'2 · ለሥራው የዋለው ዕቃ', fields:[
+      {id:'p_mat', en:'Which materials and accessories went into today\'s jobs?',
+       am:'ለዛሬዎቹ ሥራዎች የዋሉት ዕቃዎችና መለዋወጫዎች የትኞቹ ናቸው?',
+       t:'table', addEn:'Add a material', addAm:'ዕቃ ጨምር', cols:[
+        {id:'item', en:'Material or accessory', am:'ዕቃ ወይም መለዋወጫ', t:'choice', opts:MATERIAL_OPTS},
+        {id:'qty',  en:'How much — sheets, metres or pieces', am:'ብዛት — ሉህ፣ ሜትር ወይም ቁጥር', t:'num'},
+        {id:'code', en:'For which job', am:'ለየትኛው ሥራ', t:'text'},
+        {id:'panels', en:'Panels cut (boards only)', am:'የተቆረጡ ፓኔሎች (ለሰሌዳ ብቻ)', t:'num'},
+        {id:'off', en:'Offcut m² sent back to store', am:'ወደ መጋዘን የተመለሰ ቁራጭ (ካሬ ሜትር)', t:'num'}
+      ]},
+      {id:'b_sheets', en:'How many sheets were used in total today?', am:'ዛሬ በጠቅላላው ስንት ሉህ ዋለ?', t:'num',
+        auto:{sum:'p_mat.qty', when:{col:'item', in:BOARDS}}, sumEn:'sheets of board', sumAm:'የሰሌዳ ሉሆች'},
+      {id:'b_edge', en:'How many metres of edge banding were used?', am:'ስንት ሜትር የጠርዝ ማሰሪያ ዋለ?', t:'num',
+        auto:{sum:'p_mat.qty', when:{col:'item', is:'Edge banding (m)'}}, sumEn:'metres of edge banding', sumAm:'ሜትር ጠርዝ ማሰሪያ'},
+      {id:'p_acc', en:'How many pieces of hardware and accessories went on?', am:'ስንት ሃርድዌርና መለዋወጫ ተገጠመ?', t:'num',
+        auto:{sum:'p_mat.qty', when:{col:'item', in:ACCESSORIES}}, sumEn:'pieces of hardware', sumAm:'ሃርድዌር ቁጥር'},
+      {id:'p_off', en:'How many m² of offcuts went back to the store?', am:'ስንት ካሬ ሜትር ቁራጭ ወደ መጋዘን ተመለሰ?', t:'num',
+        auto:{sum:'p_mat.off'}, sumEn:'m² of offcuts back to store', sumAm:'ካሬ ሜትር ቁራጭ ወደ መጋዘን'},
+      {id:'b_yield', en:'How many m² came out of each sheet?', am:'ከእያንዳንዱ ሉህ ስንት ካሬ ሜትር ወጣ?', t:'num',
+        auto:{div:['p_total', 'b_sheets']}, sumEn:'m² out of each sheet', sumAm:'ካሬ ሜትር በሉህ',
+        tgt:{op:'gte', v:2.4, en:'A 2440 × 1220 sheet is 2.98 m² — under 2.4 is a cutting plan to look at',
+             am:'የ2440 × 1220 ሉህ 2.98 ካሬ ሜትር ነው — ከ2.4 በታች የመቁረጥ ዕቅዱ መታየት አለበት'}},
+      {id:'b_yield_why', en:'Which job or cutting plan wasted board, and why?', am:'ሰሌዳውን ያባከነው የትኛው ሥራ ወይም የመቁረጥ ዕቅድ ነው? ለምን?', t:'area', show:{f:'b_yield', when:'miss'}},
+      {id:'b_short', en:'Did any cut stop for want of the right board or accessory?', am:'ትክክለኛው ሰሌዳ ወይም መለዋወጫ ባለመኖሩ የቆመ ሥራ አለ?', t:'yesno'},
+      /* one tap where it used to be typed; the plant manager and the morning
+         brief both name this answer */
+      {id:'b_shortw', en:'Which one?', am:'የትኛው?', t:'choice', opts:MATERIAL_OPTS, i:1, show:{f:'b_short', when:'yes'}},
+      {id:'b_short_what', en:'Which job was held up, for how long, and when will it arrive?', am:'የቆመው የትኛው ሥራ ነው? ለምን ያህል ጊዜ? መቼ ይደርሳል?', t:'area', show:{f:'b_short', when:'yes'}},
+      {id:'b_redo', en:'How many edges had to be re-run because they lifted?', am:'ተነስተው እንደገና የተሠሩ ጠርዞች ስንት ናቸው?', t:'num',
+        tgt:{op:'lte', v:0, en:'An edge that lifts is a job that comes back', am:'የሚነሳ ጠርዝ ሥራው እንዲመለስ ያደርጋል'}},
+      {id:'b_redo_why', en:'What is making them lift — machine, glue, board or operator — and what was done?', am:'ጠርዞቹ የሚነሱት ለምን ነው — ማሽን፣ ሙጫ፣ ሰሌዳ ወይስ ኦፕሬተር? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'b_redo', when:'miss'}}
     ]},
     { en:'2 · Quality control checkpoints', am:'2 · የጥራት ቁጥጥር ደረጃዎች', fields:[
       {id:'qc', en:'How did each checkpoint go today?', am:'ዛሬ እያንዳንዱ ፍተሻ እንዴት ሄደ?', t:'grid',
@@ -1875,11 +2241,9 @@ const REPORTS = [
         {id:'fail', en:'Failed', am:'ያላለፉ', t:'num'},
         {id:'sign', en:'Signed in Job File', am:'በሥራ ፋይል ተፈርሟል', t:'yesno'}
       ]},
-      {id:'qc_defects', en:'How many defects were found today?', am:'ዛሬ ስንት ጉድለቶች ተገኙ?', t:'num',
-        tgt:{op:'lte', v:0, en:'–500 Birr per defect released to finished goods',
-             am:'ወደ ዝግጁ ዕቃ ማከማቻ ለገባ እያንዳንዱ ጉድለት –500 ብር'}},
+      {id:'qc_any', en:'Were any defects found today?', am:'ዛሬ የተገኙ ጉድለቶች አሉ?', t:'yesno'},
       {id:'qc_defects_list', en:'List each defect', am:'ጉድለቶቹን አንድ በአንድ ይዘርዝሩ', t:'table', addEn:'Add a defect', addAm:'ጉድለት ጨምር',
-        show:{f:'qc_defects', when:'pos'},
+        show:{f:'qc_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'what', en:'Defect', am:'ጉድለቱ', t:'text'},
@@ -1887,6 +2251,20 @@ const REPORTS = [
           {id:'told', en:'Mahelet told at once', am:'ለማህሌት ወዲያው ተነግሯል', t:'yesno'},
           {id:'rel', en:'Reached finished goods', am:'ወደ ዝግጁ ዕቃ ገብቷል', t:'yesno'}
         ]},
+      {id:'qc_defects', en:'How many defects were found today?', am:'ዛሬ ስንት ጉድለቶች ተገኙ?', t:'num',
+        auto:{rows:'qc_defects_list'},
+        tgt:{op:'lte', v:0, en:'–500 Birr per defect released to finished goods',
+             am:'ወደ ዝግጁ ዕቃ ማከማቻ ለገባ እያንዳንዱ ጉድለት –500 ብር'}},
+      {id:'qc_released', en:'How many of them reached finished goods?', am:'ከነሱ ስንቱ ወደ ዝግጁ ዕቃ ገባ?', t:'num',
+        auto:{rows:'qc_defects_list', when:{col:'rel', is:'yes'}},
+        sumEn:'reached finished goods', sumAm:'ወደ ዝግጁ ዕቃ ገብተዋል'},
+      {id:'qc_fails', en:'How many checkpoint failures were there today?', am:'ዛሬ ስንት ፍተሻዎች አልተሳኩም?', t:'num',
+        auto:{grid:'qc.fail'}},
+      /* the week's summary adds these up, so neither is typed twice */
+      {id:'qc_pass', en:'How many checks passed today?', am:'ዛሬ ስንት ፍተሻዎች አለፉ?', t:'num',
+        auto:{grid:'qc.pass'}},
+      {id:'qc_checked', en:'How many checks were done today?', am:'ዛሬ ስንት ፍተሻዎች ተደረጉ?', t:'num',
+        auto:{plus:['qc_pass', 'qc_fails']}},
       {id:'qc_action', en:'What was done about today\'s defects and failed checkpoints?', am:'በዛሬዎቹ ጉድለቶችና ያላለፉ ፍተሻዎች ላይ ምን እርምጃ ተወሰደ?', t:'area', opt:1}
     ]},
     { en:'3 · Waste and material variance', am:'3 · ብክነትና የቁሳቁስ ልዩነት', fields:[
@@ -1900,15 +2278,18 @@ const REPORTS = [
       {id:'w_var_why', en:'Which job and which material went over, why, and did Mahelet approve the extra?', am:'ከBOM የበለጠው በየትኛው ሥራና በየትኛው ቁሳቁስ ነው? ለምን? ተጨማሪውን ማህሌት አጽድቀዋል?', t:'area', show:{f:'w_var', when:'miss'}}
     ]},
     { en:'4 · Material savings', am:'4 · የቁሳቁስ ቁጠባ', fields:[
+      {id:'sav_any', en:'Did any job use less material than the BOM today?', am:'ዛሬ ከBOM ያነሰ ቁሳቁስ የተጠቀመ ሥራ አለ?', t:'yesno'},
       {id:'sav_rows', en:'Where did you use less material than the BOM today?', am:'ዛሬ ከBOM ያነሰ ቁሳቁስ የተጠቀሙት የት ነው?',
-       t:'table', addEn:'Add material', addAm:'ቁሳቁስ ጨምር', cols:[
-        {id:'mat',  en:'Material', am:'ቁሳቁስ', t:'text'},
+       t:'table', addEn:'Add material', addAm:'ቁሳቁስ ጨምር', show:{f:'sav_any', when:'yes'}, cols:[
+        {id:'mat',  en:'Material', am:'ቁሳቁስ', t:'choice', opts:MATERIAL_OPTS},
+        {id:'code', en:'Job', am:'ሥራ', t:'text'},
         {id:'bom',  en:'BOM qty', am:'የBOM መጠን', t:'num'},
         {id:'used', en:'Actual used', am:'የዋለው መጠን', t:'num'},
         {id:'cost', en:'Unit cost', am:'የአንዱ ዋጋ', t:'money'},
         {id:'sav',  en:'Savings (Birr)', am:'ቁጠባ (ብር)', t:'money'}
       ]},
-      {id:'sav_today', en:'How much was saved today, in Birr?', am:'ዛሬ ስንት ብር ተቆጠበ?', t:'money'},
+      {id:'sav_today', en:'How much was saved today, in Birr?', am:'ዛሬ ስንት ብር ተቆጠበ?', t:'money',
+        auto:{sum:'sav_rows.sav'}},
       {id:'sav_how', en:'How was it saved, and has quality been checked on those jobs?', am:'እንዴት ተቆጠበ? በነዚያ ሥራዎች ላይ ጥራቱ ተፈትሿል?', t:'area', show:{f:'sav_today', when:'pos'}}
     ]},
     { en:'5 · Waste sorting', am:'5 · የተረፈ ቁሳቁስ አያያዝ', fields:[
@@ -1937,40 +2318,59 @@ const REPORTS = [
         {id:'down', en:'Downtime (hrs)', am:'የቆመበት ሰዓት', t:'num'},
         {id:'cause',en:'Cause', am:'ምክንያት', t:'text'}
       ]},
+      {id:'m_breaks', en:'How many machines stopped today?', am:'ዛሬ ስንት ማሽኖች ቆሙ?', t:'num',
+        auto:{rows:'m_rows', when:{col:'down', pos:1}}, sumEn:'machines stopped', sumAm:'ማሽኖች ቆመዋል'},
+      {id:'m_downhrs', en:'How many hours were lost to downtime today?', am:'ዛሬ በማሽን መቆም ስንት ሰዓት ጠፋ?', t:'num',
+        auto:{sum:'m_rows.down'}, sumEn:'hours down', sumAm:'ሰዓት ቆመዋል'},
       {id:'m_reported', en:'Was every breakdown reported to Mahelet within 30 minutes?', am:'እያንዳንዱ ብልሽት በ30 ደቂቃ ውስጥ ለማህሌት ተነግሯል?', t:'yesno'},
       {id:'m_reported_why', en:'Which breakdown, how late was it reported, and why? (–500 Birr)', am:'የትኛው ብልሽት? በምን ያህል ዘግይቶ ተነገረ? ለምን? (–500 ብር)', t:'area', show:{f:'m_reported', when:'no'}}
     ]},
+    /* Four figures stood at the head of this section — assigned, present,
+       absent, late — and three of them were in the two lists underneath, or
+       were one taken from another. One row a person who was not where they
+       should have been, and the arithmetic does itself. */
     { en:'7 · Manpower', am:'7 · የሰው ኃይል', fields:[
       {id:'mp_assigned', en:'How many workers were assigned today?', am:'ዛሬ ስንት ሠራተኞች ተመደቡ?', t:'num'},
-      {id:'mp_present', en:'How many came to work?', am:'ስንቱ ሥራ ገቡ?', t:'num'},
-      {id:'mp_absent', en:'How many were absent?', am:'ስንቱ ቀሩ?', t:'num'},
+      /* the absent and the late stay two lists: the rulebook pays a worker a
+         bonus for appearing in neither, and fines on the late list alone
+         (js/rules.js), so one list with a column would have to be taught to
+         every rule that reads them */
+      {id:'mp_any', en:'Was anyone absent today?', am:'ዛሬ የቀረ ሰው አለ?', t:'yesno'},
       {id:'mp_absent_list', en:'Who was absent?', am:'የቀሩት እነማን ናቸው?', t:'table', addEn:'Add a worker', addAm:'ሰው ጨምር',
-        show:{f:'mp_absent', when:'pos'},
+        show:{f:'mp_any', when:'yes'},
         cols:[
           {id:'name', en:'Worker', am:'ሠራተኛ', t:'text'},
           {id:'why', en:'Reason', am:'ምክንያት', t:'text'},
           {id:'ok', en:'With permission', am:'በፈቃድ', t:'yesno'}
         ]},
-      {id:'mp_late', en:'How many arrived after 8:00 AM?', am:'ስንቱ ከጠዋቱ 2፡00 (8:00 AM) በኋላ ገቡ?', t:'num',
-        tgt:{op:'lte', v:0, en:'–100 Birr per worker per incident', am:'በእያንዳንዱ ሠራተኛ –100 ብር'}},
+      {id:'mp_absent', en:'How many were absent?', am:'ስንቱ ቀሩ?', t:'num',
+        auto:{rows:'mp_absent_list'}, sumEn:'absent', sumAm:'ቀርተዋል'},
+      {id:'mp_late_any', en:'Did anyone arrive after 8:00 AM?', am:'ከጠዋቱ 2፡00 (8:00 AM) በኋላ የገባ ሰው አለ?', t:'yesno'},
       {id:'mp_late_list', en:'Who was late?', am:'የዘገዩት እነማን ናቸው?', t:'table', addEn:'Add a worker', addAm:'ሰው ጨምር',
-        show:{f:'mp_late', when:'pos'},
+        show:{f:'mp_late_any', when:'yes'},
         cols:[
           {id:'name', en:'Worker', am:'ሠራተኛ', t:'text'},
           {id:'at', en:'Arrived at', am:'የገባበት ሰዓት', t:'text'},
           {id:'why', en:'Reason', am:'ምክንያት', t:'text'},
           {id:'valid', en:'Valid reason', am:'ተቀባይነት ያለው ምክንያት', t:'yesno'}
         ]},
+      {id:'mp_late', en:'How many arrived after 8:00 AM?', am:'ስንቱ ከጠዋቱ 2፡00 (8:00 AM) በኋላ ገቡ?', t:'num',
+        auto:{rows:'mp_late_list'}, sumEn:'late', sumAm:'ዘግይተዋል',
+        tgt:{op:'lte', v:0, en:'–100 Birr per worker per incident', am:'በእያንዳንዱ ሠራተኛ –100 ብር'}},
+      {id:'mp_present', en:'How many came to work?', am:'ስንቱ ሥራ ገቡ?', t:'num',
+        auto:{minus:['mp_assigned', 'mp_absent']}, sumEn:'came to work', sumAm:'ሥራ ገብተዋል'},
       /* overtime (8 Oct 2026), for the workforce reader */
-      {id:'ot_hours', en:'How many overtime hours were worked today, in total?', am:'ዛሬ በጠቅላላ ስንት የትርፍ ሰዓት ተሠራ?', t:'num'},
+      {id:'ot_any', en:'Did anyone work overtime today?', am:'ዛሬ የትርፍ ሰዓት የሠራ ሰው አለ?', t:'yesno'},
       {id:'ot_list', en:'Who worked overtime, for how long, and was it approved?', am:'የትርፍ ሰዓት የሠራ ማን ነው? ለምን ያህል ሰዓት? ተፈቅዶ ነበር?', t:'table', addEn:'Add a worker', addAm:'ሰው ጨምር',
-        show:{f:'ot_hours', when:'pos'},
+        show:{f:'ot_any', when:'yes'},
         cols:[
           {id:'name', en:'Worker', am:'ሠራተኛ', t:'text'},
           {id:'hours', en:'Hours', am:'ሰዓት', t:'num'},
           {id:'why', en:'Why', am:'ምክንያት', t:'text'},
           {id:'ok', en:'Approved by Mahelet', am:'ማህሌት ፈቅዳለች', t:'yesno'}
         ]},
+      {id:'ot_hours', en:'How many overtime hours were worked today, in total?', am:'ዛሬ በጠቅላላ ስንት የትርፍ ሰዓት ተሠራ?', t:'num',
+        auto:{sum:'ot_list.hours'}, sumEn:'overtime hours', sumAm:'የትርፍ ሰዓት'},
       {id:'mp_behave', en:'How many behaviour issues were there today?', am:'ዛሬ ስንት የሥነ ምግባር ችግሮች ተከሰቱ?', t:'num',
         tgt:{op:'lte', v:0, en:'Unreported issues carry double the penalty', am:'ያልተነገረ ጉዳይ ቅጣቱ በእጥፍ ነው'}},
       {id:'mp_behave_what', en:'Who was involved, what happened, and was it reported to Mahelet?', am:'የተሳተፉት እነማን ናቸው? ምን ሆነ? ለማህሌት ተነግሯል?', t:'area', show:{f:'mp_behave', when:'pos'}},
@@ -1991,37 +2391,11 @@ const REPORTS = [
       {id:'u_what', en:'Which job, what was made or sent out, by whom, and what was done?', am:'የትኛው ሥራ? ምን ተመረተ ወይም ወጣ? በማን? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'u_any', when:'yes'}},
       {id:'u_reported', en:'If yes, was it reported to Mahelet within 1 hour?', am:'አዎ ከሆነ በ1 ሰዓት ውስጥ ለማህሌት ተነግሯል?', t:'yesno', opt:1}
     ]},
-    { en:'10 · Boards and yield', am:'10 · ሰሌዳዎችና ውጤታማነት', fields:[
-      {id:'b_rows', en:'Which boards were cut today?', am:'ዛሬ የተቆረጡት የትኞቹ ሰሌዳዎች ናቸው?',
-       t:'table', addEn:'Add board type', addAm:'የሰሌዳ ዓይነት ጨምር', cols:[
-        {id:'btype', en:'Board', am:'ሰሌዳ', t:'choice', opts:[
-          {v:'mdf', en:'MDF', am:'ኤምዲኤፍ'},
-          {v:'mel', en:'Melamine', am:'ሜላሚን'},
-          {v:'ply', en:'Plywood', am:'ፕላይውድ'},
-          {v:'chip', en:'Chipboard', am:'ቺፕቦርድ'},
-          {v:'hpl', en:'HPL / laminate', am:'ኤችፒኤል'}
-        ]},
-        {id:'bmm',    en:'Thickness (mm)', am:'ውፍረት (ሚሜ)', t:'num'},
-        {id:'bcol',   en:'Colour / finish', am:'ቀለም', t:'text'},
-        {id:'bsheet', en:'Sheets used', am:'የተጠቀሙት ሰሌዳ ብዛት', t:'num'},
-        {id:'bpanel', en:'Panels cut', am:'የተቆረጡ ፓነሎች', t:'num'},
-        {id:'boff',   en:'Offcut m² to store', am:'ወደ መጋዘን የተመለሰ ቁራጭ (ካሬ ሜትር)', t:'num'}
-      ]},
-      {id:'b_sheets', en:'How many sheets were used in total today?', am:'ዛሬ በድምሩ ስንት ሰሌዳ ዋለ?', t:'num'},
-      {id:'b_yield', en:'How many m² came out of each sheet?', am:'ከአንድ ሰሌዳ ስንት ካሬ ሜትር ወጣ?', t:'num',
-        tgt:{op:'gte', v:2.2, en:'Below 2.2 m² a sheet, the cutting plan is wasting board',
-             am:'ከ2.2 ካሬ ሜትር በታች ከሆነ የመቁረጫ ዕቅዱ ሰሌዳ እያባከነ ነው'}},
-      {id:'b_yield_why', en:'Which job or cutting plan wasted board, and why?', am:'ሰሌዳ ያባከነው የትኛው ሥራ ወይም የመቁረጫ ዕቅድ ነው? ለምን?', t:'area', show:{f:'b_yield', when:'miss'}},
-      {id:'b_edge', en:'How many metres of edge banding were used?', am:'ስንት ሜትር ጠርዝ ማሰሪያ ዋለ?', t:'num'},
-      {id:'b_redo', en:'How many edges had to be re-run because they lifted?', am:'ስንት ጠርዞች ተላቀው ዳግም ተሠሩ?', t:'num',
-        tgt:{op:'lte', v:2, en:'More than 2 a day — check the machine or the glue',
-             am:'በቀን ከ2 በላይ ከሆነ ማሽኑን ወይም ሙጫውን ይፈትሹ'}},
-      {id:'b_redo_why', en:'What is making them lift — machine, glue, board or operator — and what was done?', am:'እንዲላቀቁ ያደረገው ምንድን ነው — ማሽን፣ ሙጫ፣ ሰሌዳ ወይስ ኦፕሬተር? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'b_redo', when:'miss'}},
-      {id:'b_short', en:'Did any cut stop for want of the right board?', am:'ተገቢው ሰሌዳ ጠፍቶ የቆመ ቁረጣ ነበር?', t:'yesno'},
-      {id:'b_shortw', en:'If yes, which board?', am:'አዎ ከሆነ የትኛው ሰሌዳ?', t:'text', opt:1, i:1},
-      {id:'b_short_what', en:'Which job was held up, for how long, and when will the board arrive?', am:'የትኛው ሥራ ቆመ? ለምን ያህል ጊዜ? ሰሌዳው መቼ ይደርሳል?', t:'area', show:{f:'b_short', when:'yes'}}
-    ]},
-    { en:'11 · Work in progress, by stage', am:'11 · በየደረጃው ያለ ሥራ', fields:[
+    /* "10 · Boards and yield" stood here and asked the day's material over
+       again: the board rows, the sheet total, the yield, the edge metres.
+       Section 2 is that section, with the accessories in it and the figures
+       counted rather than typed (the Chairman, 9 Oct 2026). */
+    { en:'10 · Work in progress, by stage', am:'10 · በየደረጃው ያለ ሥራ', fields:[
       {id:'w_stage', en:'How many jobs sit at each stage at close?', am:'በመዝጊያ ሰዓት በየደረጃው ስንት ሥራዎች አሉ?',
        t:'grid', rows:[
         {en:'Cutting', am:'ቁረጣ'},
@@ -2049,15 +2423,13 @@ const REPORTS = [
       ]},
       {id:'w_lost', en:'How many hours were lost to it?', am:'በዚህ ስንት ሰዓት ጠፋ?', t:'num', opt:1, i:1}
     ]},
-    { en:'12 · Problems and solutions', am:'12 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'problem', en:'What was the biggest problem today?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
-      {id:'cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
+    { en:'11 · Problems and solutions', am:'11 · ችግሮችና መፍትሔዎች', fields:[
+      {id:'problem', en:'What was the biggest problem today — what caused it, and what is being done (who, by when)?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
       {id:'need_help', en:'What do you need from Mahelet, the store or purchasing, and by when?', am:'ከማህሌት፣ ከመጋዘን ወይም ከግዥ ምን ያስፈልግዎታል? እስከ መቼ?', t:'area', opt:1},
       {id:'need_lead', en:'Do you need a decision from Mahelet?', am:'የማህሌት ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_lead_what', en:'What exactly needs deciding, what are the options, and by when?', am:'በትክክል ምን መወሰን አለበት? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_lead', when:'yes'}}
     ]},
-    { en:"13 · Tomorrow's top 3", am:'13 · የነገ ሦስት ቅድሚያዎች', fields:[
+    { en:"12 · Tomorrow's top 3", am:'12 · የነገ ሦስት ቅድሚያዎች', fields:[
       {id:'p1', en:'Priority 1', am:'1ኛ ሥራ', t:'text'},
       {id:'p2', en:'Priority 2', am:'2ኛ ሥራ', t:'text'},
       {id:'p3', en:'Priority 3', am:'3ኛ ሥራ', t:'text'}
@@ -2074,37 +2446,46 @@ const REPORTS = [
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Production performance', am:'1 · የምርት አፈጻጸም', fields:[
-      {id:'w_total', en:'How many m² did the factory produce this week?', am:'ፋብሪካው በዚህ ሳምንት ስንት ካሬ ሜትር አመረተ?', t:'num',
+      {id:'w_total', en:'How many m² did the factory produce this week?', am:'ፋብሪካው በዚህ ሳምንት ስንት ካሬ ሜትር አመረተ?', t:'num', auto:{week:'p_total'},
         parts:{of:['w_ext','w_rove']},
         tgt:{op:'gte', v:240, en:'Weekly target 240 m²', am:'የሳምንቱ ዒላማ 240 ካሬ ሜትር'}},
       {id:'w_total_why', en:'The week is under 240 m². Which days fell short, why, and what changes next week?', am:'ሳምንቱ ከ240 ካሬ ሜትር በታች ነው። የትኞቹ ቀናት ጎደሉ? ለምን? በሚቀጥለው ሳምንት ምን ይቀየራል?', t:'area', show:{f:'w_total', when:'miss'}},
-      {id:'w_ext', en:'For external customers', am:'ለውጭ ደንበኞች', t:'num', i:1},
-      {id:'w_rove', en:'For Rovestone', am:'ለሮቭስቶን', t:'num', i:1},
+      {id:'w_ext', en:'For external customers', am:'ለውጭ ደንበኞች', t:'num', auto:{week:'p_ext'}, i:1},
+      {id:'w_rove', en:'For Rovestone', am:'ለሮቭስቶን', t:'num', auto:{week:'p_rove'}, i:1},
+      {id:'w_rep_days', en:'On how many days did you report this week?', am:'በዚህ ሳምንት በስንት ቀን ሪፖርት አደረጉ?', t:'num', auto:{weekDays:1}, i:1},
       {id:'w_avg', en:'What was the average production per working day, in m²?', am:'በአንድ የሥራ ቀን አማካይ ምርቱ ስንት ካሬ ሜትር ነበር?', t:'num',
+        auto:{div:['w_total', 'w_rep_days']},
         tgt:{op:'gte', v:40, en:'Daily target 40 m²', am:'የቀን ዒላማ 40 ካሬ ሜትር'}},
-      {id:'w_best', en:'What was the best day\'s output, in m²?', am:'የተሻለው ቀን ምርት ስንት ካሬ ሜትር ነበር?', t:'num'},
-      {id:'w_worst', en:'What was the worst day\'s output, in m²?', am:'ዝቅተኛው ቀን ምርት ስንት ካሬ ሜትር ነበር?', t:'num'}
+      {id:'w_best', en:'What was the best day\'s output, in m²?', am:'የተሻለው ቀን ምርት ስንት ካሬ ሜትር ነበር?', t:'num',
+        auto:{week:'p_total', how:'max'}},
+      {id:'w_worst', en:'What was the worst day\'s output, in m²?', am:'ዝቅተኛው ቀን ምርት ስንት ካሬ ሜትር ነበር?', t:'num',
+        auto:{week:'p_total', how:'min'}}
     ]},
     { en:'2 · Quality control', am:'2 · የጥራት ቁጥጥር', fields:[
-      {id:'q_checked', en:'How many jobs went through QC this week?', am:'በዚህ ሳምንት ስንት ሥራዎች በQC ተመረመሩ?', t:'num'},
-      {id:'q_pass', en:'How many passed?', am:'ስንቱ አለፉ?', t:'num'},
-      {id:'q_fail', en:'How many failed?', am:'ስንቱ አላለፉም?', t:'num'},
+      {id:'q_checked', en:'How many jobs went through QC this week?', am:'በዚህ ሳምንት ስንት ሥራዎች በQC ተመረመሩ?', t:'num',
+        auto:{week:'qc_checked'}},
+      {id:'q_pass', en:'How many passed?', am:'ስንቱ አለፉ?', t:'num', auto:{week:'qc_pass'}},
+      {id:'q_fail', en:'How many failed?', am:'ስንቱ አላለፉም?', t:'num', auto:{week:'qc_fails'}},
+      {id:'q_fail_any', en:'Did any job fail QC this week?', am:'በዚህ ሳምንት QC ያላለፈ ሥራ አለ?', t:'yesno'},
       {id:'q_fail_list', en:'Which jobs failed, and why?', am:'ያላለፉት የትኞቹ ሥራዎች ናቸው? ለምን?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
-        show:{f:'q_fail', when:'pos'},
+        show:{f:'q_fail_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'why', en:'Why it failed', am:'ያላለፈበት ምክንያት', t:'text'},
           {id:'fixed', en:'Fixed and passed', am:'ተስተካክሎ አልፏል', t:'yesno'}
         ]},
       {id:'q_rate', en:'What was the QC pass rate this week?', am:'በዚህ ሳምንት የQC ማለፊያ መጠን ስንት ነበር?', t:'pct',
+        auto:{pct:['q_pass', 'q_checked']},
         tgt:{op:'gte', v:98, en:'≥98% earns the 5,000 Birr quality bonus', am:'≥98% የ5,000 ብር የጥራት ጉርሻ ያስገኛል'}},
-      {id:'q_defects', en:'How many defects were found this week?', am:'በዚህ ሳምንት ስንት ጉድለቶች ተገኙ?', t:'num'},
+      {id:'q_defects', en:'How many defects were found this week?', am:'በዚህ ሳምንት ስንት ጉድለቶች ተገኙ?', t:'num', auto:{week:'qc_defects'}},
       {id:'q_defects_what', en:'What were they, at which stage did they start, and did any reach finished goods?', am:'ጉድለቶቹ ምን ነበሩ? ከየትኛው ደረጃ ጀመሩ? ወደ ዝግጁ ዕቃ የገባ አለ?', t:'area', show:{f:'q_defects', when:'pos'}}
     ]},
     { en:'3 · Waste control', am:'3 · የብክነት ቁጥጥር', fields:[
       {id:'w_avgpct', en:'What was the average waste this week, in %?', am:'በዚህ ሳምንት አማካይ ብክነቱ ስንት % ነበር?', t:'pct',
+        auto:{week:'w_pct', how:'avg'},
         tgt:{op:'lte', v:20, en:'Must not exceed 20%', am:'ከ20% መብለጥ የለበትም'}},
       {id:'w_days', en:'On how many days was waste above 20%?', am:'ብክነቱ ከ20% በላይ የሆነው በስንት ቀናት ነው?', t:'num',
+        auto:{week:'w_pct', how:'over', over:20},
         tgt:{op:'lte', v:0, en:'Should be 0', am:'0 መሆን አለበት'}},
       {id:'w_days_why', en:'Which days, on which jobs, and why?', am:'የትኞቹ ቀናት? በየትኞቹ ሥራዎች? ለምን?', t:'area', show:{f:'w_days', when:'pos'}},
       {id:'w_cost', en:'What did the waste cost this week, in Birr?', am:'ብክነቱ በዚህ ሳምንት ስንት ብር አስወጣ?', t:'money'}
@@ -2112,12 +2493,13 @@ const REPORTS = [
     { en:'4 · Material savings', am:'4 · የቁሳቁስ ቁጠባ', fields:[
       {id:'s_bom', en:'What was the total BOM quantity for this week\'s jobs?', am:'የዚህ ሳምንት ሥራዎች ጠቅላላ የBOM መጠን ስንት ነበር?', t:'num'},
       {id:'s_used', en:'How much was actually used?', am:'በትክክል የዋለው ስንት ነው?', t:'num'},
-      {id:'s_total', en:'How much was saved this week, in Birr?', am:'በዚህ ሳምንት ስንት ብር ተቆጠበ?', t:'money'},
+      {id:'s_total', en:'How much was saved this week, in Birr?', am:'በዚህ ሳምንት ስንት ብር ተቆጠበ?', t:'money', auto:{week:'sav_today'}},
       {id:'s_how', en:'Where did the savings come from, and has QC confirmed no quality was lost?', am:'ቁጠባው ከየት መጣ? ጥራት እንዳልቀነሰ QC አረጋግጧል?', t:'area', show:{f:'s_total', when:'pos'}},
       {id:'s_pct', en:'What % of the BOM was saved?', am:'ከBOM ስንት % ተቆጠበ?', t:'pct'}
     ]},
     { en:'5 · Waste sorting', am:'5 · የተረፈ ቁሳቁስ አያያዝ', fields:[
-      {id:'ws_stored', en:'How many m² of reusable offcuts went to store this week?', am:'በዚህ ሳምንት ስንት ካሬ ሜትር እንደገና የሚያገለግሉ ቁርጥራጮች ወደ መጋዘን ገቡ?', t:'num'},
+      {id:'ws_stored', en:'How many m² of reusable offcuts went to store this week?', am:'በዚህ ሳምንት ስንት ካሬ ሜትር እንደገና የሚያገለግሉ ቁርጥራጮች ወደ መጋዘን ገቡ?', t:'num',
+        auto:{week:'p_off'}},
       {id:'ws_scrap', en:'How much scrap was recorded this week?', am:'በዚህ ሳምንት ምን ያህል የተረፈ ቁሳቁስ ተመዘገበ?', t:'num'},
       {id:'ws_viol', en:'How many waste-handling violations were there?', am:'ስንት የቁሳቁስ አያያዝ ጥሰቶች ተፈጸሙ?', t:'num',
         tgt:{op:'lte', v:0, en:'–300 to –500 Birr each', am:'እያንዳንዱ ከ–300 እስከ –500 ብር'}},
@@ -2126,9 +2508,11 @@ const REPORTS = [
     { en:'6 · Machine performance', am:'6 · የማሽን አፈጻጸም', fields:[
       {id:'m_uptime', en:'What % of working hours did the machines run this week?', am:'በዚህ ሳምንት ማሽኖች ከሥራ ሰዓቱ ስንት % ሠሩ?', t:'pct',
         tgt:{op:'gte', v:95, en:'≥95% earns the 2,000 Birr uptime bonus', am:'≥95% የ2,000 ብር ጉርሻ ያስገኛል'}},
-      {id:'m_break', en:'How many breakdowns were there this week?', am:'በዚህ ሳምንት ስንት ብልሽቶች ተከሰቱ?', t:'num'},
+      {id:'m_break', en:'How many breakdowns were there this week?', am:'በዚህ ሳምንት ስንት ብልሽቶች ተከሰቱ?', t:'num',
+        auto:{week:'m_breaks'}},
+      {id:'m_break_any', en:'Did any machine break down this week?', am:'በዚህ ሳምንት የተበላሸ ማሽን አለ?', t:'yesno'},
       {id:'m_break_list', en:'List each breakdown', am:'ብልሽቶቹን አንድ በአንድ ይዘርዝሩ', t:'table', addEn:'Add a breakdown', addAm:'ብልሽት ጨምር',
-        show:{f:'m_break', when:'pos'},
+        show:{f:'m_break_any', when:'yes'},
         cols:[
           {id:'machine', en:'Machine', am:'ማሽን', t:'choice', opts:[
             {v:'Width cutter',  en:'Width cutter',  am:'የወርድ መቁረጫ'},
@@ -2142,10 +2526,12 @@ const REPORTS = [
           {id:'cause', en:'Cause', am:'ምክንያት', t:'text'},
           {id:'told', en:'Reported within 30 min', am:'በ30 ደቂቃ ተነግሯል', t:'yesno'}
         ]},
-      {id:'m_down', en:'How many hours were lost to downtime in total?', am:'በድምሩ ስንት ሰዓት በብልሽት ጠፋ?', t:'num'}
+      {id:'m_down', en:'How many hours were lost to downtime in total?', am:'በድምሩ ስንት ሰዓት በብልሽት ጠፋ?', t:'num',
+        auto:{week:'m_downhrs'}}
     ]},
     { en:'7 · Manpower', am:'7 · የሰው ኃይል', fields:[
       {id:'a_rate', en:'What was the average attendance this week, in %?', am:'በዚህ ሳምንት አማካይ የተገኝነት መጠን ስንት % ነበር?', t:'pct',
+        auto:{pct:[{week:'mp_present'}, {week:'mp_assigned'}]},
         tgt:{op:'gte', v:95, en:'≥95% earns 2,000 + 3,000 Birr in bonuses', am:'≥95% የ2,000 + 3,000 ብር ጉርሻ ያስገኛል'}},
       {id:'a_late', en:'How many workers were late more than once?', am:'ስንት ሠራተኞች ከአንድ ጊዜ በላይ ዘገዩ?', t:'num'},
       {id:'a_late_who', en:'Who, how many times, and what was done?', am:'እነማን ናቸው? ስንት ጊዜ? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'a_late', when:'pos'}},
@@ -2165,15 +2551,17 @@ const REPORTS = [
       {id:'c_issues_what', en:'What were they, and where?', am:'ችግሮቹ ምን ነበሩ? የት?', t:'area', show:{f:'c_issues', when:'pos'}}
     ]},
     { en:'9 · Job completion', am:'9 · የተጠናቀቁ ሥራዎች', fields:[
-      {id:'j_done', en:'How many jobs were completed this week?', am:'በዚህ ሳምንት ስንት ሥራዎች ተጠናቀቁ?', t:'num'},
+      {id:'j_done_any', en:'Was any job completed this week?', am:'በዚህ ሳምንት የተጠናቀቀ ሥራ አለ?', t:'yesno'},
       {id:'j_done_list', en:'Which jobs were completed?', am:'የተጠናቀቁት የትኞቹ ሥራዎች ናቸው?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
-        show:{f:'j_done', when:'pos'},
+        show:{f:'j_done_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'m2', en:'m²', am:'ካሬ ሜትር', t:'num'},
           {id:'rework', en:'Any rework', am:'ዳግም ሥራ ነበረው', t:'yesno'},
           {id:'qcfail', en:'Failed QC', am:'QC አላለፈም', t:'yesno'}
         ]},
+      {id:'j_done', en:'How many jobs were completed this week?', am:'በዚህ ሳምንት ስንት ሥራዎች ተጠናቀቁ?', t:'num',
+        auto:{rows:'j_done_list'}, sumEn:'completed', sumAm:'ተጠናቀዋል'},
       {id:'j_zero', en:'How many of them needed zero rework?', am:'ከነዚህ ስንቱ ምንም ዳግም ሥራ አልጠየቁም?', t:'num'},
       {id:'j_fail', en:'How many of them failed QC at any point?', am:'ከነዚህ ስንቱ በማንኛውም ደረጃ QC አላለፉም?', t:'num',
         tgt:{op:'lte', v:0, en:'Each one cancels that job’s 1,000 Birr bonus', am:'እያንዳንዱ የዚያን ሥራ 1,000 ብር ጉርሻ ይሰርዛል'}},
@@ -2186,7 +2574,6 @@ const REPORTS = [
     ]},
     { en:'11 · Problems and solutions', am:'11 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'What was the biggest problem this week, and what caused it?', am:'የዚህ ሳምንት ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
       {id:'outstanding', en:'What is still open, who owns it, and by when?', am:'ያልተፈታው ምንድን ነው? ኃላፊው ማን ነው? እስከ መቼ?', t:'area', opt:1},
       {id:'w_well', en:'What went well this week that should be repeated?', am:'በዚህ ሳምንት በደንብ የሠራና ሊደገም የሚገባው ምንድን ነው?', t:'area', opt:1},
       {id:'need_lead', en:'Do you need a decision from Mahelet?', am:'የማህሌት ውሳኔ ያስፈልግዎታል?', t:'yesno'},
@@ -2233,11 +2620,13 @@ const REPORTS = [
     ]},
     { en:'2 · Savings calculation', am:'2 · የቁጠባ ስሌት', fields:[
       {id:'tot_sav', en:'What were the total material savings this month, in Birr?', am:'በዚህ ወር ጠቅላላ የቁሳቁስ ቁጠባው ስንት ብር ነበር?', t:'money',
+        auto:{week:'sav_today'},
         tgt:{op:'gte', v:50000, en:'Your share starts at 50,000 Birr', am:'ድርሻዎ የሚጀምረው ከ50,000 ብር ነው'}},
       {id:'my_share', en:'What is your share at the tier the savings reach (10% – 25%)?', am:'ቁጠባው በደረሰበት ደረጃ ድርሻዎ ስንት ነው (10% – 25%)?', t:'money'}
     ]},
     { en:'3 · Quality verification', am:'3 · የጥራት ማረጋገጫ', fields:[
       {id:'qc_rate', en:'What was the QC pass rate for the month?', am:'የወሩ የQC ማለፊያ መጠን ስንት ነበር?', t:'pct',
+        auto:{pct:[{week:'qc_pass'}, {week:'qc_checked'}]},
         tgt:{op:'gte', v:98, en:'Below 98% and the savings bonus is cancelled', am:'ከ98% በታች ከሆነ የቁጠባ ጉርሻ ይሰረዛል'}},
       {id:'qc_rate_why', en:'The rate is under 98%, which cancels the savings bonus. What caused the failures?', am:'መጠኑ ከ98% በታች ስለሆነ የቁጠባ ጉርሻው ይሰረዛል። ውድቀቶቹን ያስከተለው ምንድን ነው?', t:'area', show:{f:'qc_rate', when:'miss'}},
       {id:'compromise', en:'Did any saving cause a drop in quality?', am:'በቁጠባ ምክንያት የጥራት መቀነስ ተፈጥሯል?', t:'yesno'},
@@ -2262,12 +2651,10 @@ const REPORTS = [
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   sections:[
     { en:'1 · Jobs inspected today', am:'1 · ዛሬ የተመረመሩ ሥራዎች', fields:[
-      {id:'i_total', en:'How many jobs did you inspect today?', am:'ዛሬ ስንት ሥራ መረመሩ?', t:'num'},
-      {id:'i_pass', en:'How many passed?', am:'ስንቱ አለፉ?', t:'num'},
-      {id:'i_fail', en:'How many failed?', am:'ስንቱ አላለፉም?', t:'num'},
-      {id:'i_rate', en:'What is today\'s pass rate?', am:'የዛሬው የማለፊያ መጠን ስንት በመቶ ነው?', t:'pct',
-        tgt:{op:'gte', v:98, en:'≥98% earns the 2,000 Birr KPI bonus', am:'≥98% የ2,000 ብር KPI ጉርሻ ያስገኛል'}},
-      {id:'i_jobs', en:'List each job inspected today', am:'ዛሬ የተመረመሩትን ሥራዎች አንድ በአንድ ይዘርዝሩ',
+      /* The four figures that stood above this list were the list: how many
+         inspected, how many passed, how many failed, and the rate between
+         them (the Chairman, 9 Oct 2026). The list is the answer now. */
+      {id:'i_jobs', en:'Each job inspected today', am:'ዛሬ የተመረመረ እያንዳንዱ ሥራ',
        t:'table', addEn:'Add job', addAm:'ሥራ ጨምር', cols:[
         {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
         {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
@@ -2275,17 +2662,24 @@ const REPORTS = [
         {id:'pass', en:'Passed', am:'አልፏል', t:'yesno'},
         {id:'why',  en:'Reason for failure', am:'ያላለፈበት ምክንያት', t:'text'}
       ]},
+      {id:'i_total', en:'How many jobs did you inspect today?', am:'ዛሬ ስንት ሥራ መረመሩ?', t:'num',
+        auto:{rows:'i_jobs'}, sumEn:'inspected', sumAm:'ተመርምረዋል'},
+      {id:'i_pass', en:'How many passed?', am:'ስንቱ አለፉ?', t:'num',
+        auto:{rows:'i_jobs', when:{col:'pass', is:'yes'}}, sumEn:'passed', sumAm:'አልፈዋል'},
+      {id:'i_fail', en:'How many failed?', am:'ስንቱ አላለፉም?', t:'num',
+        auto:{rows:'i_jobs', when:{col:'pass', is:'no'}}, sumEn:'failed', sumAm:'አላለፉም'},
+      {id:'i_m2', en:'How many m² did you inspect today?', am:'ዛሬ ስንት ካሬ ሜትር መረመሩ?', t:'num',
+        auto:{sum:'i_jobs.m2'}, sumEn:'m²', sumAm:'ካሬ ሜትር'},
+      {id:'i_rate', en:'What is today\'s pass rate?', am:'የዛሬው የማለፊያ መጠን ስንት በመቶ ነው?', t:'pct',
+        auto:{pct:['i_pass', 'i_total']},
+        tgt:{op:'gte', v:98, en:'≥98% earns the 2,000 Birr KPI bonus', am:'≥98% የ2,000 ብር KPI ጉርሻ ያስገኛል'}},
       {id:'i_all', en:'Did you personally inspect, in full, every job released today?', am:'ዛሬ የተለቀቀውን እያንዳንዱን ሥራ ራስዎ ሙሉ በሙሉ መረመሩ?', t:'yesno'},
       {id:'i_all_why', en:'Which jobs went out without a full inspection, who released them, and why?', am:'ሙሉ ፍተሻ ሳይደረግላቸው የወጡት የትኞቹ ሥራዎች ናቸው? ማን ለቀቃቸው? ለምን?', t:'area', show:{f:'i_all', when:'no'}}
     ]},
     { en:'2 · Defects found', am:'2 · የተገኙ ጉድለቶች', fields:[
-      {id:'d_total', en:'How many defects did you find today?', am:'ዛሬ ስንት ጉድለት አገኙ?', t:'num'},
-      {id:'d_released', en:'How many defective items got into finished goods anyway?', am:'ጉድለት እያለባቸው ወደ ዝግጁ ዕቃ ማከማቻ የገቡ ስንት ናቸው?', t:'num',
-        tgt:{op:'lte', v:0, en:'–500 Birr each, and the 1,500 Birr bonus is lost',
-             am:'እያንዳንዱ –500 ብር፣ የ1,500 ብር ጉርሻም ይጠፋል'}},
-      {id:'d_released_what', en:'Which jobs, what defect, how did it get past QC, and has it been pulled back?', am:'የትኞቹ ሥራዎች? ምን ጉድለት? ከጥራት ቁጥጥር እንዴት አለፈ? ተመልሷል?', t:'area', show:{f:'d_released', when:'pos'}},
-      {id:'d_rows', en:'List each defect found today', am:'ዛሬ የተገኙትን ጉድለቶች አንድ በአንድ ይዘርዝሩ',
-       t:'table', addEn:'Add defect', addAm:'ጉድለት ጨምር', cols:[
+      {id:'d_any', en:'Did you find any defect today?', am:'ዛሬ ያገኙት ጉድለት አለ?', t:'yesno'},
+      {id:'d_rows', en:'Each defect found today', am:'ዛሬ የተገኘ እያንዳንዱ ጉድለት',
+       t:'table', addEn:'Add defect', addAm:'ጉድለት ጨምር', show:{f:'d_any', when:'yes'}, cols:[
         {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
         {id:'type', en:'Type', am:'ዓይነት', t:'choice', opts:[
           {v:'scratch', en:'Scratch', am:'ጭረት'},
@@ -2304,14 +2698,28 @@ const REPORTS = [
           {v:'rework', en:'Rework', am:'ዳግም ሥራ'},
           {v:'reject', en:'Reject', am:'ውድቅ'}
         ]},
+        {id:'out', en:'Reached finished goods', am:'ወደ ዝግጁ ዕቃ ገብቷል', t:'yesno'},
         {id:'doc', en:'Documented with photo', am:'በፎቶ ተመዝግቧል', t:'yesno'}
-      ]}
+      ]},
+      {id:'d_total', en:'How many defects did you find today?', am:'ዛሬ ስንት ጉድለት አገኙ?', t:'num',
+        auto:{rows:'d_rows'}, sumEn:'defects', sumAm:'ጉድለቶች'},
+      {id:'d_crit', en:'How many were critical?', am:'በጣም ከባድ የሆኑት ስንት ናቸው?', t:'num',
+        auto:{rows:'d_rows', when:{col:'sev', is:'crit'}}, sumEn:'critical', sumAm:'በጣም ከባድ'},
+      {id:'d_photo', en:'How many have a photo?', am:'ፎቶ ያላቸው ስንት ናቸው?', t:'num',
+        auto:{rows:'d_rows', when:{col:'doc', is:'yes'}}, sumEn:'with a photo', sumAm:'ፎቶ ያላቸው'},
+      {id:'d_released', en:'How many defective items got into finished goods anyway?', am:'ጉድለት እያለባቸው ወደ ዝግጁ ዕቃ ማከማቻ የገቡ ስንት ናቸው?', t:'num',
+        auto:{rows:'d_rows', when:{col:'out', is:'yes'}}, sumEn:'reached finished goods', sumAm:'ወደ ዝግጁ ዕቃ ገብተዋል',
+        tgt:{op:'lte', v:0, en:'–500 Birr each, and the 1,500 Birr bonus is lost',
+             am:'እያንዳንዱ –500 ብር፣ የ1,500 ብር ጉርሻም ይጠፋል'}},
+      {id:'d_released_what', en:'Which jobs, what defect, how did it get past QC, and has it been pulled back?', am:'የትኞቹ ሥራዎች? ምን ጉድለት? ከጥራት ቁጥጥር እንዴት አለፈ? ተመልሷል?', t:'area', show:{f:'d_released', when:'pos'}}
     ]},
     { en:'3 · Rework', am:'3 · ዳግም ሥራ', fields:[
-      {id:'r_required', en:'How many jobs needed rework today?', am:'ዛሬ ስንት ሥራዎች ዳግም ሥራ አስፈለጋቸው?', t:'num'},
+      {id:'r_required', en:'How many jobs needed rework today?', am:'ዛሬ ስንት ሥራዎች ዳግም ሥራ አስፈለጋቸው?', t:'num',
+        auto:{rows:'d_rows', when:{col:'act', is:'rework'}}, sumEn:'need rework', sumAm:'ዳግም ሥራ ያስፈልጋቸዋል'},
       {id:'r_done', en:'How many reworks were finished?', am:'ስንት ዳግም ሥራዎች ተጠናቀቁ?', t:'num'},
       {id:'r_reinspected', en:'How many did you re-inspect after rework?', am:'ከዳግም ሥራ በኋላ ስንቱን እንደገና መረመሩ?', t:'num'},
       {id:'r_rate', en:'What is today\'s rework rate?', am:'የዛሬው የዳግም ሥራ መጠን ስንት በመቶ ነው?', t:'pct',
+        auto:{pct:['r_required', 'i_total']},
         tgt:{op:'lte', v:2, en:'Below 2% earns 1,000 Birr; above 5% is –500 Birr',
              am:'ከ2% በታች 1,000 ብር፤ ከ5% በላይ –500 ብር'}},
       {id:'r_rate_why', en:'Rework is above 2%. Which jobs drove it, and what would stop it happening again?', am:'ዳግም ሥራው ከ2% በላይ ነው። ያሳደጉት የትኞቹ ሥራዎች ናቸው? እንዳይደገም ምን መደረግ አለበት?', t:'area', show:{f:'r_rate', when:'miss'}},
@@ -2350,9 +2758,7 @@ const REPORTS = [
       {id:'c_suptold', en:'If any, were Getachew and Yordanos told the same day?', am:'ካሉ ለጌታቸውና ለዮርዳኖስ በዚያው ቀን ተነግሯል?', t:'yesno', opt:1, i:1}
     ]},
     { en:'6 · Problems and solutions', am:'6 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'problem', en:'What was the biggest quality problem today?', am:'የዛሬው ትልቁ የጥራት ችግር ምን ነበር?', t:'area', opt:1},
-      {id:'cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
+      {id:'problem', en:'What was the biggest quality problem today — what caused it, and what is being done (who, by when)?', am:'የዛሬው ትልቁ የጥራት ችግር ምን ነበር?', t:'area', opt:1},
       {id:'need_help', en:'What do you need from Amaha, the store or Mahelet?', am:'ከአማሃ፣ ከመጋዘን ወይም ከማህሌት ምን ያስፈልግዎታል?', t:'area', opt:1},
       {id:'need_lead', en:'Do you need a decision from Mahelet?', am:'የማህሌት ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_lead_what', en:'What exactly should she decide, and by when?', am:'በትክክል ምን እንድትወስን ይፈልጋሉ? እስከ መቼ?', t:'area', show:{f:'need_lead', when:'yes'}}
@@ -2374,9 +2780,9 @@ const REPORTS = [
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
     { en:'1 · Inspection performance', am:'1 · የፍተሻ አፈጻጸም', fields:[
-      {id:'w_inspected', en:'How many jobs did you inspect this week?', am:'በዚህ ሳምንት ስንት ሥራ መረመሩ?', t:'num'},
-      {id:'w_pass', en:'How many passed?', am:'ስንቱ አለፉ?', t:'num'},
-      {id:'w_fail', en:'How many failed?', am:'ስንቱ አላለፉም?', t:'num'},
+      {id:'w_inspected', en:'How many jobs did you inspect this week?', am:'በዚህ ሳምንት ስንት ሥራ መረመሩ?', t:'num', auto:{week:'i_total'}},
+      {id:'w_pass', en:'How many passed?', am:'ስንቱ አለፉ?', t:'num', auto:{week:'i_pass'}},
+      {id:'w_fail', en:'How many failed?', am:'ስንቱ አላለፉም?', t:'num', auto:{week:'i_fail'}},
       {id:'w_fail_list', en:'Which jobs failed, why, and where do they stand now?', am:'ያላለፉት የትኞቹ ሥራዎች ናቸው? ለምን? አሁን በምን ደረጃ ላይ ናቸው?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
         show:{f:'w_fail', when:'pos'},
         cols:[
@@ -2389,6 +2795,7 @@ const REPORTS = [
             {v:'reject', en:'Rejected', am:'ውድቅ ሆኗል'}]}
         ]},
       {id:'w_rate', en:'What was the pass rate this week?', am:'የዚህ ሳምንት የማለፊያ መጠን ስንት በመቶ ነበር?', t:'pct',
+        auto:{pct:['w_pass', 'w_inspected']},
         tgt:{op:'gte', v:98, en:'Below 98% is –500 Birr for the month', am:'ከ98% በታች ለወሩ –500 ብር'}},
       {id:'w_rate_why', en:'Below 98%: what pulled it down, and what must change next week?', am:'ከ98% በታች ነው፦ ምን አወረደው? በሚቀጥለው ሳምንት ምን መቀየር አለበት?', t:'area', show:{f:'w_rate', when:'miss'}}
     ]},
@@ -2406,28 +2813,32 @@ const REPORTS = [
       {id:'top_why', en:'Why does that defect keep happening, and at which stage does it start?', am:'ያ ጉድለት ለምን ይደጋገማል? በየትኛው የሥራ ደረጃ ይጀምራል?', t:'area'}
     ]},
     { en:'3 · Rework performance', am:'3 · የዳግም ሥራ አፈጻጸም', fields:[
-      {id:'rw_req', en:'How many jobs needed rework this week?', am:'በዚህ ሳምንት ስንት ሥራዎች ዳግም ሥራ አስፈለጋቸው?', t:'num'},
-      {id:'rw_done', en:'How many reworks were finished?', am:'ስንት ዳግም ሥራዎች ተጠናቀቁ?', t:'num'},
+      {id:'rw_req', en:'How many jobs needed rework this week?', am:'በዚህ ሳምንት ስንት ሥራዎች ዳግም ሥራ አስፈለጋቸው?', t:'num', auto:{week:'r_required'}},
+      {id:'rw_done', en:'How many reworks were finished?', am:'ስንት ዳግም ሥራዎች ተጠናቀቁ?', t:'num', auto:{week:'r_done'}},
       {id:'rw_rate', en:'What was the rework rate this week?', am:'የዚህ ሳምንት የዳግም ሥራ መጠን ስንት በመቶ ነበር?', t:'pct',
+        auto:{pct:['rw_req', 'w_inspected']},
         tgt:{op:'lte', v:2, en:'Below 2% earns 1,000 Birr; above 5% is –500 Birr',
              am:'ከ2% በታች 1,000 ብር፤ ከ5% በላይ –500 ብር'}},
       {id:'rw_rate_why', en:'Above 2%: which jobs drove it, and what is the plan to bring it down?', am:'ከ2% በላይ ነው፦ ያሳደጉት የትኞቹ ሥራዎች ናቸው? ለመቀነስ ዕቅዱ ምንድን ነው?', t:'area', show:{f:'rw_rate', when:'miss'}},
       {id:'rw_cost', en:'What did rework cost this week?', am:'በዚህ ሳምንት ዳግም ሥራ ስንት ብር አስወጣ?', t:'money'}
     ]},
     { en:'4 · Customer complaints', am:'4 · የደንበኛ ቅሬታዎች', fields:[
-      {id:'c_recv', en:'How many customer complaints this week were about quality?', am:'በዚህ ሳምንት ስንት የደንበኛ ቅሬታዎች ከጥራት ጋር የተያያዙ ነበሩ?', t:'num',
-        tgt:{op:'lte', v:0, en:'–1,000 Birr each, and the 1,000 Birr bonus is lost',
-             am:'እያንዳንዱ –1,000 ብር፣ የ1,000 ብር ጉርሻም ይጠፋል'}},
+      {id:'c_recv_any', en:'Did any customer complaint about quality come in this week?', am:'በዚህ ሳምንት ስለጥራት የደረሰ የደንበኛ ቅሬታ አለ?', t:'yesno'},
       {id:'c_recv_list', en:'List each complaint', am:'እያንዳንዱን ቅሬታ ይዘርዝሩ', t:'table', addEn:'Add a complaint', addAm:'ቅሬታ ጨምር',
-        show:{f:'c_recv', when:'pos'},
+        show:{f:'c_recv_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'what', en:'Complaint', am:'ቅሬታ', t:'text'},
           {id:'passed', en:'Passed by QC?', am:'በጥራት ቁጥጥር አልፎ ነበር?', t:'yesno'}
         ]},
+      {id:'c_recv', en:'How many customer complaints this week were about quality?', am:'በዚህ ሳምንት ስንት የደንበኛ ቅሬታዎች ከጥራት ጋር የተያያዙ ነበሩ?', t:'num',
+        auto:{rows:'c_recv_list'}, sumEn:'complaints', sumAm:'ቅሬታዎች',
+        tgt:{op:'lte', v:0, en:'–1,000 Birr each, and the 1,000 Birr bonus is lost',
+             am:'እያንዳንዱ –1,000 ብር፣ የ1,000 ብር ጉርሻም ይጠፋል'}},
       {id:'c_res', en:'How many were resolved?', am:'ስንቱ ተፈቱ?', t:'num'},
-      {id:'c_out', en:'How many are still open?', am:'ስንቱ ገና አልተፈቱም?', t:'num'},
+      {id:'c_out', en:'How many are still open?', am:'ስንቱ ገና አልተፈቱም?', t:'num',
+        auto:{minus:['c_recv', 'c_res']}},
       {id:'c_out_what', en:'Which, what is holding each one up, and when will it be closed?', am:'የትኞቹ? እያንዳንዱን ምን ያዘው? መቼ ይዘጋል?', t:'area', show:{f:'c_out', when:'pos'}}
     ]},
     { en:'5 · Pressure to pass a defect — you are protected when you report it', am:'5 · ጉድለት እንዲያሳልፉ የሚደረግ ጫና — ካሳወቁ ይጠበቃሉ', fields:[
@@ -2438,7 +2849,6 @@ const REPORTS = [
     ]},
     { en:'6 · Problems and solutions', am:'6 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'What was the biggest quality problem this week, and what caused it?', am:'የዚህ ሳምንት ትልቁ የጥራት ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, by whom, and by when?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ?', t:'area', opt:1},
       {id:'outstanding', en:'What is still unresolved?', am:'እስካሁን ያልተፈታው ምንድን ነው?', t:'area', opt:1},
       {id:'need_lead', en:'Do you need a decision from Mahelet?', am:'የማህሌት ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_lead_what', en:'What exactly should she decide, and by when?', am:'በትክክል ምን እንድትወስን ይፈልጋሉ? እስከ መቼ?', t:'area', show:{f:'need_lead', when:'yes'}}
@@ -2460,9 +2870,11 @@ const REPORTS = [
   penEn:'Failure to report rework cost –200 Birr', penAm:'የዳግም ሥራ ወጪ ካልተነገረ –200 ብር',
   sections:[
     { en:'1 · Rework summary', am:'1 · የዳግም ሥራ ማጠቃለያ', fields:[
-      {id:'m_inspected', en:'How many jobs did you inspect this month?', am:'በዚህ ወር ስንት ሥራ መረመሩ?', t:'num'},
-      {id:'m_rework', en:'How many needed rework?', am:'ስንቱ ዳግም ሥራ አስፈለጋቸው?', t:'num'},
+      {id:'m_inspected', en:'How many jobs did you inspect this month?', am:'በዚህ ወር ስንት ሥራ መረመሩ?', t:'num', auto:{week:'i_total'}},
+      {id:'m_rework', en:'How many needed rework?', am:'ስንቱ ዳግም ሥራ አስፈለጋቸው?', t:'num',
+        auto:{week:'r_required'}},
       {id:'m_rate', en:'What was the rework rate for the month?', am:'የወሩ የዳግም ሥራ መጠን ስንት በመቶ ነበር?', t:'pct',
+        auto:{pct:['m_rework', 'm_inspected']},
         tgt:{op:'lte', v:2, en:'Below 2% earns the 1,000 Birr bonus', am:'ከ2% በታች የ1,000 ብር ጉርሻ ያስገኛል'}},
       {id:'m_rate_why', en:'Above 2%: what drove it, and what is the plan for next month?', am:'ከ2% በላይ ነው፦ ምን አሳደገው? ለሚቀጥለው ወር ዕቅዱ ምንድን ነው?', t:'area', show:{f:'m_rate', when:'miss'}},
       {id:'m_cost', en:'What did rework cost in total this month?', am:'በዚህ ወር ዳግም ሥራ በጠቅላላ ስንት ብር አስወጣ?', t:'money'},
@@ -2495,6 +2907,7 @@ const REPORTS = [
         tgt:{op:'gte', v:98, en:'Below 98% is –500 Birr', am:'ከ98% በታች –500 ብር'}},
       {id:'v_rate_why', en:'Below 98%: what caused it?', am:'ከ98% በታች ነው፦ ምን አስከተለው?', t:'area', show:{f:'v_rate', when:'miss'}},
       {id:'v_released', en:'How many defects reached finished goods this month?', am:'በዚህ ወር ስንት ጉድለቶች ወደ ዝግጁ ዕቃ ማከማቻ ገቡ?', t:'num',
+        auto:{week:'d_released'},
         tgt:{op:'lte', v:0, en:'–500 Birr each', am:'እያንዳንዱ –500 ብር'}},
       {id:'v_released_what', en:'Which jobs, and how did each get past inspection?', am:'የትኞቹ ሥራዎች? እያንዳንዱ ከፍተሻ እንዴት አመለጠ?', t:'area', show:{f:'v_released', when:'pos'}},
       {id:'v_complaints', en:'How many customer complaints were about quality?', am:'ስንት የደንበኛ ቅሬታዎች ከጥራት ጋር የተያያዙ ነበሩ?', t:'num',
@@ -2516,35 +2929,56 @@ const REPORTS = [
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   sections:[
     { en:'1 · Jobs today', am:'1 · የዛሬ ሥራዎች', fields:[
-      {id:'j_total', en:'How many jobs did your team work on today?', am:'ዛሬ ቡድንዎ በስንት ሥራዎች ላይ ሠራ?', t:'num'},
-      {id:'j_done', en:'How many of them were finished today?', am:'ከእነዚህ ስንቱ ዛሬ ተጠናቀቁ?', t:'num'},
-      {id:'j_wip', en:'How many are still in progress?', am:'ስንቱ ገና በሂደት ላይ ናቸው?', t:'num'},
-      {id:'j_wip_left', en:'Which jobs are still open, what is left on each, and on what day will each be finished?', am:'ያላለቁት የትኞቹ ሥራዎች ናቸው? በእያንዳንዱ ምን ቀረ? እያንዳንዱ በየትኛው ቀን ያልቃል?', t:'area', show:{f:'j_wip', when:'pos'}},
-      {id:'j_m2', en:'How many m² were installed today?', am:'ዛሬ ስንት ካሬ ሜትር ተገጠመ?', t:'num'},
-      {id:'j_rows', en:'List each job worked on today', am:'ዛሬ የተሠሩትን ሥራዎች አንድ በአንድ ይዘርዝሩ',
+      /* Three counts and the m² stood over this list, and the list could not
+         say whether a job was finished — so it said one thing and they said
+         another (the Chairman, 9 Oct 2026). The row says it all now: the m²,
+         whether it finished, whether the slip was there, whether the customer
+         was called before the van arrived. */
+      {id:'j_rows', en:'Each job worked on today', am:'ዛሬ የተሠራ እያንዳንዱ ሥራ',
        t:'table', addEn:'Add job', addAm:'ሥራ ጨምር', cols:[
         {id:'code',  en:'Job code', am:'የሥራ ኮድ', t:'text'},
         {id:'cust',  en:'Customer', am:'ደንበኛ', t:'text'},
+        {id:'m2',    en:'m² installed', am:'የተገጠመ ካሬ ሜትር', t:'num'},
+        {id:'state', en:'Finished, or still going?', am:'ተጠናቋል ወይስ ገና?', t:'choice', opts:[
+          {v:'done', en:'Finished today',    am:'ዛሬ ተጠናቋል'},
+          {v:'wip',  en:'Still in progress', am:'ገና በሂደት ላይ'}
+        ]},
         {id:'start', en:'Start time', am:'የተጀመረበት ሰዓት', t:'text'},
         {id:'fin',   en:'Finish time', am:'የተጠናቀቀበት ሰዓት', t:'text'},
-        {id:'ontime',en:'On time', am:'በሰዓቱ', t:'yesno'}
+        {id:'ontime',en:'On time', am:'በሰዓቱ', t:'yesno'},
+        {id:'slip',  en:'Payment slip in hand before work started', am:'ሥራ ከመጀመሩ በፊት የክፍያ ወረቀት ነበረ', t:'yesno'},
+        {id:'called',en:'Customer called 30 min before arrival', am:'ከመድረስ 30 ደቂቃ በፊት ለደንበኛው ተደውሏል', t:'yesno'}
       ]},
-      {id:'j_slips', en:'Did every job have its assembler Payment Confirmation Slip before work started?', am:'ሥራ ከመጀመሩ በፊት ለእያንዳንዱ ሥራ የገጣጣሚ ክፍያ ማረጋገጫ ወረቀት ነበረ?', t:'yesno'},
+      {id:'j_total', en:'How many jobs did your team work on today?', am:'ዛሬ ቡድንዎ በስንት ሥራዎች ላይ ሠራ?', t:'num',
+        auto:{rows:'j_rows'}, sumEn:'jobs', sumAm:'ሥራዎች'},
+      {id:'j_done', en:'How many of them were finished today?', am:'ከእነዚህ ስንቱ ዛሬ ተጠናቀቁ?', t:'num',
+        auto:{rows:'j_rows', when:{col:'state', is:'done'}}, sumEn:'finished', sumAm:'ተጠናቀዋል'},
+      {id:'j_wip', en:'How many are still in progress?', am:'ስንቱ ገና በሂደት ላይ ናቸው?', t:'num',
+        auto:{rows:'j_rows', when:{col:'state', is:'wip'}}, sumEn:'still going', sumAm:'ገና በሂደት'},
+      {id:'j_m2', en:'How many m² were installed today?', am:'ዛሬ ስንት ካሬ ሜትር ተገጠመ?', t:'num',
+        auto:{sum:'j_rows.m2'}, sumEn:'m² installed', sumAm:'ካሬ ሜትር ተገጥሟል'},
+      {id:'j_ontime', en:'How many were on time?', am:'በሰዓቱ የሆኑት ስንት ናቸው?', t:'num',
+        auto:{rows:'j_rows', when:{col:'ontime', is:'yes'}}, sumEn:'on time', sumAm:'በሰዓቱ'},
+      {id:'j_wip_left', en:'Which jobs are still open, what is left on each, and on what day will each be finished?', am:'ያላለቁት የትኞቹ ሥራዎች ናቸው? በእያንዳንዱ ምን ቀረ? እያንዳንዱ በየትኛው ቀን ያልቃል?', t:'area', show:{f:'j_wip', when:'pos'}},
+      {id:'j_slips', en:'Did every job have its assembler Payment Confirmation Slip before work started?', am:'ሥራ ከመጀመሩ በፊት ለእያንዳንዱ ሥራ የገጣጣሚ ክፍያ ማረጋገጫ ወረቀት ነበረ?', t:'yesno',
+        auto:{all:'j_rows.slip'}},
       {id:'j_slips_why', en:'Which jobs had no slip, and did work start without it?', am:'ማረጋገጫ ወረቀት ያልነበራቸው የትኞቹ ሥራዎች ናቸው? ወረቀቱ ሳይኖር ሥራ ተጀምሯል?', t:'area', show:{f:'j_slips', when:'no'}},
       {id:'mat_missing', en:'On arrival, was anything missing, wrong or damaged in the materials, tools or accessories?', am:'በደረሱበት ጊዜ ከቁሳቁሶች፣ ከመሣሪያዎች ወይም ከአክሰሰሪዎች የጎደለ፣ የተሳሳተ ወይም የተጎዳ ነገር ነበር?', t:'yesno'},
       {id:'mat_missing_what', en:'What, for which job, whose error was it, and how many hours did it cost?', am:'ምንድን ነው? ለየትኛው ሥራ? የማን ስህተት ነበር? ስንት ሰዓት አስጠፋ?', t:'area', show:{f:'mat_missing', when:'yes'}}
     ]},
     { en:'2 · Assembler performance', am:'2 · የገጣጣሚዎች አፈጻጸም', fields:[
       {id:'a_present', en:'How many assemblers were on site today?', am:'ዛሬ ስንት ገጣጣሚዎች በቦታው ተገኙ?', t:'num'},
-      {id:'a_late', en:'How many assemblers arrived late?', am:'ስንት ገጣጣሚዎች ዘግይተው ደረሱ?', t:'num',
-        tgt:{op:'lte', v:0, en:'Unreported lateness is –200 Birr', am:'ያልተነገረ መዘግየት –200 ብር'}},
+      {id:'a_late_any', en:'Did any assembler arrive late?', am:'ዘግይቶ የደረሰ ገጣጣሚ አለ?', t:'yesno'},
       {id:'a_late_who', en:'Who was late?', am:'የዘገዩት እነማን ናቸው?', t:'table', addEn:'Add an assembler', addAm:'ገጣጣሚ ጨምር',
-        show:{f:'a_late', when:'pos'},
+        show:{f:'a_late_any', when:'yes'},
         cols:[
           {id:'name', en:'Assembler', am:'ገጣጣሚ', t:'text'},
           {id:'mins', en:'Minutes late', am:'የዘገዩበት ደቂቃ', t:'num'},
           {id:'act', en:'Action taken', am:'የተወሰደ እርምጃ', t:'text'}
         ]},
+      {id:'a_late', en:'How many assemblers arrived late?', am:'ስንት ገጣጣሚዎች ዘግይተው ደረሱ?', t:'num',
+        auto:{rows:'a_late_who'}, sumEn:'late', sumAm:'ዘግይተዋል',
+        tgt:{op:'lte', v:0, en:'Unreported lateness is –200 Birr', am:'ያልተነገረ መዘግየት –200 ብር'}},
       {id:'a_early', en:'How many assemblers left before the job was done?', am:'ሥራው ሳያልቅ ስንት ገጣጣሚዎች ቀድመው ወጡ?', t:'num',
         tgt:{op:'lte', v:0, en:'Unreported early leave is –200 Birr', am:'ያልተነገረ ቀድሞ መውጣት –200 ብር'}},
       {id:'a_early_who', en:'Who left, at what time, did you approve it, and what was left undone?', am:'ማን ወጣ? በስንት ሰዓት? እርስዎ ፈቅደዋል? ምን ሳይሠራ ቀረ?', t:'area', show:{f:'a_early', when:'pos'}},
@@ -2555,17 +2989,20 @@ const REPORTS = [
       {id:'a_reported_why', en:'What was not reported, and why?', am:'ያልተነገረው ምንድን ነው? ለምን?', t:'area', show:{f:'a_reported', when:'no'}}
     ]},
     { en:'3 · Customer acceptance', am:'3 · የደንበኛ ተቀባይነት', fields:[
-      {id:'ac_signed', en:'How many customers signed the acceptance form today?', am:'ዛሬ ስንት ደንበኞች የተቀባይነት ፎርም ፈረሙ?', t:'num'},
+      {id:'ac_any', en:'Did any customer sign the acceptance form today?', am:'ዛሬ የተቀባይነት ፎርም የፈረመ ደንበኛ አለ?', t:'yesno'},
       {id:'ac_list', en:'Which customers?', am:'የትኞቹ ደንበኞች?', t:'table', addEn:'Add a customer', addAm:'ደንበኛ ጨምር',
-        show:{f:'ac_signed', when:'pos'}, cols:[
+        show:{f:'ac_any', when:'yes'}, cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'}
         ]},
+      {id:'ac_signed', en:'How many customers signed the acceptance form today?', am:'ዛሬ ስንት ደንበኞች የተቀባይነት ፎርም ፈረሙ?', t:'num',
+        auto:{rows:'ac_list'}, sumEn:'signed', sumAm:'ፈርመዋል'},
       {id:'ac_complaints', en:'How many customer complaints came in today?', am:'ዛሬ ስንት የደንበኛ ቅሬታዎች ቀረቡ?', t:'num',
         tgt:{op:'lte', v:0, en:'A complaint costs the 3,000 + 2,000 Birr bonuses',
              am:'ቅሬታ የ3,000 + 2,000 ብር ጉርሻዎችን ያሳጣል'}},
       {id:'ac_complaints_what', en:'Which customer, what was the complaint, what was done, and is it closed?', am:'የየትኛው ደንበኛ ነው? ቅሬታው ምን ነበር? ምን እርምጃ ተወሰደ? ተዘግቷል?', t:'area', show:{f:'ac_complaints', when:'pos'}},
-      {id:'ac_called', en:'How many customers were called 30 minutes before arrival? (called / sites visited)', am:'ከመድረስዎ 30 ደቂቃ በፊት ስንት ደንበኞች ተደወለላቸው? (የተደወለላቸው / የተጎበኙ ቦታዎች)', t:'ratio'},
+      {id:'ac_called', en:'How many customers were called 30 minutes before arrival? (called / sites visited)', am:'ከመድረስዎ 30 ደቂቃ በፊት ስንት ደንበኞች ተደወለላቸው? (የተደወለላቸው / የተጎበኙ ቦታዎች)', t:'ratio',
+        auto:{a:{rows:'j_rows', when:{col:'called', is:'yes'}}, b:{rows:'j_rows'}}},
       {id:'ac_called_why', en:'Which customers were not called, and why?', am:'ያልተደወለላቸው የትኞቹ ደንበኞች ናቸው? ለምን?', t:'area', show:{f:'ac_called', when:'short'}}
     ]},
     { en:'4 · Quality check at site', am:'4 · በቦታው የተደረገ የጥራት ፍተሻ', fields:[
@@ -2629,9 +3066,7 @@ const REPORTS = [
       {id:'r_photo_why', en:'Which site has no photo, and why?', am:'ፎቶ ያልተነሳው የትኛው ቦታ ነው? ለምን?', t:'area', show:{f:'r_photo', when:'no'}}
     ]},
     { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'problem', en:'What was the biggest problem today?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
-      {id:'cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
+      {id:'problem', en:'What was the biggest problem today — what caused it, and what is being done (who, by when)?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
       {id:'need_lead', en:'Do you need a decision from Mahelet?', am:'የማህሌት ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_lead_what', en:'What exactly should Mahelet decide, what are the options, and by when?', am:'ማህሌት በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_lead', when:'yes'}}
     ]},
@@ -2659,15 +3094,17 @@ const REPORTS = [
   sections:[
     { en:'1 · Installation performance', am:'1 · የተከላ አፈጻጸም', fields:[
       {id:'w_sched', en:'How many jobs were scheduled this week?', am:'በዚህ ሳምንት ስንት ሥራዎች ታቅደው ነበር?', t:'num'},
-      {id:'w_done', en:'How many were completed?', am:'ስንቱ ተጠናቀቁ?', t:'num'},
-      {id:'w_ontime', en:'How many were completed on time?', am:'ስንቱ በሰዓቱ ተጠናቀቁ?', t:'num',
+      {id:'w_done', en:'How many were completed?', am:'ስንቱ ተጠናቀቁ?', t:'num', auto:{week:'j_done'}},
+      {id:'w_ontime', en:'How many were completed on time?', am:'ስንቱ በሰዓቱ ተጠናቀቁ?', t:'num', auto:{week:'j_ontime'},
         tgt:{op:'gte', v:3, en:'3 on time pays 400 Birr, 5 pays 600, 7+ pays 800',
              am:'3 በሰዓቱ 400 ብር፣ 5 ደግሞ 600፣ ከ7 በላይ 800 ብር'}},
+      {id:'w_m2', en:'How many m² were installed this week?', am:'በዚህ ሳምንት ስንት ካሬ ሜትር ተገጠመ?', t:'num', auto:{week:'j_m2'}},
       {id:'w_rate', en:'What was the on-time rate this week? (%)', am:'የዚህ ሳምንት በሰዓቱ የመጠናቀቅ መጠን ስንት ነው? (%)', t:'pct',
+        auto:{pct:['w_ontime', 'w_done']},
         tgt:{op:'gte', v:95, en:'≥95% earns the 3,000 Birr KPI bonus', am:'≥95% የ3,000 ብር KPI ጉርሻ ያስገኛል'}},
-      {id:'w_delayed', en:'How many jobs were delayed?', am:'ስንት ሥራዎች ዘገዩ?', t:'num'},
+      {id:'w_delayed_any', en:'Was any job delayed this week?', am:'በዚህ ሳምንት የዘገየ ሥራ አለ?', t:'yesno'},
       {id:'w_delayed_list', en:'Which jobs were delayed?', am:'የዘገዩት የትኞቹ ሥራዎች ናቸው?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
-        show:{f:'w_delayed', when:'pos'},
+        show:{f:'w_delayed_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
@@ -2680,6 +3117,8 @@ const REPORTS = [
             {v:'cust', en:'Customer', am:'ደንበኛ'},
             {v:'other', en:'Other', am:'ሌላ'}]}
         ]},
+      {id:'w_delayed', en:'How many jobs were delayed?', am:'ስንት ሥራዎች ዘገዩ?', t:'num',
+        auto:{rows:'w_delayed_list'}, sumEn:'delayed', sumAm:'ዘግይተዋል'},
       {id:'w_why', en:'What was the main reason for the delays, and what will stop it next week?', am:'የመዘግየቱ ዋና ምክንያት ምን ነበር? በሚቀጥለው ሳምንት እንዳይደገም ምን ይደረጋል?', t:'area', opt:1}
     ]},
     { en:'2 · Assembler performance', am:'2 · የገጣጣሚዎች አፈጻጸም', fields:[
@@ -2695,13 +3134,14 @@ const REPORTS = [
       {id:'as_log_why', en:'What is missing from the log, and when will it be brought up to date?', am:'ከመዝገቡ ምን ጎደለ? መቼ ይሟላል?', t:'area', show:{f:'as_log', when:'no'}}
     ]},
     { en:'3 · Customer acceptance', am:'3 · የደንበኛ ተቀባይነት', fields:[
-      {id:'cs_signed', en:'How many customers signed the acceptance form this week?', am:'በዚህ ሳምንት ስንት ደንበኞች የተቀባይነት ፎርም ፈረሙ?', t:'num'},
+      {id:'cs_signed', en:'How many customers signed the acceptance form this week?', am:'በዚህ ሳምንት ስንት ደንበኞች የተቀባይነት ፎርም ፈረሙ?', t:'num', auto:{week:'ac_signed'}},
       {id:'cs_comp', en:'How many customers complained this week?', am:'በዚህ ሳምንት ስንት ደንበኞች ቅሬታ አቀረቡ?', t:'num',
         tgt:{op:'lte', v:0, en:'Zero is required for the 2,000 Birr satisfaction bonus',
              am:'ለ2,000 ብር የእርካታ ጉርሻ 0 መሆን አለበት'}},
       {id:'cs_comp_what', en:'Who complained, about what, and where does each complaint stand?', am:'ቅሬታ ያቀረቡት እነማን ናቸው? ስለምን? እያንዳንዱ ቅሬታ አሁን የት ደረሰ?', t:'area', show:{f:'cs_comp', when:'pos'}},
       {id:'cs_res', en:'How many complaints were resolved?', am:'ስንት ቅሬታዎች ተፈቱ?', t:'num'},
-      {id:'cs_out', en:'How many complaints are still open?', am:'ስንት ቅሬታዎች ገና አልተፈቱም?', t:'num'},
+      {id:'cs_out', en:'How many complaints are still open?', am:'ስንት ቅሬታዎች ገና አልተፈቱም?', t:'num',
+        auto:{minus:['cs_comp', 'cs_res']}, sumEn:'still open', sumAm:'አልተፈቱም'},
       {id:'cs_out_what', en:'Which ones, what is blocking each, and by what day will it close?', am:'የትኞቹ ናቸው? እያንዳንዱን ምን ያዘው? በየትኛው ቀን ይዘጋል?', t:'area', show:{f:'cs_out', when:'pos'}}
     ]},
     { en:'4 · Quality at site', am:'4 · በቦታው ያለ ጥራት', fields:[
@@ -2724,7 +3164,6 @@ const REPORTS = [
     ]},
     { en:'6 · Problems and solutions', am:'6 · ችግሮችና መፍትሔዎች', fields:[
       {id:'problem', en:'What was the biggest problem this week, and what caused it?', am:'የዚህ ሳምንት ትልቁ ችግር ምን ነበር? መንስኤውስ?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
       {id:'outstanding', en:'What is still unresolved, and who owns it?', am:'ገና ያልተፈታው ምንድን ነው? ኃላፊው ማን ነው?', t:'area', opt:1},
       {id:'need_lead', en:'Do you need a decision from Mahelet?', am:'የማህሌት ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_lead_what', en:'What exactly should Mahelet decide, what are the options, and by when?', am:'ማህሌት በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_lead', when:'yes'}}
@@ -2748,17 +3187,18 @@ const REPORTS = [
   penEn:'Late –100 Birr · Missing –300 Birr', penAm:'ዘግይቶ –100 ብር · ካልተላከ –300 ብር',
   sections:[
     { en:'1 · Sites supported today', am:'1 · ዛሬ የተደገፉ ቦታዎች', fields:[
-      {id:'s_count', en:'How many sites did you support today?', am:'ዛሬ ስንት ቦታዎችን ደገፉ?', t:'num'},
-      {id:'s_arrive', en:'What time did you arrive at the first site?', am:'መጀመሪያው ቦታ ስንት ሰዓት ደረሱ?', t:'text'},
-      {id:'s_depart', en:'What time did you leave the last site?', am:'ከመጨረሻው ቦታ ስንት ሰዓት ወጡ?', t:'text'},
-      {id:'s_late', en:'Were you late to any site today?', am:'ዛሬ ወደ የትኛውም ቦታ ዘግይተው ደረሱ?', t:'yesno'},
-      {id:'s_late_why', en:'Which site, how late, and why? Was Elyas told?', am:'የትኛው ቦታ ነው? ምን ያህል ዘገዩ? ለምን? ለኤልያስ ተነግሯል?', t:'area', show:{f:'s_late', when:'yes'}},
-      {id:'s_rows', en:'List each site you supported today', am:'ዛሬ የደገፉትን ቦታዎች ይዘርዝሩ',
+      {id:'s_rows', en:'Each site you supported today', am:'ዛሬ የደገፉት እያንዳንዱ ቦታ',
        t:'table', addEn:'Add site', addAm:'ቦታ ጨምር', cols:[
         {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
         {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
         {id:'site', en:'Site', am:'ቦታ', t:'text'}
       ]},
+      {id:'s_count', en:'How many sites did you support today?', am:'ዛሬ ስንት ቦታዎችን ደገፉ?', t:'num',
+        auto:{rows:'s_rows'}, sumEn:'sites', sumAm:'ቦታዎች'},
+      {id:'s_arrive', en:'What time did you arrive at the first site?', am:'መጀመሪያው ቦታ ስንት ሰዓት ደረሱ?', t:'text'},
+      {id:'s_depart', en:'What time did you leave the last site?', am:'ከመጨረሻው ቦታ ስንት ሰዓት ወጡ?', t:'text'},
+      {id:'s_late', en:'Were you late to any site today?', am:'ዛሬ ወደ የትኛውም ቦታ ዘግይተው ደረሱ?', t:'yesno'},
+      {id:'s_late_why', en:'Which site, how late, and why? Was Elyas told?', am:'የትኛው ቦታ ነው? ምን ያህል ዘገዩ? ለምን? ለኤልያስ ተነግሯል?', t:'area', show:{f:'s_late', when:'yes'}},
       {id:'pre_match', en:'Before leaving, did the load match the delivery note, with everything there and undamaged?', am:'ከመነሳትዎ በፊት ጭነቱ ከማድረሻ ሰነዱ ጋር ተመሳስሏል? ሁሉም ተሟልቶ ያልተጎዳ ነበር?', t:'yesno'},
       {id:'pre_match_what', en:'What was missing, wrong or damaged, for which job, and was Elyas told?', am:'ምን ጎደለ፣ ተሳሳተ ወይም ተጎዳ? ለየትኛው ሥራ? ለኤልያስ ተነግሯል?', t:'area', show:{f:'pre_match', when:'no'}},
       {id:'unsafe', en:'Was any site unsafe to work on today?', am:'ዛሬ ለሥራ አደገኛ የሆነ ቦታ ነበር?', t:'yesno'},
@@ -2777,15 +3217,19 @@ const REPORTS = [
       ]}
     ]},
     { en:'3 · Quality check support', am:'3 · የጥራት ፍተሻ ድጋፍ', fields:[
-      {id:'q_found', en:'How many defects did you find on finished work today (scratches, stains, chips)?', am:'ዛሬ በተጠናቀቀ ሥራ ላይ ስንት ጉድለቶች አገኙ? (ጭረት፣ እድፍ፣ ስብራት)', t:'num'},
+      {id:'q_any', en:'Did you find any defect on finished work today (scratches, stains, chips)?', am:'ዛሬ በተጠናቀቀ ሥራ ላይ ያገኙት ጉድለት አለ? (ጭረት፣ እድፍ፣ ስብራት)', t:'yesno'},
       {id:'q_found_list', en:'Which defects?', am:'የትኞቹ ጉድለቶች?', t:'table', addEn:'Add a defect', addAm:'ጉድለት ጨምር',
-        show:{f:'q_found', when:'pos'},
+        show:{f:'q_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'what', en:'Defect', am:'ጉድለት', t:'text'},
-          {id:'where', en:'Where exactly', am:'በትክክል የት', t:'text'}
+          {id:'where', en:'Where exactly', am:'በትክክል የት', t:'text'},
+          {id:'told', en:'Told to Elyas', am:'ለኤልያስ ተነግሯል', t:'yesno'}
         ]},
-      {id:'q_reported', en:'Did you report every defect to Elyas?', am:'ሁሉንም ጉድለቶች ለኤልያስ ነገሩ?', t:'yesno'},
+      {id:'q_found', en:'How many defects did you find on finished work today?', am:'ዛሬ በተጠናቀቀ ሥራ ላይ ስንት ጉድለቶች አገኙ?', t:'num',
+        auto:{rows:'q_found_list'}, sumEn:'defects found', sumAm:'ጉድለቶች ተገኝተዋል'},
+      {id:'q_reported', en:'Did you report every defect to Elyas?', am:'ሁሉንም ጉድለቶች ለኤልያስ ነገሩ?', t:'yesno',
+        auto:{all:'q_found_list.told'}},
       {id:'q_reported_why', en:'Which were not reported, and why?', am:'ያልተነገሩት የትኞቹ ናቸው? ለምን?', t:'area', show:{f:'q_reported', when:'no'}},
       {id:'q_missed', en:'Was a defect you missed found later by someone else?', am:'ያመለጠዎት ጉድለት በኋላ በሌላ ሰው ተገኘ?', t:'yesno'},
       {id:'q_missed_what', en:'What was missed, on which job, and who found it?', am:'ምን አመለጠ? በየትኛው ሥራ? ማን አገኘው?', t:'area', show:{f:'q_missed', when:'yes'}}
@@ -2806,8 +3250,7 @@ const REPORTS = [
       {id:'w_missing', en:'Did you tell Elyas about every missing update?', am:'ያልተላኩ ሪፖርቶችን ሁሉ ለኤልያስ ነገሩ?', t:'yesno', opt:1}
     ]},
     { en:'6 · Problems and solutions', am:'6 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'problem', en:'What was the biggest problem today?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, and by whom?', am:'ምን እርምጃ ተወሰደ? በማን?', t:'area', opt:1},
+      {id:'problem', en:'What was the biggest problem today — what caused it, and what is being done (who, by when)?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
       {id:'reported', en:'Did you report it to Elyas?', am:'ለኤልያስ ነገሩ?', t:'yesno'},
       {id:'reported_why', en:'Why not?', am:'ለምን አልተነገረም?', t:'area', show:{f:'reported', when:'no'}},
       {id:'need_elyas', en:'Do you need a decision or help from Elyas?', am:'የኤልያስ ውሳኔ ወይም እገዛ ያስፈልግዎታል?', t:'yesno'},
@@ -2895,8 +3338,9 @@ const REPORTS = [
       {id:'o_owed', en:'How much does Rovestone owe Klever now?', am:'ሮቭስቶን አሁን ለክሌቨር ስንት ብር ዕዳ አለበት?', t:'money', opt:1}
     ]},
     { en:'3 · Money', am:'3 · ገንዘብ', fields:[
-      {id:'f_in', en:'How much came in to Rovestone this week?', am:'በዚህ ሳምንት ወደ ሮቭስቶን ስንት ብር ገባ?', t:'money'},
-      {id:'f_out', en:'How much did Rovestone pay out this week?', am:'ሮቭስቶን በዚህ ሳምንት ስንት ብር ከፈለ?', t:'money'},
+      {id:'f_in', en:'How much came in to Rovestone this week?', am:'በዚህ ሳምንት ወደ ሮቭስቶን ስንት ብር ገባ?', t:'money',
+        auto:{week:'m_in'}},
+      {id:'f_out', en:'How much did Rovestone pay out this week?', am:'ሮቭስቶን በዚህ ሳምንት ስንት ብር ከፈለ?', t:'money', auto:{week:'m_out'}},
       {id:'f_cash', en:'How much cash and bank does Rovestone hold at the end of the week?', am:'በሳምንቱ መጨረሻ ሮቭስቶን በጥሬ ገንዘብና በባንክ ስንት ብር አለው?', t:'money', opt:1}
     ]},
     { en:'4 · Next week', am:'4 · የሚቀጥለው ሳምንት', fields:[
@@ -3014,33 +3458,53 @@ const SALES_DAILY = {
   dueAm:'በየሥራ ቀኑ ከቀኑ 11፡00 (5:00 PM)',
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   sections:[
+    /* Six numbers stood above this list — the total and the five sources —
+       and the list did not say where a lead came from, so the breakdown
+       could not be checked against it. The source is a column now, the six
+       numbers are counted from the rows, and whether the lead was called
+       inside the day is in the row too (the Chairman, 9 Oct 2026). */
     { en:'1 · Leads today', am:'1 · የዛሬ አዲስ ደንበኞች', fields:[
-      {id:'l_total', en:'How many new leads did you receive today?', am:'ዛሬ ስንት አዲስ ደንበኞች መጡ?', t:'num',
-        parts:{of:['l_social','l_show','l_ref','l_agent','l_other'], all:1}},
-      {id:'l_social', en:'From social media', am:'ከሶሻል ሚዲያ', t:'num', i:1},
-      {id:'l_show', en:'Walked into the showroom', am:'ሾውሩም የመጡ', t:'num', i:1},
-      {id:'l_ref', en:'Referred by someone', am:'በሪፈራል', t:'num', i:1},
-      {id:'l_agent', en:'Through an agent', am:'በኤጀንት', t:'num', i:1},
-      {id:'l_other', en:'Anywhere else', am:'ከሌላ ቦታ', t:'num', i:1},
-      {id:'l_list', en:'List each new lead, as logged in the system', am:'አዲሶቹን ደንበኞች በሲስተሙ እንደተመዘገቡት ይዘርዝሩ', t:'table', addEn:'Add a lead', addAm:'ደንበኛ ጨምር',
-        show:{f:'l_total', when:'pos'},
+      {id:'l_any', en:'Did any new lead come in today?', am:'ዛሬ አዲስ ደንበኛ መጥቷል?', t:'yesno'},
+      {id:'l_list', en:'Each new lead today, as logged in the system', am:'ዛሬ የመጣ እያንዳንዱ አዲስ ደንበኛ፣ በሲስተሙ እንደተመዘገበው', t:'table', addEn:'Add a lead', addAm:'ደንበኛ ጨምር',
+        show:{f:'l_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'phone', en:'Phone', am:'ስልክ', t:'text'},
+          {id:'src', en:'Where from', am:'ከየት', t:'choice', opts:[
+            {v:'social', en:'Social media',             am:'ሶሻል ሚዲያ'},
+            {v:'show',   en:'Walked into the showroom', am:'ሾውሩም የመጣ'},
+            {v:'ref',    en:'Referred by someone',      am:'በሪፈራል'},
+            {v:'agent',  en:'Through an agent',         am:'በኤጀንት'},
+            {v:'other',  en:'Anywhere else',            am:'ከሌላ ቦታ'}
+          ]},
+          {id:'called', en:'Called within 24 hours?', am:'በ24 ሰዓት ውስጥ ተደውሏል?', t:'yesno'},
           {id:'next', en:'Next step', am:'ቀጣይ እርምጃ', t:'text'}
-        ]}
+        ]},
+      {id:'l_total', en:'How many new leads did you receive today?', am:'ዛሬ ስንት አዲስ ደንበኞች መጡ?', t:'num',
+        auto:{rows:'l_list'}, sumEn:'new leads', sumAm:'አዲስ ደንበኞች'},
+      {id:'l_social', en:'From social media', am:'ከሶሻል ሚዲያ', t:'num', i:1,
+        auto:{rows:'l_list', when:{col:'src', is:'social'}}, sumEn:'from social media', sumAm:'ከሶሻል ሚዲያ'},
+      {id:'l_show', en:'Walked into the showroom', am:'ሾውሩም የመጡ', t:'num', i:1,
+        auto:{rows:'l_list', when:{col:'src', is:'show'}}, sumEn:'walked in', sumAm:'ሾውሩም የመጡ'},
+      {id:'l_ref', en:'Referred by someone', am:'በሪፈራል', t:'num', i:1,
+        auto:{rows:'l_list', when:{col:'src', is:'ref'}}, sumEn:'referred', sumAm:'በሪፈራል'},
+      {id:'l_agent', en:'Through an agent', am:'በኤጀንት', t:'num', i:1,
+        auto:{rows:'l_list', when:{col:'src', is:'agent'}}, sumEn:'through an agent', sumAm:'በኤጀንት'},
+      {id:'l_other', en:'Anywhere else', am:'ከሌላ ቦታ', t:'num', i:1,
+        auto:{rows:'l_list', when:{col:'src', is:'other'}}, sumEn:'from elsewhere', sumAm:'ከሌላ ቦታ'}
     ]},
     { en:'2 · Lead response', am:'2 · የምላሽ ፍጥነት', fields:[
       {id:'r_1hr', en:'New leads today: how many did you call within 24 hours? (called within 24 hours / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ24 ሰዓት ውስጥ ደወሉላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'l_total',
+        auto:{a:{rows:'l_list', when:{col:'called', is:'yes'}}, b:{rows:'l_list'}},
         tgt:{op:'gte', v:100, en:'Stage 1 of your commission — –200 Birr per missed lead',
              am:'የኮሚሽንዎ 1ኛ ደረጃ — ላመለጠ እያንዳንዱ –200 ብር'}},
       {id:'r_1hr_why', en:'Which leads were not called within 24 hours, and why?', am:'በ24 ሰዓት ውስጥ ያልተደወለላቸው እነማን ናቸው? ለምን?', t:'area', show:{f:'r_1hr', when:'short'}}
     ]},
     { en:'3 · Quotations', am:'3 · ፕሮፎርማ', fields:[
-      {id:'q_issued', en:'How many quotations did you present today?', am:'ዛሬ ስንት ፕሮፎርማ ቀረበ?', t:'num'},
-      {id:'q_list', en:'List each quotation presented today', am:'ዛሬ የቀረቡትን ፕሮፎርማዎች ይዘርዝሩ', t:'table', addEn:'Add a quotation', addAm:'ፕሮፎርማ ጨምር',
-        show:{f:'q_issued', when:'pos'},
+      {id:'q_any', en:'Did you present any quotation today?', am:'ዛሬ ፕሮፎርማ አቀረቡ?', t:'yesno'},
+      {id:'q_list', en:'Each quotation presented today', am:'ዛሬ የቀረበ እያንዳንዱ ፕሮፎርማ', t:'table', addEn:'Add a quotation', addAm:'ፕሮፎርማ ጨምር',
+        show:{f:'q_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
@@ -3054,7 +3518,14 @@ const SALES_DAILY = {
         rowOdd:{ per:'margin', times:'m2', max:'value',
                  en:'the margin per m² × the m² comes to {a}, more than the price {b}',
                  am:'ትርፍ በካሬ ሜትር × ካሬ ሜትሩ {a} ይሆናል — ከዋጋው {b} ይበልጣል' }},
+      {id:'q_value', en:'What is the total value of today\'s quotations?', am:'የዛሬዎቹ ፕሮፎርማዎች ጠቅላላ ዋጋ ስንት ነው?', t:'money',
+        auto:{sum:'q_list.value'}, sumEn:'quoted', sumAm:'የቀረበ ዋጋ'},
+      {id:'q_issued', en:'How many quotations did you present today?', am:'ዛሬ ስንት ፕሮፎርማ ቀረበ?', t:'num',
+        auto:{rows:'q_list'}, sumEn:'quotations', sumAm:'ፕሮፎርማዎች'},
+      /* the mean of the margin each row names, not a figure worked out on the
+         side: if a row is wrong the figure is wrong in the same place */
       {id:'q_margin', en:'What was the average margin per m² on today\'s quotations?', am:'የዛሬዎቹ ፕሮፎርማዎች አማካይ ትርፍ በካሬ ሜትር ስንት ነው?', t:'money',
+        auto:{div:[{sum:'q_list.margin'}, {rows:'q_list', when:{col:'margin'}}]},
         tgt:{op:'gte', v:6000, en:'Margin floor 6,000 Birr/m² — below without approval is –1,000 Birr',
              am:'ዝቅተኛው ትርፍ በካሬ ሜትር 6,000 ብር — ያለፈቃድ ከዚህ በታች –1,000 ብር'}},
       {id:'q_margin_why', en:'Which quotations went below 6,000 Birr/m², and who approved them?', am:'ከ6,000 ብር በካሬ ሜትር በታች የሆኑት የትኞቹ ፕሮፎርማዎች ናቸው? ማን አጸደቃቸው?', t:'area', show:{f:'q_margin', when:'miss'}},
@@ -3063,26 +3534,31 @@ const SALES_DAILY = {
       {id:'q_expiry_why', en:'Which ones did not, and have they been corrected?', am:'ያልተጻፈባቸው የትኞቹ ናቸው? ተስተካክለዋል?', t:'area', show:{f:'q_expiry', when:'no'}}
     ]},
     { en:'4 · Contracts', am:'4 · ውሎች', fields:[
-      {id:'c_signed', en:'How many contracts did you sign today?', am:'ዛሬ ስንት ውል ተፈረመ?', t:'num'},
-      {id:'c_list', en:'List each contract signed today', am:'ዛሬ የተፈረሙትን ውሎች ይዘርዝሩ', t:'table', addEn:'Add a contract', addAm:'ውል ጨምር',
-        show:{f:'c_signed', when:'pos'},
+      {id:'c_any', en:'Did you sign any contract today?', am:'ዛሬ ውል ተፈርሟል?', t:'yesno'},
+      {id:'c_list', en:'Each contract signed today', am:'ዛሬ የተፈረመ እያንዳንዱ ውል', t:'table', addEn:'Add a contract', addAm:'ውል ጨምር',
+        show:{f:'c_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Lead no. (4 digits)', am:'የደንበኛ ቁጥር (4 አሃዝ)', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'value', en:'Contract value', am:'የውል ዋጋ', t:'money'},
+          {id:'margin', en:'Margin per m²', am:'ትርፍ በካሬ ሜትር', t:'money'},
           {id:'adv', en:'Advance paid', am:'የተከፈለ ቅድመ ክፍያ', t:'money'}
         ]},
-      {id:'c_value', en:'What is the total value of today\'s contracts?', am:'የዛሬዎቹ ውሎች ጠቅላላ ዋጋ ስንት ነው?', t:'money'},
-      {id:'c_adv', en:'How much advance did you collect today?', am:'ዛሬ ስንት ቅድመ ክፍያ ተሰበሰበ?', t:'money'},
+      {id:'c_signed', en:'How many contracts did you sign today?', am:'ዛሬ ስንት ውል ተፈረመ?', t:'num',
+        auto:{rows:'c_list'}, sumEn:'contracts', sumAm:'ውሎች'},
+      {id:'c_value', en:'What is the total value of today\'s contracts?', am:'የዛሬዎቹ ውሎች ጠቅላላ ዋጋ ስንት ነው?', t:'money',
+        auto:{sum:'c_list.value'}, sumEn:'signed', sumAm:'የተፈረመ'},
+      {id:'c_adv', en:'How much advance did you collect today?', am:'ዛሬ ስንት ቅድመ ክፍያ ተሰበሰበ?', t:'money',
+        auto:{sum:'c_list.adv'}, sumEn:'advance collected', sumAm:'የተሰበሰበ ቅድመ ክፍያ'},
       {id:'c_told', en:'Was Selam told, so the deposit can be confirmed in the bank?', am:'ሰላም ገንዘቡን በባንክ እንድታረጋግጥ ተነግሯታል?', t:'yesno', show:{f:'c_adv', when:'pos'}},
       {id:'c_banked', en:'Did all of it go to the bank the same day?', am:'ሁሉም በዕለቱ ባንክ ገብቷል?', t:'yesno'},
       {id:'c_banked_why', en:'Why not, where is the money now, and when will it be banked?', am:'ለምን አልገባም? ገንዘቡ አሁን የት ነው? መቼ ባንክ ይገባል?', t:'area', show:{f:'c_banked', when:'no'}}
     ]},
     { en:'5 · Cash collection', am:'5 · የገንዘብ ስብሰባ', fields:[
-      {id:'k_today', en:'How much did you collect from customers today?', am:'ዛሬ ከደንበኞች ስንት ብር ተሰበሰበ?', t:'money'},
+      {id:'k_any', en:'Did you collect money from any customer today?', am:'ዛሬ ከደንበኛ ገንዘብ ተቀብለዋል?', t:'yesno'},
       {id:'k_list', en:'From whom?', am:'ከማን ከማን?', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
-        show:{f:'k_today', when:'pos'},
+        show:{f:'k_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
@@ -3092,6 +3568,10 @@ const SALES_DAILY = {
             {v:'final', en:'Final payment', am:'የመጨረሻ ክፍያ'},
             {v:'other', en:'Other', am:'ሌላ'}]}
         ]},
+      {id:'k_today', en:'How much did you collect from customers today?', am:'ዛሬ ከደንበኞች ስንት ብር ተሰበሰበ?', t:'money',
+        auto:{sum:'k_list.amount'}, sumEn:'collected', sumAm:'ተሰብስቧል'},
+      /* this one stays typed on purpose: it is the figure the bank confirms,
+         and checking it against the bank is the point of asking */
       {id:'k_week', en:'How much have you collected this week so far, bank-confirmed?', am:'በዚህ ሳምንት እስካሁን በባንክ የተረጋገጠ ስንት ብር ተሰበሰበ?', t:'money',
         tgt:{op:'gte', v:2000000, en:'Your weekly target is 2,000,000 Birr collected',
              am:'የሳምንቱ ዒላማዎ 2,000,000 ብር የተሰበሰበ ገንዘብ ነው'}},
@@ -3111,21 +3591,23 @@ const SALES_DAILY = {
       {id:'w_comp_what', en:'Who complained, about what, and what was done?', am:'ቅሬታ ያቀረበው ማን ነው? ስለምን? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'w_comp', when:'pos'}}
     ]},
     { en:'7 · After-sales', am:'7 · ከሽያጭ በኋላ', fields:[
-      {id:'fu_calls', en:'Of customers installed 48 hours ago, how many got their follow-up call? (called / due)', am:'ተከላቸው ከ48 ሰዓት በፊት ከተጠናቀቀ ደንበኞች ስንቱ የክትትል ጥሪ ተደረገላቸው? (የተደወለላቸው / መደወል የነበረባቸው)', t:'ratio'},
+      {id:'fu_any', en:'Was any follow-up call due today?', am:'ዛሬ መደረግ የነበረበት የክትትል ጥሪ አለ?', t:'yesno'},
       {id:'fu_list', en:'Which customers were called?', am:'የትኞቹ ደንበኞች ተደወለላቸው?', t:'table', addEn:'Add a customer', addAm:'ደንበኛ ጨምር',
-        show:{f:'fu_calls', when:'pos'}, cols:[
+        show:{f:'fu_any', when:'yes'}, cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'happy', en:'Happy with the job', am:'በሥራው ረክተዋል', t:'yesno'},
           {id:'score', en:'Score 0–10: how likely are they to recommend us?', am:'ውጤት 0–10፦ እኛን ለሌሎች የመምከር ዕድላቸው?', t:'num'}
         ]},
+      /* the rows are the calls made; how many were due is the only box left
+         to fill, and the form counts the other from the list */
+      {id:'fu_calls', en:'Of customers installed 48 hours ago, how many got their follow-up call? (called / due)', am:'ተከላቸው ከ48 ሰዓት በፊት ከተጠናቀቀ ደንበኞች ስንቱ የክትትል ጥሪ ተደረገላቸው? (የተደወለላቸው / መደወል የነበረባቸው)', t:'ratio',
+        show:{f:'fu_any', when:'yes'}, auto:{a:{rows:'fu_list'}}},
       {id:'fu_calls_why', en:'Who was not called, and when will they be?', am:'ያልተደወለላቸው እነማን ናቸው? መቼ ይደወልላቸዋል?', t:'area', show:{f:'fu_calls', when:'short'}},
       {id:'ref_logged', en:'How many referrals did you ask for and log today?', am:'ዛሬ ስንት ሪፈራል ተጠይቆ ተመዘገበ?', t:'num'}
     ]},
     { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'problem', en:'What was the biggest problem today?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
-      {id:'cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
+      {id:'problem', en:'What was the biggest problem today — what caused it, and what is being done (who, by when)?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
       {id:'need_help', en:'What do you need from design, production or Selam, and from whom?', am:'ከዲዛይን፣ ከምርት ወይም ከሰላም ምን ያስፈልግዎታል? ከማን?', t:'area', opt:1},
       {id:'need_lead', en:'Do you need a decision from Ephrata?', am:'የኤፍራታ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_lead_what', en:'What exactly should she decide (a discount beyond your window, a price change), and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? (ከፈቃድዎ በላይ ቅናሽ፣ የዋጋ ለውጥ) እስከ መቼ?', t:'area', show:{f:'need_lead', when:'yes'}}
@@ -3146,18 +3628,25 @@ const SALES_WEEKLY = {
   dueAm:'ቅዳሜ ከቀኑ 9፡30 (3:30 PM)',
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
+    /* The week's contracts were typed out here a second time, every one of
+       them already a row in the daily report that signed it (the Chairman,
+       9 Oct 2026). The list gathers itself from those reports, and the
+       figures come off the gathered rows. */
     { en:'1 · Sales performance', am:'1 · የሽያጭ አፈጻጸም', fields:[
-      {id:'s_contracts', en:'How many contracts did you sign this week?', am:'በዚህ ሳምንት ስንት ውል ተፈረመ?', t:'num'},
-      {id:'s_contracts_list', en:'List each contract signed this week', am:'በዚህ ሳምንት የተፈረሙትን ውሎች ይዘርዝሩ', t:'table', addEn:'Add a contract', addAm:'ውል ጨምር',
-        show:{f:'s_contracts', when:'pos'},
+      {id:'s_contracts_list', en:'Each contract signed this week', am:'በዚህ ሳምንት የተፈረመ እያንዳንዱ ውል', t:'table',
+        auto:{weekRows:'c_list', dayCol:'day'},
         cols:[
+          {id:'day', en:'Signed on', am:'የተፈረመበት', t:'text'},
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Lead no. (4 digits)', am:'የደንበኛ ቁጥር (4 አሃዝ)', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'value', en:'Contract value', am:'የውል ዋጋ', t:'money'},
           {id:'margin', en:'Margin per m²', am:'ትርፍ በካሬ ሜትር', t:'money'}
         ]},
-      {id:'s_value', en:'What is the total value of this week\'s contracts?', am:'የዚህ ሳምንት ውሎች ጠቅላላ ዋጋ ስንት ነው?', t:'money'},
+      {id:'s_contracts', en:'How many contracts did you sign this week?', am:'በዚህ ሳምንት ስንት ውል ተፈረመ?', t:'num',
+        auto:{rows:'s_contracts_list'}, sumEn:'contracts', sumAm:'ውሎች'},
+      {id:'s_value', en:'What is the total value of this week\'s contracts?', am:'የዚህ ሳምንት ውሎች ጠቅላላ ዋጋ ስንት ነው?', t:'money',
+        auto:{sum:'s_contracts_list.value'}, sumEn:'signed', sumAm:'የተፈረመ'},
       {id:'s_month', en:'How many external contracts have you signed this month so far?', am:'በዚህ ወር እስካሁን ስንት የውጭ ውል ተፈረመ?', t:'num'},
       {id:'s_coll', en:'How much did you collect from external customers this week, bank-confirmed?', am:'በዚህ ሳምንት ከውጭ ደንበኞች በባንክ የተረጋገጠ ስንት ብር ተሰበሰበ?', t:'money',
         tgt:{op:'gte', v:2000000, en:'Target 2,000,000 Birr — below 1,000,000 is a failed week',
@@ -3171,21 +3660,27 @@ const SALES_WEEKLY = {
        cols:[{id:'amt', en:'Collected', am:'የተሰበሰበ', t:'money'}]}
     ]},
     { en:'3 · Lead performance', am:'3 · የደንበኛ አያያዝ አፈጻጸም', fields:[
-      {id:'lp_total', en:'How many new leads did you receive this week?', am:'በዚህ ሳምንት ስንት አዲስ ደንበኞች መጡ?', t:'num'},
-      {id:'lp_1hr', en:'New leads this week: how many were called within 24 hours? (called within 24 hours / all new leads this week)', am:'በዚህ ሳምንት አዲስ የመጡ ደንበኞች፦ ስንቱ በ24 ሰዓት ውስጥ ተደወለላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / በዚህ ሳምንት የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'lp_total'},
+      {id:'lp_total', en:'How many new leads did you receive this week?', am:'በዚህ ሳምንት ስንት አዲስ ደንበኞች መጡ?', t:'num',
+        auto:{week:'l_total'}},
+      {id:'lp_1hr', en:'New leads this week: how many were called within 24 hours? (called within 24 hours / all new leads this week)', am:'በዚህ ሳምንት አዲስ የመጡ ደንበኞች፦ ስንቱ በ24 ሰዓት ውስጥ ተደወለላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / በዚህ ሳምንት የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'lp_total',
+        auto:{a:{week:'r_1hr__a'}, b:{week:'r_1hr__b'}}},
       {id:'lp_1hr_why', en:'Which leads were missed, and why?', am:'ያመለጡት ደንበኞች እነማን ናቸው? ለምን?', t:'area', show:{f:'lp_1hr', when:'short'}},
-      {id:'lp_quotes', en:'How many quotations did you present this week?', am:'በዚህ ሳምንት ስንት ፕሮፎርማ ቀረበ?', t:'num'},
-      {id:'lp_conv', en:'What share of your leads became contracts?', am:'ከደንበኞችዎ ስንት በመቶው ውል ፈረሙ?', t:'pct'},
+      {id:'lp_quotes', en:'How many quotations did you present this week?', am:'በዚህ ሳምንት ስንት ፕሮፎርማ ቀረበ?', t:'num',
+        auto:{week:'q_issued'}},
+      {id:'lp_conv', en:'What share of your leads became contracts?', am:'ከደንበኞችዎ ስንት በመቶው ውል ፈረሙ?', t:'pct',
+        auto:{pct:['s_contracts', 'lp_total']}},
       {id:'lp_follow', en:'What share of your leads did you follow up?', am:'ከደንበኞችዎ ስንት በመቶው ክትትል ተደረገላቸው?', t:'pct',
         tgt:{op:'gte', v:50, en:'Below 50% is –300 Birr', am:'ከ50% በታች –300 ብር'}},
       {id:'lp_follow_why', en:'Why is follow-up below 50%, and which leads will be followed up next week?', am:'ክትትሉ ለምን ከ50% በታች ሆነ? በሚቀጥለው ሳምንት የትኞቹ ደንበኞች ክትትል ይደረግላቸዋል?', t:'area', show:{f:'lp_follow', when:'miss'}}
     ]},
     { en:'4 · Margin performance', am:'4 · የትርፍ አፈጻጸም', fields:[
       {id:'mg_avg', en:'What was your average margin per m² this week?', am:'በዚህ ሳምንት አማካይ ትርፍዎ በካሬ ሜትር ስንት ነው?', t:'money',
+        auto:{div:[{sum:'s_contracts_list.margin'}, {rows:'s_contracts_list', when:{col:'margin'}}]},
         tgt:{op:'gte', v:6000, en:'Margin floor 6,000 Birr/m²', am:'ዝቅተኛው ትርፍ በካሬ ሜትር 6,000 ብር'}},
       {id:'mg_below', en:'How many contracts did you sign below the margin floor?', am:'ከዝቅተኛው ትርፍ በታች ስንት ውል ተፈረመ?', t:'num',
+        auto:{rows:'s_contracts_list', when:{col:'margin', lt:6000}},
         tgt:{op:'lte', v:0, en:'–1,000 Birr each without approval', am:'ያለፈቃድ እያንዳንዱ –1,000 ብር'}},
-      {id:'mg_below_list', en:'List each one, and who approved it', am:'እያንዳንዱን ይዘርዝሩ፤ ማን እንዳጸደቀውም', t:'table', addEn:'Add a contract', addAm:'ውል ጨምር',
+      {id:'mg_below_list', en:'Which of them, and who approved it', am:'የትኞቹ ናቸው? ማን አጸደቀው?', t:'table', addEn:'Add a contract', addAm:'ውል ጨምር',
         show:{f:'mg_below', when:'pos'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
@@ -3196,33 +3691,40 @@ const SALES_WEEKLY = {
     ]},
     { en:'5 · Commission', am:'5 · ኮሚሽን', fields:[
       {id:'cm_earned', en:'How much commission did you earn this week?', am:'በዚህ ሳምንት ስንት ብር ኮሚሽን አገኙ?', t:'money'},
-      {id:'cm_missed', en:'How many commission stages did you miss?', am:'ስንት የኮሚሽን ደረጃዎች አመለጡ?', t:'num',
-        tgt:{op:'lte', v:0, en:'Each missed stage loses its share of the 2%',
-             am:'እያንዳንዱ ያመለጠ ደረጃ ከ2% ድርሻውን ያሳጣል'}},
+      {id:'cm_missed_any', en:'Did you miss any commission stage this week?', am:'በዚህ ሳምንት ያመለጠዎት የኮሚሽን ደረጃ አለ?', t:'yesno'},
       {id:'cm_missed_list', en:'Which stages, on which jobs, and why?', am:'የትኞቹ ደረጃዎች? በየትኞቹ ሥራዎች? ለምን?', t:'table', addEn:'Add a missed stage', addAm:'ያመለጠ ደረጃ ጨምር',
-        show:{f:'cm_missed', when:'pos'},
+        show:{f:'cm_missed_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'stage', en:'Stage', am:'ደረጃ', t:'text'},
+          {id:'lost', en:'Birr lost', am:'የጠፋ ብር', t:'money'},
           {id:'why', en:'Why', am:'ምክንያት', t:'text'}
         ]},
-      {id:'cm_lost', en:'How much commission did that cost you?', am:'ይህ ስንት ብር ኮሚሽን አሳጣዎት?', t:'money'}
+      {id:'cm_missed', en:'How many commission stages did you miss?', am:'ስንት የኮሚሽን ደረጃዎች አመለጡ?', t:'num',
+        auto:{rows:'cm_missed_list'}, sumEn:'stages missed', sumAm:'ያመለጡ ደረጃዎች',
+        tgt:{op:'lte', v:0, en:'Each missed stage loses its share of the 2%',
+             am:'እያንዳንዱ ያመለጠ ደረጃ ከ2% ድርሻውን ያሳጣል'}},
+      {id:'cm_lost', en:'How much commission did that cost you?', am:'ይህ ስንት ብር ኮሚሽን አሳጣዎት?', t:'money',
+        auto:{sum:'cm_missed_list.lost'}, sumEn:'lost', sumAm:'ጠፍቷል'}
     ]},
     { en:'6 · WhatsApp compliance', am:'6 · የዋትስአፕ ተገዢነት', fields:[
       {id:'ww_groups', en:'How many customer groups were you active in this week?', am:'በዚህ ሳምንት በስንት የደንበኛ ግሩፖች ውስጥ ንቁ ነበሩ?', t:'num'},
-      {id:'ww_posted', en:'How many required stage messages did you post? (posted / required)', am:'ከሚገባው የደረጃ መልዕክት ስንቱ ተላከ? (የተላከ / የሚገባው)', t:'ratio'},
+      {id:'ww_posted', en:'How many required stage messages did you post? (posted / required)', am:'ከሚገባው የደረጃ መልዕክት ስንቱ ተላከ? (የተላከ / የሚገባው)', t:'ratio',
+        auto:{a:{week:'w_stage__a'}, b:{week:'w_stage__b'}}},
       {id:'ww_posted_why', en:'Which customers missed a stage message, which stage, and why?', am:'የደረጃ መልዕክት ያልደረሳቸው የትኞቹ ደንበኞች ናቸው? የትኛው ደረጃ? ለምን?', t:'area', show:{f:'ww_posted', when:'short'}},
       {id:'ww_rate', en:'What is your compliance rate this week?', am:'የዚህ ሳምንት የተገዢነት መጠንዎ ስንት ነው?', t:'pct',
+        auto:{pct:['ww_posted__a', 'ww_posted__b']},
         tgt:{op:'gte', v:100, en:'Every stage message must be posted', am:'እያንዳንዱ የደረጃ መልዕክት መላክ አለበት'}},
       {id:'ww_unans', en:'How many messages waited more than 2 hours for your answer?', am:'ከ2 ሰዓት በላይ ምላሽ ሳያገኙ የቆዩ መልዕክቶች ስንት ናቸው?', t:'num',
+        auto:{week:'w_unans'},
         tgt:{op:'lte', v:0, en:'–200 Birr each', am:'እያንዳንዱ –200 ብር'}},
       {id:'ww_unans_why', en:'Which customers, and why?', am:'የየትኞቹ ደንበኞች ናቸው? ለምን?', t:'area', show:{f:'ww_unans', when:'pos'}}
     ]},
     { en:'7 · Customer satisfaction', am:'7 · የደንበኛ እርካታ', fields:[
-      {id:'cu_recv', en:'How many complaints did your customers raise this week?', am:'በዚህ ሳምንት ደንበኞችዎ ስንት ቅሬታ አቀረቡ?', t:'num'},
+      {id:'cu_any', en:'Did any customer of yours raise a complaint this week?', am:'በዚህ ሳምንት ቅሬታ ያቀረበ ደንበኛዎ አለ?', t:'yesno'},
       {id:'cu_list', en:'List each complaint', am:'እያንዳንዱን ቅሬታ ይዘርዝሩ', t:'table', addEn:'Add a complaint', addAm:'ቅሬታ ጨምር',
-        show:{f:'cu_recv', when:'pos'},
+        show:{f:'cu_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
@@ -3231,18 +3733,21 @@ const SALES_WEEKLY = {
             {v:'resolved', en:'Resolved', am:'ተፈቷል'},
             {v:'open', en:'Still open', am:'ገና አልተፈታም'}]}
         ]},
-      {id:'cu_res', en:'How many were resolved?', am:'ስንቱ ተፈቱ?', t:'num'},
+      {id:'cu_recv', en:'How many complaints did your customers raise this week?', am:'በዚህ ሳምንት ደንበኞችዎ ስንት ቅሬታ አቀረቡ?', t:'num',
+        auto:{rows:'cu_list'}, sumEn:'complaints', sumAm:'ቅሬታዎች'},
+      {id:'cu_res', en:'How many were resolved?', am:'ስንቱ ተፈቱ?', t:'num',
+        auto:{rows:'cu_list', when:{col:'state', is:'resolved'}}, sumEn:'resolved', sumAm:'ተፈተዋል'},
       {id:'cu_out', en:'How many are still open?', am:'ስንቱ ገና አልተፈቱም?', t:'num',
+        auto:{rows:'cu_list', when:{col:'state', is:'open'}}, sumEn:'still open', sumAm:'አልተፈቱም',
         tgt:{op:'lte', v:0, en:'Unresolved past 7 days loses the full commission on that job',
              am:'ከ7 ቀን በላይ ያልተፈታ የዚያን ሥራ ሙሉ ኮሚሽን ያሳጣል'}},
       {id:'cu_out_plan', en:'For each open complaint: what is needed, who is fixing it, and by when?', am:'ለእያንዳንዱ ያልተፈታ ቅሬታ፦ ምን ያስፈልጋል? ማን ያስተካክለዋል? እስከ መቼ?', t:'area', show:{f:'cu_out', when:'pos'}},
-      {id:'fu_week', en:'Of customers installed this week, how many got the 48-hour follow-up call? (called / due)', am:'በዚህ ሳምንት ተከላቸው ከተጠናቀቀ ደንበኞች ስንቱ የ48 ሰዓት የክትትል ጥሪ ተደረገላቸው? (የተደወለላቸው / መደወል የነበረባቸው)', t:'ratio'},
+      {id:'fu_week', en:'Of customers installed this week, how many got the 48-hour follow-up call? (called / due)', am:'በዚህ ሳምንት ተከላቸው ከተጠናቀቀ ደንበኞች ስንቱ የ48 ሰዓት የክትትል ጥሪ ተደረገላቸው? (የተደወለላቸው / መደወል የነበረባቸው)', t:'ratio',
+        auto:{a:{week:'fu_calls__a'}, b:{week:'fu_calls__b'}}},
       {id:'fu_week_why', en:'Who was not called, and why?', am:'ያልተደወለላቸው እነማን ናቸው? ለምን?', t:'area', show:{f:'fu_week', when:'short'}}
     ]},
     { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'problem', en:'What was the biggest problem this week?', am:'የዚህ ሳምንት ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
-      {id:'cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', show:{f:'problem', when:'any'}},
-      {id:'action', en:'What was done about it, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
+      {id:'problem', en:'What was the biggest problem this week — what caused it, and what is being done (who, by when)?', am:'የዚህ ሳምንት ትልቁ ችግር ምን ነበር? መንስኤው ምንድን ነው? ምን እየተደረገ ነው (በማን፣ እስከ መቸ)?', t:'area', opt:1},
       {id:'outstanding', en:'What is still unresolved and carries into next week?', am:'ገና ያልተፈታና ወደ ሚቀጥለው ሳምንት የሚሻገር ምንድን ነው?', t:'area', opt:1},
       {id:'need_lead', en:'Do you need a decision from Ephrata?', am:'የኤፍራታ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_lead_what', en:'What exactly should she decide, and by when?', am:'በትክክል ምን እንዲወስኑ ይፈልጋሉ? እስከ መቼ?', t:'area', show:{f:'need_lead', when:'yes'}}
@@ -3263,83 +3768,143 @@ const DESIGN_DAILY = {
   dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
   penEn:'Late –200 Birr · Missing –500 Birr', penAm:'ዘግይቶ –200 ብር · ካልተላከ –500 ብር',
   sections:[
+    /* One row a measurement, and the row carries what used to be asked about
+       it in separate questions: whether it was on time, whether the video was
+       recorded, whether it went up. Four counts and five two-box questions
+       stood around these two lists; all of them are counted from the rows
+       now (the Chairman, 9 Oct 2026). */
     { en:'1 · Measurements today', am:'1 · የዛሬ ልኬቶች', fields:[
-      {id:'m_pre', en:'How many pre-measurements did you do today?', am:'ዛሬ ስንት ቅድመ ልኬቶችን አደረጉ?', t:'num'},
-      {id:'m_pre_list', en:'Which customers?', am:'የየትኞቹ ደንበኞች?', t:'table', addEn:'Add a customer', addAm:'ደንበኛ ጨምር',
-        show:{f:'m_pre', when:'pos'},
+      {id:'m_pre_any', en:'Did you do any pre-measurement today?', am:'ዛሬ ቅድመ ልኬት አደረጉ?', t:'yesno'},
+      {id:'m_pre_list', en:'Each pre-measurement today — one row each', am:'የዛሬ እያንዳንዱ ቅድመ ልኬት — በረድፍ አንድ', t:'table', addEn:'Add a customer', addAm:'ደንበኛ ጨምር',
+        show:{f:'m_pre_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'where', en:'Area', am:'አካባቢ', t:'text'},
-          {id:'next', en:'Pre-design due', am:'ቅድመ ዲዛይን የሚደርስበት', t:'text'}
+          {id:'next', en:'Pre-design due', am:'ቅድመ ዲዛይን የሚደርስበት', t:'text'},
+          {id:'ontime', en:'Within 48 hours of the lead?', am:'ደንበኛው ከመጣ በ48 ሰዓት ውስጥ?', t:'yesno'},
+          {id:'vid', en:'Video (3–5 min)', am:'ቪዲዮ (3–5 ደቂቃ)', t:'choice', opts:[
+            {v:'up',  en:'Recorded and uploaded',      am:'ተቀርጾ ተጭኗል'},
+            {v:'rec', en:'Recorded, not uploaded yet', am:'ተቀርጿል፣ ገና አልተጫነም'},
+            {v:'no',  en:'No video',                   am:'ቪዲዮ የለም'}
+          ]}
         ]},
+      {id:'m_pre', en:'How many pre-measurements did you do today?', am:'ዛሬ ስንት ቅድመ ልኬቶችን አደረጉ?', t:'num',
+        auto:{rows:'m_pre_list'}, sumEn:'pre-measurements', sumAm:'ቅድመ ልኬቶች'},
       {id:'m_pre_ontime', en:'How many were within 48 hours of the lead? (on time / done)', am:'ስንቱ ደንበኛው ከመጣ በ48 ሰዓት ውስጥ ተደረጉ? (በሰዓቱ / የተደረጉ)', t:'ratio',
+        auto:{a:{rows:'m_pre_list', when:{col:'ontime', is:'yes'}}, b:{rows:'m_pre_list'}},
         tgt:{op:'gte', v:100, en:'Late is –300 Birr and loses stage 1', am:'ዘግይቶ –300 ብር እና 1ኛ ደረጃን ያሳጣል'}},
       {id:'m_pre_ontime_why', en:'Which were late, by how long, and why?', am:'የዘገዩት የትኞቹ ናቸው? በምን ያህል? ለምን?', t:'area', show:{f:'m_pre_ontime', when:'short'}},
-      {id:'m_fin', en:'How many final measurements did you do today?', am:'ዛሬ ስንት የመጨረሻ ልኬቶችን አደረጉ?', t:'num'},
-      {id:'m_fin_list', en:'Which jobs?', am:'የትኞቹ ሥራዎች?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
-        show:{f:'m_fin', when:'pos'},
+      {id:'m_fin_any', en:'Did you do any final measurement today?', am:'ዛሬ የመጨረሻ ልኬት አደረጉ?', t:'yesno'},
+      {id:'m_fin_list', en:'Each final measurement today — one row each', am:'የዛሬ እያንዳንዱ የመጨረሻ ልኬት — በረድፍ አንድ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+        show:{f:'m_fin_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'green', en:'Selam’s green light first', am:'ከሰላም ፈቃድ ቀድሞ ነበር', t:'yesno'}
+          {id:'green', en:'Selam’s green light first', am:'ከሰላም ፈቃድ ቀድሞ ነበር', t:'yesno'},
+          {id:'ontime', en:'Within 24 hours of the advance?', am:'ከቅድመ ክፍያ በ24 ሰዓት ውስጥ?', t:'yesno'},
+          {id:'amend', en:'Did it change the price?', am:'ዋጋውን ቀይሯል?', t:'yesno'},
+          {id:'vid', en:'Video (5–8 min)', am:'ቪዲዮ (5–8 ደቂቃ)', t:'choice', opts:[
+            {v:'up',  en:'Recorded and uploaded',      am:'ተቀርጾ ተጭኗል'},
+            {v:'rec', en:'Recorded, not uploaded yet', am:'ተቀርጿል፣ ገና አልተጫነም'},
+            {v:'no',  en:'No video',                   am:'ቪዲዮ የለም'}
+          ]}
         ]},
-      {id:'m_fin_amend', en:'Did any final measurement change the price?', am:'የመጨረሻ ልኬት ዋጋውን የቀየረበት ሥራ አለ?', t:'yesno', show:{f:'m_fin', when:'pos'}},
-      {id:'m_fin_amend_what', en:'Which customer, by how much, and have the salesperson and Selam been told?', am:'የየትኛው ደንበኛ ነው? በስንት ብር? ለሻጩና ለሰላም ተነግሯል?', t:'area', show:{f:'m_fin_amend', when:'yes'}},
+      {id:'m_fin', en:'How many final measurements did you do today?', am:'ዛሬ ስንት የመጨረሻ ልኬቶችን አደረጉ?', t:'num',
+        auto:{rows:'m_fin_list'}, sumEn:'final measurements', sumAm:'የመጨረሻ ልኬቶች'},
       {id:'m_fin_ontime', en:'How many were within 24 hours of the advance? (on time / done)', am:'ስንቱ ከቅድመ ክፍያ በ24 ሰዓት ውስጥ ተደረጉ? (በሰዓቱ / የተደረጉ)', t:'ratio',
+        auto:{a:{rows:'m_fin_list', when:{col:'ontime', is:'yes'}}, b:{rows:'m_fin_list'}},
         tgt:{op:'gte', v:100, en:'Late is –300 Birr and loses stage 4', am:'ዘግይቶ –300 ብር እና 4ኛ ደረጃን ያሳጣል'}},
-      {id:'m_fin_ontime_why', en:'Which were late, and why?', am:'የዘገዩት የትኞቹ ናቸው? ለምን?', t:'area', show:{f:'m_fin_ontime', when:'short'}}
+      {id:'m_fin_ontime_why', en:'Which were late, and why?', am:'የዘገዩት የትኞቹ ናቸው? ለምን?', t:'area', show:{f:'m_fin_ontime', when:'short'}},
+      {id:'m_fin_amend', en:'Did any final measurement change the price?', am:'የመጨረሻ ልኬት ዋጋውን የቀየረበት ሥራ አለ?', t:'yesno',
+        auto:{any:'m_fin_list.amend'}},
+      {id:'m_fin_amend_what', en:'Which customer, by how much, and have the salesperson and Selam been told?', am:'የየትኛው ደንበኛ ነው? በስንት ብር? ለሻጩና ለሰላም ተነግሯል?', t:'area', show:{f:'m_fin_amend', when:'yes'}}
     ]},
+    /* the videos are a column of the measurement rows now; what is left here
+       is the consent, the design discussions, and the reasons */
     { en:'2 · Video documentation', am:'2 · የቪዲዮ ማስረጃ', fields:[
       {id:'v_pre_rec', en:'How many pre-measurement videos (3–5 min) were recorded? (recorded / visits)', am:'ስንት የቅድመ ልኬት ቪዲዮዎች (3–5 ደቂቃ) ተቀረጹ? (የተቀረጹ / ጉብኝቶች)', t:'ratio',
+        auto:{a:{rows:'m_pre_list', when:{col:'vid', in:['up','rec']}}, b:{rows:'m_pre_list'}},
         tgt:{op:'gte', v:100, en:'A missing video is –500 Birr and loses 0.2%',
              am:'ያልተቀረጸ ቪዲዮ –500 ብር እና 0.2% ያሳጣል'}},
       {id:'v_pre_rec_why', en:'Which visits have no video, and why?', am:'ቪዲዮ ያልተቀረጸባቸው የትኞቹ ጉብኝቶች ናቸው? ለምን?', t:'area', show:{f:'v_pre_rec', when:'short'}},
       {id:'v_fin_rec', en:'How many final measurement videos (5–8 min) were recorded? (recorded / measurements)', am:'ስንት የመጨረሻ ልኬት ቪዲዮዎች (5–8 ደቂቃ) ተቀረጹ? (የተቀረጹ / ልኬቶች)', t:'ratio',
+        auto:{a:{rows:'m_fin_list', when:{col:'vid', in:['up','rec']}}, b:{rows:'m_fin_list'}},
         tgt:{op:'gte', v:100, en:'A missing video is –500 Birr and loses 0.3%',
              am:'ያልተቀረጸ ቪዲዮ –500 ብር እና 0.3% ያሳጣል'}},
       {id:'v_fin_rec_why', en:'Which measurements have no video, and why?', am:'ቪዲዮ ያልተቀረጸላቸው የትኞቹ ልኬቶች ናቸው? ለምን?', t:'area', show:{f:'v_fin_rec', when:'short'}},
       {id:'v_uploaded', en:'How many videos were uploaded within 24 hours? (uploaded / recorded)', am:'ስንት ቪዲዮዎች በ24 ሰዓት ውስጥ ተጫኑ? (የተጫኑ / የተቀረጹ)', t:'ratio',
+        auto:{a:{plus:[{rows:'m_pre_list', when:{col:'vid', is:'up'}}, {rows:'m_fin_list', when:{col:'vid', is:'up'}}]},
+              b:{plus:[{rows:'m_pre_list', when:{col:'vid', in:['up','rec']}}, {rows:'m_fin_list', when:{col:'vid', in:['up','rec']}}]}},
         tgt:{op:'gte', v:100, en:'Late upload is –200 Birr', am:'ዘግይቶ መጫን –200 ብር'}},
       {id:'v_uploaded_why', en:'Which are not uploaded yet, and when will they be?', am:'ያልተጫኑት የትኞቹ ናቸው? መቼ ይጫናሉ?', t:'area', show:{f:'v_uploaded', when:'short'}},
       {id:'v_consent', en:'Did every customer give consent on camera before recording?', am:'ሁሉም ደንበኞች ከመቀረጻቸው በፊት በካሜራ ፈቃድ ሰጥተዋል?', t:'yesno'},
       {id:'v_consent_why', en:'Which recording has no consent, and what will be done about it?', am:'ፈቃድ ያልተቀረጸለት የትኛው ቪዲዮ ነው? ምን ይደረጋል?', t:'area', show:{f:'v_consent', when:'no'}},
-      {id:'v_disc', en:'How many design discussions did you record today?', am:'ዛሬ ስንት የዲዛይን ውይይቶችን ቀረጹ?', t:'num'}
+      {id:'v_disc', en:'How many design discussions did you record today? (recorded / held)', am:'ዛሬ ስንት የዲዛይን ውይይቶችን ቀረጹ? (የተቀረጹ / የተካሄዱ)', t:'ratio'}
     ]},
+    /* one row a design, where there were four counts and a two-box question */
     { en:'3 · Designs delivered', am:'3 · የቀረቡ ዲዛይኖች', fields:[
-      {id:'d_pre', en:'How many pre-designs did you deliver today?', am:'ዛሬ ስንት ቅድመ ዲዛይኖችን አቀረቡ?', t:'num'},
+      {id:'d_any', en:'Did you deliver any design today?', am:'ዛሬ ዲዛይን አቀረቡ?', t:'yesno'},
+      {id:'d_list', en:'Each design delivered today — one row each', am:'ዛሬ የቀረበ እያንዳንዱ ዲዛይን — በረድፍ አንድ', t:'table', addEn:'Add a design', addAm:'ዲዛይን ጨምር',
+        show:{f:'d_any', when:'yes'},
+        cols:[
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
+          {id:'kind', en:'Which design', am:'የትኛው ዲዛይን', t:'choice', opts:[
+            {v:'pre', en:'Pre-design',      am:'ቅድመ ዲዛይን'},
+            {v:'fin', en:'Final 3D design', am:'የመጨረሻ 3D ዲዛይን'}
+          ]},
+          {id:'ontime', en:'Within 24 hours of the measurement?', am:'ከልኬት በ24 ሰዓት ውስጥ?', t:'yesno'},
+          {id:'appr', en:'Written approval received today?', am:'ዛሬ የጽሑፍ ማጽደቅ ደርሷል?', t:'yesno'}
+        ]},
+      {id:'d_pre', en:'How many pre-designs did you deliver today?', am:'ዛሬ ስንት ቅድመ ዲዛይኖችን አቀረቡ?', t:'num',
+        auto:{rows:'d_list', when:{col:'kind', is:'pre'}}, sumEn:'pre-designs', sumAm:'ቅድመ ዲዛይኖች'},
+      {id:'d_fin', en:'How many final 3D designs did you deliver today?', am:'ዛሬ ስንት የመጨረሻ 3D ዲዛይኖችን አቀረቡ?', t:'num',
+        auto:{rows:'d_list', when:{col:'kind', is:'fin'}}, sumEn:'final 3D designs', sumAm:'የመጨረሻ 3D ዲዛይኖች'},
+      {id:'d_approved', en:'How many written customer approvals did you receive today?', am:'ዛሬ ስንት የጽሑፍ የደንበኛ ማጽደቆች ደረሱዎት?', t:'num',
+        auto:{rows:'d_list', when:{col:'appr', is:'yes'}}, sumEn:'approvals in writing', sumAm:'የጽሑፍ ማጽደቆች'},
       {id:'d_pre_ontime', en:'How many were within 24 hours of the measurement? (on time / delivered)', am:'ስንቱ ከልኬት በ24 ሰዓት ውስጥ ቀረቡ? (በሰዓቱ / የቀረቡ)', t:'ratio',
+        auto:{a:{rows:'d_list', when:[{col:'kind', is:'pre'}, {col:'ontime', is:'yes'}]},
+              b:{rows:'d_list', when:{col:'kind', is:'pre'}}},
         tgt:{op:'gte', v:100, en:'Late is –300 Birr', am:'ዘግይቶ –300 ብር'}},
       {id:'d_pre_ontime_why', en:'Which were late, and why?', am:'የዘገዩት የትኞቹ ናቸው? ለምን?', t:'area', show:{f:'d_pre_ontime', when:'short'}},
-      {id:'d_fin', en:'How many final 3D designs did you deliver today?', am:'ዛሬ ስንት የመጨረሻ 3D ዲዛይኖችን አቀረቡ?', t:'num'},
-      {id:'d_approved', en:'How many written customer approvals did you receive today?', am:'ዛሬ ስንት የጽሑፍ የደንበኛ ማጽደቆች ደረሱዎት?', t:'num'},
-      {id:'d_rev', en:'How many revisions did customers ask for today?', am:'ዛሬ ደንበኞች ስንት ማሻሻያዎችን ጠየቁ?', t:'num'},
+      {id:'d_rev_any', en:'Did any customer ask for a revision today?', am:'ዛሬ ማሻሻያ የጠየቀ ደንበኛ አለ?', t:'yesno'},
       {id:'d_rev_list', en:'Which customers, and what changed?', am:'የየትኞቹ ደንበኞች? ምን ተቀየረ?', t:'table', addEn:'Add a revision', addAm:'ማሻሻያ ጨምር',
-        show:{f:'d_rev', when:'pos'},
+        show:{f:'d_rev_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'what', en:'What changed', am:'የተቀየረው', t:'text'},
           {id:'times', en:'Revision no. for this customer', am:'ለዚህ ደንበኛ ስንተኛ ማሻሻያ', t:'num'}
         ]},
+      {id:'d_rev', en:'How many revisions did customers ask for today?', am:'ዛሬ ደንበኞች ስንት ማሻሻያዎችን ጠየቁ?', t:'num',
+        auto:{rows:'d_rev_list'}, sumEn:'revisions asked for', sumAm:'የተጠየቁ ማሻሻያዎች'},
       {id:'d_waiting', en:'How many of your designs are held up by someone else today?', am:'ከዲዛይኖችዎ ስንቱ ዛሬ በሌላ ሰው ምክንያት ቆመዋል?', t:'num'},
       {id:'d_waiting_who', en:'Which customers, waiting on whom (customer, sales, Finance), and since when?', am:'የየትኞቹ ደንበኞች ናቸው? ማንን እየጠበቁ ነው (ደንበኛ፣ ሽያጭ፣ ፋይናንስ)? ከመቼ ጀምሮ?', t:'area', show:{f:'d_waiting', when:'pos'}}
     ]},
     { en:'4 · Material selection', am:'4 · የቁሳቁስ ምርጫ', fields:[
-      {id:'ms_signed', en:'How many Material Selection Forms were physically signed today?', am:'ዛሬ ስንት የቁሳቁስ ምርጫ ፎርሞች በእጅ ተፈረሙ?', t:'num'},
+      {id:'ms_any', en:'Was any Material Selection Form signed today?', am:'ዛሬ የተፈረመ የቁሳቁስ ምርጫ ፎርም አለ?', t:'yesno'},
       {id:'ms_list', en:'Which jobs?', am:'የየትኞቹ ሥራዎች?', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
-        show:{f:'ms_signed', when:'pos'}, cols:[
+        show:{f:'ms_any', when:'yes'}, cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'opt', en:'Option signed', am:'የተፈረመው አማራጭ', t:'choice', opts:[{v:'A', en:'Option A', am:'አማራጭ A'}, {v:'B', en:'Option B', am:'አማራጭ B'}]}
+          {id:'opt', en:'Option signed', am:'የተፈረመው አማራጭ', t:'choice', opts:[{v:'A', en:'Option A (stock)', am:'አማራጭ A (በመጋዘን ያለ)'}, {v:'B', en:'Option B (imported)', am:'አማራጭ B (ከውጭ የሚመጣ)'}]},
+          {id:'photo', en:'Photo posted in the WhatsApp group?', am:'ፎቶ በዋትስአፕ ግሩፕ ተልኳል?', t:'yesno'},
+          {id:'codes', en:'Board and PVC edge codes in the Job File?', am:'የቦርድና የPVC ጠርዝ ኮዶች በሥራ ፋይሉ አሉ?', t:'yesno'}
         ]},
+      {id:'ms_signed', en:'How many Material Selection Forms were physically signed today?', am:'ዛሬ ስንት የቁሳቁስ ምርጫ ፎርሞች በእጅ ተፈረሙ?', t:'num',
+        auto:{rows:'ms_list'}, sumEn:'forms signed', sumAm:'የተፈረሙ ፎርሞች'},
+      {id:'ms_a', en:'How many customers chose Option A (stock)?', am:'ስንት ደንበኞች አማራጭ A (በመጋዘን ያለ) መረጡ?', t:'num',
+        auto:{rows:'ms_list', when:{col:'opt', is:'A'}}, sumEn:'chose Option A', sumAm:'አማራጭ A መረጡ'},
+      {id:'ms_b', en:'How many customers chose Option B (imported)?', am:'ስንት ደንበኞች አማራጭ B (ከውጭ የሚመጣ) መረጡ?', t:'num',
+        auto:{rows:'ms_list', when:{col:'opt', is:'B'}}, sumEn:'chose Option B', sumAm:'አማራጭ B መረጡ'},
       {id:'ms_photo', en:'How many signed forms have a photo in the WhatsApp group? (posted / signed)', am:'ከተፈረሙት ስንቱ ፎቶ በዋትስአፕ ግሩፕ ተልኳል? (የተላኩ / የተፈረሙ)', t:'ratio',
+        auto:{a:{rows:'ms_list', when:{col:'photo', is:'yes'}}, b:{rows:'ms_list'}},
         tgt:{op:'gte', v:100, en:'Missing photo is –200 Birr and loses 0.3%',
              am:'ፎቶ ካልተላከ –200 ብር እና 0.3% ያሳጣል'}},
       {id:'ms_photo_why', en:'Whose forms have no photo yet, and why?', am:'ፎቶ ያልተላከው የየትኞቹ ደንበኞች ፎርም ነው? ለምን?', t:'area', show:{f:'ms_photo', when:'short'}},
-      {id:'ms_a', en:'How many customers chose Option A (stock)?', am:'ስንት ደንበኞች አማራጭ A (በመጋዘን ያለ) መረጡ?', t:'num'},
-      {id:'ms_b', en:'How many customers chose Option B (imported)?', am:'ስንት ደንበኞች አማራጭ B (ከውጭ የሚመጣ) መረጡ?', t:'num'},
-      {id:'ms_codes', en:'Are the board and PVC edge codes confirmed in every Job File?', am:'የቦርድና የPVC ጠርዝ ኮዶች በእያንዳንዱ የሥራ ፋይል ተረጋግጠዋል?', t:'yesno'},
+      {id:'ms_codes', en:'Are the board and PVC edge codes confirmed in every Job File?', am:'የቦርድና የPVC ጠርዝ ኮዶች በእያንዳንዱ የሥራ ፋይል ተረጋግጠዋል?', t:'yesno',
+        auto:{all:'ms_list.codes'}},
       {id:'ms_codes_why', en:'Which Job Files are missing codes, and when will they be confirmed?', am:'ኮድ የጎደላቸው የትኞቹ የሥራ ፋይሎች ናቸው? መቼ ይረጋገጣሉ?', t:'area', show:{f:'ms_codes', when:'no'}}
     ]},
     { en:'5 · Designer Profile and drawings', am:'5 · የዲዛይነር ፕሮፋይልና ሥዕሎች', fields:[
@@ -3355,15 +3920,17 @@ const DESIGN_DAILY = {
       {id:'pd_err_what', en:'Which jobs, what was wrong, who found it, and has it been corrected?', am:'የትኞቹ ሥራዎች ናቸው? ስህተቱ ምን ነበር? ማን አገኘው? ተስተካክሏል?', t:'area', show:{f:'pd_err', when:'pos'}}
     ]},
     { en:'6 · Complaints assigned to you', am:'6 · ለእርስዎ የተመደቡ ቅሬታዎች', fields:[
-      {id:'cp_assigned', en:'How many design complaints are assigned to you?', am:'ስንት የዲዛይን ቅሬታዎች ለእርስዎ ተመድበዋል?', t:'num'},
+      {id:'cp_any', en:'Is any design complaint assigned to you?', am:'ለእርስዎ የተመደበ የዲዛይን ቅሬታ አለ?', t:'yesno'},
       {id:'cp_list', en:'Which complaints?', am:'የትኞቹ ቅሬታዎች?', t:'table', addEn:'Add a complaint', addAm:'ቅሬታ ጨምር',
-        show:{f:'cp_assigned', when:'pos'},
+        show:{f:'cp_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'what', en:'Complaint', am:'ቅሬታው', t:'text'},
           {id:'days', en:'Days open', am:'የቆየበት ቀን', t:'num'}
         ]},
+      {id:'cp_assigned', en:'How many design complaints are assigned to you?', am:'ስንት የዲዛይን ቅሬታዎች ለእርስዎ ተመድበዋል?', t:'num',
+        auto:{rows:'cp_list'}, sumEn:'complaints', sumAm:'ቅሬታዎች'},
       {id:'cp_24', en:'How many of those customers were contacted within 24 hours? (contacted / assigned)', am:'ከእነዚህ ስንት ደንበኞች በ24 ሰዓት ውስጥ ተደወለላቸው? (የተደወለላቸው / የተመደቡ)', t:'ratio',
         tgt:{op:'gte', v:100, en:'Missing is –300 Birr', am:'ካልተደወለ –300 ብር'}},
       {id:'cp_24_why', en:'Who was not contacted in time, and why?', am:'በሰዓቱ ያልተደወለለት ማን ነው? ለምን?', t:'area', show:{f:'cp_24', when:'short'}},
@@ -3390,9 +3957,7 @@ const DESIGN_DAILY = {
       {id:'wd_comp_what', en:'Who complained, about what, and what was done?', am:'ቅሬታ ያቀረበው ማን ነው? ስለምን? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'wd_comp', when:'pos'}}
     ]},
     { en:'8 · Problems and solutions', am:'8 · ችግሮችና መፍትሔዎች', fields:[
-      {id:'problem', en:'What was the biggest problem today?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
-      {id:'cause', en:'What caused it?', am:'መንስኤው ምንድን ነው?', t:'area', opt:1},
-      {id:'action', en:'What was done about it, by whom, and by when will it be fixed?', am:'ምን እርምጃ ተወሰደ? በማን? እስከ መቼ ይስተካከላል?', t:'area', opt:1},
+      {id:'problem', en:'What was the biggest problem today — what caused it, and what is being done (who, by when)?', am:'የዛሬው ትልቁ ችግር ምን ነበር?', t:'area', opt:1},
       {id:'need_help', en:'What do you need from another department, and from whom?', am:'ከሌላ ክፍል ምን ያስፈልግዎታል? ከማን?', t:'area', opt:1},
       {id:'need_lead', en:'Do you need a decision from Ephrata?', am:'የኤፍራታ ውሳኔ ያስፈልግዎታል?', t:'yesno'},
       {id:'need_lead_what', en:'What exactly should Ephrata decide, what are the options, and by when?', am:'ኤፍራታ በትክክል ምን እንዲወስኑ ይፈልጋሉ? አማራጮቹ ምንድን ናቸው? እስከ መቼ?', t:'area', show:{f:'need_lead', when:'yes'}}
@@ -3412,66 +3977,95 @@ const DESIGN_WEEKLY = {
   dueEn:'Saturday 4:00 PM', dueAm:'ቅዳሜ ከቀኑ 10፡00 (4:00 PM)',
   penEn:'Late or not sent –500 Birr', penAm:'ዘግይቶ ወይም ካልቀረበ –500 ብር',
   sections:[
+    /* THE WEEK ADDS ITSELF UP. Every figure here was in the six daily
+       reports this designer already filed, and asking for it again was
+       asking the same question seven times (the Chairman, 9 Oct 2026).
+       The form fetches those reports and adds them; what is left to answer
+       is the judgement — what went wrong, what is planned, what is needed. */
     { en:'1 · Measurements', am:'1 · ልኬቶች', fields:[
-      {id:'wm_pre', en:'How many pre-measurements did you do this week?', am:'በዚህ ሳምንት ስንት ቅድመ ልኬቶችን አደረጉ?', t:'num'},
-      {id:'wm_fin', en:'How many final measurements did you do this week?', am:'በዚህ ሳምንት ስንት የመጨረሻ ልኬቶችን አደረጉ?', t:'num'},
-      {id:'wm_ontime', en:'How many measurements were on time? (on time / done)', am:'ስንቱ ልኬቶች በሰዓቱ ተደረጉ? (በሰዓቱ / የተደረጉ)', t:'ratio'},
+      {id:'wm_pre', en:'How many pre-measurements did you do this week?', am:'በዚህ ሳምንት ስንት ቅድመ ልኬቶችን አደረጉ?', t:'num',
+        auto:{week:'m_pre'}},
+      {id:'wm_fin', en:'How many final measurements did you do this week?', am:'በዚህ ሳምንት ስንት የመጨረሻ ልኬቶችን አደረጉ?', t:'num',
+        auto:{week:'m_fin'}},
+      {id:'wm_ontime', en:'How many measurements were on time? (on time / done)', am:'ስንቱ ልኬቶች በሰዓቱ ተደረጉ? (በሰዓቱ / የተደረጉ)', t:'ratio',
+        auto:{a:{plus:[{week:'m_pre_ontime__a'}, {week:'m_fin_ontime__a'}]},
+              b:{plus:[{week:'m_pre_ontime__b'}, {week:'m_fin_ontime__b'}]}}},
       {id:'wm_ontime_why', en:'Which were late, and why?', am:'የዘገዩት የትኞቹ ናቸው? ለምን?', t:'area', show:{f:'wm_ontime', when:'short'}},
       {id:'wm_lead', en:'On average, how many hours from a new lead to the pre-measurement?', am:'ደንበኛው ከመጣ እስከ ቅድመ ልኬት በአማካይ ስንት ሰዓት ፈጀ?', t:'num',
         tgt:{op:'lte', v:48, en:'Must be within 48 hours', am:'በ48 ሰዓት ውስጥ መሆን አለበት'}},
       {id:'wm_lead_why', en:'Over 48 hours. What is slowing the first visit down?', am:'ከ48 ሰዓት በላይ ነው። የመጀመሪያውን ጉብኝት ምን እያዘገየው ነው?', t:'area', show:{f:'wm_lead', when:'miss'}}
     ]},
     { en:'2 · Designs', am:'2 · ዲዛይኖች', fields:[
-      {id:'wd_pre', en:'How many pre-designs did you deliver this week?', am:'በዚህ ሳምንት ስንት ቅድመ ዲዛይኖችን አቀረቡ?', t:'num'},
-      {id:'wd_fin', en:'How many final 3D designs did you deliver this week?', am:'በዚህ ሳምንት ስንት የመጨረሻ 3D ዲዛይኖችን አቀረቡ?', t:'num'},
-      {id:'wd_ontime', en:'How many designs were on time? (on time / delivered)', am:'ስንቱ ዲዛይኖች በሰዓቱ ቀረቡ? (በሰዓቱ / የቀረቡ)', t:'ratio'},
+      {id:'wd_pre', en:'How many pre-designs did you deliver this week?', am:'በዚህ ሳምንት ስንት ቅድመ ዲዛይኖችን አቀረቡ?', t:'num',
+        auto:{week:'d_pre'}},
+      {id:'wd_fin', en:'How many final 3D designs did you deliver this week?', am:'በዚህ ሳምንት ስንት የመጨረሻ 3D ዲዛይኖችን አቀረቡ?', t:'num',
+        auto:{week:'d_fin'}},
+      {id:'wd_ontime', en:'How many designs were on time? (on time / delivered)', am:'ስንቱ ዲዛይኖች በሰዓቱ ቀረቡ? (በሰዓቱ / የቀረቡ)', t:'ratio',
+        auto:{a:{week:'d_pre_ontime__a'}, b:{week:'d_pre_ontime__b'}}},
       {id:'wd_ontime_why', en:'Which were late, and why?', am:'የዘገዩት የትኞቹ ናቸው? ለምን?', t:'area', show:{f:'wd_ontime', when:'short'}},
-      {id:'wd_rev', en:'How many revisions did customers ask for this week?', am:'በዚህ ሳምንት ደንበኞች ስንት ማሻሻያዎችን ጠየቁ?', t:'num'},
+      {id:'wd_rev', en:'How many revisions did customers ask for this week?', am:'በዚህ ሳምንት ደንበኞች ስንት ማሻሻያዎችን ጠየቁ?', t:'num',
+        auto:{week:'d_rev'}},
       {id:'wd_rev_why', en:'Which customers asked more than once, and why — what was unclear the first time?', am:'ከአንድ ጊዜ በላይ የጠየቁት የትኞቹ ደንበኞች ናቸው? ለምን — በመጀመሪያው ዲዛይን ምን ግልጽ አልነበረም?', t:'area', show:{f:'wd_rev', when:'pos'}}
     ]},
     { en:'3 · Video documentation', am:'3 · የቪዲዮ ማስረጃ', fields:[
-      {id:'wv_pre', en:'How many pre-measurement videos were recorded and uploaded? (uploaded / visits)', am:'ስንት የቅድመ ልኬት ቪዲዮዎች ተቀርጸው ተጫኑ? (የተጫኑ / ጉብኝቶች)', t:'ratio'},
+      {id:'wv_pre', en:'How many pre-measurement videos were recorded? (recorded / visits)', am:'ስንት የቅድመ ልኬት ቪዲዮዎች ተቀረጹ? (የተቀረጹ / ጉብኝቶች)', t:'ratio',
+        auto:{a:{week:'v_pre_rec__a'}, b:{week:'v_pre_rec__b'}}},
       {id:'wv_pre_why', en:'Which visits have no video, and why?', am:'ቪዲዮ ያልተቀረጸባቸው የትኞቹ ጉብኝቶች ናቸው? ለምን?', t:'area', show:{f:'wv_pre', when:'short'}},
-      {id:'wv_fin', en:'How many final measurement videos were recorded and uploaded? (uploaded / measurements)', am:'ስንት የመጨረሻ ልኬት ቪዲዮዎች ተቀርጸው ተጫኑ? (የተጫኑ / ልኬቶች)', t:'ratio'},
+      {id:'wv_fin', en:'How many final measurement videos were recorded? (recorded / measurements)', am:'ስንት የመጨረሻ ልኬት ቪዲዮዎች ተቀረጹ? (የተቀረጹ / ልኬቶች)', t:'ratio',
+        auto:{a:{week:'v_fin_rec__a'}, b:{week:'v_fin_rec__b'}}},
       {id:'wv_fin_why', en:'Which measurements have no video, and why?', am:'ቪዲዮ ያልተቀረጸላቸው የትኞቹ ልኬቶች ናቸው? ለምን?', t:'area', show:{f:'wv_fin', when:'short'}},
-      {id:'wv_disc', en:'How many design discussions were recorded? (recorded / held)', am:'ስንት የዲዛይን ውይይቶች ተቀረጹ? (የተቀረጹ / የተካሄዱ)', t:'ratio'},
+      {id:'wv_up', en:'How many of the week’s videos went up within 24 hours? (uploaded / recorded)', am:'ከሳምንቱ ቪዲዮዎች ስንቱ በ24 ሰዓት ውስጥ ተጫኑ? (የተጫኑ / የተቀረጹ)', t:'ratio',
+        auto:{a:{week:'v_uploaded__a'}, b:{week:'v_uploaded__b'}}},
+      {id:'wv_disc', en:'How many design discussions were recorded? (recorded / held)', am:'ስንት የዲዛይን ውይይቶች ተቀረጹ? (የተቀረጹ / የተካሄዱ)', t:'ratio',
+        auto:{a:{week:'v_disc__a'}, b:{week:'v_disc__b'}}},
       {id:'wv_audit', en:'What Video Quality Audit score do you expect this month? (%)', am:'በዚህ ወር ስንት የቪዲዮ ጥራት ኦዲት ውጤት ይጠብቃሉ? (%)', t:'pct',
         tgt:{op:'gte', v:90, en:'≥90% earns 1,000 Birr; below 60% is –1,500 Birr',
              am:'≥90% 1,000 ብር፤ ከ60% በታች –1,500 ብር'}},
       {id:'wv_audit_why', en:'Below 90%. What will you fix to raise it?', am:'ከ90% በታች ነው። ለማሻሻል ምን ያስተካክላሉ?', t:'area', show:{f:'wv_audit', when:'miss'}}
     ]},
     { en:'4 · Material selection', am:'4 · የቁሳቁስ ምርጫ', fields:[
-      {id:'wms_signed', en:'How many Material Selection Forms were signed this week?', am:'በዚህ ሳምንት ስንት የቁሳቁስ ምርጫ ፎርሞች ተፈረሙ?', t:'num'},
-      {id:'wms_a', en:'How many customers chose Option A (stock)?', am:'ስንት ደንበኞች አማራጭ A (በመጋዘን ያለ) መረጡ?', t:'num'},
-      {id:'wms_b', en:'How many customers chose Option B (imported)?', am:'ስንት ደንበኞች አማራጭ B (ከውጭ የሚመጣ) መረጡ?', t:'num'},
+      {id:'wms_signed', en:'How many Material Selection Forms were signed this week?', am:'በዚህ ሳምንት ስንት የቁሳቁስ ምርጫ ፎርሞች ተፈረሙ?', t:'num',
+        auto:{week:'ms_signed'}},
+      {id:'wms_a', en:'How many customers chose Option A (stock)?', am:'ስንት ደንበኞች አማራጭ A (በመጋዘን ያለ) መረጡ?', t:'num',
+        auto:{week:'ms_a'}},
+      {id:'wms_b', en:'How many customers chose Option B (imported)?', am:'ስንት ደንበኞች አማራጭ B (ከውጭ የሚመጣ) መረጡ?', t:'num',
+        auto:{week:'ms_b'}},
       {id:'wms_missing', en:'How many forms are still missing a signature?', am:'ስንት ፎርሞች ገና ፊርማ ጎድሏቸዋል?', t:'num',
         tgt:{op:'lte', v:0, en:'–500 Birr each and loses 0.3%', am:'እያንዳንዱ –500 ብር እና 0.3% ያሳጣል'}},
       {id:'wms_missing_who', en:'Which customers, and when will each sign?', am:'የየትኞቹ ደንበኞች ናቸው? እያንዳንዳቸው መቼ ይፈርማሉ?', t:'area', show:{f:'wms_missing', when:'pos'}},
-      {id:'wms_photo', en:'How many signed forms have a photo posted? (posted / signed)', am:'ከተፈረሙት ስንቱ ፎቶ ተልኳል? (የተላኩ / የተፈረሙ)', t:'ratio'},
+      {id:'wms_photo', en:'How many signed forms have a photo posted? (posted / signed)', am:'ከተፈረሙት ስንቱ ፎቶ ተልኳል? (የተላኩ / የተፈረሙ)', t:'ratio',
+        auto:{a:{week:'ms_photo__a'}, b:{week:'ms_photo__b'}}},
       {id:'wms_photo_why', en:'Whose forms have no photo yet, and why?', am:'ፎቶ ያልተላከው የየትኞቹ ደንበኞች ፎርም ነው? ለምን?', t:'area', show:{f:'wms_photo', when:'short'}}
     ]},
     { en:'5 · Job File documentation', am:'5 · የሥራ ፋይል ሰነዶች', fields:[
-      {id:'jf_profiles', en:'How many Designer Profiles are complete? (complete / jobs)', am:'ስንት የዲዛይነር ፕሮፋይሎች ተሞልተዋል? (የተሞሉ / ሥራዎች)', t:'ratio'},
+      /* a standing figure, not a weekly total: the last daily report of the
+         week is where it stands now, so adding six days of it would be
+         counting the same profiles six times */
+      {id:'jf_profiles', en:'How many Designer Profiles are complete? (complete / jobs)', am:'ስንት የዲዛይነር ፕሮፋይሎች ተሞልተዋል? (የተሞሉ / ሥራዎች)', t:'ratio',
+        auto:{a:{week:'dp_done__a', how:'last'}, b:{week:'dp_done__b', how:'last'}}},
       {id:'jf_profiles_why', en:'Which customers have no complete profile, and by when will it be done?', am:'ፕሮፋይላቸው ያልተሟላ የትኞቹ ደንበኞች ናቸው? እስከ መቼ ይሟላል?', t:'area', show:{f:'jf_profiles', when:'short'}},
-      {id:'jf_incomplete', en:'How many of your Job Files are incomplete?', am:'ስንቱ የሥራ ፋይሎችዎ ያልተሟሉ ናቸው?', t:'num',
-        tgt:{op:'lte', v:0, en:'3 in a month cancels the month’s commission',
-             am:'በወር 3 ከሆኑ የወሩን ኮሚሽን ይሰርዛል'}},
+      {id:'jf_any', en:'Is any Job File of yours incomplete?', am:'ያልተሟላ የሥራ ፋይል አለብዎት?', t:'yesno'},
       {id:'jf_incomplete_list', en:'Which Job Files, and what is missing?', am:'የትኞቹ የሥራ ፋይሎች? ምን ጎደለ?', t:'table', addEn:'Add a Job File', addAm:'የሥራ ፋይል ጨምር',
-        show:{f:'jf_incomplete', when:'pos'},
+        show:{f:'jf_any', when:'yes'},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'what', en:'Missing', am:'የጎደለው', t:'text'},
           {id:'by', en:'Complete by', am:'የሚሟላበት ቀን', t:'text'}
         ]},
+      {id:'jf_incomplete', en:'How many of your Job Files are incomplete?', am:'ስንቱ የሥራ ፋይሎችዎ ያልተሟሉ ናቸው?', t:'num',
+        auto:{rows:'jf_incomplete_list'},
+        tgt:{op:'lte', v:0, en:'3 in a month cancels the month’s commission',
+             am:'በወር 3 ከሆኑ የወሩን ኮሚሽን ይሰርዛል'}},
       {id:'jf_score', en:'What Documentation Quality Score do you expect this month? (%)', am:'በዚህ ወር ስንት የሰነድ ጥራት ውጤት ይጠብቃሉ? (%)', t:'pct',
         tgt:{op:'gte', v:95, en:'≥95% earns 2,000 Birr; below 60% is –3,000 Birr',
              am:'≥95% 2,000 ብር፤ ከ60% በታች –3,000 ብር'}},
       {id:'jf_score_why', en:'Below 95%. What is pulling it down, and what will you fix?', am:'ከ95% በታች ነው። ምን እያወረደው ነው? ምን ያስተካክላሉ?', t:'area', show:{f:'jf_score', when:'miss'}}
     ]},
     { en:'6 · Production drawings', am:'6 · የምርት ሥዕሎች', fields:[
-      {id:'wp_sub', en:'How many production drawings did you submit this week?', am:'በዚህ ሳምንት ስንት የምርት ሥዕሎችን አቀረቡ?', t:'num'},
-      {id:'wp_err', en:'How many drawings had errors?', am:'ስንት ሥዕሎች ስህተት ነበራቸው?', t:'num',
+      {id:'wp_sub', en:'How many production drawings did you submit this week?', am:'በዚህ ሳምንት ስንት የምርት ሥዕሎችን አቀረቡ?', t:'num',
+        auto:{week:'pd_sub'}},
+      {id:'wp_err', en:'How many drawings had errors?', am:'ስንት ሥዕሎች ስህተት ነበራቸው?', t:'num', auto:{week:'pd_err'},
         tgt:{op:'lte', v:0, en:'–500 Birr each, and –500 per production delay caused',
              am:'እያንዳንዱ –500 ብር፣ ለሚያስከትለው መዘግየትም –500 ብር'}},
       {id:'wp_err_what', en:'Which jobs, what was the error, and did it delay production?', am:'የትኞቹ ሥራዎች ናቸው? ስህተቱ ምን ነበር? ምርቱን አዘገየ?', t:'area', show:{f:'wp_err', when:'pos'}},
@@ -3481,23 +4075,30 @@ const DESIGN_WEEKLY = {
     ]},
     { en:'7 · Commission', am:'7 · ኮሚሽን', fields:[
       {id:'wc_earned', en:'How much commission did you earn this week? (Birr)', am:'በዚህ ሳምንት ስንት ብር ኮሚሽን አገኙ?', t:'money'},
-      {id:'wc_missed', en:'How many commission stages did you miss?', am:'ስንት የኮሚሽን ደረጃዎች አመለጡዎት?', t:'num'},
+      {id:'wc_missed_any', en:'Did you miss any commission stage this week?', am:'በዚህ ሳምንት ያመለጠዎት የኮሚሽን ደረጃ አለ?', t:'yesno'},
       {id:'wc_missed_list', en:'Which stages?', am:'የትኞቹ ደረጃዎች?', t:'table', addEn:'Add a stage', addAm:'ደረጃ ጨምር',
-        show:{f:'wc_missed', when:'pos'},
+        show:{f:'wc_missed_any', when:'yes'},
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
           {id:'stage', en:'Stage (1–10)', am:'ደረጃ (1–10)', t:'num'},
+          {id:'lost', en:'Birr lost', am:'የጠፋ ብር', t:'money'},
           {id:'why', en:'Why', am:'ለምን', t:'text'}
         ]},
-      {id:'wc_lost', en:'How much commission did that cost? (Birr)', am:'ይህ ስንት ብር ኮሚሽን አሳጣ?', t:'money'}
+      {id:'wc_missed', en:'How many commission stages did you miss?', am:'ስንት የኮሚሽን ደረጃዎች አመለጡዎት?', t:'num',
+        auto:{rows:'wc_missed_list'}, sumEn:'stages missed', sumAm:'ያመለጡ ደረጃዎች'},
+      {id:'wc_lost', en:'How much commission did that cost? (Birr)', am:'ይህ ስንት ብር ኮሚሽን አሳጣ?', t:'money',
+        auto:{sum:'wc_missed_list.lost'}, sumEn:'lost', sumAm:'ጠፍቷል'}
     ]},
     { en:'8 · Complaints', am:'8 · ቅሬታዎች', fields:[
-      {id:'wcp_assigned', en:'How many design complaints were assigned to you this week?', am:'በዚህ ሳምንት ስንት የዲዛይን ቅሬታዎች ለእርስዎ ተመደቡ?', t:'num'},
-      {id:'wcp_24', en:'How many were contacted within 24 hours? (contacted / assigned)', am:'ስንቱ በ24 ሰዓት ውስጥ ተደወለላቸው? (የተደወለላቸው / የተመደቡ)', t:'ratio'},
+      {id:'wcp_assigned', en:'How many design complaints were assigned to you this week?', am:'በዚህ ሳምንት ስንት የዲዛይን ቅሬታዎች ለእርስዎ ተመደቡ?', t:'num',
+        auto:{week:'cp_assigned', how:'max'}},
+      {id:'wcp_24', en:'How many were contacted within 24 hours? (contacted / assigned)', am:'ስንቱ በ24 ሰዓት ውስጥ ተደወለላቸው? (የተደወለላቸው / የተመደቡ)', t:'ratio',
+        auto:{a:{week:'cp_24__a', how:'last'}, b:{week:'cp_24__b', how:'last'}}},
       {id:'wcp_7', en:'How many were resolved within 7 days? (resolved / assigned)', am:'ስንቱ በ7 ቀን ውስጥ ተፈቱ? (የተፈቱ / የተመደቡ)', t:'ratio'},
       {id:'wcp_7_why', en:'Which were not resolved in 7 days, and why?', am:'በ7 ቀን ውስጥ ያልተፈቱት የትኞቹ ናቸው? ለምን?', t:'area', show:{f:'wcp_7', when:'short'}},
       {id:'wcp_out', en:'How many complaints are still open?', am:'ስንት ቅሬታዎች ገና አልተፈቱም?', t:'num',
+        auto:{week:'cp_out', how:'last'},
         tgt:{op:'lte', v:0, en:'Two past 7 days cancels the month’s commission',
              am:'ከ7 ቀን በላይ ሁለት ከሆኑ የወሩን ኮሚሽን ይሰርዛል'}},
       {id:'wcp_out_what', en:'Which ones, how many days open, and what is the plan?', am:'የትኞቹ ናቸው? ስንት ቀን ቆዩ? ዕቅዱ ምንድን ነው?', t:'area', show:{f:'wcp_out', when:'pos'}},
@@ -3508,11 +4109,15 @@ const DESIGN_WEEKLY = {
     ]},
     { en:'9 · WhatsApp compliance', am:'9 · የዋትስአፕ ተገዢነት', fields:[
       {id:'ws_rate', en:'What was your stage message compliance this week? (%)', am:'በዚህ ሳምንት የደረጃ መልዕክት ተገዢነትዎ ስንት ነበር? (%)', t:'pct',
+        auto:{pct:[{week:'wd_stage__a'}, {week:'wd_stage__b'}]},
         tgt:{op:'gte', v:100, en:'Every stage message must be posted', am:'እያንዳንዱ የደረጃ መልዕክት መላክ አለበት'}},
       {id:'ws_rate_why', en:'Below 100%. Which customers missed which stage message?', am:'ከ100% በታች ነው። የየትኞቹ ደንበኞች የትኛው የደረጃ መልዕክት ቀረ?', t:'area', show:{f:'ws_rate', when:'miss'}},
-      {id:'ws_sum', en:'How many Design Discussion Summaries did you post this week?', am:'በዚህ ሳምንት ስንት የውይይት ማጠቃለያዎችን ላኩ?', t:'num'},
-      {id:'ws_appr', en:'How many written customer approvals did you receive?', am:'ስንት የጽሑፍ የደንበኛ ማጽደቆች ደረሱዎት?', t:'num'},
+      {id:'ws_sum', en:'How many Design Discussion Summaries did you post this week?', am:'በዚህ ሳምንት ስንት የውይይት ማጠቃለያዎችን ላኩ?', t:'num',
+        auto:{week:'wd_sum'}},
+      {id:'ws_appr', en:'How many written customer approvals did you receive?', am:'ስንት የጽሑፍ የደንበኛ ማጽደቆች ደረሱዎት?', t:'num',
+        auto:{week:'d_approved'}},
       {id:'ws_comp', en:'How many design-related complaints came in this week?', am:'በዚህ ሳምንት ከዲዛይን ጋር የተያያዙ ስንት ቅሬታዎች ቀረቡ?', t:'num',
+        auto:{week:'wd_comp'},
         tgt:{op:'lte', v:0, en:'Zero earns the 2,000 Birr bonus', am:'0 ከሆነ የ2,000 ብር ጉርሻ ያስገኛል'}},
       {id:'ws_comp_what', en:'Who complained, about what, and what was done?', am:'ቅሬታ ያቀረበው ማን ነው? ስለምን? ምን እርምጃ ተወሰደ?', t:'area', show:{f:'ws_comp', when:'pos'}}
     ]},

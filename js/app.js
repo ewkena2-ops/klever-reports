@@ -1368,7 +1368,18 @@
       lc.id = 'lgc_' + si;
       lg.appendChild(lc);
       fs.appendChild(lg);
-      sec.fields.forEach(function (f) { fs.appendChild(fieldRow(f)); });
+      sec.fields.forEach(function (f) {
+        /* a figure that joins the line under its table has no row of its own */
+        if (autoInLine(f)) return;
+        fs.appendChild(fieldRow(f));
+        /* and the line itself goes straight under that table */
+        if ((f.t === 'table' || f.t === 'grid') && autoLineFields(f.id, sec).length) {
+          var line = el('div', 'autoline');
+          line.id = 'a_' + f.id;
+          line.hidden = true;
+          fs.appendChild(line);
+        }
+      });
       root.appendChild(fs);
     });
 
@@ -1379,6 +1390,9 @@
 
     buildBar();
     refresh();
+    /* a weekly or monthly report adds up its own week: fetch it, then the
+       figures fill themselves in */
+    loadWeekValues();
     /* the status line keeps time while the form is open */
     renderForm.tick = setInterval(drawStatus, 30000);
   }
@@ -1578,7 +1592,33 @@
   }
 
   function fieldRow(f) {
+    /* a list gathered from the week's own daily reports: shown, not typed */
+    if (f.t === 'table' && f.auto) {
+      var gw = el('div', 'repwrap gathered' + (f.show ? ' follow' : ''));
+      gw.id = 'w_' + f.id;
+      gw.appendChild(el('div', 'replabel', L(f)));
+      var gb = el('div', 'gatheredrows');
+      gb.id = 'g_' + f.id;
+      gw.appendChild(gb);
+      gw.appendChild(el('div', 'hint', t('fromYourWeekRows')));
+      return gw;
+    }
     if (f.t === 'table' || f.t === 'grid') return repeater(f);
+    /* a question the form answers itself: the question, the figure it worked
+       out, and where it came from. Nothing to type, nothing to get wrong.
+       A two-box question with only one box counted keeps its boxes — the
+       counted one is locked, the other is still asked. */
+    if (f.auto && !(f.t === 'ratio' && !(f.auto.a && f.auto.b))) {
+      var ar = el('div', 'fld auto' + (f.i ? ' indent' : '') + (f.show ? ' follow' : ''));
+      ar.id = 'r_' + f.id;
+      ar.appendChild(el('label', null, L(f)));
+      var av = el('div', 'autoval');
+      av.id = 'av_' + f.id;
+      av.textContent = '—';
+      ar.appendChild(av);
+      ar.appendChild(el('div', 'hint', t(f.auto.week != null ? 'fromYourWeek' : 'workedOut')));
+      return ar;
+    }
     var row = el('div', 'fld' + (f.i ? ' indent' : '')
                  + (f.t === 'area' ? ' wide' : '')
                  /* a choice and a yes/no both hold words, and words do not fit
@@ -1606,6 +1646,9 @@
       wrap.setAttribute('aria-labelledby', lab.id);
       lab.removeAttribute('for');
       var ia = numInput(f.id + '__a', f), ib = numInput(f.id + '__b', f);
+      /* the box the form counts is locked: it is an answer, not a question */
+      if (f.auto && f.auto.a) { ia.readOnly = true; ia.className = 'locked'; ia.tabIndex = -1; }
+      if (f.auto && f.auto.b) { ib.readOnly = true; ib.className = 'locked'; ib.tabIndex = -1; }
       /* Every two-box question ends by naming its boxes — "(called within
          1 hour / all new leads today)". Blank boxes left people guessing
          which number went where, so the question loses its bracket and each
@@ -2158,6 +2201,324 @@
     var x = String(v == null ? '' : v).replace(/[^0-9.\-]/g, '');
     return x === '' ? NaN : Number(x);
   }
+  /* ---------- the answers the form works out for itself ----------
+
+     A question marked `auto` in forms.js is never typed. It is worked out
+     from the rows already filled in beside it: the table is the answer, and
+     the count, the total, the share and the week's figure all follow from
+     it. Each one lands in the answer key it has always had, so the rulebook
+     (js/rules.js), the morning agents and the charts read it exactly as they
+     did when a person typed it in by hand.
+
+     Nobody types a number the form can add up. "How many deliveries came in
+     today?" standing above the list of today's deliveries was one answer
+     asked twice, and 190 questions across the 48 forms were that shape.
+
+     The kinds, as forms.js writes them:
+        {rows:'tbl'}                      rows with anything in them
+        {rows:'tbl', when:{col:'ok', is:'no'}}      ... only matching rows
+        {sum:'tbl.col'}  {sum:'tbl.col', when:{}}   a column added up
+        {grid:'gr.col'}                   a fixed grid's column added up
+        {of:'key'}                        another answer, as it stands
+        {plus:['a','b']}   {minus:['a','b']}
+        {div:['a','b']}    {pct:['a','b']}
+        {week:'key'}                      this week's own dailies, added up
+                                          (how:'max'|'last'|'avg' to not add)
+        {a:<kind>, b:<kind>}              the two boxes of a two-box question
+     What a kind cannot work out reads blank, never zero — with one
+     exception: a list behind a gate that was never opened ("Any defects
+     today? No") is nothing happening, and there zero is the truth.
+
+     An auto answer is never counted as an empty question. The person cannot
+     fill it, and the table it is drawn from does its own asking. */
+
+  function round(x, n) { var p = Math.pow(10, n); return Math.round(x * p) / p; }
+
+  function rowsWithData(id) {
+    var f = fieldById(id), d = values[id];
+    if (!f || !f.cols || !Array.isArray(d)) return [];
+    return d.filter(function (r) { return r && rowHasData(r, f.cols); });
+  }
+  /* `when` is one test on a column, or several that must all hold */
+  function rowIs(r, when) {
+    var v = r[when.col];
+    if (when.is != null) return String(v == null ? '' : v) === String(when.is);
+    if (when.in) return when.in.indexOf(String(v == null ? '' : v)) >= 0;
+    if (when.not != null) return has(v) && String(v) !== String(when.not);
+    if (when.lt != null) { var l = num(v); return !isNaN(l) && l < when.lt; }
+    if (when.gte != null) { var g = num(v); return !isNaN(g) && g >= when.gte; }
+    if (when.pos) { var x = num(v); return !isNaN(x) && x > 0; }
+    return has(v);
+  }
+  function rowsMatch(id, when) {
+    var rows = rowsWithData(id);
+    if (!when) return rows;
+    var tests = [].concat(when);
+    return rows.filter(function (r) {
+      for (var i = 0; i < tests.length; i++) if (!rowIs(r, tests[i])) return false;
+      return true;
+    });
+  }
+
+  /* A list that is shut: is it shut because the person said there was
+     nothing, or because they have not answered yet? "No deliveries today"
+     is nought; an unanswered gate is not an answer at all, and must not be
+     filed as one. */
+  function closedAtZero(tf) {
+    if (!tf.show) return false;
+    var g = fieldById(tf.show.f);
+    return !!(g && shown(g) && filled(g));
+  }
+  /* one side of a share or a division: an answer key, a kind of its own, or
+     a plain number (six working days in a week) */
+  function autoSide(x) {
+    if (typeof x === 'number') return x;
+    return (x && typeof x === 'object') ? autoOne(x) : num(values[x]);
+  }
+
+  function autoOne(k) {
+    if (!k) return NaN;
+    if (k.of != null) return num(values[k.of]);
+    if (k.week != null) return weekFigure(k.week, k);
+    /* how many days of the week were reported at all — the divisor of every
+       "on average per working day" question */
+    if (k.weekDays) return WEEKVALS ? (weekFilings(k).length || NaN) : NaN;
+    /* A list the week already wrote. The weekly report used to ask for every
+       contract of the week to be typed out again, each one already a row in
+       the daily report that signed it. These are those rows, gathered — with
+       the day they were filed on, which the typed-out version never had. */
+    if (k.weekRows != null) {
+      if (!WEEKVALS) return null;
+      var out = [], map = k.map || null;
+      weekFilings(k).forEach(function (d) {
+        var day = ymdOf(addis(d.at));
+        (Array.isArray((d.values || {})[k.weekRows]) ? d.values[k.weekRows] : []).forEach(function (r) {
+          if (!r || typeof r !== 'object') return;
+          var row = {}, any = false;
+          Object.keys(r).forEach(function (c) {
+            var to = map && map[c] ? map[c] : c;
+            row[to] = r[c];
+            if (has(r[c])) any = true;
+          });
+          if (!any) return;
+          if (k.dayCol) row[k.dayCol] = day;
+          out.push(row);
+        });
+      });
+      return out;
+    }
+    if (k.plus) {
+      var tot = 0, got = 0;
+      k.plus.forEach(function (x) { var v = autoSide(x); if (!isNaN(v)) { tot += v; got++; } });
+      return got ? round(tot, 3) : NaN;
+    }
+    if (k.minus) {
+      var ma = autoSide(k.minus[0]), mb = autoSide(k.minus[1]);
+      return (isNaN(ma) || isNaN(mb)) ? NaN : round(ma - mb, 3);
+    }
+    if (k.div || k.pct) {
+      var p = k.div || k.pct, x = autoSide(p[0]), y = autoSide(p[1]);
+      if (isNaN(x) || isNaN(y) || y === 0) return NaN;
+      return k.pct ? round(x / y * 100, 1) : round(x / y, 2);
+    }
+    if (k.grid) {
+      var g = String(k.grid).split('.'), gf = fieldById(g[0]);
+      if (!gf) return NaN;
+      if (!shown(gf)) return closedAtZero(gf) ? 0 : NaN;
+      var gr = Array.isArray(values[g[0]]) ? values[g[0]] : [], gt = 0, gn = 0;
+      gr.forEach(function (r) { var gx = num(r && r[g[1]]); if (!isNaN(gx)) { gt += gx; gn++; } });
+      return gn ? round(gt, 3) : NaN;
+    }
+    if (k.rows) {
+      var tf = fieldById(k.rows);
+      if (!tf) return NaN;
+      if (!shown(tf)) return closedAtZero(tf) ? 0 : NaN;
+      if (!rowsWithData(k.rows).length) return NaN;
+      return rowsMatch(k.rows, k.when).length;
+    }
+    /* the things themselves, named: "MDF 18mm, Hinges" out of the rows of a
+       list, so a one-line answer that used to be typed beside the list is
+       not typed at all */
+    if (k.list) {
+      var lp = String(k.list).split('.'), lf = fieldById(lp[0]);
+      if (!lf || !shown(lf)) return '';
+      var out = [];
+      rowsMatch(lp[0], k.when).forEach(function (r) {
+        var w = String((r && r[lp[1]]) || '').trim();
+        if (w && out.indexOf(w) === -1) out.push(w);
+      });
+      return out.join(', ');
+    }
+    /* a yes/no over every row: did each one carry its approval, go to the
+       right job, get its photo. Blank until the rows say — "no" is a finding
+       and must not be one the form invented out of an unticked box. */
+    if (k.all || k.any) {
+      var ap = String(k.all || k.any).split('.'), af = fieldById(ap[0]);
+      if (!af || !shown(af)) return '';
+      var ar = rowsWithData(ap[0]);
+      if (!ar.length) return '';
+      var said = ar.map(function (r) { return String((r && r[ap[1]]) || ''); });
+      if (k.any) return said.indexOf('yes') >= 0 ? 'yes' : (said.indexOf('no') >= 0 ? 'no' : '');
+      if (said.indexOf('no') >= 0) return 'no';
+      return said.indexOf('') >= 0 ? '' : 'yes';
+    }
+    if (k.sum) {
+      var s = String(k.sum).split('.'), sf = fieldById(s[0]);
+      if (!sf) return NaN;
+      if (!shown(sf)) return closedAtZero(sf) ? 0 : NaN;
+      if (!rowsWithData(s[0]).length) return NaN;
+      var st = 0, sn = 0;
+      rowsMatch(s[0], k.when).forEach(function (r) {
+        var sx = num(r && r[s[1]]); if (!isNaN(sx)) { st += sx; sn++; }
+      });
+      return sn ? round(st, 3) : NaN;
+    }
+    return NaN;
+  }
+
+  /* This week's own daily reports, which the weekly report no longer asks
+     anyone to add up by hand. They are this person's own filings, so the
+     server hands them over (firestore.rules: your own reports); until they
+     arrive the figure reads blank rather than nought. */
+  var WEEKVALS = null, weekValsFor = null;
+  function loadWeekValues() {
+    if (!report || report.cadence === 'daily' || weekValsFor === report.id) return;
+    weekValsFor = report.id;
+    WEEKVALS = null;
+    if (!window.FB || !FB.ownReports || !AUTH.who()) return;
+    FB.ownReports(report.person, new Date(Date.now() - 40 * 864e5)).then(function (list) {
+      WEEKVALS = list || [];
+      refresh();
+    })['catch'](function () { WEEKVALS = []; refresh(); });
+  }
+  /* the week's own filings that count: one report, one day, and where a day
+     was filed twice the later filing is the correction that stands */
+  function weekFilings(k) {
+    var span = autoSpan(), best = {};
+    (WEEKVALS || []).forEach(function (d) {
+      if (d.person !== report.person) return;
+      if (k.from ? d.report !== k.from : !isFeeder(d.report)) return;
+      if (!(d.at >= span.from && d.at < span.to)) return;
+      var key = d.report + '|' + ymdOf(addis(d.at));
+      if (!best[key] || d.at > best[key].at) best[key] = d;
+    });
+    return Object.keys(best).sort().map(function (x) { return best[x]; });
+  }
+  function weekFigure(key, k) {
+    if (!WEEKVALS) return NaN;
+    var vals = [];
+    weekFilings(k).forEach(function (d) {
+      var x = num((d.values || {})[key]);
+      if (!isNaN(x)) vals.push({ x: x, at: d.at });
+    });
+    if (!vals.length) return NaN;
+    var how = k.how || 'sum';
+    var nums = vals.map(function (v) { return v.x; });
+    if (how === 'max') return round(Math.max.apply(null, nums), 3);
+    if (how === 'min') return round(Math.min.apply(null, nums), 3);
+    if (how === 'last') { vals.sort(function (a, b) { return b.at - a.at; }); return round(vals[0].x, 3); }
+    /* how many days were over a limit — "on how many days was waste above
+       20%", which the week's own daily answers already say */
+    if (how === 'over') return nums.filter(function (x) { return x > k.over; }).length;
+    if (how === 'under') return nums.filter(function (x) { return x < k.under; }).length;
+    var wt = 0;
+    nums.forEach(function (x) { wt += x; });
+    return round(how === 'avg' ? wt / nums.length : wt, 3);
+  }
+  /* a daily report of the same person feeds their weekly one; a weekly or a
+     daily feeds the monthly */
+  function isFeeder(id) {
+    var r = reportById(id);
+    if (!r || r.person !== report.person) return false;
+    return report.cadence === 'monthly' ? (r.cadence === 'weekly' || r.cadence === 'daily')
+                                        : r.cadence === 'daily';
+  }
+  /* the stretch of time a weekly or monthly figure covers: the week as the
+     ledger counts it (Sunday 9 PM to Sunday 9 PM), or the calendar month */
+  function autoSpan() {
+    var now = Date.now();
+    if (report.cadence === 'monthly') {
+      var a = addis(now);
+      return { from: dayStartMs(a.getUTCFullYear() + '-' + pad2(a.getUTCMonth() + 1) + '-01'),
+               to: now + 864e5 };
+    }
+    var sun = weekClose(now, report.id);
+    return { from: deadlineOf(addDays(sun, -7), cutOf(report.id)),
+             to: deadlineOf(sun, cutOf(report.id)) };
+  }
+
+  /* every auto answer, worked out. Three passes, because one can stand on
+     another (a share of two counts that are themselves counted from rows). */
+  function computeAutos() {
+    var fs = allFields().filter(function (f) { return f.auto; });
+    if (!fs.length) return;
+    for (var pass = 0; pass < 3; pass++) {
+      fs.forEach(function (f) {
+        if (f.t === 'ratio') {
+          if (f.auto.a) setAuto(f.id + '__a', autoOne(f.auto.a));
+          if (f.auto.b) setAuto(f.id + '__b', autoOne(f.auto.b));
+        } else {
+          setAuto(f.id, autoOne(f.auto));
+        }
+      });
+    }
+  }
+  function setAuto(key, v) {
+    /* a gathered list is the answer itself, not a number to be shown */
+    if (Array.isArray(v)) { values[key] = v; return; }
+    var blank = v == null || v === '' || (typeof v === 'number' && isNaN(v));
+    if (blank) { if (values[key] != null) delete values[key]; return; }
+    values[key] = String(v);
+  }
+
+  /* which table an auto answer is drawn from — its summary line goes under
+     that table rather than into a row of its own */
+  function autoTable(f) {
+    var k = f && f.auto;
+    if (!k) return null;
+    var s = k.rows || k.sum || k.grid || k.all || k.any || k.list
+         || (k.a && (k.a.rows || k.a.sum || k.a.grid))
+         || (k.b && (k.b.rows || k.b.sum || k.b.grid));
+    return s ? String(s).split('.')[0] : null;
+  }
+  /* An auto answer with short words of its own ("deliveries") joins the one
+     summary line under its table. Without them it keeps a read-only row, the
+     whole question in front of it. */
+  function autoInLine(f) { return !!(f.auto && f.sumEn && autoTable(f)); }
+  function autoLineFields(tableId, sec) {
+    return (sec.fields || []).filter(function (f) {
+      return autoInLine(f) && autoTable(f) === tableId;
+    });
+  }
+  function autoText(f) {
+    var v = fmt(f);
+    return (v === '' ? '—' : v) + ' ' + (lang === 'am' ? (f.sumAm || f.sumEn) : f.sumEn);
+  }
+
+  /* the gathered rows, a line each, in the order the week filed them */
+  function drawGathered(box, f) {
+    var rows = Array.isArray(values[f.id]) ? values[f.id] : [];
+    var sig = rows.length + '|' + JSON.stringify(rows);
+    if (box.__sig === sig) return;
+    box.__sig = sig;
+    box.innerHTML = '';
+    if (!rows.length) {
+      box.appendChild(el('div', 'gnone', WEEKVALS ? t('weekHadNone') : t('weekLoading')));
+      return;
+    }
+    rows.forEach(function (r) {
+      var line = el('div', 'grow');
+      (f.cols || []).forEach(function (c) {
+        if (!has(r[c.id])) return;
+        var cell = el('span', 'gcell');
+        cell.appendChild(el('span', 'gk', L(c)));
+        cell.appendChild(el('span', 'gv', colText(c, r[c.id])));
+        line.appendChild(cell);
+      });
+      box.appendChild(line);
+    });
+  }
+
   /* The value a target is checked against. A yes/no question counts yes as
      1 and no as 0. A ratio (a / b) is a percentage when its target is one
      (100% of leads called within the hour); a target of a small whole number
@@ -2184,6 +2545,9 @@
   var marking = false;
 
   function refresh() {
+    /* the worked-out answers first: a follow-up can hang on one of them, and
+       the count of what is still empty has to know they are answered */
+    computeAutos();
     store.set(draftKey, JSON.stringify(values));
 
     var fields = allFields(), need = 0, done = 0;
@@ -2197,8 +2561,23 @@
           if (open) { fr.classList.remove('opened'); void fr.offsetWidth; fr.classList.add('opened'); }
         }
       }
+      if (f.auto) {
+        /* the figure the form worked out, under the table it came from */
+        var av = document.getElementById('av_' + f.id);
+        if (av) { var at = fmt(f); av.textContent = at === '' ? '—' : at; }
+        /* a two-box question with one box counted: put the figure in it */
+        if (f.t === 'ratio') ['a', 'b'].forEach(function (s) {
+          if (!f.auto[s]) return;
+          var box = document.getElementById('f_' + f.id + '__' + s);
+          var now = values[f.id + '__' + s];
+          if (box && box.value !== (now == null ? '' : String(now))) box.value = now == null ? '' : now;
+        });
+        /* or, for a gathered list, the rows themselves */
+        var gb = document.getElementById('g_' + f.id);
+        if (gb) drawGathered(gb, f);
+      }
       if (!open) return;
-      if (!f.opt) {
+      if (!f.opt && !f.auto) {
         /* a grid is not one answer. w_stage is seven rows of three boxes, and
            counting it as a single unit made "1 still empty" mean anything from
            one number to twenty-one. */
@@ -2234,13 +2613,38 @@
       if (!lc) return;
       var sn = 0, sd = 0;
       sec.fields.forEach(function (f) {
-        if (f.opt || !shown(f)) return;
+        if (f.opt || f.auto || !shown(f)) return;
         var u = (f.t === 'grid' && f.rows) ? f.rows.length : 1;
         sn += u;
         if (filled(f)) sd += u;
       });
       lc.textContent = sn ? sd + ' / ' + sn : '';
       lc.className = 'lgc' + (sn && sd === sn ? ' full' : '');
+
+      /* A whole section can be shut: "Anything rejected today" has nothing
+         to ask on a day when nothing was rejected. An empty heading on the
+         screen is a question the person goes looking for and cannot find. */
+      var box = lc.parentNode && lc.parentNode.parentNode;
+      if (box && box.tagName === 'FIELDSET') {
+        box.hidden = !sec.fields.some(shown);
+      }
+
+      /* "5 deliveries · 4 checked · 1 rejected", under the table it is
+         counted from. Nothing typed yet, nothing to say. */
+      sec.fields.forEach(function (f) {
+        var line = document.getElementById('a_' + f.id);
+        if (!line) return;
+        var parts = autoLineFields(f.id, sec).filter(shown);
+        var any = parts.some(function (x) { return fmt(x) !== ''; });
+        line.hidden = !(shown(f) && any);
+        line.innerHTML = '';
+        if (line.hidden) return;
+        parts.forEach(function (x, i) {
+          if (i) line.appendChild(el('span', 'adot', '·'));
+          line.appendChild(el('span', 'aval', autoText(x)));
+        });
+        line.appendChild(el('span', 'afrom', t('countedFromRows')));
+      });
     });
 
     var missing = need - done;

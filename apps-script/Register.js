@@ -82,7 +82,9 @@ var REG_SOURCES_ = [
   { r: 'amaha-daily', f: 'p_jobs', k: 'production', job: 'code', state: 'st' },
   { r: 'wude-daily', f: 'i_jobs', k: 'qc', cust: 'cust', job: 'code', ok: 'pass', what: 'why' },
   { r: 'wude-weekly', f: 'c_recv_list', k: 'complaint', cust: 'cust', job: 'code', what: 'what' },
-  { r: 'elyas-daily', f: 'j_rows', k: 'site', cust: 'cust', job: 'code', ok: 'ontime' },
+  /* "Where is it now?" — finished today, or still on installation (the
+     Chairman, 10 Oct 2026) */
+  { r: 'elyas-daily', f: 'j_rows', k: 'site', cust: 'cust', job: 'code', ok: 'ontime', state: 'state' },
   { r: 'getachew-daily', f: 'sup_delay_list', k: 'matdelay', job: 'code', what: 'item', ok: 'stops' },
   /* the same list says the job is waiting, and the day it is now promised
      (the Chairman, 8 Oct 2026: purchasing is Getachew's to report) */
@@ -113,7 +115,11 @@ var REG_BOARD_ = [
   { n: 10, id: 'made', en: 'Production completed', who: 'Amaha' },
   { n: 11, id: 'qc', en: 'QC released', who: 'Wude' },
   { n: 12, id: 'ready', en: 'Ready for delivery, fully paid', who: 'Selam' },
-  { n: 13, id: 'delivered', en: 'Delivered and installed', who: 'Elyas' },
+  /* column 13 told in two, as column 01 is: on installation, then finished
+     (the Chairman, 10 Oct 2026 — which jobs are on installation, which
+     are finished) */
+  { n: 13, id: 'delivered', en: 'Delivered, on installation', who: 'Elyas' },
+  { n: 13, id: 'installed', en: 'Installation finished', who: 'Elyas' },
   { n: 14, id: 'accepted', en: 'Customer acceptance signed', who: 'Elyas' },
   { n: 15, id: 'aftersales', en: 'After-sales follow-up done', who: 'Salesperson' }
 ];
@@ -385,6 +391,8 @@ function regFold_(events, today, names, sellers) {
         if (!J.site) J.site = e.day;
         J.siteLast = e.day;
         if (e.ok === 'no') J.siteLate = e.day;
+        /* finished, in Elyas's own word — a job on site is not yet one */
+        if (e.state === 'done' && !J.siteDone) J.siteDone = e.day;
         break;
       case 'complaint':
         /* one complaint, reported again as it moves: its latest state wins */
@@ -509,7 +517,7 @@ function regFold_(events, today, names, sellers) {
       finalreq: J.finalReq || (J.held ? J.held.day : ''), final: finalDay,
       production: J.prodFirst || (J.plan ? J.plan.day : ''), made: J.made, qc: qcDay,
       ready: qcDay && finalDay ? [qcDay, finalDay].sort()[1] : '',
-      delivered: J.delivered || J.site, accepted: J.accepted, aftersales: J.followup
+      delivered: J.delivered || J.site, installed: J.siteDone, accepted: J.accepted, aftersales: J.followup
     };
     var ix = regBoardIx_('contract');
     REG_BOARD_.forEach(function (b, i) { if (i > ix && ev[b.id]) ix = i; });
@@ -577,7 +585,10 @@ function regFold_(events, today, names, sellers) {
     if (J.advDay && !J.measured && regWorkingDays_(J.advDay, today) > 1) {
       p.push({ code: 'measure-late', text: 'Advance in ' + pushDay_(J.advDay) + '; no final measurement yet (due within 24 hours)' });
     }
-    var installed = J.site || J.delivered;
+    /* the 48 hours run from the day the installation finished — Elyas
+       saying so, or the customer signing for it; a job he has on site and
+       not finished is not owed its call yet */
+    var installed = J.siteDone || J.accepted || (J.site ? '' : J.delivered);
     if (installed && !J.followup && regDaysBetween_(installed, today) > 2) {
       p.push({ code: 'followup-late', text: 'Installed ' + pushDay_(installed) + '; no 48-hour follow-up call recorded' });
     }
@@ -895,8 +906,10 @@ function registerUpdate_(fresh) {
    V2, 8 Oct 2026 — regJob_ now strips dots and equals signs, so the jobs
    written "K.K=165" and "kk165" come back together as one.
    V3, 9 Oct 2026 — a bare number in a job column is a KK job, so "167"
-   joins KK-167 instead of standing alone. */
-var REGISTER_BACKFILL_KEY_ = 'REGISTER_BACKFILLED_V3';
+   joins KK-167 instead of standing alone.
+   V4, 10 Oct 2026 — Elyas's rows carry "Where is it now?", so a job
+   finished on site is told from one still on installation. */
+var REGISTER_BACKFILL_KEY_ = 'REGISTER_BACKFILLED_V4';
 function registerBackfill_() {
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty(REGISTER_BACKFILL_KEY_)) return false;

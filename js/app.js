@@ -1619,6 +1619,7 @@
       ar.appendChild(el('div', 'hint', t(f.auto.week != null ? 'fromYourWeek' : 'workedOut')));
       return ar;
     }
+    if (f.t === 'photos') return photoField(f);
     var row = el('div', 'fld' + (f.i ? ' indent' : '')
                  + (f.t === 'area' ? ' wide' : '')
                  /* a choice and a yes/no both hold words, and words do not fit
@@ -1751,6 +1752,180 @@
     i.value = values[key] != null ? values[key] : '';
     i.oninput = function () { values[key] = i.value; refresh(); };
     return i;
+  }
+
+  /* SITE PHOTOS (the Chairman, 10 Oct 2026: "send some site photos").
+
+     A photo goes into the room this report is delivered to the moment it is
+     chosen, the way it would go on WhatsApp, with its job code written on it.
+     Holding the day's photos until Send would mean keeping them in a cheap
+     phone's memory all afternoon, and a closed tab would lose every one.
+     With no signal the photo waits in Firebase's own store on the phone and
+     goes when the signal is back, as a chat message does.
+
+     What the answer keeps is only the tally, "KK-167 ×2, KK-170", so the
+     filed report and its Sheet row say which jobs have pictures. */
+  var PHOTO_GENERAL = 'General';
+  function photoTally(v) {
+    var out = [];
+    String(v || '').split(/,\s*/).forEach(function (p) {
+      var m = /^(.*?)(?:\s*×(\d+))?$/.exec(p.trim());
+      if (m && m[1]) out.push({ job: m[1], n: +(m[2] || 1) });
+    });
+    return out;
+  }
+  function photoBump(key, job, by) {
+    var list = photoTally(values[key]), hit = null;
+    list.forEach(function (x) { if (x.job === job) hit = x; });
+    if (hit) hit.n += by; else if (by > 0) list.push({ job: job, n: by });
+    list = list.filter(function (x) { return x.n > 0; });
+    if (list.length) {
+      values[key] = list.map(function (x) { return x.job + (x.n > 1 ? ' ×' + x.n : ''); }).join(', ');
+    } else delete values[key];
+  }
+  function photoField(f) {
+    var row = el('div', 'fld wide photos' + (f.i ? ' indent' : ''));
+    row.id = 'r_' + f.id;
+    var lab = el('label', null, L(f));
+    lab.id = 'l_' + f.id;
+    lab.htmlFor = 'f_' + f.id;
+    row.appendChild(lab);
+
+    function chanNow() { return channelFor(report, AUTH.isChairman() ? 'chairman' : AUTH.who()); }
+    var chan = chanNow();
+    var room = chan && typeof CHANNELS !== 'undefined'
+      ? CHANNELS.all().filter(function (c) { return c.id === chan; })[0] : null;
+    row.appendChild(el('div', 'hint', room ? t('photoGoesTo').replace('{room}', L(room)) : t('photoNoRoom')));
+
+    /* which job: the codes already written in the job list, or none */
+    var ctl = el('div', 'phctl');
+    var job = document.createElement('select');
+    job.id = 'f_' + f.id;
+    job.setAttribute('aria-label', t('photoJob'));
+    var jp = String(f.jobsFrom || '').split('.');
+    var jobsSig = null;
+    function fillJobs() {
+      var keep = job.value, seen = {}, codes = [];
+      var rows = Array.isArray(values[jp[0]]) ? values[jp[0]] : [];
+      rows.forEach(function (r) {
+        var c = String((r && r[jp[1]]) || '').trim();
+        if (!c || seen[c]) return;
+        seen[c] = 1;
+        codes.push(c);
+      });
+      /* rebuilt only when the list changed: a picker redrawn as it opens
+         can close itself on some phones */
+      if (codes.join('\n') === jobsSig) return;
+      jobsSig = codes.join('\n');
+      job.innerHTML = '';
+      codes.forEach(function (c) {
+        var o = document.createElement('option');
+        o.value = c; o.textContent = c;
+        job.appendChild(o);
+      });
+      var g = document.createElement('option');
+      g.value = PHOTO_GENERAL; g.textContent = t('photoGeneral');
+      job.appendChild(g);
+      job.value = seen[keep] || keep === PHOTO_GENERAL ? keep : job.options[0].value;
+    }
+    fillJobs();
+    /* the job list may have grown since the form was drawn */
+    job.onfocus = fillJobs;
+    job.onpointerdown = fillJobs;
+    var jobBox = el('div', 'phbox');
+    jobBox.appendChild(el('span', 'phlbl', t('photoJob')));
+    jobBox.appendChild(job);
+    ctl.appendChild(jobBox);
+
+    var note = document.createElement('input');
+    note.type = 'text';
+    note.maxLength = 200;
+    note.placeholder = t('photoNote');
+    note.setAttribute('aria-label', t('photoNote'));
+    var noteBox = el('div', 'phbox');
+    noteBox.appendChild(el('span', 'phlbl', t('photoNote')));
+    noteBox.appendChild(note);
+    ctl.appendChild(noteBox);
+
+    var pick = document.createElement('input');
+    pick.type = 'file';
+    pick.accept = 'image/*';
+    pick.multiple = true;
+    pick.className = 'phpick';
+    var add = el('label', 'btn phadd', t('photoAdd'));
+    add.appendChild(pick);
+    ctl.appendChild(add);
+    row.appendChild(ctl);
+
+    var tally = el('div', 'phtally');
+    function drawTally() {
+      var v = values[f.id];
+      tally.textContent = has(v) ? t('photoSentSoFar') + ' ' + String(v).replace(PHOTO_GENERAL, t('photoGeneral')) : '';
+    }
+    drawTally();
+    row.appendChild(tally);
+    var strip = el('div', 'phstrip');
+    row.appendChild(strip);
+
+    function one(file, code, words) {
+      var item = el('div', 'phitem busy');
+      var st = el('div', 'phst', t('photoShrinking'));
+      item.appendChild(el('div', 'phcap', (code === PHOTO_GENERAL ? t('photoGeneral') : code) + (words ? ' · ' + words : '')));
+      item.appendChild(st);
+      strip.appendChild(item);
+      return window.KMEDIA.shrinkImage(file).then(function (img) {
+        var im = document.createElement('img');
+        im.src = img.data;
+        im.alt = '';
+        item.insertBefore(im, item.firstChild);
+        st.textContent = t('photoSending');
+        var text = '📷 ' + t('photoCaption') + ' · ' + (code === PHOTO_GENERAL ? t('photoGeneral') : code)
+                 + (words ? ' — ' + words : '') + ' · ' + L(report);
+        var p;
+        try { p = window.FB.postPhoto(chan, img, text, lang); } catch (e) { p = Promise.reject(e); }
+        /* counted the moment it is queued: on a site with no signal it goes
+           later by itself, and the report sent meanwhile should say so */
+        photoBump(f.id, code, 1);
+        drawTally();
+        refresh();
+        /* not returned: the next photo starts shrinking now, rather than
+           waiting all afternoon for a server this one cannot reach */
+        p.then(function () {
+          st.textContent = t('photoSent');
+          item.className = 'phitem ok';
+        }, function (e) {
+          photoBump(f.id, code, -1);
+          drawTally();
+          refresh();
+          st.textContent = (e && e.code === 'permission-denied') ? t('sendRefused') : t('photoFailed');
+          item.className = 'phitem bad';
+        });
+      }, function (e) {
+        var why = e && e.message;
+        st.textContent = why === 'too-big' ? t('chatTooBig')
+                       : why === 'file-huge' ? t('chatFileHuge')
+                       : why === 'not-an-image' ? t('chatCantRead') : t('photoFailed');
+        item.className = 'phitem bad';
+      });
+    }
+
+    pick.onchange = function () {
+      var files = Array.prototype.slice.call(pick.files || []);
+      pick.value = '';
+      if (!files.length) return;
+      chan = chanNow();
+      if (!chan || !window.FB || !window.FB.live() || !AUTH.who()) { toast(t('photoNeedsSignIn')); return; }
+      if (!window.KMEDIA) { toast(t('photoNotReady')); return; }
+      var code = job.value || PHOTO_GENERAL, words = note.value.trim();
+      note.value = '';
+      /* one at a time: shrinking a photo holds the whole picture in memory,
+         and five at once is more than a cheap phone has */
+      var chain = Promise.resolve();
+      files.forEach(function (file) {
+        chain = chain.then(function () { return one(file, code, words); });
+      });
+    };
+    return row;
   }
 
   /* a grid with dateFrom shows a date per row — redraw those when the date changes */
@@ -2219,6 +2394,9 @@
         {rows:'tbl', when:{col:'ok', is:'no'}}      ... only matching rows
         {sum:'tbl.col'}  {sum:'tbl.col', when:{}}   a column added up
         {grid:'gr.col'}                   a fixed grid's column added up
+        {list:'tbl.col'}                  the column's words, each once
+        {all:'tbl.col'}  {any:'tbl.col'}  a yes/no over the rows
+                                          (each of these takes `when` too)
         {of:'key'}                        another answer, as it stands
         {plus:['a','b']}   {minus:['a','b']}
         {div:['a','b']}    {pct:['a','b']}
@@ -2355,7 +2533,9 @@
     if (k.all || k.any) {
       var ap = String(k.all || k.any).split('.'), af = fieldById(ap[0]);
       if (!af || !shown(af)) return '';
-      var ar = rowsWithData(ap[0]);
+      /* `when`: only the rows the question is about ("every job worked on
+         today" — not the ones nobody touched) */
+      var ar = rowsMatch(ap[0], k.when);
       if (!ar.length) return '';
       var said = ar.map(function (r) { return String((r && r[ap[1]]) || ''); });
       if (k.any) return said.indexOf('yes') >= 0 ? 'yes' : (said.indexOf('no') >= 0 ? 'no' : '');
@@ -2809,6 +2989,7 @@
     if (f.t === 'date') return prettyDate(String(v));
     if (f.t === 'money') return money(v) + ' ' + t('birr');
     if (f.t === 'pct') return String(v).replace(/%/g, '').trim() + '%';
+    if (f.t === 'photos') return String(v).replace(/\bGeneral\b/, t('photoGeneral')).trim();
     return String(v).trim();
   }
 

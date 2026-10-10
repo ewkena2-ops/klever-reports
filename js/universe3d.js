@@ -143,7 +143,7 @@ const CUST_HOME = {
   lead: 'customers', visit: 'customers', predesign: 'customers', quote: 'customers', contract: 'customers',
   advance: 'commercial', measure: 'commercial', selection: 'finance', ordered: 'finance', received: 'finance',
   finalreq: 'finance', final: 'lead', production: 'production', made: 'production', qc: 'lead', ready: 'lead',
-  delivered: 'site', accepted: 'commercial', aftersales: 'customers'
+  delivered: 'site', installed: 'site', accepted: 'commercial', aftersales: 'customers'
 };
 const CUST_COLOR = { moving: '#eaf2ff', hold: '#f0b84a', rework: '#ff7a5c', quiet: '#7f8f8a', done: '#5fe0c6' };
 const CUST_WORD = { moving: { en: 'Moving', am: 'በሂደት ላይ' }, hold: { en: 'On hold', am: 'ቆሟል' },

@@ -193,8 +193,8 @@ import {
   /* Klever's Job Tracking Board, in order, with its column numbers (as in
      apps-script/Register.js REG_BOARD_ and js/register.js) */
   var BOARD = ['lead', 'visit', 'predesign', 'quote', 'contract', 'advance', 'measure', 'selection', 'ordered',
-               'received', 'finalreq', 'final', 'production', 'made', 'qc', 'ready', 'delivered', 'accepted', 'aftersales'];
-  var BOARD_N = [1, 1, 1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+               'received', 'finalreq', 'final', 'production', 'made', 'qc', 'ready', 'delivered', 'installed', 'accepted', 'aftersales'];
+  var BOARD_N = [1, 1, 1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15];
 
   /* Each customer as the universe draws it: a lead with its job beside it
      once signed, then the jobs no lead names (as the Leads & jobs table

@@ -2933,38 +2933,59 @@ const REPORTS = [
          say whether a job was finished — so it said one thing and they said
          another (the Chairman, 9 Oct 2026). The row says it all now: the m²,
          whether it finished, whether the slip was there, whether the customer
-         was called before the van arrived. */
-      {id:'j_rows', en:'Each job worked on today', am:'ዛሬ የተሠራ እያንዳንዱ ሥራ',
+         was called before the van arrived.
+         Which jobs are on installation and which are finished, by name (the
+         Chairman, 10 Oct 2026). A job waiting on the site or on material is
+         still on installation on a day nobody touched it, so it stays on the
+         list as "no work today" instead of dropping out of sight. */
+      {id:'j_rows', en:'Every job on installation, and every job finished today', am:'ተከላ ላይ ያለ እያንዳንዱ ሥራ፣ እና ዛሬ የተጠናቀቀ እያንዳንዱ ሥራ',
        t:'table', addEn:'Add job', addAm:'ሥራ ጨምር', cols:[
         {id:'code',  en:'Job code', am:'የሥራ ኮድ', t:'text'},
         {id:'cust',  en:'Customer', am:'ደንበኛ', t:'text'},
-        {id:'m2',    en:'m² installed', am:'የተገጠመ ካሬ ሜትር', t:'num'},
-        {id:'state', en:'Finished, or still going?', am:'ተጠናቋል ወይስ ገና?', t:'choice', opts:[
-          {v:'done', en:'Finished today',    am:'ዛሬ ተጠናቋል'},
-          {v:'wip',  en:'Still in progress', am:'ገና በሂደት ላይ'}
+        {id:'state', en:'Where is it now?', am:'አሁን የት ደረሰ?', t:'choice', opts:[
+          {v:'done', en:'Installation finished today',       am:'ተከላው ዛሬ ተጠናቋል'},
+          {v:'wip',  en:'On installation — worked on today', am:'ተከላ ላይ ነው — ዛሬ ተሠርቷል'},
+          {v:'idle', en:'On installation — no work today',   am:'ተከላ ላይ ነው — ዛሬ አልተሠራም'}
         ]},
+        {id:'m2',    en:'m² installed', am:'የተገጠመ ካሬ ሜትር', t:'num'},
         {id:'start', en:'Start time', am:'የተጀመረበት ሰዓት', t:'text'},
         {id:'fin',   en:'Finish time', am:'የተጠናቀቀበት ሰዓት', t:'text'},
         {id:'ontime',en:'On time', am:'በሰዓቱ', t:'yesno'},
         {id:'slip',  en:'Payment slip in hand before work started', am:'ሥራ ከመጀመሩ በፊት የክፍያ ወረቀት ነበረ', t:'yesno'},
         {id:'called',en:'Customer called 30 min before arrival', am:'ከመድረስ 30 ደቂቃ በፊት ለደንበኛው ተደውሏል', t:'yesno'}
       ]},
+      /* the two lists the Chairman reads first, named job by job */
+      {id:'j_on_list', en:'Jobs on installation now', am:'አሁን ተከላ ላይ ያሉ ሥራዎች', t:'text',
+        auto:{list:'j_rows.code', when:{col:'state', in:['wip', 'idle']}}},
+      {id:'j_fin_list', en:'Jobs whose installation finished today', am:'ዛሬ ተከላቸው የተጠናቀቀ ሥራዎች', t:'text',
+        auto:{list:'j_rows.code', when:{col:'state', is:'done'}}},
+      /* a row with no answer in "Where is it now?" counts as worked on,
+         as every row did before the "no work today" choice existed */
       {id:'j_total', en:'How many jobs did your team work on today?', am:'ዛሬ ቡድንዎ በስንት ሥራዎች ላይ ሠራ?', t:'num',
-        auto:{rows:'j_rows'}, sumEn:'jobs', sumAm:'ሥራዎች'},
+        auto:{rows:'j_rows', when:{col:'state', in:['done', 'wip', '']}}, sumEn:'worked on today', sumAm:'ዛሬ የተሠራባቸው'},
       {id:'j_done', en:'How many of them were finished today?', am:'ከእነዚህ ስንቱ ዛሬ ተጠናቀቁ?', t:'num',
         auto:{rows:'j_rows', when:{col:'state', is:'done'}}, sumEn:'finished', sumAm:'ተጠናቀዋል'},
-      {id:'j_wip', en:'How many are still in progress?', am:'ስንቱ ገና በሂደት ላይ ናቸው?', t:'num',
-        auto:{rows:'j_rows', when:{col:'state', is:'wip'}}, sumEn:'still going', sumAm:'ገና በሂደት'},
+      {id:'j_wip', en:'How many are still on installation?', am:'ስንቱ ገና ተከላ ላይ ናቸው?', t:'num',
+        auto:{rows:'j_rows', when:{col:'state', in:['wip', 'idle']}}, sumEn:'still on installation', sumAm:'ገና ተከላ ላይ'},
+      {id:'j_idle', en:'How many had no work today?', am:'ስንቱ ዛሬ አልተሠራባቸውም?', t:'num',
+        auto:{rows:'j_rows', when:{col:'state', is:'idle'}}, sumEn:'no work today', sumAm:'ዛሬ ያልተሠራባቸው'},
       {id:'j_m2', en:'How many m² were installed today?', am:'ዛሬ ስንት ካሬ ሜትር ተገጠመ?', t:'num',
         auto:{sum:'j_rows.m2'}, sumEn:'m² installed', sumAm:'ካሬ ሜትር ተገጥሟል'},
       {id:'j_ontime', en:'How many were on time?', am:'በሰዓቱ የሆኑት ስንት ናቸው?', t:'num',
         auto:{rows:'j_rows', when:{col:'ontime', is:'yes'}}, sumEn:'on time', sumAm:'በሰዓቱ'},
+      {id:'j_idle_why', en:'Why was there no work on them today?', am:'ዛሬ ለምን አልተሠራባቸውም?', t:'area', show:{f:'j_idle', when:'pos'}},
       {id:'j_wip_left', en:'Which jobs are still open, what is left on each, and on what day will each be finished?', am:'ያላለቁት የትኞቹ ሥራዎች ናቸው? በእያንዳንዱ ምን ቀረ? እያንዳንዱ በየትኛው ቀን ያልቃል?', t:'area', show:{f:'j_wip', when:'pos'}},
+      /* a job nobody worked on today had no slip to show, and is not a "no" */
       {id:'j_slips', en:'Did every job have its assembler Payment Confirmation Slip before work started?', am:'ሥራ ከመጀመሩ በፊት ለእያንዳንዱ ሥራ የገጣጣሚ ክፍያ ማረጋገጫ ወረቀት ነበረ?', t:'yesno',
-        auto:{all:'j_rows.slip'}},
+        auto:{all:'j_rows.slip', when:{col:'state', in:['done', 'wip', '']}}},
       {id:'j_slips_why', en:'Which jobs had no slip, and did work start without it?', am:'ማረጋገጫ ወረቀት ያልነበራቸው የትኞቹ ሥራዎች ናቸው? ወረቀቱ ሳይኖር ሥራ ተጀምሯል?', t:'area', show:{f:'j_slips', when:'no'}},
       {id:'mat_missing', en:'On arrival, was anything missing, wrong or damaged in the materials, tools or accessories?', am:'በደረሱበት ጊዜ ከቁሳቁሶች፣ ከመሣሪያዎች ወይም ከአክሰሰሪዎች የጎደለ፣ የተሳሳተ ወይም የተጎዳ ነገር ነበር?', t:'yesno'},
-      {id:'mat_missing_what', en:'What, for which job, whose error was it, and how many hours did it cost?', am:'ምንድን ነው? ለየትኛው ሥራ? የማን ስህተት ነበር? ስንት ሰዓት አስጠፋ?', t:'area', show:{f:'mat_missing', when:'yes'}}
+      {id:'mat_missing_what', en:'What, for which job, whose error was it, and how many hours did it cost?', am:'ምንድን ነው? ለየትኛው ሥራ? የማን ስህተት ነበር? ስንት ሰዓት አስጠፋ?', t:'area', show:{f:'mat_missing', when:'yes'}},
+      /* Photos from the site (the Chairman, 10 Oct 2026). Each one goes into
+         the room this report is delivered to the moment it is added, with
+         its job code on it; what is kept here is only the tally, so the
+         report says which jobs have photos. */
+      {id:'ph_site', en:'Site photos', am:'የቦታ ፎቶዎች', t:'photos', jobsFrom:'j_rows.code', opt:1}
     ]},
     { en:'2 · Assembler performance', am:'2 · ገጣጣሚዎች እንዴት ሠሩ', fields:[
       {id:'a_present', en:'How many assemblers were on site today?', am:'ዛሬ ስንት ገጣጣሚዎች በቦታው ተገኙ?', t:'num'},
@@ -3002,7 +3023,7 @@ const REPORTS = [
              am:'ቅሬታ የ3,000 + 2,000 ብር ጉርሻዎችን ያሳጣል'}},
       {id:'ac_complaints_what', en:'Which customer, what was the complaint, what was done, and is it closed?', am:'የየትኛው ደንበኛ ነው? ቅሬታው ምን ነበር? ምን እርምጃ ተወሰደ? ተዘግቷል?', t:'area', show:{f:'ac_complaints', when:'pos'}},
       {id:'ac_called', en:'How many customers were called 30 minutes before arrival? (called / sites visited)', am:'ከመድረስዎ 30 ደቂቃ በፊት ስንት ደንበኞች ተደወለላቸው? (የተደወለላቸው / የተጎበኙ ቦታዎች)', t:'ratio',
-        auto:{a:{rows:'j_rows', when:{col:'called', is:'yes'}}, b:{rows:'j_rows'}}},
+        auto:{a:{rows:'j_rows', when:{col:'called', is:'yes'}}, b:{rows:'j_rows', when:{col:'state', in:['done', 'wip', '']}}}},
       {id:'ac_called_why', en:'Which customers were not called, and why?', am:'ያልተደወለላቸው የትኞቹ ደንበኞች ናቸው? ለምን?', t:'area', show:{f:'ac_called', when:'short'}}
     ]},
     { en:'4 · Quality check at site', am:'4 · በቦታው የተደረገ የጥራት ፍተሻ', fields:[

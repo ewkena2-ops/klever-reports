@@ -658,6 +658,29 @@ fieldset legend .lgc.full::before{content:'✓ '}
 .seg button:hover{color:var(--ink)}
 .seg button[aria-pressed="true"]{background:var(--teal-hi);color:var(--teal-ink);box-shadow:0 4px 12px rgba(95,224,198,.2)}
 .seg.no button[aria-pressed="true"]{background:var(--coral);color:#2b0d06;box-shadow:0 4px 12px rgba(238,124,97,.2)}
+
+/* site photos in a report: which job, a note, the button; then each photo
+   as it goes, and the tally of what has gone (js/app.js photoField) */
+.phctl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:8px 10px;align-items:end}
+.phbox{display:flex;flex-direction:column;gap:4px;min-width:0}
+.phlbl{font-size:11.5px;color:var(--mut)}
+.phbox select,.phbox input{width:100%}
+.phadd{grid-column:1/-1;position:relative;overflow:hidden}
+.phadd .phpick{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.phtally{font-size:13px;color:var(--teal-hi);font-weight:600}
+.phtally:empty{display:none}
+.phstrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.phstrip:empty{display:none}
+.phitem{display:flex;flex-direction:column;gap:3px;padding:5px;border-radius:var(--r-s);
+  background:var(--field);border:1px solid var(--line-2);min-width:0}
+.phitem img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:7px;display:block}
+.phcap{font-size:11.5px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phst{font-size:11px;color:var(--mut)}
+.phitem.ok{border-color:var(--teal-line)}
+.phitem.ok .phst{color:var(--teal-hi)}
+.phitem.bad{border-color:var(--coral-line)}
+.phitem.bad .phst{color:var(--coral)}
+@media (max-width:380px){.phctl{grid-template-columns:1fr}}
 @media (min-width:400px){
   /* on a wider phone the answer sits beside the question */
   .fld.yn{grid-template-columns:minmax(0,1fr) 150px}

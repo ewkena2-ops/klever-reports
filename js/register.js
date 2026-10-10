@@ -55,8 +55,8 @@ import {
   /* Klever's Job Tracking Board, in order, with its column numbers (as in
      apps-script/Register.js REG_BOARD_) */
   var BOARD = ['lead', 'visit', 'predesign', 'quote', 'contract', 'advance', 'measure', 'selection', 'ordered',
-               'received', 'finalreq', 'final', 'production', 'made', 'qc', 'ready', 'delivered', 'accepted', 'aftersales'];
-  var BOARD_N = [1, 1, 1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+               'received', 'finalreq', 'final', 'production', 'made', 'qc', 'ready', 'delivered', 'installed', 'accepted', 'aftersales'];
+  var BOARD_N = [1, 1, 1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15];
   /* where a customer stands: the AI's reading where there is one, else the
      lists' own */
   function where(x) {
@@ -329,7 +329,7 @@ import {
     var tb = el('table', 'regtable');
     var head = el('tr');
     var STEP_COLS = ['lead', 'visit', 'predesign', 'quote', 'measure', 'selection', 'ordered', 'received', 'finalreq',
-                     'production', 'made', 'qc', 'delivered', 'accepted', 'aftersales'];
+                     'production', 'made', 'qc', 'delivered', 'installed', 'accepted', 'aftersales'];
     ['Customer', 'Stage', 'Status', 'Why', 'Next', 'Sales', 'Contract', 'Advance', 'Final']
       .forEach(function (k, i) { head.appendChild(el('th', i === 0 ? 'c' : null, t('regCol' + k))); });
     STEP_COLS.forEach(function (b) { head.appendChild(el('th', null, t('regCs_' + b))); });

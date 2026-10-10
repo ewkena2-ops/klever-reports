@@ -199,6 +199,25 @@
       });
     },
 
+    /* A photo added in a report (the "Site photos" question, js/app.js
+       photoField): one picture message in the room the report goes to, the
+       same shape the chat itself sends, so it shows there like any other
+       photo. `img` is what media.js shrinkImage hands back. */
+    postPhoto: function (channelId, img, text, lang) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      return F.addDoc(F.collection(db, 'channels', channelId, 'messages'), {
+        who: idOf(user),
+        text: String(text || '').slice(0, 4000),
+        lang: lang === 'am' ? 'am' : 'en',
+        kind: 'image',
+        media: img.data,
+        mime: 'image/jpeg',
+        w: img.w,
+        h: img.h,
+        at: F.serverTimestamp()
+      });
+    },
+
     /* The newest thing said in any of this person's channels, for the home
        screen. One listener per channel, one document each — a person has three
        or four, so this is a handful of reads on a page load, and it is what

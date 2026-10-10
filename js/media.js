@@ -342,3 +342,7 @@ export function clockOf(seconds) {
   var s = Math.max(0, Math.round(seconds || 0));
   return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
 }
+
+/* The report form (js/app.js) is a plain script and cannot import; its
+   "Site photos" question reaches the same shrinking through here. */
+if (typeof window !== 'undefined') window.KMEDIA = { shrinkImage: shrinkImage };

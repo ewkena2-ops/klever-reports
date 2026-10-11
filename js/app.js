@@ -1796,7 +1796,64 @@
     lab.htmlFor = 'f_' + f.id;
     row.appendChild(lab);
 
-    if (f.t === 'ratio') {
+    if (f.t === 'ratio' && f.ask) {
+      /* TWO STEPS (the Chairman, 11 Oct 2026: "most people get confused on
+         this"). Two empty boxes under one question — "posted / required" —
+         and nobody knew which number went where. Now the total is asked
+         first, as a question of its own, then "how many of them", with All
+         and None to tap. A total of 0 files 0 of 0 and asks nothing more
+         (stepsZero). A total the form already knows — the question just
+         above, the rows of the list above — is not asked again: it is the
+         number on the All button. The answers keep their keys: __a done,
+         __b out of. The question itself stays, unseen, for screen readers
+         and for the sent report. */
+      lab.className = 'vh';
+      lab.removeAttribute('for');
+      var st = el('div', 'stepbox');
+      st.id = 'f_' + f.id;
+      st.tabIndex = -1;
+      st.setAttribute('role', 'group');
+      st.setAttribute('aria-labelledby', lab.id);
+      var bCounted = !!(f.auto && f.auto.b), aCounted = !!(f.auto && f.auto.a);
+      var sb = el('div', 'step');
+      sb.id = 'sb_' + f.id;
+      if (bCounted) sb.hidden = true;
+      else {
+        var lsb = el('label', null, L(f.ask.b));
+        lsb.htmlFor = 'f_' + f.id + '__b';
+        sb.appendChild(lsb);
+        sb.appendChild(numInput(f.id + '__b', f));
+      }
+      st.appendChild(sb);
+      var sa = el('div', 'step');
+      sa.id = 'sa_' + f.id;
+      var lsa = el('label', null, L(f.ask.a));
+      lsa.htmlFor = 'f_' + f.id + '__a';
+      sa.appendChild(lsa);
+      var isa = numInput(f.id + '__a', f);
+      /* the box the form counts is locked: it is an answer, not a question */
+      if (aCounted) { isa.readOnly = true; isa.className = 'locked'; isa.tabIndex = -1; }
+      sa.appendChild(isa);
+      if (!aCounted) {
+        var sc = el('div', 'chips mini');
+        sc.id = 'sc_' + f.id;
+        ['all', 'none'].forEach(function (k) {
+          var sbt = el('button', 'chip', k === 'none' ? t('ratioNone') : t('ratioAll'));
+          sbt.type = 'button';
+          sbt.setAttribute('data-r', k);
+          sbt.onclick = function () {
+            values[f.id + '__a'] = k === 'all' ? String(num(values[f.id + '__b'])) : '0';
+            isa.value = values[f.id + '__a'];
+            refresh();
+          };
+          sc.appendChild(sbt);
+        });
+        sa.appendChild(sc);
+      }
+      st.appendChild(sa);
+      row.className += ' steps';
+      row.appendChild(st);
+    } else if (f.t === 'ratio') {
       /* two boxes under one question; the wrapper carries the id, so the
          "still empty" finder and the red mark can find it */
       var wrap = el('div', 'ratio');
@@ -2627,7 +2684,7 @@
      saying "25 not answered" about 22 figures nobody could have typed, and
      the HR reader told the Chairman so. */
   function unanswered() {
-    return liveFields().filter(function (f) { return !f.opt && !f.auto && !filled(f); }).map(function (f) { return L(f); });
+    return liveFields().filter(function (f) { return toAnswer(f) && !filled(f); }).map(function (f) { return L(f); });
   }
   function unansweredLine(list) {
     return t('notAnsweredCount').replace('{n}', list.length);
@@ -3136,8 +3193,7 @@
   function computeAutos() {
     zeroClosed();
     var fs = allFields().filter(function (f) { return f.auto; });
-    if (!fs.length) return;
-    for (var pass = 0; pass < 3; pass++) {
+    for (var pass = 0; fs.length && pass < 3; pass++) {
       fs.forEach(function (f) {
         if (f.t === 'ratio') {
           if (f.auto.a) setAuto(f.id + '__a', autoOne(f.auto.a));
@@ -3147,6 +3203,34 @@
         }
       });
     }
+    stepsZero();
+  }
+  /* A two-step count whose total is 0 is answered: 0 of 0. Nothing was due,
+     so "how many of them" is not asked. A 0 put there this way goes again if
+     the total is changed to something else, so it is never taken for an
+     answer the person gave. */
+  var stepZeroed = {};
+  function stepsZero() {
+    allFields().forEach(function (f) {
+      if (f.t !== 'ratio' || !f.ask || (f.auto && f.auto.a)) return;
+      var ka = f.id + '__a', b = num(values[f.id + '__b']);
+      if (b === 0) {
+        if (values[ka] !== '0') values[ka] = '0';
+        stepZeroed[f.id] = true;
+      } else if (stepZeroed[f.id]) {
+        if (values[ka] === '0') delete values[ka];
+        stepZeroed[f.id] = false;
+      }
+    });
+  }
+  /* Still to be answered? A question the form works out is not — except a
+     two-box one with only one box counted: the other box is a question, and
+     it is asked once the counted one has its figure. */
+  function toAnswer(f) {
+    if (f.opt) return false;
+    if (!f.auto) return true;
+    if (f.t !== 'ratio' || (f.auto.a && f.auto.b)) return false;
+    return has(values[f.id + '__' + (f.auto.a ? 'a' : 'b')]);
   }
   function setAuto(key, v) {
     /* a gathered list is the answer itself, not a number to be shown */
@@ -3249,6 +3333,37 @@
         card.hidden = !gridRowOn(f, Number(card.getAttribute('data-gridrow')));
       });
     });
+    /* two-step counts (fieldRow, f.ask): "how many of them" once there is a
+       total, and the All button carrying it */
+    fields.forEach(function (f) {
+      if (f.t !== 'ratio' || !f.ask) return;
+      var sa = document.getElementById('sa_' + f.id);
+      if (!sa) return;
+      var bv = values[f.id + '__b'], b = num(bv), a = values[f.id + '__a'];
+      var aCounted = !!(f.auto && f.auto.a), bCounted = !!(f.auto && f.auto.b);
+      sa.hidden = !(b > 0 || (aCounted && has(a)) || (has(a) && !has(bv)));
+      var sc = document.getElementById('sc_' + f.id);
+      if (sc) {
+        var ball = sc.querySelector('[data-r="all"]'), bnone = sc.querySelector('[data-r="none"]');
+        var allTxt = t('ratioAll').replace('{n}', b > 0 ? String(b) : '').trim();
+        if (ball.textContent !== allTxt) ball.textContent = allTxt;
+        ball.setAttribute('aria-pressed', b > 0 && has(a) && num(a) === b ? 'true' : 'false');
+        bnone.setAttribute('aria-pressed', b > 0 && has(a) && num(a) === 0 ? 'true' : 'false');
+      }
+      var ia = document.getElementById('f_' + f.id + '__a');
+      if (ia && document.activeElement !== ia) {
+        var want = a == null ? '' : String(a);
+        if (ia.value !== want) ia.value = want;
+      }
+      /* a counted total with nothing counted yet: the question above is the
+         one to answer, and this one has nothing to show */
+      var sr = document.getElementById('r_' + f.id);
+      if (sr) sr.classList.toggle('stepsnone', bCounted && sa.hidden);
+      /* the follow-up mark goes on the first question shown */
+      var sbx = document.getElementById('sb_' + f.id), sbl = sbx && sbx.querySelector('label');
+      var sal = sa.querySelector('label'), lead = sbl && !sbx.hidden ? sbl : sal;
+      [sbl, sal].forEach(function (l) { if (l) l.classList.toggle('lead', l === lead); });
+    });
     var firstEmpty = null;
     /* the buttons under "what comes first tomorrow" follow today's list */
     fields.forEach(function (f) {
@@ -3289,7 +3404,7 @@
         if (gb) drawGathered(gb, f);
       }
       if (!open) return;
-      if (!f.opt && !f.auto) {
+      if (toAnswer(f)) {
         /* a grid is not one answer. w_stage is seven rows of three boxes, and
            counting it as a single unit made "1 still empty" mean anything from
            one number to twenty-one. */
@@ -3336,7 +3451,7 @@
       if (!lc) return;
       var sn = 0, sd = 0;
       sec.fields.forEach(function (f) {
-        if (f.opt || f.auto || !shown(f)) return;
+        if (!toAnswer(f) || !shown(f)) return;
         var u = (f.t === 'grid' && f.rows) ? f.rows.length : 1;
         sn += u;
         if (filled(f)) sd += u;

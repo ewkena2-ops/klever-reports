@@ -651,6 +651,18 @@ fieldset legend .lgc.full::before{content:'✓ '}
 .ratio .rbox{display:flex;flex-direction:column;gap:4px;min-width:0}
 .ratio .rlab{font-size:11.5px;line-height:1.3;color:var(--mut);text-align:center;overflow-wrap:anywhere}
 .fld.wide .ratio{max-width:420px}
+/* a two-step count (app.js, f.ask): the total, then how many of them, with
+   All and None to tap. Each step reads like any other number question. */
+.fld.steps.stepsnone{display:none}
+.stepbox{display:grid;gap:12px}
+.stepbox .step{display:grid;grid-template-columns:minmax(0,1fr) 136px;gap:8px 12px;align-items:center}
+.stepbox .step > label{font-size:14.5px;color:var(--ink-2);line-height:1.35}
+.stepbox .step .chips{grid-column:1/-1}
+.stepbox input.locked{background:var(--teal-bg);border-color:var(--teal-line);color:var(--teal-hi);font-weight:600;cursor:default}
+.fld.follow .stepbox .step > label.lead{color:var(--ink)}
+.fld.follow .stepbox .step > label.lead::before{content:'↳ ';color:var(--gold);font-weight:600}
+.stepbox.miss{box-shadow:0 0 0 2px var(--coral);border-radius:10px;padding:6px}
+.stepbox:focus{outline:2px solid var(--teal-hi);outline-offset:3px;border-radius:10px}
 
 /* yes / no, as one control */
 .fld.yn{grid-template-columns:1fr}

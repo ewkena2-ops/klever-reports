@@ -617,7 +617,7 @@ const REPORTS = [
       {id:'wa_groups', en:'How many customer groups are active? (If you counted.)', am:'ስንት የደንበኛ ግሩፖች ንቁ ናቸው? (ከቆጠሩ።)', t:'num', opt:1},
       /* –300 Birr for each one missing (js/rules.js ephrata-wa-stage-missing
          reads both boxes every day): still asked */
-      {id:'wa_stage', en:'Stage messages due today in the customer groups: how many were posted? (posted / required)', am:'ዛሬ በደንበኛ ግሩፖች መላክ የነበረባቸው የደረጃ መልዕክቶች፦ ስንቱ ተላከ? (የተላከ / የሚገባው)', t:'ratio'},
+      {id:'wa_stage', en:'Stage messages due today in the customer groups: how many were posted? (posted / required)', am:'ዛሬ በደንበኛ ግሩፖች መላክ የነበረባቸው የደረጃ መልዕክቶች፦ ስንቱ ተላከ? (የተላከ / የሚገባው)', t:'ratio', ask:{b:{en:"How many stage messages were due today in the customer groups?", am:"ዛሬ በደንበኛ ግሩፖች ስንት የደረጃ መልዕክት መላክ ነበረበት?"}, a:{en:"How many of them were posted?", am:"ከእነሱ ስንቱ ተላከ?"}}},
       {id:'wa_stage_why', en:'Which groups missed their stage message, and why? (Write the groups in the box.)', am:'የደረጃ መልዕክት ያልደረሳቸው የትኞቹ ግሩፖች ናቸው? ለምን? (ግሩፖቹን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
           { en:'The designer forgot',              am:'ዲዛይነሩ ረሳ' },
@@ -692,7 +692,7 @@ const REPORTS = [
       /* the Sales Director and the week add these up (Sales.js) */
       {id:'inq', en:'How many inquiries came in?', am:'ስንት ጥያቄዎች ደረሱ?', t:'num', zero:1,
         show:{f:'e_events', when:'has', v:'inq'}},
-      {id:'inq_1hr', en:'How many were answered within 1 hour? (answered / all inquiries)', am:'ስንቱ በ1 ሰዓት ውስጥ ምላሽ አገኙ? (ምላሽ ያገኙ / ሁሉም)', t:'ratio', whole:'inq',
+      {id:'inq_1hr', en:'How many were answered within 1 hour? (answered / all inquiries)', am:'ስንቱ በ1 ሰዓት ውስጥ ምላሽ አገኙ? (ምላሽ ያገኙ / ሁሉም)', t:'ratio', ask:{b:{en:"How many inquiries came in?", am:"ስንት ጥያቄዎች ደረሱ?"}, a:{en:"How many of them were answered within 1 hour?", am:"ከእነሱ ስንቱ በ1 ሰዓት ውስጥ ምላሽ አገኙ?"}}, auto:{b:{of:'inq'}}, whole:'inq',
         show:{f:'e_events', when:'has', v:'inq'}},
       {id:'mkt_leads', en:'How many real leads came from marketing today?', am:'ዛሬ ከማርኬቲንግ ስንት እውነተኛ ደንበኞች መጡ?', t:'num',
         auto:{sum:'posts_list.leads'}, sumEn:'leads from the posts', sumAm:'ከፖስቶቹ የመጡ ደንበኞች'},
@@ -828,7 +828,7 @@ const REPORTS = [
         auto:{sum:'downtime_list.hours'}, sumEn:'hours stopped', sumAm:'ሰዓት ቆመዋል'},
       /* read by nothing, and the list above says it; kept for the days a
          machine did not run at all */
-      {id:'machines', en:'How many machines ran today? (running / all machines)', am:'ዛሬ ስንት ማሽኖች ሠሩ? (የሠሩ / ሁሉም ማሽኖች)', t:'ratio', opt:1,
+      {id:'machines', en:'How many machines ran today? (running / all machines)', am:'ዛሬ ስንት ማሽኖች ሠሩ? (የሠሩ / ሁሉም ማሽኖች)', t:'ratio', ask:{b:{en:"How many machines are there in all?", am:"በአጠቃላይ ስንት ማሽኖች አሉ?"}, a:{en:"How many of them ran today?", am:"ከእነሱ ስንቱ ዛሬ ሠሩ?"}}, opt:1,
         show:{f:'o_events', when:'has', v:'m_stop'}},
       {id:'machines_why', en:'Which machines did not run, and why? (Write the machine and when it is back in the box.)', am:'ያልሠሩት የትኞቹ ማሽኖች ናቸው? ለምን? (ማሽኑንና መቼ እንደሚመለስ በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
@@ -843,7 +843,7 @@ const REPORTS = [
     { en:'Workers', am:'ሠራተኞች', fields:[
       /* Amaha files the head count every day (mp_assigned, mp_present);
          hers is asked on the day someone was missing */
-      {id:'workers', en:'How many workers came to work today? (present / assigned)', am:'ዛሬ ስንት ሠራተኞች ተገኙ? (የተገኙ / የተመደቡ)', t:'ratio',
+      {id:'workers', en:'How many workers came to work today? (present / assigned)', am:'ዛሬ ስንት ሠራተኞች ተገኙ? (የተገኙ / የተመደቡ)', t:'ratio', ask:{b:{en:"How many workers were assigned today?", am:"ዛሬ ስንት ሠራተኞች ተመድበው ነበር?"}, a:{en:"How many of them came to work?", am:"ከእነሱ ስንቱ ተገኙ?"}},
         show:{f:'o_events', when:'has', v:'absent'}},
       {id:'workers_why', en:'Who was absent, and was it with permission? (Write the names in the box.)', am:'የቀሩት እነማን ናቸው? በፈቃድ ነው? (ስማቸውን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
@@ -923,7 +923,7 @@ const REPORTS = [
     { en:'Customer groups', am:'የደንበኛ ግሩፖች', fields:[
       /* –200 Birr for each one not on time (js/rules.js
          liu-wa-ops-message-late reads both boxes every day): still asked */
-      {id:'wa_ops', en:'Operations messages due today in the customer groups: how many went out on time? (on time / due today)', am:'ዛሬ በደንበኛ ግሩፖች መላክ የነበረባቸው የኦፕሬሽን መልዕክቶች፦ ስንቱ በሰዓቱ ተላከ? (በሰዓቱ የተላከ / ዛሬ መላክ የነበረበት)', t:'ratio'},
+      {id:'wa_ops', en:'Operations messages due today in the customer groups: how many went out on time? (on time / due today)', am:'ዛሬ በደንበኛ ግሩፖች መላክ የነበረባቸው የኦፕሬሽን መልዕክቶች፦ ስንቱ በሰዓቱ ተላከ? (በሰዓቱ የተላከ / ዛሬ መላክ የነበረበት)', t:'ratio', ask:{b:{en:"How many operations messages were due today in the customer groups?", am:"ዛሬ በደንበኛ ግሩፖች ስንት የኦፕሬሽን መልዕክት መላክ ነበረበት?"}, a:{en:"How many of them went out on time?", am:"ከእነሱ ስንቱ በሰዓቱ ተላከ?"}}},
       {id:'wa_missed', en:'Which groups missed theirs, and why? (Write the groups in the box.)', am:'ያልተላከባቸው የትኞቹ ግሩፖች ናቸው? ለምን? (ግሩፖቹን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
           { en:'No news to give yet',              am:'ገና የሚነገር ዜና አልነበረም' },
@@ -1560,7 +1560,7 @@ const REPORTS = [
          was due and did not reach Selam in 24 hours, and the month's ZamZam
          bonus needs all of them on time (js/rules.js getachew-docs-24h,
          getachew-bonus-zamzam) — so it stays asked, in plain words */
-      {id:'doc_24', en:'Documents due to Selam today, invoices and delivery notes: how many reached her within 24 hours? If none were due, write 0 and 0. (in time / due today)', am:'ለሰላም የሚሄዱ ደረሰኞችና መረከቢያ ወረቀቶች፦ ስንቱ በ24 ሰዓት ውስጥ ደረሱ? ከሌለ 0 እና 0 ይጻፉ። (በሰዓቱ የደረሱ / ዛሬ መድረስ የነበረባቸው)', t:'ratio'},
+      {id:'doc_24', en:'Documents due to Selam today, invoices and delivery notes: how many reached her within 24 hours? If none were due, write 0 and 0. (in time / due today)', am:'ለሰላም የሚሄዱ ደረሰኞችና መረከቢያ ወረቀቶች፦ ስንቱ በ24 ሰዓት ውስጥ ደረሱ? ከሌለ 0 እና 0 ይጻፉ። (በሰዓቱ የደረሱ / ዛሬ መድረስ የነበረባቸው)', t:'ratio', ask:{b:{en:"How many documents (invoices, delivery notes) were due to Selam today?", am:"ዛሬ ለሰላም ስንት ደረሰኝና መረከቢያ ወረቀት መድረስ ነበረበት?"}, a:{en:"How many of them reached her within 24 hours?", am:"ከእነሱ ስንቱ በ24 ሰዓት ውስጥ ደረሱ?"}}},
       /* counted from the list of papers not yet with her (a tap on the list
          below opens it); 0 when the list was answered without that tap */
       {id:'doc_missing', en:'How many documents are still outstanding?', am:'እስካሁን ያልቀረቡ ሰነዶች ስንት ናቸው?', t:'num',
@@ -4678,7 +4678,7 @@ const REPORTS = [
     ]},
     { en:'Groups read today', am:'ዛሬ የተነበቡ ግሩፖች', fields:[
       {id:'pl_groups', en:'How many customer groups are active?', am:'ስንት የደንበኛ ግሩፖች ንቁ ናቸው?', t:'num'},
-      {id:'pl_checked', en:'How many groups were read today? (read / active)', am:'ዛሬ ስንት ግሩፖች ተነበቡ? (የተነበቡ / ንቁ)', t:'ratio'},
+      {id:'pl_checked', en:'How many groups were read today? (read / active)', am:'ዛሬ ስንት ግሩፖች ተነበቡ? (የተነበቡ / ንቁ)', t:'ratio', ask:{b:{en:"How many customer groups are active?", am:"ስንት የደንበኛ ግሩፖች ንቁ ናቸው?"}, a:{en:"How many of them were read today?", am:"ከእነሱ ስንቱ ዛሬ ተነበቡ?"}}, auto:{b:{of:'pl_groups'}}},
       {id:'pl_checked_why', en:'Not every group was read. Why, and when will they be? (Write which groups in the box.)', am:'ሁሉም ግሩፖች አልተነበቡም። ለምን? መቼ ይነበባሉ? (የትኞቹ ግሩፖች እንደሆኑ በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
           { en:'No time today',                       am:'ዛሬ ጊዜ አልነበረም' },
@@ -7827,7 +7827,7 @@ const SALES_DAILY = {
     ]},
     { en:'WhatsApp', am:'ዋትስአፕ', fields:[
       {id:'w_groups', en:'How many customer groups are you active in?', am:'በስንት የደንበኛ ግሩፖች ውስጥ ንቁ ነዎት?', t:'num'},
-      {id:'w_stage', en:'How many required stage messages did you post today? (posted / required)', am:'ዛሬ ከሚገባው የደረጃ መልዕክት ስንቱ ተላከ? (የተላከ / የሚገባው)', t:'ratio',
+      {id:'w_stage', en:'How many required stage messages did you post today? (posted / required)', am:'ዛሬ ከሚገባው የደረጃ መልዕክት ስንቱ ተላከ? (የተላከ / የሚገባው)', t:'ratio', ask:{b:{en:"How many stage messages did you have to post today?", am:"ዛሬ ስንት የደረጃ መልዕክት መላክ ነበረብዎት?"}, a:{en:"How many of them did you post?", am:"ከእነሱ ስንቱን ላኩ?"}},
         tgt:{op:'gte', v:100, en:'A missed stage message loses that stage’s commission',
              am:'ያልተላከ የደረጃ መልዕክት የዚያን ደረጃ ኮሚሽን ያሳጣል'}},
       {id:'w_stage_why', en:'A stage message was missed. Why? (Write the customer and the stage in the box.)', am:'የደረጃ መልዕክት ቀርቷል። ለምን? (ደንበኛውንና ደረጃውን በሳጥኑ ይጻፉ።)', t:'area',
@@ -7873,7 +7873,7 @@ const SALES_DAILY = {
         ]},
       /* the rows are the calls made; how many were due is the only box left
          to fill, and the form counts the other from the list */
-      {id:'fu_calls', en:'Of customers installed 48 hours ago, how many got their follow-up call? (called / due)', am:'ተከላቸው ከ48 ሰዓት በፊት ከተጠናቀቀ ደንበኞች ስንቱ የክትትል ጥሪ ተደረገላቸው? (የተደወለላቸው / መደወል የነበረባቸው)', t:'ratio',
+      {id:'fu_calls', en:'Of customers installed 48 hours ago, how many got their follow-up call? (called / due)', am:'ተከላቸው ከ48 ሰዓት በፊት ከተጠናቀቀ ደንበኞች ስንቱ የክትትል ጥሪ ተደረገላቸው? (የተደወለላቸው / መደወል የነበረባቸው)', t:'ratio', ask:{b:{en:"How many customers were due a follow-up call today (installed 48 hours ago)?", am:"ዛሬ ስንት ደንበኞች የክትትል ጥሪ ይገባቸው ነበር (ተከላቸው ከ48 ሰዓት በፊት ያለቀ)?"}, a:{en:"How many of them got their call? (Counted from your list.)", am:"ከእነሱ ስንቱ ተደወለላቸው? (ከዝርዝርዎ የተቆጠረ።)"}},
         show:{f:'fu_any', when:'yes'}, auto:{a:{rows:'fu_list'}}},
       {id:'fu_calls_why', en:'Who was not called, and when will they be? (Write the names in the box.)', am:'ያልተደወለላቸው እነማን ናቸው? መቼ ይደወልላቸዋል? (ስማቸውን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
@@ -8342,7 +8342,7 @@ const DESIGN_DAILY = {
           { en:'Refused — the video was deleted',      am:'አልፈቀዱም — ቪዲዮው ተሰርዟል' },
           { en:'Will ask at the next visit',           am:'በሚቀጥለው ጉብኝት ይጠየቃል' }
         ], show:{f:'v_consent', when:'no'}},
-      {id:'v_disc', en:'How many design discussions did you record today? (recorded / held)', am:'ዛሬ ስንት የዲዛይን ውይይቶችን ቀረጹ? (የተቀረጹ / የተካሄዱ)', t:'ratio',
+      {id:'v_disc', en:'How many design discussions did you record today? (recorded / held)', am:'ዛሬ ስንት የዲዛይን ውይይቶችን ቀረጹ? (የተቀረጹ / የተካሄዱ)', t:'ratio', ask:{b:{en:"How many design discussions did you hold today?", am:"ዛሬ ስንት የዲዛይን ውይይት አካሄዱ?"}, a:{en:"How many of them did you record?", am:"ከእነሱ ስንቱን ቀረጹ?"}},
         show:{f:'dz_events', when:'has', v:'disc'}}
     ]},
     /* one row a design, where there were four counts and a two-box question */
@@ -8441,7 +8441,7 @@ const DESIGN_DAILY = {
         ], show:{f:'ms_codes', when:'no'}}
     ]},
     { en:'Designer Profile and drawings', am:'የዲዛይነር ፕሮፋይልና ሥዕሎች', fields:[
-      {id:'dp_done', en:'How many Designer Profiles are complete? (complete / needed before approval)', am:'ስንት የዲዛይነር ፕሮፋይሎች ተሞልተዋል? (የተሞሉ / ከማጽደቅ በፊት የሚያስፈልጉ)', t:'ratio',
+      {id:'dp_done', en:'How many Designer Profiles are complete? (complete / needed before approval)', am:'ስንት የዲዛይነር ፕሮፋይሎች ተሞልተዋል? (የተሞሉ / ከማጽደቅ በፊት የሚያስፈልጉ)', t:'ratio', ask:{b:{en:"How many designs went for approval today?", am:"ዛሬ ስንት ዲዛይን ለማጽደቅ ቀረበ?"}, a:{en:"For how many of them is the Designer Profile complete?", am:"ከእነሱ የስንቱ የዲዛይነር ፕሮፋይል ተሞልቷል?"}},
         show:{f:'dz_events', when:'has', v:'profile'},
         tgt:{op:'gte', v:100, en:'Missing is –300 Birr and loses the final design commission',
              am:'ካልተሞላ –300 ብር እና የመጨረሻ ዲዛይን ኮሚሽንን ያሳጣል'}},
@@ -8494,7 +8494,7 @@ const DESIGN_DAILY = {
          (zero:1), so the week does not keep an older figure; the two-box
          ones are left unanswered, as a day with no complaint has none to
          contact. */
-      {id:'cp_24', en:'How many of those customers were contacted within 24 hours? (contacted / assigned)', am:'ከእነዚህ ስንት ደንበኞች በ24 ሰዓት ውስጥ ተደወለላቸው? (የተደወለላቸው / የተመደቡ)', t:'ratio',
+      {id:'cp_24', en:'How many of those customers were contacted within 24 hours? (contacted / assigned)', am:'ከእነዚህ ስንት ደንበኞች በ24 ሰዓት ውስጥ ተደወለላቸው? (የተደወለላቸው / የተመደቡ)', t:'ratio', ask:{b:{en:"How many complaints are assigned to you?", am:"ስንት ቅሬታዎች ለእርስዎ ተመድበዋል?"}, a:{en:"How many of those customers were contacted within 24 hours?", am:"ከእነሱ ስንቱ ደንበኛ በ24 ሰዓት ውስጥ ተደወለላቸው?"}}, auto:{b:{rows:'cp_list'}},
         show:{f:'cp_any', when:'yes'},
         tgt:{op:'gte', v:100, en:'Missing is –300 Birr', am:'ካልተደወለ –300 ብር'}},
       {id:'cp_24_why', en:'Some were not contacted in time. Why? (Write who in the box.)', am:'አንዳንዶቹ በሰዓቱ አልተደወለላቸውም። ለምን? (ማን እንደሆነ በሳጥኑ ይጻፉ።)', t:'area',
@@ -8504,7 +8504,7 @@ const DESIGN_DAILY = {
           { en:'Out on visits all day',                am:'ቀኑን ሙሉ በጉብኝት ላይ ነበርኩ' },
           { en:'Will call tomorrow',                   am:'ነገ ይደወላል' }
         ], show:{f:'cp_24', when:'short'}},
-      {id:'cp_48', en:'How many got a proposed solution within 48 hours? (proposed / assigned)', am:'ስንቱ በ48 ሰዓት ውስጥ መፍትሔ ቀረበላቸው? (የቀረበላቸው / የተመደቡ)', t:'ratio',
+      {id:'cp_48', en:'How many got a proposed solution within 48 hours? (proposed / assigned)', am:'ስንቱ በ48 ሰዓት ውስጥ መፍትሔ ቀረበላቸው? (የቀረበላቸው / የተመደቡ)', t:'ratio', ask:{b:{en:"How many complaints are assigned to you?", am:"ስንት ቅሬታዎች ለእርስዎ ተመድበዋል?"}, a:{en:"How many of them got a proposed solution within 48 hours?", am:"ከእነሱ ስንቱ በ48 ሰዓት ውስጥ መፍትሔ ቀረበላቸው?"}}, auto:{b:{rows:'cp_list'}},
         show:{f:'cp_any', when:'yes'},
         tgt:{op:'gte', v:100, en:'Missing is –500 Birr', am:'ካልቀረበ –500 ብር'}},
       /* read by the morning brief beside every other "waiting on" answer */
@@ -8532,7 +8532,7 @@ const DESIGN_DAILY = {
         ], show:{f:'cp_out', when:'pos'}}
     ]},
     { en:'WhatsApp', am:'ዋትስአፕ', fields:[
-      {id:'wd_stage', en:'How many design stage messages were posted? (posted / due)', am:'ስንት የዲዛይን ደረጃ መልዕክቶች ተላኩ? (የተላኩ / የሚገባው)', t:'ratio',
+      {id:'wd_stage', en:'How many design stage messages were posted? (posted / due)', am:'ስንት የዲዛይን ደረጃ መልዕክቶች ተላኩ? (የተላኩ / የሚገባው)', t:'ratio', ask:{b:{en:"How many design stage messages were due today?", am:"ዛሬ ስንት የዲዛይን ደረጃ መልዕክት መላክ ነበረበት?"}, a:{en:"How many of them were posted?", am:"ከእነሱ ስንቱ ተላከ?"}},
         tgt:{op:'gte', v:100, en:'A missed message loses that stage’s commission',
              am:'ያልተላከ መልዕክት የዚያን ደረጃ ኮሚሽን ያሳጣል'}},
       {id:'wd_stage_why', en:'A stage message was missed. Why? (Write the customer and the stage in the box.)', am:'የደረጃ መልዕክት ቀርቷል። ለምን? (ደንበኛውንና ደረጃውን በሳጥኑ ይጻፉ።)', t:'area',

@@ -75,6 +75,9 @@ const T = {
 
     countedFromRows:'counted from your rows',
     workedOut:'Worked out from your answers — nothing to fill in.',
+    /* the two buttons under "how many of them" in a two-step count */
+    ratioAll:'All {n}',
+    ratioNone:'None',
     fromYourWeek:'Added up from your own daily reports this week.',
     fromYourWeekRows:'Gathered from your own daily reports this week — you listed these as they happened.',
     weekHadNone:'Nothing of this kind in your daily reports this week.',
@@ -781,6 +784,8 @@ const T = {
 
     countedFromRows:'ከረድፎችዎ የተቆጠረ',
     workedOut:'ከመልሶችዎ የተሰራ — የሚሞላ ነገር የለም።',
+    ratioAll:'ሁሉም {n}',
+    ratioNone:'ምንም',
     fromYourWeek:'በዚህ ሳምንት ከራስዎ ዕለታዊ ሪፖርቶች የተደመረ።',
     fromYourWeekRows:'በዚህ ሳምንት ከራስዎ ዕለታዊ ሪፖርቶች የተሰበሰበ — በወቅቱ እርስዎ ዘርዝረዋቸዋል።',
     weekHadNone:'በዚህ ሳምንት ዕለታዊ ሪፖርቶችዎ ውስጥ ይህን የሚመስል የለም።',

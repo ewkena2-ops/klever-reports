@@ -603,7 +603,10 @@ fieldset legend{
   float:left;width:100%;padding:16px 0 4px;margin:0;
   display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--ink-2);
 }
-fieldset legend + *{clear:both}
+/* every row, not just the next one: when the first question is hidden (a
+   follow-up, a worked-out line) the first one shown sat beside the floated
+   heading and was squeezed to nothing (Ephrata's Cash collection, 11 Oct 2026) */
+fieldset legend ~ *{clear:both}
 fieldset legend .lgc{
   font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;
   color:var(--dim);padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.04);

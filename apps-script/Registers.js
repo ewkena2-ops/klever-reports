@@ -228,7 +228,7 @@ var REGISTER_READERS_ = [
               { en: 'Turnover (12 months)', am: 'ዝውውር (12 ወር)', v: f.turnover.turnover_pct_12_months == null ? '—' : f.turnover.turnover_pct_12_months + '%' },
               { en: 'Attendance (4 weeks)', am: 'ተገኝነት (4 ሳምንት)', v: f.factory_attendance_4_weeks_pct === null ? '—' : f.factory_attendance_4_weeks_pct + '%' }];
     } },
-  { id: 'compliance', en: 'Legal & compliance register', am: 'የሕግና የተገዢነት መዝገብ', role: 'compliance officer', when: { week: true },
+  { id: 'compliance', en: 'Legal & compliance register', am: 'የሕግና የደንብ መዝገብ', role: 'compliance officer', when: { week: true },
     facts: function (P) { return complianceFacts_(P); }, ask: COMPLIANCE_ASK_,
     tiles: function (f) {
       if (f.note) return [{ en: 'Items', am: 'ጉዳዮች', v: '0' }];

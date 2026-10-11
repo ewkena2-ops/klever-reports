@@ -189,7 +189,7 @@ function waDecisionWorld_(day) {
     '; return { defs: CHANNEL_DEFS, rooms: CHANNELS, accounts: CHAT_ACCOUNTS };')(sched.people);
   var people = sched.people.filter(function (p) { return ch.accounts.indexOf(p.id) !== -1; });
   var rooms = ch.defs.filter(function (d) { return WA_ROOMS_.indexOf(d.id) !== -1; }).map(function (d) {
-    return { id: d.id, en: d.en, members: ch.rooms.membersOf(d) };
+    return { id: d.id, en: d.en, am: d.am, members: ch.rooms.membersOf(d) };
   });
   var R = loadRules_();
   var rules = R.list.filter(function (r) {
@@ -382,7 +382,8 @@ function waRingRoom_(roomId, text) {
     var room = W.rooms.filter(function (r) { return r.id === roomId; })[0];
     if (!room) return;
     room.members.filter(function (p) { return p !== 'chairman'; }).forEach(function (p) {
-      try { pushTo_(p, 'Chairman · ' + room.en, String(text).substring(0, 200), 'room-' + roomId, 'chat.html#c=' + roomId); }
+      /* the phone's title in both languages, as the instruction pushes are */
+      try { pushTo_(p, 'Chairman · ' + room.en + (room.am ? ' · ሊቀመንበሩ · ' + room.am : ''), String(text).substring(0, 200), 'room-' + roomId, 'chat.html#c=' + roomId); }
       catch (e) { Logger.log('wa ring %s: %s', p, e.message); }
     });
   } catch (e) { Logger.log('wa ring: %s', e.message); }
@@ -468,7 +469,7 @@ function waCustomer_(row) {
   if (n === 0) {
     WA_SALES_.forEach(function (p) {
       try {
-        pushTo_(p, 'WhatsApp customer · ' + (name || '+' + phone), text.substring(0, 160), 'wa-' + phone, 'chat.html');
+        pushTo_(p, 'WhatsApp customer · የዋትስአፕ ደንበኛ · ' + (name || '+' + phone), text.substring(0, 160), 'wa-' + phone, 'chat.html');
       } catch (e) { Logger.log('wa push %s: %s', p, e.message); }
     });
   }

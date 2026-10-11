@@ -835,7 +835,7 @@ var AGENTS = [
    tomorrow, and what each person on the factory side does today. Every
    figure and action is worked out in code (plantManager_ in Plant.js); the
    morning's AI task list (Team.js) reads this finding. */
-{ id:'plantmanager', en:'Daily COO / Plant Manager', am:'የዕለቱ COO / የፋብሪካ ሥራ አስኪያጅ', words: 180,
+{ id:'plantmanager', en:'Daily COO / Plant Manager', am:'የዕለቱ የፋብሪካ ሥራ አስኪያጅ (COO)', words: 180,
   said:['amaha-daily', 'liu-daily', 'wude-daily', 'yordanos-daily', 'getachew-daily', 'elyas-daily'],
   facts: function (d) { return plantManager_(d); },
   ask:'You run the plant this morning. First yesterday: made against the plan and the 40 m², the OEE '+
@@ -903,7 +903,7 @@ var AGENTS = [
       'sits in that band, say it plainly, because nothing in the letters reacts to it. '+
       'If anyone pressured Wude to pass a defect, that is the headline.' },
 
-{ id:'store', en:'Store and stock', am:'መጋዘንና ክምችት',
+{ id:'store', en:'Store and stock', am:'መጋዘንና ዕቃ',
   said:['yordanos-daily', 'yordanos-weekly'],
   facts: function (d) {
     var yord = vals_(d.filed, 'yordanos-daily');
@@ -1013,7 +1013,7 @@ var AGENTS = [
    controls broken, the three sister companies' money in and out — and what
    Selam, Kidan, Getachew and Ephrata each do today. Figures and actions in
    code (groupCfo_ in GroupCfo.js); Team.js reads this finding. */
-{ id:'groupcfo', en:'Daily Group CFO', am:'የዕለቱ የቡድኑ CFO', words: 180,
+{ id:'groupcfo', en:'Daily Group CFO', am:'የዕለቱ የቡድኑ የገንዘብ አማካሪ (CFO)', words: 180,
   said:['betty-daily', 'betty-forecast', 'getachew-daily', 'frewoyni-daily', 'meri-daily', 'lemikura-daily'],
   facts: function (d) { return groupCfo_(d); },
   ask:'You are the group’s CFO this morning. Lead with any same-day control broken — a payment over '+

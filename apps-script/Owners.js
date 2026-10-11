@@ -66,7 +66,8 @@ function deliverReadings_(items, day, kind) {
   });
   Object.keys(per).forEach(function (to) {
     try {
-      pushTo_(to, kind === 'week' ? 'Your weekly AI reading' : 'Your morning AI reading',
+      /* in both languages, as the instruction pushes are (11 Oct 2026) */
+      pushTo_(to, kind === 'week' ? 'Your weekly AI reading · የሳምንቱ ንባብዎ' : 'Your morning AI reading · የጠዋቱ ንባብዎ',
               per[to].join(' · '), 'readings', '');
     } catch (e) { Logger.log('reading push %s: %s', to, e.message); }
   });

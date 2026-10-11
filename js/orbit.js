@@ -65,7 +65,7 @@
       reads: [['Wude’s daily QC report', 'የውዱ ዕለታዊ የጥራት ሪፖርት']]
     },
     store: {
-      en: 'Store and stock', am: 'መጋዘንና ክምችት',
+      en: 'Store and stock', am: 'መጋዘንና ዕቃ',
       watchEn: 'What is about to run out, and whether it stops production before it is replaced.',
       watchAm: 'ሊያልቅ የተቃረበው ምን እንደሆነ፣ ከመተካቱ በፊት ምርትን ያቆም እንደሆነ።',
       reads: [['Yordanos’s daily store report', 'የዮርዳኖስ ዕለታዊ የመጋዘን ሪፖርት']]
@@ -85,7 +85,7 @@
     finance: {
       en: 'Finance', am: 'ፋይናንስ',
       watchEn: 'Whether the money is where it should be: the 6,000,000 reserve, ZamZam, payments over 50,000 without Kidan.',
-      watchAm: 'ገንዘቡ ባለበት ቦታ መሆኑን፦ የ6,000,000 ክምችት፣ ዘምዘም፣ ያለ ኪዳን ከ50,000 በላይ ክፍያዎች።',
+      watchAm: 'ገንዘቡ ባለበት ቦታ መሆኑን፦ የ6,000,000 መጠባበቂያ፣ ዘምዘም፣ ያለ ኪዳን ከ50,000 በላይ ክፍያዎች።',
       reads: [['The daily finance report', 'ዕለታዊ የፋይናንስ ሪፖርት'],
               ['Her 7-day forecast', 'የ7 ቀን ትንበያዋ']]
     },

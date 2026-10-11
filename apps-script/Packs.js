@@ -102,7 +102,7 @@ function weeklyPack_(endDay) {
   /* each owner's copy of their Sunday readings (Owners.js) */
   try {
     var mine = [];
-    if (cfo && cfoText) mine.push({ id: 'cfo', en: 'Your CFO — the week’s money', am: 'የእርስዎ CFO — የሳምንቱ ገንዘብ', text: cfoText });
+    if (cfo && cfoText) mine.push({ id: 'cfo', en: 'Your CFO — the week’s money', am: 'የእርስዎ የገንዘብ አማካሪ (CFO) — የሳምንቱ ገንዘብ', text: cfoText });
     if (ops && opsText) mine.push({ id: 'ops', en: 'Operations — plan to site', am: 'ኦፕሬሽን — ከዕቅድ እስከ ተከላ', text: opsText });
     ((rd.saved && rd.saved.readers) || []).forEach(function (r) { mine.push({ id: r.id, en: r.en, am: r.am, text: r.text }); });
     deliverReadings_(mine, end, 'week');

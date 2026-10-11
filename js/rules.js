@@ -100,7 +100,7 @@ const RULES = [
 
   { id:'liu-stock-below-99', who:['liu'], kind:'penalty', birr:500, per:'month', how:'auto',
     en:'Stock accuracy below 99% for the month',
-    am:'በወሩ የክምችት ትክክለኛነት ከ99% በታች',
+    am:'በወሩ የዕቃ ቆጠራ ትክክለኛነት ከ99% በታች',
     src:'Mahelet’s letter — “Stock accuracy below 99% –500 Birr/month”',
     note:'The same miss also fines Yordanos -500 (yordanos-accuracy-below-99).',
     test:{ at:'month', when:[{ avg:'liu-weekly.s_accuracy' }, '<', 99] } },
@@ -170,7 +170,7 @@ const RULES = [
 
   { id:'liu-wa-repeat-kpi-cancel', who:['liu'], kind:'consequence', birr:null, per:'month', how:'auto',
     en:'3+ WhatsApp failures in a week: KPI bonus cancelled for the month',
-    am:'በሳምንት 3 ወይም ከዚያ በላይ የዋትስአፕ ጥፋቶች፤ የወሩ የKPI ጉርሻ ይሰረዛል',
+    am:'በሳምንት 3 ወይም ከዚያ በላይ የዋትስአፕ ጥፋቶች፤ የወሩ የዋና ዒላማዎች (KPI) ጉርሻ ይሰረዛል',
     src:'Mahelet’s letter — “Repeated WhatsApp failures (3 or more in a week) KPI Bonus cancelled for that month”',
     note:'In any Monday–Saturday week, add up the occurrences charged under liu-wa-ops-message-late, liu-wa-assembler-progress, liu-wa-unprofessional and liu-wa-customer-complaint; at 3 or more, liu-kpi-bonus pays 0 for that month.',
     test:'custom' },
@@ -269,7 +269,7 @@ const RULES = [
 
   { id:'betty-shortfall-not-flagged', who:['betty'], kind:'penalty', birr:2000, per:'event', how:'auto',
     en:'Cash shortfall not flagged in advance',
-    am:'የጥሬ ገንዘብ እጥረት አስቀድሞ አልተጠቆመም',
+    am:'የጥሬ ገንዘብ እጥረት ቀድሞ አልተነገረም',
     src:'Selam’s letter — “Failed to flag a cash shortfall in advance –2,000 Birr”',
     note:'One charge per week answered no; the form headers print this fine on both the forecast and the projection, but one shortfall is one charge.',
     test:{ at:'week', on:'betty-weekly', when:['betty-weekly.f_shortfall', '==', 'no'] } },
@@ -577,7 +577,7 @@ const RULES = [
 
   { id:'yordanos-bonus-kpi', who:['yordanos'], kind:'bonus', birr:2000, per:'month', how:'auto',
     en:'Stock accuracy 99% or more for the month',
-    am:'በወሩ የክምችት ትክክለኛነት 99% ወይም ከዚያ በላይ',
+    am:'በወሩ የዕቃ ቆጠራ ትክክለኛነት 99% ወይም ከዚያ በላይ',
     src:'Yordanos’s letter — “KPI 2,000 Birr Stock accuracy ≥99% for the month”',
     note:'The month is the mean of the Friday counts.',
     test:{ at:'month', when:[{ avg:'yordanos-weekly.y_accuracy' }, '>=', 99] } },
@@ -596,14 +596,14 @@ const RULES = [
 
   { id:'yordanos-bonus-zero-loss', who:['yordanos'], kind:'bonus', birr:1000, per:'month', how:'auto',
     en:'No missing, damaged or unaccounted stock',
-    am:'የጠፋ፣ የተበላሸ ወይም ያልተመዘገበ ክምችት የለም',
+    am:'የጠፋ፣ የተበላሸ ወይም ያልተመዘገበ ዕቃ የለም',
     src:'Yordanos’s letter — “Zero Loss 1,000 Birr No missing, damaged or unaccounted stock”',
     note:'Damaged stock has no field, so it is presumed none unless the Chairman records it.',
     test:{ at:'month', needFiled:['yordanos-weekly'], when:{ all:[[{ sum:'yordanos-weekly.y_missing' }, '==', 0], [{ yes:'yordanos-weekly.y_theft' }, '==', 0]] } } },
 
   { id:'yordanos-stock-discrepancy', who:['yordanos'], kind:'penalty', birr:500, per:'event', how:'auto',
     en:'Stock discrepancy found',
-    am:'የክምችት ልዩነት ተገኝቷል',
+    am:'የዕቃ ልዩነት ተገኝቷል',
     src:'Yordanos’s letter — “Stock accuracy Failure Penalty Stock discrepancy found –500 Birr”',
     note:'Charged from the Friday count only, so a standing difference is not fined on every daily report (st_disc).',
     test:{ at:'week', on:'yordanos-weekly', count:'yordanos-weekly.y_disc' } },
@@ -623,20 +623,20 @@ const RULES = [
 
   { id:'yordanos-accuracy-below-99', who:['yordanos'], kind:'penalty', birr:500, per:'month', how:'auto',
     en:'Stock accuracy below 99% for the month',
-    am:'በወሩ የክምችት ትክክለኛነት ከ99% በታች',
+    am:'በወሩ የዕቃ ቆጠራ ትክክለኛነት ከ99% በታች',
     src:'Yordanos’s letter — “Stock accuracy below 99% –500 Birr/month”',
     note:'The same miss also fines Mahelet -500 (liu-stock-below-99).',
     test:{ at:'month', when:[{ avg:'yordanos-weekly.y_accuracy' }, '<', 99] } },
 
   { id:'yordanos-no-friday-count', who:['yordanos'], kind:'penalty', birr:300, per:'week', how:'auto',
-    en:'Friday stock count not done',
-    am:'የዓርብ የክምችት ቆጠራ አልተደረገም',
+    en:'Saturday stock count not done',
+    am:'የቅዳሜ የዕቃ ቆጠራ አልተደረገም',
     src:'Yordanos’s letter — “Failed to conduct the Friday stock count –300 Birr”',
     test:{ at:'week', on:'yordanos-weekly', when:['yordanos-weekly.y_count', '==', 'no'] } },
 
   { id:'yordanos-wrong-figure', who:['yordanos'], kind:'penalty', birr:500, per:'event', how:'recorded',
     en:'Wrong stock figure in a report',
-    am:'በሪፖርት ውስጥ የተሳሳተ የክምችት አሃዝ',
+    am:'በሪፖርት ውስጥ የተሳሳተ የዕቃ ቁጥር',
     src:'Yordanos’s letter — “Wrong stock figure in a report –500 Birr”' },
 
   { id:'yordanos-unchecked-receipt', who:['yordanos'], kind:'penalty', birr:500, per:'item', how:'auto',
@@ -659,7 +659,7 @@ const RULES = [
 
   { id:'yordanos-mismatch-not-reported', who:['yordanos'], kind:'penalty', birr:300, per:'event', how:'auto',
     en:'Receiving mismatch not reported the same day',
-    am:'በርክክብ የተገኘ አለመዛመድ በዕለቱ ሪፖርት አልተደረገም',
+    am:'ዕቃ ሲገባ የተገኘ ልዩነት በዕለቱ አልተነገረም',
     src:'Yordanos’s letter — “Failed to report a mismatch same day –300 Birr”',
     note:'rej_reported is optional, so a blank answer charges nothing.',
     test:{ at:'day', when:{ all:[['yordanos-daily.rec_rejected', '>', 0], ['yordanos-daily.rej_reported', '==', 'no']] } } },
@@ -734,7 +734,7 @@ const RULES = [
 
   { id:'ephrata-team-performance-bonus', who:['ephrata'], kind:'bonus', birr:10000, per:'month', how:'recorded',
     en:'Monthly team performance bonus: all eight conditions met',
-    am:'የወር የቡድን አፈጻጸም ጉርሻ፦ ስምንቱም መስፈርቶች ተሟልተዋል',
+    am:'የወር የቡድን ውጤት ጉርሻ፦ ስምንቱም መስፈርቶች ተሟልተዋል',
     src:'Ephrata’s letter — “6 Monthly team performance bonus 10,000 Birr per month All conditions must be met”',
     note:'No form measures "80% of site visits booked within 24 hours" (her duty says 48 hours), and 3+ WhatsApp failures in any week cancel it.' },
 
@@ -1075,7 +1075,7 @@ const RULES = [
 
   { id:'sales-no-contracts-2-months', who:['sales'], kind:'consequence', birr:null, per:'month', how:'auto',
     en:'No contracts for 2 months in a row: formal performance review',
-    am:'ለ2 ተከታታይ ወራት ምንም ውል አልተፈረመም፦ መደበኛ የአፈጻጸም ግምገማ',
+    am:'ለ2 ተከታታይ ወራት ምንም ውል አልተፈረመም፦ መደበኛ የሥራ ግምገማ',
     src:'The salesperson letter — “No contracts signed for 2 consecutive months Formal performance review”',
     note:'Custom: the sum of {p}-sales-daily.c_signed is 0 in this month and in the previous month.',
     test:'custom' },
@@ -1298,7 +1298,7 @@ const RULES = [
 
   { id:'design-price-amend-not-notified', who:['design'], kind:'penalty', birr:300, per:'event', how:'recorded',
     en:'Price amendment not notified',
-    am:'የዋጋ ማሻሻያ አልተነገረም',
+    am:'የዋጋ ለውጥ አልተነገረም',
     src:'The designer letter — “Failed to notify a price amendment –300 Birr”' },
 
   { id:'design-pre-video-missing', who:['design'], kind:'penalty', birr:500, per:'item', how:'auto',
@@ -1527,7 +1527,7 @@ const RULES = [
 
   { id:'amaha-material-savings', who:['amaha'], kind:'bonus', birr:null, per:'month', how:'auto',
     en:'Share of monthly material savings against the BOM (10%–25%)',
-    am:'በወሩ ከBOM አንጻር ከተቆጠበው ቁሳቁስ የሚሰጥ ድርሻ (10%–25%)',
+    am:'በወሩ ከዕቃ ዝርዝሩ (BOM) አንጻር ከተቆጠበው ቁሳቁስ የሚሰጥ ድርሻ (10%–25%)',
     src:'Amaha’s letter — “Below 50,000 Birr 0% 50,000 – 99,999 Birr 10% 100,000 – 199,999 Birr 15% 200,000 – 299,999 Birr 20% 300,000 Birr and above 25%”',
     formula:'Whole monthly savings × 10% (50,000+), 15% (100,000+), 20% (200,000+), 25% (300,000+)',
     note:'Clause 6 requires ZERO QC failures (the form’s 98% line is wrong); two of its conditions — complaints about material quality and rework from weak material use — are in no form, so cancel the line if either happened.',
@@ -1555,14 +1555,14 @@ const RULES = [
 
   { id:'amaha-bonus-cleaning', who:['amaha'], kind:'bonus', birr:2000, per:'month', how:'auto',
     en:'Cleaning bonus: 5S ≥80%, tools stored, waste removed daily',
-    am:'የጽዳት ጉርሻ፦ 5S ≥80%፣ መሣሪያዎች በቦታቸው፣ ቆሻሻ በየቀኑ ተወግዷል',
+    am:'የጽዳት ጉርሻ፦ የንጽሕናና የሥርዓት ፍተሻ (5S) ≥80%፣ መሣሪያዎች በቦታቸው፣ ቆሻሻ በየቀኑ ተወግዷል',
     src:'Amaha’s letter — “Cleaning 2,000 Birr Weekly 5S audit ≥80%, tools stored, waste removed daily, no uncleaned areas found”',
     note:'Clause 8 needs every weekly audit at 80% or above, while its penalty table cancels the bonus only after two consecutive failed audits; the test follows clause 8’s conditions.',
     test:{ at:'month', needFiled:['amaha-daily'], when:{ all:[{ every:['amaha-weekly.c_5s', '>=', 80] }, { every:['amaha-daily.c_tools', '==', 'yes'] }, { every:['amaha-daily.c_waste', '==', 'yes'] }, { every:['amaha-weekly.c_issues', '==', 0] }] } } },
 
   { id:'amaha-bonus-punctuality', who:['amaha'], kind:'bonus', birr:3000, per:'month', how:'auto',
     en:'Punctuality and behaviour bonus: attendance ≥95%, no incidents',
-    am:'የሰዓት አክባሪነትና የሥነ ምግባር ጉርሻ፦ መገኘት ≥95%፣ ምንም ችግር የለም',
+    am:'የሰዓት አክባሪነትና የባህርይ ጉርሻ፦ መገኘት ≥95%፣ ምንም ችግር የለም',
     src:'Amaha’s letter — “Punctuality & behaviour 3,000 Birr Team attendance ≥95%, zero unexcused lateness or early departure, zero behaviour or safety incidents”',
     note:'Early departures are in no form — cancel the line if a worker left early without approval; the same 95% attendance also pays the 2,000 attendance bonus.',
     test:{ at:'month', needFiled:['amaha-daily'], when:{ all:[[{ ratio:['amaha-daily.mp_present', 'amaha-daily.mp_assigned'] }, '>=', 95], [{ rows:'amaha-daily.mp_late_list', where:['valid', '==', 'no'] }, '==', 0], [{ sum:'amaha-daily.mp_behave' }, '==', 0], [{ yes:'amaha-daily.mp_safety' }, '==', 0]] } } },
@@ -1590,21 +1590,21 @@ const RULES = [
 
   { id:'amaha-cond-schedule', who:['amaha'], kind:'consequence', birr:null, per:'month', how:'auto',
     en:'Clause 5 condition failed: schedule adherence below 90%',
-    am:'የአንቀጽ 5 ሁኔታ አልተሟላም፦ የዕቅድ አፈጻጸም ከ90% በታች',
+    am:'የአንቀጽ 5 ሁኔታ አልተሟላም፦ በዕቅዱ ቀን የተጠናቀቁ ሥራዎች ከ90% በታች',
     src:'Amaha’s letter — “Schedule adherence ≥90% Material variance ≤+5% over BOM”',
     note:'Measured from Mahelet’s weekly count of planned jobs finished on schedule — none of Amaha’s reports asks it; clause 5 does not say which bonus it cancels.',
     test:{ at:'month', when:[{ ratio:['liu-weekly.pl_onsched__a', 'liu-weekly.pl_onsched__b'] }, '<', 90] } },
 
   { id:'amaha-cond-variance', who:['amaha'], kind:'consequence', birr:null, per:'month', how:'auto',
     en:'Clause 5 condition failed: a job over +5% of its BOM',
-    am:'የአንቀጽ 5 ሁኔታ አልተሟላም፦ ከBOM በ5% በላይ የበለጠ ሥራ አለ',
+    am:'የአንቀጽ 5 ሁኔታ አልተሟላም፦ ከዕቃ ዝርዝሩ (BOM) በ5% በላይ ዕቃ የፈጀ ሥራ አለ',
     src:'Amaha’s letter — “Material variance ≤+5% over BOM 5S audit ≥80%”',
     note:'Read per job; clause 5 does not say which bonus it cancels, and between +5% and +10% no fine applies.',
     test:{ at:'month', when:['amaha-monthly.m_over', '==', 'yes'] } },
 
   { id:'amaha-cond-5s', who:['amaha'], kind:'consequence', birr:null, per:'month', how:'auto',
     en:'Clause 5 condition failed: a 5S audit below 80%',
-    am:'የአንቀጽ 5 ሁኔታ አልተሟላም፦ ከ80% በታች የሆነ የ5S ኦዲት',
+    am:'የአንቀጽ 5 ሁኔታ አልተሟላም፦ ከ80% በታች የሆነ የንጽሕናና የሥርዓት ፍተሻ (5S)',
     src:'Amaha’s letter — “5S audit ≥80% Zero lost-time accidents”',
     note:'Clause 5 cancels “the relevant bonus” without naming it — decide which, if any, to cancel.',
     test:{ at:'month', when:{ some:['amaha-weekly.c_5s', '<', 80] } } },
@@ -1645,21 +1645,21 @@ const RULES = [
 
   { id:'amaha-bom-over-10-20', who:['amaha'], kind:'penalty', birr:2000, per:'job', how:'auto',
     en:'Material use 10%–20% over the BOM',
-    am:'የቁሳቁስ አጠቃቀም ከBOM በ10%–20% በልጧል',
+    am:'የቁሳቁስ አጠቃቀም ከዕቃ ዝርዝሩ (BOM) በ10%–20% በልጧል',
     src:'Amaha’s letter — “Material usage exceeds BOM by 10% – 20% –2,000 Birr”',
     note:'Charged per job, from his monthly overrun list (Chairman, 28 Sep 2026). Read per job from the monthly list; an overrun between 20% and 21% falls in no band of the letter.',
     test:{ at:'month', rows:{ of:'amaha-monthly.m_over_list', where:{ all:[['pct', '>=', 10], ['pct', '<=', 20]] } } } },
 
   { id:'amaha-bom-over-21-30', who:['amaha'], kind:'penalty', birr:5000, per:'job', how:'auto',
     en:'Material use 21%–30% over the BOM',
-    am:'የቁሳቁስ አጠቃቀም ከBOM በ21%–30% በልጧል',
+    am:'የቁሳቁስ አጠቃቀም ከዕቃ ዝርዝሩ (BOM) በ21%–30% በልጧል',
     src:'Amaha’s letter — “Material usage exceeds BOM by 21% – 30% –5,000 Birr”',
     note:'Charged per job, from his monthly overrun list (Chairman, 28 Sep 2026). Read per job from the monthly list; an overrun between 20% and 21% falls in no band of the letter.',
     test:{ at:'month', rows:{ of:'amaha-monthly.m_over_list', where:{ all:[['pct', '>=', 21], ['pct', '<=', 30]] } } } },
 
   { id:'amaha-bom-over-30', who:['amaha'], kind:'penalty', birr:10000, per:'job', how:'auto',
     en:'Material use more than 30% over the BOM (+ investigation)',
-    am:'የቁሳቁስ አጠቃቀም ከBOM ከ30% በላይ በልጧል (+ ምርመራ)',
+    am:'የቁሳቁስ አጠቃቀም ከዕቃ ዝርዝሩ (BOM) ከ30% በላይ በልጧል (+ ምርመራ)',
     src:'Amaha’s letter — “Material usage exceeds BOM by more than 30% –10,000 Birr + investigation”',
     note:'Charged per job, from his monthly overrun list (Chairman, 28 Sep 2026). Read per job from the monthly list; the letter also orders an investigation.',
     test:{ at:'month', rows:{ of:'amaha-monthly.m_over_list', where:['pct', '>', 30] } } },
@@ -1733,14 +1733,14 @@ const RULES = [
 
   { id:'amaha-5s-below-80', who:['amaha'], kind:'penalty', birr:500, per:'week', how:'auto',
     en:'5S audit below 80%',
-    am:'የ5S ኦዲት ከ80% በታች',
+    am:'የንጽሕናና የሥርዓት ፍተሻ (5S) ከ80% በታች',
     src:'Amaha’s letter — “5S audit below 80% –500 Birr”',
     note:'No auditor is named in the letter, so the score is Amaha’s own.',
     test:{ at:'week', on:'amaha-weekly', when:['amaha-weekly.c_5s', '<', 80] } },
 
   { id:'amaha-5s-two-consecutive', who:['amaha'], kind:'consequence', birr:null, per:'month', how:'recorded',
     en:'Two consecutive failed 5S audits: cleaning bonus cancelled',
-    am:'ተከታታይ ሁለት የ5S ኦዲቶች አልተሳኩም፦ የጽዳት ጉርሻ ተሰርዟል',
+    am:'ተከታታይ ሁለት የንጽሕናና የሥርዓት ፍተሻዎች (5S) አልተሳኩም፦ የጽዳት ጉርሻ ተሰርዟል',
     src:'Amaha’s letter — “Two consecutive failed 5S audits Cleaning bonus cancelled”',
     note:'The cleaning bonus test already withholds the 2,000 after any failed audit, so this is a note only.' },
 
@@ -1777,13 +1777,13 @@ const RULES = [
 
   { id:'amaha-repeated-behaviour', who:['amaha'], kind:'penalty', birr:500, per:'event', how:'recorded',
     en:'Repeated behaviour problems (+ written warning)',
-    am:'ተደጋጋሚ የሥነ ምግባር ችግር (+ የጽሑፍ ማስጠንቀቂያ)',
+    am:'ተደጋጋሚ የባህርይ ችግር (+ የጽሑፍ ማስጠንቀቂያ)',
     src:'Amaha’s letter — “Repeated behaviour problems –500 Birr + written warning”',
     note:'The letter does not say how many problems make “repeated”.' },
 
   { id:'amaha-unreported-behaviour', who:['amaha'], kind:'penalty', birr:1, per:'birr', how:'recorded',
     en:'Unreported behaviour issue found later — double penalty',
-    am:'ያልተነገረ የሥነ ምግባር ችግር በኋላ ተገኘ — እጥፍ ቅጣት',
+    am:'ያልተነገረ የባህርይ ችግር በኋላ ተገኘ — እጥፍ ቅጣት',
     src:'Amaha’s letter — “Failed to report a behaviour issue later discovered Double penalty”',
     note:'Record the doubled figure in Birr — twice the section 9 fine for that behaviour.' },
 
@@ -2206,7 +2206,7 @@ const RULES = [
 
   { id:'elyas-whatsapp-bonus', who:['elyas'], kind:'bonus', birr:1000, per:'month', how:'auto',
     en:'100% WhatsApp compliance every week of the month',
-    am:'በወሩ በየሳምንቱ 100% የዋትስአፕ ተገዢነት',
+    am:'በወሩ በየሳምንቱ የዋትስአፕ ደንቦች 100% ተጠብቀዋል',
     src:'Elyas’s letter — “WhatsApp Compliance 1,000 Birr 100% WhatsApp compliance for the month”',
     note:'Compliance includes the assemblers’ Daily Progress Updates, so one assembler’s missed update cancels it.',
     test:{ at:'month', needFiled:['elyas-weekly'], when:{ every:['elyas-weekly.wk_rate', '>=', 100] } } },
@@ -2281,7 +2281,7 @@ const RULES = [
 
   { id:'elyas-asm-behaviour-not-reported', who:['elyas'], kind:'penalty', birr:500, per:'event', how:'recorded',
     en:'Assembler’s bad behaviour not reported',
-    am:'የገጣጣሚ መጥፎ ሥነ ምግባር አልተነገረም',
+    am:'የገጣጣሚ መጥፎ ባህርይ አልተነገረም',
     src:'Elyas’s letter — “Assembler bad behaviour, not reported –500 Birr”',
     note:'The same incident may also carry “failed to enforce customer service rules” (–300).' },
 
@@ -2502,7 +2502,7 @@ const RULES = [
 
   { id:'ashenafi-unprofessional', who:['ashenafi'], kind:'penalty', birr:200, per:'event', how:'recorded',
     en:'Unprofessional behaviour',
-    am:'ሙያዊ ያልሆነ ሥነ ምግባር',
+    am:'ሙያዊ ያልሆነ ባህርይ',
     src:'Ashenafi’s letter — “Behaviour Failure Penalty Unprofessional behaviour –200 Birr”' },
 
   { id:'ashenafi-smoking', who:['ashenafi'], kind:'penalty', birr:200, per:'event', how:'recorded',

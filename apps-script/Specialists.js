@@ -495,8 +495,8 @@ var SPECIALISTS_ = [
     tiles: function (f) {
       var m = function (x) { return x === null || x === undefined ? '—' : String(x); };
       return [{ en: 'Injury days', am: 'የጉዳት ቀናት', v: String(f.injuries_or_no_safety_gear.length) },
-              { en: 'Behaviour incidents', am: 'የሥነ ምግባር ችግሮች', v: m((f.behaviour_incidents_factory || 0) + (f.behaviour_incidents_site || 0)) },
-              { en: '5S score', am: '5S ውጤት', v: f.score_5s_average === null ? '—' : f.score_5s_average + '%' },
+              { en: 'Behaviour incidents', am: 'የባህርይ ችግሮች', v: m((f.behaviour_incidents_factory || 0) + (f.behaviour_incidents_site || 0)) },
+              { en: '5S score', am: 'የንጽሕናና የሥርዓት ፍተሻ (5S) ውጤት', v: f.score_5s_average === null ? '—' : f.score_5s_average + '%' },
               { en: 'Property damaged', am: 'የተጎዳ ንብረት', v: String(f.customer_property_damaged.length) }];
     } },
   { id: 'projects', en: 'Project control', am: 'የፕሮጀክት ቁጥጥር', role: 'project controller', when: { week: true },

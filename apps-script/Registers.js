@@ -104,7 +104,9 @@ function budgetFacts_(P) {
     var soFar = month === null ? null : Math.round(month * share);
     return { line: L.en, budget_month: month, budget_so_far: soFar, spent_so_far: spent,
              over_by: soFar !== null && spent !== null && spent > soFar ? spent - soFar : 0,
-             pct_of_budget_so_far: soFar ? Math.round((spent || 0) / soFar * 1000) / 10 : null };
+             /* a line no report gave (her weekly report made from her
+                daily reports holds only one or two) is unknown, not 0% */
+             pct_of_budget_so_far: soFar && spent !== null ? Math.round(spent / soFar * 1000) / 10 : null };
   });
   var tab = legalStaffTab_(P.schedule);
   var staff = ((P.schedule && P.schedule.people) || []).filter(function (p) { return !p.company; });

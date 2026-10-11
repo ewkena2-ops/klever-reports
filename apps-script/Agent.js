@@ -206,7 +206,8 @@ var JOB_NAMES_ = {
   daily:   'the morning close (yesterday’s fines and the agents’ reading)',
   week:    'the weekly summary',
   month:   'the monthly summary (the Pay tab for payroll)',
-  reading: 'a reading of the day'
+  reading: 'a reading of the day',
+  weekly:  'the weekly reports made from the daily ones (Weekly.js)'
 };
 function ran_(job, fn) {
   var t0 = new Date();
@@ -773,7 +774,13 @@ function closeDay_(day, opts) {
   (schedule.people || []).forEach(function (p) { names[p.id] = p.en; });
 
   var due = owedOn_(schedule, day);
-  var isWeek = dow_(day) === 0 && due.length > 0;
+  /* A weekly summary that builds itself from the daily reports (forms.js
+     built:1, apps-script/Weekly.js — the Chairman, 11 Oct 2026) is owed by
+     nobody, and its 500 Birr is gone. Its due day still decides when the
+     rules read from it are judged, so the week keeps it for that. */
+  var weekDue = due;
+  due = due.filter(function (r) { return !r.built; });
+  var isWeek = dow_(day) === 0 && weekDue.length > 0;
   var part = isWeek ? (opts.part || 'all') : 'all';
   var now = opts.asOf || new Date();
   if (isWeek && part !== 'day' && opts.write !== false && now.getTime() < weekCut_(day).getTime()) {
@@ -818,7 +825,7 @@ function closeDay_(day, opts) {
   if ((isWeek && part !== 'day') || oldWay) {
     var days = {};
     if (oldWay) days[day] = true;
-    else due.forEach(function (r) { days[dueInWeek_(r, day)] = true; });
+    else weekDue.forEach(function (r) { days[dueInWeek_(r, day)] = true; });
     Object.keys(days).sort().forEach(function (d) {
       try {
         var wk = ruleLinesForWeek_(d, filings, schedule);
@@ -888,7 +895,8 @@ function weekWaiting_(schedule, day, filings, names, asOf) {
   var sun = sundayOf_(day);
   var until = (asOf || dayStart_(addDays_(day, 1))).getTime();
   return schedule.reports.filter(function (r) {
-    if (r.cadence !== 'weekly') return false;
+    /* one that builds itself is never waited for */
+    if (r.cadence !== 'weekly' || r.built) return false;
     var dd = dueInWeek_(r, sun), w = weekWindow_(r, sun);
     if (dd > day || deadline_(r, dd).getTime() > until || until >= w.to) return false;
     return !filings.some(function (f) {

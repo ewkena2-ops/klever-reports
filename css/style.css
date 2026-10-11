@@ -331,6 +331,10 @@ input.miss,textarea.miss,select.miss{
   font-size:12px;color:var(--mut);text-align:right;line-height:1.35;
 }
 .report .meta span:not(.due){display:none}
+/* a weekly report made from the daily ones: read, not filled */
+.report.built .rt{color:var(--mut);font-weight:500}
+.report.built .meta .due{color:var(--dim)}
+.preview.built{max-height:none;color:var(--ink)}
 
 .person .initial,.chan .chinit{
   width:36px;height:36px;flex:none;border-radius:11px;

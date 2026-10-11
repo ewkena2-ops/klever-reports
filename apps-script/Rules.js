@@ -772,6 +772,13 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
       J.said = [];
       var c = val_(J, spec.count);
       if (c === null) { unjudged.push({ rule: rule.id, person: p, bad: J.bad || null, ref: J.missingRef || null, why: J.missing || 'not filed' }); return; }
+      /* a word where a count goes is not a number of anything: "none" in
+         "how many drawings were late" was charged as one late drawing (11 Oct
+         2026). Not judged, and the morning email says so. */
+      if (typeof c !== 'number' || isNaN(c)) {
+        unjudged.push({ rule: rule.id, person: p, bad: J.said.join('; ') + ' — a word, not a number', why: 'not a number' });
+        return;
+      }
       c = Math.floor(c);
       if (c <= 0) return;
       base.count = c;

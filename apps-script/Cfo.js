@@ -77,7 +77,13 @@ function cfoFacts_(P, ops) {
              average_of_recent_weeks: avg, weeks_in_average: past.length,
              change_pct: (birr !== null && avg) ? round1_((birr - avg) / avg * 100) : null };
   });
-  var spent = sumOrNull_(lines.map(function (l) { return l.birr; }));
+  /* Her weekly report made from her daily reports (by 'auto', Weekly.js —
+     the Chairman, 11 Oct 2026) holds only the spending lines a daily
+     records. The others are not nought, they are not known: added up, the
+     few that are there would read as the whole week's spending, and money
+     in minus that as a surplus. So there is no total then, and it is said. */
+  var partial = !!(mine && mine.by === 'auto') && lines.some(function (l) { return l.birr === null; });
+  var spent = partial ? null : sumOrNull_(lines.map(function (l) { return l.birr; }));
   var biggest = lines.reduce(function (m, l) { return l.birr !== null && (!m || l.birr > m.birr) ? l : m; }, null);
 
   /* money in: her weekly total if she gave it, else her daily cash-in added up */
@@ -136,6 +142,11 @@ function cfoFacts_(P, ops) {
     week: dayLabel_(P.start) + ' to ' + dayLabel_(P.end),
     weekly_report_filed: now ? dayLabel_(now.day) : null,
     spending_reported: spent !== null,
+    spending_partial: partial
+      ? 'Made from Selam’s daily reports, which record only ' +
+        (lines.filter(function (l) { return l.birr !== null; }).map(function (l) { return l.line; }).join(', ') || 'none of these lines') +
+        ' — the other lines are not recorded day by day, so there is no total for the week and no money in minus out'
+      : null,
     lines: lines,
     spent_total: spent,
     biggest_line: biggest ? biggest.line : null,

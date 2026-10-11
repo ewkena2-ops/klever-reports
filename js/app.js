@@ -87,6 +87,9 @@
   function dueOn(r, ymd) {
     var dow = dowOf(ymd), dom = Number(ymd.slice(8));
     if (dow === 0) return false;
+    /* a weekly report made from the daily reports (built:1, js/weekly.js)
+       is owed by nobody — the Chairman, 11 Oct 2026 */
+    if (r.built) return false;
     if (r.cadence === 'monthly') return dom === 1 || (dom === 2 && dowOf(addDays(ymd, -1)) === 0);
     if (r.cadence === 'weekly') return r.dueDay === dow;
     return !(r.skipDays && r.skipDays.indexOf(dow) >= 0);
@@ -508,7 +511,7 @@
     /* a weekly report from an earlier day of this week, not sent: it still
        counts, as late, until the week closes on Sunday at 9 PM */
     REPORTS.forEach(function (r) {
-      if (r.cadence !== 'weekly' || (pid && r.person !== pid) || list.indexOf(r) !== -1) return;
+      if (r.cadence !== 'weekly' || r.built || (pid && r.person !== pid) || list.indexOf(r) !== -1) return;
       var pd = periodNow(r);
       if (pd.state === 'late' && pd.day !== d && !filingFor(r, pd.day)) late.push(r);
     });
@@ -1251,6 +1254,15 @@
       a.href = 'form.html?r=' + encodeURIComponent(r.id);
       a.appendChild(el('span', 'rt', L(r)));
       var meta = el('div', 'meta');
+      /* made from the daily reports: nothing to fill, only to read */
+      if (r.built) {
+        a.className = 'report built';
+        meta.appendChild(el('span', 'due', t('builtWeekly')));
+        meta.appendChild(el('span', null, t('to') + ' · ' + (lang === 'am' ? r.toAm : r.toEn)));
+        a.appendChild(meta);
+        list.appendChild(a);
+        return;
+      }
       /* already sent for the period it is due in? say so */
       var pd = periodNow(r), fr = pd.day ? filingFor(r, pd.day) : null;
       if (fr) meta.appendChild(el('span', 'sentmark',
@@ -1294,6 +1306,7 @@
     }
     var person = personById(report.person);
     document.title = L(report) + ' · ' + L(person);
+    if (report.built) { renderBuilt(root, person); return; }
 
     setView(null);
     /* A draft belongs to the due day it is for, not the calendar day it was
@@ -1400,6 +1413,57 @@
     loadRecent();
     /* the status line keeps time while the form is open */
     renderForm.tick = setInterval(drawStatus, 30000);
+  }
+
+  /* A WEEKLY REPORT NOBODY FILLS (built:1 — the Chairman, 11 Oct 2026). It
+     is made from the week's daily reports and sent on Sunday by the script
+     (apps-script/Weekly.js). Here it is shown as it stands so far, worked out
+     by the same code (js/weekly.js) from this person's own daily reports —
+     the Chairman's view also reads the other people's dailies it names
+     (Mahelet's reads Amaha's m²), which only he may open. Nothing to send. */
+  function renderBuilt(root, person) {
+    root.innerHTML = '';
+    var back = el('a', 'backlink', t('back'));
+    back.href = 'index.html';
+    root.appendChild(back);
+    root.appendChild(letterhead(person));
+    var head = el('div', 'formhead');
+    head.appendChild(el('h1', null, L(report)));
+    var meta = el('dl', 'fmeta');
+    [[t('from'), L(person) + ' · ' + (lang === 'am' ? person.roleAm : person.roleEn)],
+     [t('to'), lang === 'am' ? report.toAm : report.toEn]].forEach(function (kv) {
+      var r = el('div', 'fmrow');
+      r.appendChild(el('dt', null, kv[0]));
+      r.appendChild(el('dd', null, kv[1]));
+      meta.appendChild(r);
+    });
+    head.appendChild(meta);
+    head.appendChild(el('div', 'penalty soft', t('builtWeeklyNote')));
+    root.appendChild(head);
+    root.appendChild(el('p', 'eyebrow', t('builtSoFar')));
+    var pv = el('div', 'preview built');
+    pv.id = 'preview';
+    pv.textContent = t('weekLoading');
+    root.appendChild(pv);
+    root.appendChild(foot());
+    if (!window.WEEKLY || !window.FB || !FB.ownReports || !AUTH.who()) return;
+    /* whose dailies it reads: the person's own, and for the Chairman also
+       the ones its questions name */
+    var whose = [report.person];
+    if (AUTH.isChairman()) {
+      WEEKLY.sourcesOf(report, REPORTS).forEach(function (id) {
+        var r = reportById(id);
+        if (r && whose.indexOf(r.person) < 0) whose.push(r.person);
+      });
+    }
+    var since = new Date(Date.now() - 9 * 864e5);
+    Promise.all(whose.map(function (p) {
+      return FB.ownReports(p, since)['catch'](function () { return []; });
+    })).then(function (lists) {
+      var all = [].concat.apply([], lists);
+      var b = WEEKLY.build(report, { reports: REPORTS, people: PEOPLE, filings: all, sunday: stamp() });
+      pv.textContent = lang === 'am' ? b.textAm : b.text;
+    })['catch'](function () { pv.textContent = t('sendFailed'); });
   }
 
   /* On time / late / early / not due, and which day it counts for — the
@@ -3529,6 +3593,7 @@
     /* the same answers the forms use, for the pages that draw the company:
        who a report goes to, and what is owed today */
     recipientsOf: recipientsOf,
+    channelFor: channelFor,
     dueToday: dueToday,
     /* the sign-in card, for the Chairman's page when nobody is signed in */
     signIn: function () { var r = document.getElementById('app'); if (r) renderSignIn(r); },

@@ -1438,6 +1438,10 @@ function dailyRun_() {
   var caught = [];
   try { caught = catchUp_(day); }
   catch (e) { warn.push('Catching up missed days: ' + e.message); }
+  /* Sunday: the week's weekly reports, made from its daily reports and sent
+     (Weekly.js) — before anything below can return */
+  try { weeklyIfDue_('morning:'); }
+  catch (e) { Logger.log('weekly reports: %s', e.message); warn.push('Weekly reports: ' + e.message); }
   /* Last month, from the 3rd to the 6th. Not closed yet — it waited for a
      Sunday 1st, or its own run on the 2nd failed — it is closed now, and
      again each morning until it is. Closed, its Pay tab is written again from
@@ -2160,6 +2164,9 @@ function watch_(waitMs) {
     try { visionWatch_(); } catch (e) { Logger.log('vision: %s', e.message); }
     /* and an instruction of his that has not reached its person's phone (Push.js) */
     notifyWaiting_();
+    /* Sunday: the weekly reports, made from the dailies, if the morning did
+       not make them; again at 8 PM for a daily corrected since (Weekly.js) */
+    try { weeklyIfDue_('watch:'); } catch (e) { Logger.log('weekly reports: %s', e.message); }
     /* Sunday after 9 PM: the week is over — settle it, send its summary */
     weekEndFromWatch_();
     var token = fsToken_();

@@ -60,11 +60,12 @@ service cloud.firestore {
       return signedIn() && me() == 'chairman';
     }
 
-    /* The penalty ledger's own account. It reads filed reports and nothing
-       else — it cannot write one, cannot touch chat, and cannot alter
-       anything. It exists so that the nightly job does not have to carry the
-       Chairman's password around in a script property, and so that if it ever
-       leaks, what leaks is a reader. */
+    /* The penalty ledger's own account. It reads filed reports; the only
+       report it files is a weekly summary made from a person's daily reports
+       (by 'auto', 11 Oct 2026), and what it writes in chat is listed room by
+       room below. It cannot alter anything. It exists so that the nightly job
+       does not have to carry the Chairman's password around in a script
+       property. */
     function isLedger() {
       return signedIn() && me() == 'ledger';
     }
@@ -178,6 +179,25 @@ service cloud.firestore {
                       && request.resource.data.text.size() <= 4000
                       && request.resource.data.at == request.time;
 
+        /* A weekly report made from its person's daily reports (the
+           Chairman, 11 Oct 2026; apps-script/Weekly.js): written by the
+           script's account in that person's name, marked via 'weekly', text
+           only, at the server's time, in a room the person is in — never
+           #all, never a private line someone else holds. */
+        allow create: if isLedger()
+                      && cid != 'all'
+                      && request.resource.data.via == 'weekly'
+                      && request.resource.data.who is string
+                      && known(request.resource.data.who)
+                      && request.resource.data.who != 'chairman'
+                      && request.resource.data.who != 'ledger'
+                      && request.resource.data.who in get(/databases/$(database)/documents/channels/$(cid)).data.members
+                      && request.resource.data.keys().hasOnly(['who','text','at','via','lang'])
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 4000
+                      && request.resource.data.at == request.time;
+
         /* append-only, for everyone, forever */
         allow update, delete: if false;
       }
@@ -226,6 +246,25 @@ service cloud.firestore {
                        colleague's report under their own name and the ledger
                        would count the colleague's report as in. */
                     && request.resource.data.report.matches('^' + request.resource.data.person + '-[a-z0-9-]+$')
+                    && request.resource.data.keys().hasOnly(
+                         ['person','report','by','late','due','values','flags','text','lang','at'])
+                    && (!('text' in request.resource.data)
+                        || (request.resource.data.text is string && request.resource.data.text.size() <= 60000));
+
+      /* A weekly summary made from the person's own daily reports (the
+         Chairman, 11 Oct 2026: nobody fills a weekly report any more;
+         apps-script/Weekly.js). The script's account files it, marked by
+         'auto' — never in anyone's name as `by` — only for a weekly report
+         of that person, at the server's time. */
+      allow create: if isLedger()
+                    && request.resource.data.by == 'auto'
+                    && request.resource.data.at == request.time
+                    && request.resource.data.person is string
+                    && known(request.resource.data.person)
+                    && request.resource.data.person != 'chairman'
+                    && request.resource.data.person != 'ledger'
+                    && request.resource.data.report is string
+                    && request.resource.data.report.matches('^' + request.resource.data.person + '-([a-z0-9-]+-)?weekly(-cx)?$')
                     && request.resource.data.keys().hasOnly(
                          ['person','report','by','late','due','values','flags','text','lang','at'])
                     && (!('text' in request.resource.data)

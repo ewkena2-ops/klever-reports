@@ -178,6 +178,8 @@ import {
     if (d === 0) return [];
     return REPORTS.filter(function (r) {
       if (r.cadence === 'daily') return !(r.skipDays && r.skipDays.indexOf(d) !== -1);
+      /* made from the daily reports on Sunday (built:1): owed by nobody */
+      if (r.built) return false;
       if (r.cadence === 'weekly') return r.dueDay === d;
       if (r.cadence === 'monthly') return monthlyDueOn(day);
       return false;
@@ -881,7 +883,7 @@ import {
       /* and on the days after, this week's weekly reports still not in —
          Friday's on Saturday and Sunday — until the week closes */
       if (sundayOf(DAY) >= WEEK_FROM) REPORTS.forEach(function (r) {
-        if (r.cadence !== 'weekly') return;
+        if (r.cadence !== 'weekly' || r.built) return;
         var dd = addDays(sundayOf(DAY), r.dueDay - 7);
         if (dd >= DAY) return;
         var w = windowOf(r, dd);

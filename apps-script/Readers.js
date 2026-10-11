@@ -16,8 +16,8 @@
    Same rule as everywhere: every number is worked out here; the model is
    handed finished figures and does no sums.                                */
 
-var RD_ = { by: {} };
-function rdReset_() { RD_ = { by: {} }; }
+var RD_ = { by: {}, auto: {} };
+function rdReset_() { RD_ = { by: {}, auto: {} }; }
 
 /* One person's reports between two days, by report, then day — the last
    filing of a day wins (a second one is a correction). Read once a run. */
@@ -30,6 +30,8 @@ function rdBy_(person, from, to) {
                         ['at', 'LESS_THAN', dayStart_(addDays_(to, 1))]], 'at').forEach(function (f) {
     if (!f.at || !f.report) return;
     (by[f.report] = by[f.report] || {})[dayOf_(f.at)] = f.values || {};
+    /* a weekly report made from the daily reports (Weekly.js), by its day */
+    if (f.by === 'auto') RD_.auto[f.report + '|' + dayOf_(f.at)] = true;
   });
   return (RD_.by[k] = by);
 }
@@ -361,8 +363,13 @@ function forecastFacts_(P) {
   });
   var wk = Object.keys(weeks);
   var inWeek = wk.length ? Math.round(wk.reduce(function (a, k) { return a + weeks[k]; }, 0) / wk.length) : null;
-  /* money out a week, from her weekly spending lines */
-  var outs = Object.keys(fw).map(function (d) {
+  /* money out a week, from her weekly spending lines. Her weekly report
+     made from her daily reports (by 'auto', 11 Oct 2026) holds one or two
+     of them, and a part added up would read as the whole: such a week
+     counts only if it has them all. */
+  var outs = Object.keys(fw).filter(function (d) {
+    return !RD_.auto['betty-weekly|' + d] || CFO_LINES_.every(function (L) { return a_(fw[d], L.id) !== null; });
+  }).map(function (d) {
     return sumOrNull_(CFO_LINES_.map(function (L) { return a_(fw[d], L.id); }));
   }).filter(function (x) { return x !== null; });
   var outWeek = outs.length ? Math.round(outs.reduce(function (a, x) { return a + x; }, 0) / outs.length) : null;

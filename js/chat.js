@@ -99,7 +99,9 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
   function senderOf(m) {
     if (m && m.who === 'whatsapp') return waName(m);
     /* his post to a room, decided on WhatsApp and confirmed with his YES */
-    return nameOf(m && m.who) + (m && m.via === 'whatsapp' ? ' · WhatsApp' : '');
+    /* or a weekly report made from the person's daily reports (Weekly.js) */
+    return nameOf(m && m.who) + (m && m.via === 'whatsapp' ? ' · WhatsApp' : '') +
+           (m && m.via === 'weekly' ? ' · ' + t('chatWeeklyBuilt') : '');
   }
   function initialOf(id) {
     return id === CHAIRMAN ? '★' : nameOf(id).charAt(0);

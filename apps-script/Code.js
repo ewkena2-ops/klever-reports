@@ -160,13 +160,25 @@ function doPost(e) {
   row.late = st.late;
   row.statusText = st.text;
 
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
   var tab = String(row.reportName || 'Reports').substring(0, 90);
   /* This endpoint takes anyone's POST, and it names the tab after whatever
      the caller says the report is called. Without this line a caller could
      append a row to the penalty ledger or to a month's deductions just by
      calling their "report" that. */
   if (RESERVED_TABS_.test(tab)) return ContentService.createTextOutput('refused');
+  var ss = appendReportRow_(row);
+  notify_(row, ss.getUrl());
+  /* and the agents read the day again, about a minute from now (Agents.js) */
+  readSoon_();
+  return ContentService.createTextOutput('ok');
+}
+
+/* One report, one row, on the tab named after it. Also how a weekly report
+   that built itself is written down (Weekly.js). Returns the spreadsheet. */
+function appendReportRow_(row) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tab = String(row.reportName || 'Reports').substring(0, 90);
+  if (RESERVED_TABS_.test(tab)) throw new Error('refused tab ' + tab);
   var sh = ss.getSheetByName(tab);
   if (!sh) {
     sh = ss.insertSheet(tab);
@@ -213,10 +225,7 @@ function doPost(e) {
   out[head.indexOf('Message')] = cell_(String(row.text || ''));
 
   sh.appendRow(out);
-  notify_(row, ss.getUrl());
-  /* and the agents read the day again, about a minute from now (Agents.js) */
-  readSoon_();
-  return ContentService.createTextOutput('ok');
+  return ss;
 }
 
 var SERVER_COLS_ = ['Sent at', 'Person', 'Status', 'Due', 'Filed by', 'Message'];

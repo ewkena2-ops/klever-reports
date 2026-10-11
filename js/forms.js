@@ -1972,8 +1972,8 @@ const REPORTS = [
        full, so she filled two rows and the report said "not answered": the
        rows she counts are the answer, and the rest are left empty. */
     { en:'What is on the shelf', am:'በመደርደሪያው ላይ ያለው', fields:[
-      {id:'k_stock', en:'Fill in the materials you counted today: how much is on hand at close, how much went out, and how many days it will last. Your best guess is fine.',
-       am:'ዛሬ የቆጠሩትን ዕቃ ይሙሉ፦ በመዝጊያ ሰዓት ስንት አለ? ዛሬ ስንት ወጣ? ለስንት ቀን ይበቃል? ግምትዎ በቂ ነው።',
+      {id:'k_stock', en:'Fill in the materials you counted today. Your best guess is fine.',
+       am:'ዛሬ የቆጠሩትን ዕቃ ይሙሉ። ግምትዎ በቂ ነው።',
        t:'grid', opt:1, rows:[
         {en:'MDF 18mm', am:'ኤምዲኤፍ 18ሚሜ'},
         {en:'MDF 16mm', am:'ኤምዲኤፍ 16ሚሜ'},
@@ -1988,7 +1988,7 @@ const REPORTS = [
         {en:'Legs and shelf pins', am:'እግሮችና የመደርደሪያ ችንካሮች'},
         {en:'Glue and screws', am:'ሙጫና ብሎኖች'}
       ], cols:[
-        {id:'qty',  en:'On hand', am:'በእጅ ያለ', t:'num'},
+        {id:'qty',  en:'On hand at close', am:'በመዝጊያ ሰዓት ያለ', t:'num'},
         {id:'out', en:'Out today', am:'ዛሬ የወጣ', t:'num'},
         {id:'days', en:'Days it will last', am:'የሚበቃበት ቀን', t:'num'}
       ]},
@@ -4942,7 +4942,7 @@ const REPORTS = [
           { v:'mach_dirty',g:'clean', en:'Machines not cleaned',                am:'ማሽኖች አልጸዱም' },
           { v:'tools',    g:'clean',  en:'Tools not put back',                  am:'መሣሪያዎች ቦታቸው አልተመለሱም' },
           { v:'bins',     g:'clean',  en:'Bins not emptied',                    am:'የቆሻሻ መጣያዎች አልተደፉም' },
-          { v:'audit',    g:'clean',  en:'There was a 5S audit today',          am:'ዛሬ የ5S ኦዲት ነበር' },
+          { v:'audit',    g:'clean',  en:'There was a 5S audit today',          am:'ዛሬ የንጽሕናና የሥርዓት ፍተሻ (5S) ነበር' },
           { v:'unauth',   g:'rule',   en:'Something was made or sent out without all four confirmations', am:'አራቱ ማረጋገጫዎች ሳይሟሉ የተሠራ ወይም የወጣ ነገር ነበር' }
         ]}
     ]},
@@ -5171,7 +5171,7 @@ const REPORTS = [
       {id:'c_mach', en:'Were the machines cleaned after use?', am:'ማሽኖች ከሥራ በኋላ ጸድተዋል?', t:'yesno', quiet:1, auto:{picked:'p_events', v:'mach_dirty', flip:1}},
       {id:'c_tools', en:'Were all tools returned to their place?', am:'ሁሉም መሣሪያዎች በቦታቸው ተመልሰዋል?', t:'yesno', quiet:1, auto:{picked:'p_events', v:'tools', flip:1}},
       {id:'c_waste', en:'Were the waste bins emptied?', am:'የቆሻሻ መጣያዎች ተደፍተዋል?', t:'yesno', quiet:1, auto:{picked:'p_events', v:'bins', flip:1}},
-      {id:'c_5s', en:'What was the 5S audit score?', am:'የ5S ኦዲት ውጤቱ ስንት ነበር?', t:'pct', opt:1,
+      {id:'c_5s', en:'What was the 5S audit score?', am:'የንጽሕናና የሥርዓት ፍተሻው (5S) ውጤት ስንት ነበር?', t:'pct', opt:1,
         show:{f:'p_events', when:'has', v:'audit'},
         tgt:{op:'gte', v:80, en:'Below 80% is –500 Birr', am:'ከ80% በታች –500 ብር'}},
       {id:'c_5s_why', en:'Which areas failed the audit, and what is being fixed, by when?', am:'በኦዲቱ ያልተሳኩት የትኞቹ ቦታዎች ናቸው? ምን እየተስተካከለ ነው? እስከ መቼ?', t:'area', picks:[{ en:'Floor and walkways', am:'ወለልና መተላለፊያ' }, { en:'Machines', am:'ማሽኖች' }, { en:'Tools', am:'መሣሪያዎች' }, { en:'Board and offcut storage', am:'የሰሌዳና የቁርጥራጭ ማስቀመጫ' }, { en:'Fixed today', am:'ዛሬ ተስተካክሏል' }], show:{f:'c_5s', when:'miss'}}
@@ -5503,7 +5503,7 @@ const REPORTS = [
     { en:'Cleaning', am:'ጽዳት', fields:[
       /* the 5S fine and the cleaning bonus read this every week, so it stays
          asked; no auditor is named in his letter, so the score is his own */
-      {id:'c_5s', en:'What was this week\'s 5S audit score, in %? Your best guess is fine.', am:'የዚህ ሳምንት የ5S ኦዲት ውጤት ስንት % ነበር? ግምትዎ በቂ ነው።', t:'pct', auto:{week:'c_5s', how:'min', from:'amaha-daily'},
+      {id:'c_5s', en:'What was this week\'s 5S audit score, in %? Your best guess is fine.', am:'የዚህ ሳምንት የንጽሕናና የሥርዓት ፍተሻ (5S) ውጤት ስንት % ነበር? ግምትዎ በቂ ነው።', t:'pct', auto:{week:'c_5s', how:'min', from:'amaha-daily'},
         tgt:{op:'gte', v:80, en:'≥80% earns the 2,000 Birr cleaning bonus', am:'≥80% የ2,000 ብር የጽዳት ጉርሻ ያስገኛል'}},
       {id:'c_5s_why', en:'Which areas failed, and by when will they be fixed? (Write what is being fixed in the box.)', am:'ያልተሳኩት የትኞቹ ቦታዎች ናቸው? እስከ መቼ ይስተካከላሉ? (ምን እየተስተካከለ እንደሆነ በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'c_5s_why', from:'amaha-daily'},
         picks:[
@@ -7645,7 +7645,7 @@ const SALES_DAILY = {
           {id:'src', en:'Where from', am:'ከየት', t:'choice', opts:[
             {v:'social', en:'Social media',             am:'ሶሻል ሚዲያ'},
             {v:'show',   en:'Walked into the showroom', am:'ሾውሩም የመጣ'},
-            {v:'ref',    en:'Referred by someone',      am:'በሪፈራል'},
+            {v:'ref',    en:'Referred by someone',      am:'በሌላ ሰው ጥቆማ (ሪፈራል)'},
             {v:'agent',  en:'Through an agent',         am:'በኤጀንት'},
             {v:'other',  en:'Anywhere else',            am:'ከሌላ ቦታ'}
           ]},
@@ -7658,8 +7658,8 @@ const SALES_DAILY = {
         auto:{rows:'l_list', when:{col:'src', is:'social'}}, sumEn:'from social media', sumAm:'ከሶሻል ሚዲያ'},
       {id:'l_show', en:'Walked into the showroom', am:'ሾውሩም የመጡ', t:'num', i:1,
         auto:{rows:'l_list', when:{col:'src', is:'show'}}, sumEn:'walked in', sumAm:'ሾውሩም የመጡ'},
-      {id:'l_ref', en:'Referred by someone', am:'በሪፈራል', t:'num', i:1,
-        auto:{rows:'l_list', when:{col:'src', is:'ref'}}, sumEn:'referred', sumAm:'በሪፈራል'},
+      {id:'l_ref', en:'Referred by someone', am:'በሌላ ሰው ጥቆማ (ሪፈራል)', t:'num', i:1,
+        auto:{rows:'l_list', when:{col:'src', is:'ref'}}, sumEn:'referred', sumAm:'በሌላ ሰው ጥቆማ'},
       {id:'l_agent', en:'Through an agent', am:'በኤጀንት', t:'num', i:1,
         auto:{rows:'l_list', when:{col:'src', is:'agent'}}, sumEn:'through an agent', sumAm:'በኤጀንት'},
       {id:'l_other', en:'Anywhere else', am:'ከሌላ ቦታ', t:'num', i:1,
@@ -7800,7 +7800,7 @@ const SALES_DAILY = {
         opts:[
           { v:'wa_slow',  en:'A customer message waited over 2 hours for my answer', am:'የደንበኛ መልዕክት ከ2 ሰዓት በላይ መልሴን ጠበቀ' },
           { v:'wa_comp',  en:'A customer complained about our communication',      am:'ደንበኛ ስለ ግንኙነታችን ቅሬታ አቀረበ' },
-          { v:'referral', en:'I asked for a referral and logged it',                am:'ሪፈራል ጠይቄ መዝግቤያለሁ' }
+          { v:'referral', en:'I asked for a referral and logged it',                am:'ደንበኛው ሌላ ሰው እንዲጠቁመን ጠይቄ መዝግቤያለሁ (ሪፈራል)' }
         ]}
     ]},
     { en:'WhatsApp', am:'ዋትስአፕ', fields:[
@@ -7860,7 +7860,7 @@ const SALES_DAILY = {
           { en:'Installation not finished yet',        am:'ተከላው ገና አላለቀም' },
           { en:'Will call tomorrow',                   am:'ነገ ይደወላል' }
         ], show:{f:'fu_calls', when:'short'}},
-      {id:'ref_logged', en:'How many referrals did you ask for and log today?', am:'ዛሬ ስንት ሪፈራል ተጠይቆ ተመዘገበ?', t:'num', zero:1,
+      {id:'ref_logged', en:'How many referrals did you ask for and log today?', am:'ዛሬ ስንት ጥቆማ (ሪፈራል) ጠይቀው መዘገቡ?', t:'num', zero:1,
         show:{f:'s_events', when:'has', v:'referral'}}
     ]},
     /* the reasons the salespeople typed in their first reports, as buttons:

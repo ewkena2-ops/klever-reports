@@ -1712,6 +1712,7 @@ function promptFor_(agent, facts, d) {
     'Only null is a miss. When you count days in a row, count only those. Use the week only',
     'where it changes what today means — a third day running, a slide that started on Monday.',
     'Name a day by the label above, not by counting back.',
+    actingLine_(d),
     '',
     'YOUR QUESTION: ' + agent.ask,
     '',
@@ -1726,6 +1727,20 @@ function promptFor_(agent, facts, d) {
     JSON.stringify(facts, null, 1),
     saidBlock_(agent, d)
   ].join('\n');
+}
+
+/* Which day "today" means in the reading. The morning reads the day just
+   closed and says what to do on the next working day — on a Sunday that is
+   Monday, and the Sunday reading of 11 Oct 2026 told Amaha what to make
+   "today", a day the factory is shut. */
+function actingLine_(d) {
+  var act = d.provisional ? d.day : addDays_(d.day, 1);
+  while (dow_(act) === 0) act = addDays_(act, 1);
+  var run = todayAddis_();
+  if (act === run) return 'What to do is for today, ' + dayLabel_(act) + '.';
+  var wd = Utilities.formatDate(new Date(act + 'T12:00:00' + ADDIS_), tz_(), 'EEEE').toUpperCase();
+  return 'What to do is for ' + dayLabel_(act) + ', the next working day, not for today (' + dayLabel_(run) + '). ' +
+         'Where you would write "today", write "on ' + dayLabel_(act) + '", and head the last part ' + wd + ', not TODAY.';
 }
 
 /* "Tue 22 Sep, … Mon 28 Sep (today)" — the first reading called a figure

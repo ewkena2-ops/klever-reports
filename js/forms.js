@@ -1972,8 +1972,30 @@ const REPORTS = [
        full, so she filled two rows and the report said "not answered": the
        rows she counts are the answer, and the rest are left empty. */
     { en:'What is on the shelf', am:'በመደርደሪያው ላይ ያለው', fields:[
+      /* 11 Oct 2026 ("fix all"): twelve materials of three boxes each stood on
+         screen every day. Tap the ones counted; only their boxes open. The
+         grid keeps its twelve rows in their places (Plant.js, Ops.js and
+         Owners.js read row 1 as MDF 18mm), the rows not tapped file empty. */
+      {id:'k_counted', en:'Which materials did you count today?', am:'ዛሬ የትኞቹን ዕቃዎች ቆጠሩ?', t:'multi', opt:1,
+        none:{ en:'I did not count today', am:'ዛሬ አልቆጠርኩም' },
+        opts:[
+          { v:'r0', en:'MDF 18mm', am:'ኤምዲኤፍ 18ሚሜ' },
+          { v:'r1', en:'MDF 16mm', am:'ኤምዲኤፍ 16ሚሜ' },
+          { v:'r2', en:'Melamine 18mm', am:'ሜላሚን 18ሚሜ' },
+          { v:'r3', en:'Melamine 16mm', am:'ሜላሚን 16ሚሜ' },
+          { v:'r4', en:'Plywood', am:'ፕላይውድ' },
+          { v:'r5', en:'Back panel 3mm', am:'የኋላ ሰሌዳ 3ሚሜ' },
+          { v:'r6', en:'Edge banding (m)', am:'ጠርዝ ማሰሪያ (ሜትር)' },
+          { v:'r7', en:'Hinges', am:'ማጠፊያዎች' },
+          { v:'r8', en:'Drawer slides', am:'የመሳቢያ ተንሸራታቾች' },
+          { v:'r9', en:'Handles', am:'መያዣዎች' },
+          { v:'r10', en:'Legs and shelf pins', am:'እግሮችና የመደርደሪያ ችንካሮች' },
+          { v:'r11', en:'Glue and screws', am:'ሙጫና ብሎኖች' }
+        ]},
       {id:'k_stock', en:'Fill in the materials you counted today. Your best guess is fine.',
        am:'ዛሬ የቆጠሩትን ዕቃ ይሙሉ። ግምትዎ በቂ ነው።',
+       show:{f:'k_counted', when:'has', v:['r0', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11']},
+       rowsOn:'k_counted',
        t:'grid', opt:1, rows:[
         {en:'MDF 18mm', am:'ኤምዲኤፍ 18ሚሜ'},
         {en:'MDF 16mm', am:'ኤምዲኤፍ 16ሚሜ'},
@@ -4150,11 +4172,11 @@ const REPORTS = [
        }),
        cols:[
         {id:'k1', en:'Job', am:'ሥራ', t:'text'},
-        {id:'m1', en:'m²', am:'ካሬ ሜትር', t:'num'},
+        {id:'m1', en:'m²', am:'ካሬ ሜትር', t:'num', most:{v:120, en:'m² of one job in one day cannot be right (a full day is about 40 m²)', am:'ካሬ ሜትር የአንድ ሥራ በአንድ ቀን ሊሆን አይችልም (ሙሉ ቀን 40 ካሬ ሜትር ገደማ ነው)'}},
         {id:'k2', en:'2nd job', am:'2ኛ ሥራ', t:'text'},
-        {id:'n2', en:'m²', am:'ካሬ ሜትር', t:'num'},
+        {id:'n2', en:'m²', am:'ካሬ ሜትር', t:'num', most:{v:120, en:'m² of one job in one day cannot be right (a full day is about 40 m²)', am:'ካሬ ሜትር የአንድ ሥራ በአንድ ቀን ሊሆን አይችልም (ሙሉ ቀን 40 ካሬ ሜትር ገደማ ነው)'}},
         {id:'k3', en:'3rd job', am:'3ኛ ሥራ', t:'text'},
-        {id:'n3', en:'m²', am:'ካሬ ሜትር', t:'num'},
+        {id:'n3', en:'m²', am:'ካሬ ሜትር', t:'num', most:{v:120, en:'m² of one job in one day cannot be right (a full day is about 40 m²)', am:'ካሬ ሜትር የአንድ ሥራ በአንድ ቀን ሊሆን አይችልም (ሙሉ ቀን 40 ካሬ ሜትር ገደማ ነው)'}},
         {id:'notes', en:'Notes', am:'ማስታወሻ', t:'text'}
       ]},
       {id:'plan_days', en:'How many m² are planned for each day, and on which jobs?', am:'በየቀኑ ስንት ካሬ ሜትር ታቅዷል? በየትኞቹ ሥራዎች?',
@@ -8977,6 +8999,34 @@ function oddFigures(report, v) {
           if (got <= cap) return;
           var fill = function (w) { return String(w).replace('{a}', show(got)).replace('{b}', show(cap)); };
           out.push({ f: f.id, en: 'row ' + (i + 1) + ': ' + fill(f.rowOdd.en), am: 'ረድፍ ' + (i + 1) + '፦ ' + fill(f.rowOdd.am) });
+        });
+      }
+      /* in any list (11 Oct 2026, "fix all"): a phone number written where
+         the customer's code goes — "0966012271" for the 4-digit lead no. —
+         and a figure over a column's `most` (a day of the 15-day plan read
+         4,060 m² for "40" and "60" run together) */
+      if ((f.t === 'table' || f.t === 'grid') && f.cols) {
+        var rows = v[f.id];
+        rows = Object.prototype.toString.call(rows) === '[object Array]' ? rows : [];
+        rows.forEach(function (r, i) {
+          r = r || {};
+          var where = f.t === 'grid' && f.rows && f.rows[i] ? f.rows[i] : null;
+          var tagEn = where ? where.en + ': ' : 'row ' + (i + 1) + ': ';
+          var tagAm = where ? where.am + '፦ ' : 'ረድፍ ' + (i + 1) + '፦ ';
+          f.cols.forEach(function (c) {
+            var raw = String(r[c.id] == null ? '' : r[c.id]).trim();
+            if (!raw) return;
+            if (c.id === 'lc' && raw.replace(/\D/g, '').length >= 7) {
+              out.push({ f: f.id, en: tagEn + '“' + raw + '” looks like a phone number — write the 4-digit lead no. (or the KK code once paid)',
+                         am: tagAm + '«' + raw + '» ስልክ ቁጥር ይመስላል — ባለ 4 አሃዝ የደንበኛ ቁጥሩን (ከከፈሉ በኋላ KK ኮዱን) ይጻፉ' });
+            }
+            if (c.most) {
+              var x = num(raw);
+              if (x !== null && x > c.most.v) {
+                out.push({ f: f.id, en: tagEn + show(x) + ' ' + c.most.en, am: tagAm + show(x) + ' ' + c.most.am });
+              }
+            }
+          });
         });
       }
       if (f.parts) {

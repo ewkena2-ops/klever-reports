@@ -155,7 +155,11 @@ function regJob_(s) {
      jobs instead of one. Everything that is not a letter, a digit or the
      hyphen goes before the code is read. */
   var t = String(s || '').toUpperCase().replace(/–|—/g, '-').replace(/[^A-Z0-9-]/g, '');
-  var m = /^([A-Z]+)-?(\d.*)$/.exec(t);
+  /* the number, and nothing typed after it: "KK180 be material emete"
+     became the job KK-180BEMATERIALEMETE on the AI's task list (11 Oct
+     2026). A code with its own parts ("KK-2610-005") keeps them, and so
+     does one letter on its own ("KK165A"), but not the first of a word. */
+  var m = /^([A-Z]+)-?(\d+(?:-\d+)*(?:[A-Z](?![A-Z]))?)/.exec(t);
   return m ? m[1] + '-' + m[2] : t;
 }
 /* Names (as regName_ gives them) in groups: two names are one customer when
@@ -932,8 +936,10 @@ function registerUpdate_(fresh) {
    V3, 9 Oct 2026 — a bare number in a job column is a KK job, so "167"
    joins KK-167 instead of standing alone.
    V4, 10 Oct 2026 — Elyas's rows carry "Where is it now?", so a job
-   finished on site is told from one still on installation. */
-var REGISTER_BACKFILL_KEY_ = 'REGISTER_BACKFILLED_V4';
+   finished on site is told from one still on installation.
+   V5, 11 Oct 2026 — a code is its number only: "KK180 be material emete"
+   joins KK-180 instead of standing as a job of its own. */
+var REGISTER_BACKFILL_KEY_ = 'REGISTER_BACKFILLED_V5';
 function registerBackfill_() {
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty(REGISTER_BACKFILL_KEY_)) return false;

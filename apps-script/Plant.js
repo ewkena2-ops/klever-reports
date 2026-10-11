@@ -56,8 +56,25 @@ function pmPlanDay_(plans, day) {
   var k = 0;
   for (var i = 1; i <= 15; i++) if (hrWorkday_(plan.start, i) === day) { k = i; break; }
   var row = k ? (rows_(plan.v.plan_days)[k - 1] || {}) : {};
-  return { plan: plan, day_of_plan: k || null, planned_m2: k ? a_(row, 'm2') : null,
-           jobs: k ? String(row.jobs || '').trim() : '' };
+  var m2 = k ? a_(row, 'm2') : null;
+  /* a day's plan far beyond what the factory makes is a typing slip, not a
+     target: "40 60" read as 4,060 m² (11 Oct 2026). It is not passed on as
+     the day's figure; it is named, for Mahelet to correct. */
+  var slip = m2 !== null && m2 > PM_PLAN_MAX_;
+  return { plan: plan, day_of_plan: k || null, planned_m2: slip ? null : m2,
+           planned_m2_as_typed: slip ? m2 : null,
+           /* "kk 155 kkkk 160 kk165" as the jobs are typed → "KK-155 KK-160 KK-165" */
+           jobs: k ? String(row.jobs || '').trim().replace(/\bk[k.\s]*[-=]?\s*(\d{2,4})\b/gi, 'KK-$1') : '' };
+}
+var PM_PLAN_MAX_ = PM_DAY_M2_ * 3;   /* 120 m² in one day cannot be right */
+
+/* the day's plan as the AI reads it; the figure that cannot be right is
+   named only when there is one */
+function pmTodayPlan_(pT) {
+  var o = { plan_day: pT.day_of_plan, planned_m2: pT.planned_m2, jobs: pT.jobs };
+  if (pT.planned_m2_as_typed !== null) o.planned_m2_cannot_be_right = pT.planned_m2_as_typed;
+  o.plan_from = dayLabel_(pT.plan.start);
+  return o;
 }
 
 /* made on a day: Amaha's figure. He is the only one asked for it (the
@@ -205,7 +222,11 @@ function plantManager_(d) {
   /* today, person by person — the order inside each list is the order to do them */
   var acts = {};
   var add = function (who, what, why) { (acts[who] = acts[who] || []).push({ do: what, why: why }); };
-  if (pT && pT.planned_m2 !== null) {
+  if (pT && pT.planned_m2_as_typed !== null) {
+    add(PM_WHO_.lead, 'correct Day ' + pT.day_of_plan + ' of the 15-day plan: ' + fmt_(pT.planned_m2_as_typed) +
+        ' m² cannot be right (a full day is about ' + PM_DAY_M2_ + ')', 'as typed in the plan from ' + dayLabel_(pT.plan.start));
+    if (pT.jobs) add(PM_WHO_.floor, 'work on ' + pT.jobs, 'Day ' + pT.day_of_plan + ' of Mahelet’s plan; its m² is being corrected');
+  } else if (pT && pT.planned_m2 !== null) {
     add(PM_WHO_.floor, 'make ' + pT.planned_m2 + ' m²' + (pT.jobs ? ' on ' + pT.jobs : ''),
         'Day ' + pT.day_of_plan + ' of Mahelet’s plan from ' + dayLabel_(pT.plan.start));
   } else {
@@ -255,8 +276,7 @@ function plantManager_(d) {
       working_days_left: left,
       needed_each_remaining_day_m2: known && left > 0 ? Math.ceil(weekLeft / left) : null
     },
-    today_plan: pT ? { plan_day: pT.day_of_plan, planned_m2: pT.planned_m2, jobs: pT.jobs,
-                       plan_from: dayLabel_(pT.plan.start) }
+    today_plan: pT ? pmTodayPlan_(pT)
                    : { note: 'No 15-day plan covers ' + dayLabel_(today) + '.' },
     can_today_be_made: {
       machines_down: machines,

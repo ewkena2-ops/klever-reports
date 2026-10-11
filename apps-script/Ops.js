@@ -123,11 +123,17 @@ function opsPlanDays_(P, plan) {
     var d = hrWorkday_(plan.start, k);
     if (d < P.start || d > P.end) continue;
     var planned = a_(grid[k - 1] || {}, 'm2');
+    /* a day planned far beyond what the factory makes is a typing slip
+       (Plant.js PM_PLAN_MAX_): named, not counted as the plan */
+    var slip = planned !== null && planned > PM_PLAN_MAX_ ? planned : null;
+    if (slip !== null) planned = null;
     /* Amaha alone reports what was made (the Chairman, 8 Oct 2026) */
     var made = a_(amaha[d], 'p_total'), from = made === null ? null : 'Amaha';
-    days.push({ day: dayLabel_(d), iso: d, plan_day: k, planned_m2: planned, made_m2: made, made_from: from,
+    var row = { day: dayLabel_(d), iso: d, plan_day: k, planned_m2: planned, made_m2: made, made_from: from,
                 jobs_planned: String((grid[k - 1] || {}).jobs || '').trim(),
-                short_by_m2: planned !== null && made !== null && made < planned ? planned - made : 0 });
+                short_by_m2: planned !== null && made !== null && made < planned ? planned - made : 0 };
+    if (slip !== null) row.planned_m2_cannot_be_right = slip;
+    days.push(row);
   }
   var both = days.filter(function (x) { return x.planned_m2 !== null && x.made_m2 !== null; });
   var planned = sumOrNull_(both.map(function (x) { return x.planned_m2; }));

@@ -1551,6 +1551,9 @@
       }
       data.forEach(function (rowData, i) {
         var card = el('div', 'reprow');
+        /* rowsOn: a grid whose rows follow a tap list — only the rows tapped
+           are on screen (Yordanos counts two materials, not twelve) */
+        if (f.rowsOn) { card.setAttribute('data-gridrow', String(i)); card.hidden = !gridRowOn(f, i); }
         var head = el('div', 'reprowhead');
         head.appendChild(el('span', 'idx', rowLabel(i)));
         if (f.t === 'table') {
@@ -2720,6 +2723,12 @@
     /* the buttons tapped and the words typed under them (pickField) are the
        draft's business; the answer is the line they make */
     Object.keys(values).forEach(function (k) { if (!out['-' + k] && !/__[pn]$/.test(k)) keep[k] = values[k]; });
+    /* a grid row untapped again files nothing, whatever was typed in it; the
+       rows keep their places, so row 3 is still the third material */
+    allFields().forEach(function (f) {
+      if (!f.rowsOn || !Array.isArray(keep[f.id])) return;
+      keep[f.id] = keep[f.id].map(function (r, i) { return gridRowOn(f, i) ? r : {}; });
+    });
     /* A count that only opens when its thing happened ("Edges lifted",
        tapped on the list) is nought when the list was answered without it.
        `zero:1` files that nought, so the week adds a real 0 and the rulebook
@@ -3220,6 +3229,13 @@
   /* The red marks are off until he asks. See showMissing() below. */
   var marking = false;
 
+  /* a grid row that follows a tap list (rowsOn): row i is on when its code
+     ("r0", "r1", …) was tapped */
+  function gridRowOn(f, i) {
+    if (!f.rowsOn) return true;
+    return String(values[f.rowsOn] || '').split(',').indexOf('r' + i) !== -1;
+  }
+
   function refresh() {
     /* the worked-out answers first: a follow-up can hang on one of them, and
        the count of what is still empty has to know they are answered */
@@ -3227,6 +3243,12 @@
     store.set(draftKey, JSON.stringify(values));
 
     var fields = allFields(), need = 0, done = 0;
+    fields.forEach(function (f) {
+      if (!f.rowsOn) return;
+      Array.prototype.forEach.call(document.querySelectorAll('#w_' + f.id + ' [data-gridrow]'), function (card) {
+        card.hidden = !gridRowOn(f, Number(card.getAttribute('data-gridrow')));
+      });
+    });
     var firstEmpty = null;
     /* the buttons under "what comes first tomorrow" follow today's list */
     fields.forEach(function (f) {

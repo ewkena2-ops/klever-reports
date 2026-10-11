@@ -463,7 +463,8 @@ service cloud.firestore {
     match /health/{job} {
       allow get, list: if isChairman() || isLedger();
       allow create, update: if isLedger()
-                            && job in ['daily', 'week', 'month', 'reading'];
+                            /* weekly: the weekly reports made from the dailies (Weekly.js, 11 Oct 2026) */
+                            && job in ['daily', 'week', 'month', 'reading', 'weekly'];
       allow delete: if false;
     }
 

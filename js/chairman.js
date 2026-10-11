@@ -2882,7 +2882,7 @@ import {
      it failed, or a job whose time has come and gone with no line at all,
      goes in red at the top of the page as well as in the list. */
   var HEALTH_FROM = '2026-10-02';   /* the log starts here; nothing earlier is expected */
-  var JOBS = [['daily', 'chSysDaily'], ['week', 'chSysWeek'], ['month', 'chSysMonth'],
+  var JOBS = [['daily', 'chSysDaily'], ['weekly', 'chSysWeekly'], ['week', 'chSysWeek'], ['month', 'chSysMonth'],
               ['reading', 'chSysReading']];
   /* the Addis day each job should have run on by now: the morning close by
      8:00 every day, the week (it closes Sunday 9 PM) by 8:00 on Monday — the
@@ -2894,6 +2894,13 @@ import {
     if (job === 'week') {
       s = addDays(d, -dow(d));
       if (s === d || (dow(d) === 1 && h < 8)) s = addDays(s, -7);
+    }
+    /* the weekly reports made from the dailies (Weekly.js): on Sunday, from
+       just after midnight, and again at 8 PM — owed by 9 PM that Sunday */
+    if (job === 'weekly') {
+      s = addDays(d, -dow(d));
+      if (s === d && h < 21) s = addDays(s, -7);
+      if (s < '2026-10-11') s = null;
     }
     if (job === 'month') {
       s = d.slice(0, 8) + '02';

@@ -331,6 +331,10 @@ function regFold_(events, today, names, sellers) {
         if (!L.at[e.k]) L.at[e.k] = e.day;
         if (sellers[e.person]) L.sales = who(e.person);
         if (e.k === 'contract' && e.who && !L.sales) L.sales = e.who;
+        /* the bot names the salesperson on every line (Botfeed.js); a report's
+           own seller, when there is one, stands */
+        if (e.src === 'bot') { L.fromBot = true; if (e.who && !L.sales) L.sales = e.who; }
+        else L.fromReports = true;
         /* the next step is the latest step's own; a list with no such
            column (a quote) leaves the last one standing */
         if (e.hn) { L.next = e.next || ''; L.nextAsked = true; }
@@ -456,6 +460,10 @@ function regFold_(events, today, names, sellers) {
         if (!J.followup) J.followup = e.day;
         if (e.ok === 'no') J.unhappy = e.day;
         break;
+      /* the Chairman's word that the job is finished (11 Oct 2026, Botfeed.js) */
+      case 'finished':
+        J.finished = e.day;
+        break;
     }
   });
   /* what people wrote about a job, by its code — the last six, for the AI */
@@ -466,7 +474,7 @@ function regFold_(events, today, names, sellers) {
   Object.keys(jobs).forEach(function (k) { jobs[k].said = jobs[k].said.slice(-6); });
 
   /* what is wrong, in words he can act on */
-  var leadRows = [], jobRows = [], oldLeads = 0, oldJobs = 0;
+  var leadRows = [], jobRows = [], oldLeads = 0, oldJobs = 0, finishedJobs = {};
   Object.keys(leads).forEach(function (k) {
     var L = leads[k];
     if (L.stage === -1) {          /* only ever forecast, never a step: the projection alone */
@@ -622,6 +630,10 @@ function regFold_(events, today, names, sellers) {
     J.openComplaints = openC.length;
     delete J.seen;
     if (J.site && regDaysBetween_(J.siteLast, today) > REG_OLD_JOB_DAYS_ && !p.length) { oldJobs++; return; }
+    /* finished, in the Chairman's word, and nothing reported about it since:
+       it leaves the table (a complaint or any line after brings it back) —
+       and its lead with it, a customer whose kitchen is in */
+    if (J.finished && J.last <= J.finished) { oldJobs++; finishedJobs[J.job] = true; return; }
     jobRows.push(J);
   });
   /* the ones with something wrong first, then the most recent */
@@ -630,6 +642,10 @@ function regFold_(events, today, names, sellers) {
     var x = a.last ? (a.last.day || a.last) : '', y = b.last ? (b.last.day || b.last) : '';
     return x < y ? 1 : x > y ? -1 : 0;
   };
+  leadRows = leadRows.filter(function (l) {
+    if (l.job && finishedJobs[l.job]) { oldLeads++; return false; }
+    return true;
+  });
   leadRows.sort(byNeed);
   jobRows.sort(byNeed);
   return { leads: leadRows, jobs: jobRows, oldLeads: oldLeads, oldJobs: oldJobs };
@@ -639,12 +655,13 @@ function regFold_(events, today, names, sellers) {
    run, when the model writes its note too. */
 function registerBuild_(today, withNote) {
   var schedule = loadSchedule_();
-  var names = {}, sellers = {};
+  var names = { bot: 'Klever Kitchen bot', chairman: 'Chairman' }, sellers = {};
   (schedule.people || []).forEach(function (p) { names[p.id] = p.en; });
   (schedule.reports || []).forEach(function (r) { if (/-sales-daily$/.test(r.id)) sellers[r.person] = true; });
-  var events = [];
+  var events = [], botCounts = null, botAt = null;
   fsQuery_('regEvents', [], null).forEach(function (d) {
     (d.events || []).forEach(function (e) { events.push(e); });
+    if (d._id === 'bot_feed') { botCounts = d.counts || null; botAt = d.at || null; }
   });
   var R = regFold_(events, today, names, sellers);
   /* the AI's reading of each customer: those whose facts changed, and in
@@ -659,7 +676,11 @@ function registerBuild_(today, withNote) {
     leads: R.leads.length, leadsOpen: R.leads.filter(function (l) { return l.stageName !== 'contract'; }).length,
     leadsQuiet: R.leads.filter(function (l) { return l.problems.some(function (p) { return p.code === 'quiet'; }); }).length,
     leadProblems: leadProblems, jobs: R.jobs.length, jobProblems: jobProblems,
-    oldLeads: R.oldLeads, oldJobs: R.oldJobs, judged: judged
+    oldLeads: R.oldLeads, oldJobs: R.oldJobs, judged: judged,
+    /* the Klever Kitchen bot's own count (Botfeed.js): leads, lost, old jobs left out */
+    bot: botCounts, botAt: botAt,
+    leadsFromBot: R.leads.filter(function (l) { return l.fromBot; }).length,
+    measured: R.leads.filter(function (l) { return l.at && (l.at.predesign || l.at.visit); }).length
   };
   /* on hold and in rework, by the AI's reading where there is one */
   var items = regItems_(R);
@@ -813,6 +834,9 @@ function registerJudge_(R, today, all) {
   } catch (e) { prev = {}; }
   var now = new Date().getTime(), ask = [], kept = [];
   items.forEach(function (it) {
+    /* a lead only the bot knows, untouched for two weeks, is not read by the
+       model: "quiet" is all there is to say, and there are hundreds */
+    if (it.lead && !it.job && it.lead.fromBot && !it.lead.fromReports && it.lead.quiet > 14) return;
     var f = regFacts_(it), h = regHash_(f), p = prev[it.key];
     /* again: never read, its facts changed, or — in the morning — read long
        ago or not read last time (a failed reading waits for the morning, so

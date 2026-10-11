@@ -1476,6 +1476,10 @@ function dailyRun_() {
   /* a permit, licence or filing coming due — to its owner, at 14, 7 and 1 days (Owners.js) */
   try { permitAlerts_(todayAddis_(), loadSchedule_()); }
   catch (e) { Logger.log('permit alerts: %s', e.message); warn.push('Permit alerts: ' + e.message); }
+  /* the Klever Kitchen bot's leads and jobs, read fresh (Botfeed.js) — a
+     failure there leaves yesterday's copy standing */
+  try { botFeedRefresh_(); PropertiesService.getScriptProperties().setProperty('BOTFEED_DAY', todayAddis_()); }
+  catch (e) { Logger.log('bot feed: %s', e.message); warn.push('Bot leads: ' + e.message); }
   /* his leads and jobs: built again (a lead goes quiet by the calendar
      alone) and the morning's note written (Register.js) */
   try { registerBuild_(todayAddis_(), true); }
@@ -2167,6 +2171,8 @@ function watch_(waitMs) {
     /* Sunday: the weekly reports, made from the dailies, if the morning did
        not make them; again at 8 PM for a daily corrected since (Weekly.js) */
     try { weeklyIfDue_('watch:'); } catch (e) { Logger.log('weekly reports: %s', e.message); }
+    /* the bot's leads, if the morning has not read them today (Botfeed.js) */
+    try { botFeedIfDue_('watch'); } catch (e) { Logger.log('bot feed: %s', e.message); }
     /* Sunday after 9 PM: the week is over — settle it, send its summary */
     weekEndFromWatch_();
     var token = fsToken_();

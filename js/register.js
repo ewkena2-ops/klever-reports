@@ -188,6 +188,8 @@ import {
         parts.tabs.appendChild(b);
       });
     parts.foot.textContent = (s && s.at ? t('regUpdated') + ' ' + hhmm(s.at) + '. ' : '') +
+      /* the Klever Kitchen bot's own count, read each morning (apps-script/Botfeed.js) */
+      (s && s.bot ? tf('regBot', { n: s.bot.leads || 0, m: s.measured || 0, lost: s.bot.lost || 0 }) + ' ' : '') +
       (s && (s.oldLeads || s.oldJobs) ? tf('regOld', { a: s.oldLeads || 0, b: s.oldJobs || 0 }) : '');
   }
 

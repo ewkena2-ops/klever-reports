@@ -1363,7 +1363,11 @@
     report.sections.forEach(function (sec, si) {
       var fs = el('fieldset');
       var lg = el('legend');
-      lg.appendChild(el('span', null, L(sec)));
+      /* numbered as they stand on the screen (refresh): a section that only
+         opens when something happened leaves no gap in the count */
+      var lt = el('span', null, L(sec));
+      lt.id = 'lgt_' + si;
+      lg.appendChild(lt);
       var lc = el('span', 'lgc');
       lc.id = 'lgc_' + si;
       lg.appendChild(lc);
@@ -1393,6 +1397,7 @@
     /* a weekly or monthly report adds up its own week: fetch it, then the
        figures fill themselves in */
     loadWeekValues();
+    loadRecent();
     /* the status line keeps time while the form is open */
     renderForm.tick = setInterval(drawStatus, 30000);
   }
@@ -1509,18 +1514,73 @@
           /* a pick-list whose choices are long ("On credit — no cheque yet")
              goes full width too, or it reads "On credi" */
           var longPick = c.t === 'choice' && (c.opts || []).some(function (o) { return (lang === 'am' ? o.am : o.en).length > 14; });
-          var cell = el('div', 'cell' + (c.t === 'text' || c.t === 'date' || longPick ? ' wide' : ''));
+          /* a yes/no in a list is two buttons with its answer words, like a
+             yes/no question; with words longer than a box it takes the row */
+          var longYn = c.t === 'yesno' && !!(c.yes || c.no);
+          var cell = el('div', 'cell' + (c.t === 'text' || c.t === 'date' || longPick || longYn ? ' wide' : ''));
           var cl = el('label', null, L(c));
           cell.appendChild(cl);
           var inp;
-          if (c.t === 'yesno' || c.t === 'choice') {
+          if (c.t === 'yesno') {
+            var cseg = el('div', 'seg mini' + (rowData[c.id] === 'no' ? ' no' : ''));
+            cseg.id = 'c_' + f.id + '_' + i + '_' + c.id;
+            cseg.setAttribute('role', 'group');
+            cseg.setAttribute('aria-label', L(c));
+            ['yes', 'no'].forEach(function (v) {
+              var yb = el('button', null, ynWord(c, v));
+              yb.type = 'button';
+              yb.setAttribute('data-v', v);
+              yb.setAttribute('aria-pressed', rowData[c.id] === v ? 'true' : 'false');
+              yb.onclick = function () {
+                rowData[c.id] = v;
+                cseg.className = 'seg mini' + (v === 'no' ? ' no' : '');
+                Array.prototype.forEach.call(cseg.children, function (x) {
+                  x.setAttribute('aria-pressed', x === yb ? 'true' : 'false');
+                });
+                refresh();
+                if (wrap.sumUp) wrap.sumUp();
+              };
+              cseg.appendChild(yb);
+            });
+            cl.removeAttribute('for');
+            cell.appendChild(cseg);
+            card.appendChild(cell);
+            return;
+          }
+          /* a short choice in a list is buttons too — "Complete / In
+             progress" is one tap, not a menu */
+          if (c.t === 'choice' && (c.opts || []).length <= 6) {
+            var ccb = el('div', 'chips one mini');
+            ccb.id = 'c_' + f.id + '_' + i + '_' + c.id;
+            ccb.setAttribute('role', 'group');
+            ccb.setAttribute('aria-label', L(c));
+            c.opts.forEach(function (o) {
+              var ob = el('button', 'chip', lang === 'am' ? o.am : o.en);
+              ob.type = 'button';
+              ob.setAttribute('data-v', o.v);
+              ob.setAttribute('aria-pressed', rowData[c.id] === o.v ? 'true' : 'false');
+              ob.onclick = function () {
+                if (rowData[c.id] === o.v) delete rowData[c.id]; else rowData[c.id] = o.v;
+                Array.prototype.forEach.call(ccb.children, function (x) {
+                  x.setAttribute('aria-pressed', x.getAttribute('data-v') === rowData[c.id] ? 'true' : 'false');
+                });
+                refresh();
+                if (wrap.sumUp) wrap.sumUp();
+              };
+              ccb.appendChild(ob);
+            });
+            cl.removeAttribute('for');
+            cell.className = 'cell wide';
+            cell.appendChild(ccb);
+            card.appendChild(cell);
+            return;
+          }
+          if (c.t === 'choice') {
             inp = document.createElement('select');
             var blank = document.createElement('option');
             blank.value = ''; blank.textContent = '\u2014';
             inp.appendChild(blank);
-            var opts = c.t === 'yesno'
-              ? [{v:'yes', en:T.en.yes, am:T.am.yes}, {v:'no', en:T.en.no, am:T.am.no}]
-              : c.opts;
+            var opts = c.opts;
             opts.forEach(function (o) {
               var op = document.createElement('option');
               op.value = o.v; op.textContent = lang === 'am' ? o.am : o.en;
@@ -1533,7 +1593,8 @@
             inp.type = 'date';
           } else {
             inp = document.createElement('input');
-            inp.type = 'text';
+            /* a time is the phone's own clock, not typed */
+            inp.type = c.time ? 'time' : 'text';
             /* a number box that reads "1,500" as empty is worse than a text box
                with the number keyboard; the digits are read by num() */
             if (c.t === 'num' || c.t === 'money') inp.inputMode = 'decimal';
@@ -1541,8 +1602,29 @@
           inp.id = 'c_' + f.id + '_' + i + '_' + c.id;
           cl.htmlFor = inp.id;
           inp.value = rowData[c.id] != null ? rowData[c.id] : '';
-          inp.onchange = inp.oninput = function () { rowData[c.id] = inp.value; refresh(); if (wrap.sumUp) wrap.sumUp(); };
+          /* words to tap under a word box: its usual answers (picks), or the
+             codes and names this person filed lately (recentKey) */
+          var tapBox = null;
+          var onType = function () { rowData[c.id] = inp.value; if (tapBox) tapBox.hidden = has(inp.value); refresh(); if (wrap.sumUp) wrap.sumUp(); };
+          inp.onchange = inp.oninput = onType;
           cell.appendChild(c.t === 'date' ? dressDate(inp) : inp);
+          if (c.t === 'text' && !c.time && (c.picks || recentKey(f, c))) {
+            tapBox = el('div', 'chips mini cellpicks');
+            tapBox.hidden = has(inp.value);
+            var fillTaps = function () {
+              var words = c.picks ? c.picks.map(function (p) { return L(p); }) : (RECENT[recentKey(f, c)] || []);
+              tapBox.innerHTML = '';
+              words.forEach(function (w) {
+                var tb = el('button', 'chip', w);
+                tb.type = 'button';
+                tb.onclick = function () { inp.value = w; onType(); };
+                tapBox.appendChild(tb);
+              });
+            };
+            fillTaps();
+            if (!c.picks) { tapBox.setAttribute('data-recent', '1'); tapBox.refill = fillTaps; }
+            cell.appendChild(tapBox);
+          }
           card.appendChild(cell);
         });
         body.appendChild(card);
@@ -1603,7 +1685,17 @@
       gw.appendChild(el('div', 'hint', t('fromYourWeekRows')));
       return gw;
     }
+    /* a yes/no the form reads off a "what happened today" list, or a list the
+       form folds out of another (the 15-day plan's day totals): the question
+       is elsewhere, so this one has nothing to show */
+    if (f.quiet && f.auto) {
+      var qg = el('div', 'quiet');
+      qg.id = 'r_' + f.id;
+      qg.hidden = true;
+      return qg;
+    }
     if (f.t === 'table' || f.t === 'grid') return repeater(f);
+    if (f.t === 'multi') return multiField(f);
     /* a question the form answers itself: the question, the figure it worked
        out, and where it came from. Nothing to type, nothing to get wrong.
        A two-box question with only one box counted keeps its boxes — the
@@ -1673,7 +1765,7 @@
       seg.setAttribute('role', 'group');
       seg.setAttribute('aria-labelledby', lab.id);
       lab.removeAttribute('for');
-      [['yes', t('yes')], ['no', t('no')]].forEach(function (o) {
+      [['yes', ynWord(f, 'yes')], ['no', ynWord(f, 'no')]].forEach(function (o) {
         var b = el('button', null, o[1]);
         b.type = 'button';
         b.setAttribute('aria-pressed', values[f.id] === o[0] ? 'true' : 'false');
@@ -1689,6 +1781,10 @@
       });
       if (values[f.id] === 'no') seg.className = 'seg no';
       row.appendChild(seg);
+    } else if ((f.t === 'area' || f.t === 'text') && f.picks) {
+      row.className += ' wide picks';
+      lab.removeAttribute('for');
+      pickField(row, f);
     } else if (f.t === 'area') {
       var ta = el('textarea');
       ta.id = 'f_' + f.id;
@@ -1702,26 +1798,67 @@
       di.onchange = di.oninput = function () { values[f.id] = di.value; redrawGrids(); refresh(); };
       row.appendChild(dressDate(di));
     } else if (f.t === 'choice') {
-      var sel = document.createElement('select');
-      sel.id = 'f_' + f.id;
-      var blank = document.createElement('option');
-      blank.value = ''; blank.textContent = '—';
-      sel.appendChild(blank);
+      /* one tap, every choice in sight — a drop-down hid them behind a
+         menu that a phone opens over the whole screen */
+      lab.removeAttribute('for');
+      var cb = el('div', 'chips one');
+      cb.id = 'f_' + f.id;
+      cb.tabIndex = -1;
+      cb.setAttribute('role', 'group');
+      cb.setAttribute('aria-labelledby', lab.id);
       (f.opts || []).forEach(function (o) {
-        var op = document.createElement('option');
-        op.value = o.v;
-        op.textContent = lang === 'am' ? o.am : o.en;
-        sel.appendChild(op);
+        var b = el('button', 'chip', lang === 'am' ? o.am : o.en);
+        b.type = 'button';
+        b.setAttribute('aria-pressed', values[f.id] === o.v ? 'true' : 'false');
+        b.onclick = function () {
+          if (values[f.id] === o.v) delete values[f.id]; else values[f.id] = o.v;
+          Array.prototype.forEach.call(cb.children, function (c, j) {
+            c.setAttribute('aria-pressed', values[f.id] === f.opts[j].v ? 'true' : 'false');
+          });
+          refresh();
+        };
+        cb.appendChild(b);
       });
-      sel.value = values[f.id] || '';
-      sel.onchange = function () { values[f.id] = sel.value; refresh(); };
-      row.appendChild(sel);
+      row.appendChild(cb);
     } else if (f.t === 'text') {
       var ti = document.createElement('input');
-      ti.type = 'text'; ti.id = 'f_' + f.id;
+      ti.type = f.time ? 'time' : 'text'; ti.id = 'f_' + f.id;
       ti.value = values[f.id] || '';
-      ti.oninput = function () { values[f.id] = ti.value; refresh(); };
+      ti.oninput = ti.onchange = function () { values[f.id] = ti.value; refresh(); };
       row.appendChild(ti);
+      /* "What comes first tomorrow?" offers today's own jobs (from:
+         'p_jobs.code'), and a box with recent:1 the answers of the last
+         weeks — one tap fills it, and it can still be typed */
+      if (f.from || f.recent) {
+        row.className += ' wide';
+        var tb = el('div', 'chips mini cellpicks');
+        tb.id = 't_' + f.id;
+        tb.refill = function () {
+          var words = [];
+          [].concat(f.from || []).forEach(function (src) {
+            var sp = String(src).split('.');
+            (Array.isArray(values[sp[0]]) ? values[sp[0]] : []).forEach(function (r) {
+              var w = String((r && r[sp[1]]) || '').trim();
+              if (w && words.indexOf(w) < 0) words.push(w);
+            });
+          });
+          (RECENT[f.id] || []).forEach(function (w) { if (words.indexOf(w) < 0 && words.length < 8) words.push(w); });
+          var sig = words.join('|');
+          if (tb.__sig !== sig) {
+            tb.__sig = sig;
+            tb.innerHTML = '';
+            words.forEach(function (w) {
+              var b = el('button', 'chip', w);
+              b.type = 'button';
+              b.onclick = function () { ti.value = w; values[f.id] = w; refresh(); };
+              tb.appendChild(b);
+            });
+          }
+          tb.hidden = has(values[f.id]) || !words.length;
+        };
+        if (f.recent) tb.setAttribute('data-recent', '1');
+        row.appendChild(tb);
+      }
     } else {
       row.appendChild(numInput(f.id, f));
     }
@@ -1743,6 +1880,18 @@
     return row;
   }
 
+  /* The answer in words (the Chairman, 11 Oct 2026: not "አዎ / አይደለም" but
+     the actual answer). "Was the cheque book locked away?" is answered
+     "Locked" or "Not locked" — ተቆልፏል / አልተቆለፈም — and in Amharic a bare
+     አይደለም is often simply the wrong word ("Did anyone come late?" is
+     answered የለም). A yes/no question or list column may carry its own
+     words, yes:{en,am} and no:{en,am}; without them it says Yes / No. What
+     is filed is still yes or no. */
+  function ynWord(f, v) {
+    var w = f && f[v];
+    return w ? L(w) : t(v);
+  }
+
   function numInput(key, f) {
     var i = document.createElement('input');
     i.type = 'text';
@@ -1752,6 +1901,134 @@
     i.value = values[key] != null ? values[key] : '';
     i.oninput = function () { values[key] = i.value; refresh(); };
     return i;
+  }
+
+  /* TAP, DON'T TYPE (the Chairman, 11 Oct 2026: "they are struggling so much
+     with the questions"). Measured on the first 36 reports filed: the sales
+     team and the designers left 0–30% of their questions empty; the factory,
+     the store and purchasing left 50–96%. Every "why" box was empty — Amaha
+     writes Amharic in English letters on a phone with no Amharic keyboard —
+     and so was every one of the yes/no questions about things that go wrong
+     once a month, which were twenty answers to give on a day when nothing
+     went wrong.
+
+     EVERYTHING THAT HAPPENED, as one list: t:'multi'. Tap what happened, or
+     "nothing", and the yes/no answers the rulebook and the agents read are
+     worked out from it ({picked:…} in autoOne) under the keys they always
+     had. The answer is the codes, comma-separated: "absent,late" or "none". */
+  function multiField(f) {
+    var row = el('div', 'fld wide multi' + (f.show ? ' follow' : ''));
+    row.id = 'r_' + f.id;
+    var lab = el('label', null, L(f));
+    lab.id = 'l_' + f.id;
+    row.appendChild(lab);
+    var box = el('div', 'chips');
+    box.id = 'f_' + f.id;
+    box.tabIndex = -1;
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-labelledby', lab.id);
+    var order = (f.opts || []).map(function (o) { return o.v; });
+    function picked() { return String(values[f.id] || '').split(',').filter(Boolean); }
+    function paint() {
+      var now = picked();
+      Array.prototype.forEach.call(box.querySelectorAll('button'), function (b) {
+        b.setAttribute('aria-pressed', now.indexOf(b.getAttribute('data-v')) >= 0 ? 'true' : 'false');
+      });
+    }
+    function chip(o, cls) {
+      var b = el('button', 'chip' + (cls ? ' ' + cls : ''), L(o));
+      b.type = 'button';
+      b.setAttribute('data-v', o.v);
+      b.onclick = function () {
+        var now = picked();
+        if (o.v === 'none') now = now.indexOf('none') >= 0 ? [] : ['none'];
+        else {
+          now = now.filter(function (x) { return x !== 'none'; });
+          var i = now.indexOf(o.v);
+          if (i >= 0) now.splice(i, 1); else now.push(o.v);
+          now.sort(function (a, c) { return order.indexOf(a) - order.indexOf(c); });
+        }
+        if (now.length) values[f.id] = now.join(','); else delete values[f.id];
+        paint();
+        refresh();
+      };
+      return b;
+    }
+    if (f.none) box.appendChild(chip({ v: 'none', en: f.none.en, am: f.none.am }, 'none'));
+    (f.groups || [{ v: '' }]).forEach(function (g) {
+      var mine = (f.opts || []).filter(function (o) { return (o.g || '') === g.v; });
+      if (!mine.length) return;
+      if (g.en) box.appendChild(el('div', 'chipg', L(g)));
+      mine.forEach(function (o) { box.appendChild(chip(o)); });
+    });
+    paint();
+    row.appendChild(box);
+    row.appendChild(el('div', 'hint', t('tapAll')));
+    return row;
+  }
+  function multiText(f, v) {
+    return String(v).split(',').filter(Boolean).map(function (c) {
+      if (c === 'none' && f.none) return L(f.none);
+      for (var i = 0; i < (f.opts || []).length; i++) if (f.opts[i].v === c) return L(f.opts[i]);
+      return c;
+    }).join(lang === 'am' ? '፣ ' : ', ');
+  }
+
+  /* TAP THE REASON: an area or text question with `picks` — the usual
+     answers as buttons, and a box under them for a few words more. What is
+     filed is still one line of words under the question's own key ("Machine
+     broke down; Power cut — the edge bander"), so the agents, the rulebook
+     and the Chairman's page read it as they always did. The buttons tapped
+     (`<id>__p`) and the words typed (`<id>__n`) live in the draft only;
+     answers() leaves them out. `one:true` allows a single button. */
+  function pickField(row, f) {
+    var pk = f.id + '__p', nk = f.id + '__n';
+    /* a draft typed before the buttons came: the words become the note */
+    if (has(values[f.id]) && values[pk] == null && values[nk] == null) values[nk] = values[f.id];
+    var box = el('div', 'chips');
+    box.id = 'f_' + f.id;
+    box.tabIndex = -1;
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-labelledby', 'l_' + f.id);
+    function picked() { return Array.isArray(values[pk]) ? values[pk] : []; }
+    function compose() {
+      var words = picked().map(function (code) {
+        for (var i = 0; i < f.picks.length; i++) if (f.picks[i].en === code) return L(f.picks[i]);
+        return code;
+      });
+      var note = String(values[nk] || '').trim();
+      var all = words.join('; ') + (note ? (words.length ? ' — ' : '') + note : '');
+      if (all) values[f.id] = all; else delete values[f.id];
+    }
+    f.picks.forEach(function (o) {
+      var b = el('button', 'chip', L(o));
+      b.type = 'button';
+      b.setAttribute('aria-pressed', picked().indexOf(o.en) >= 0 ? 'true' : 'false');
+      b.onclick = function () {
+        var now = picked().slice(), i = now.indexOf(o.en);
+        if (f.one) now = i >= 0 ? [] : [o.en];
+        else if (i >= 0) now.splice(i, 1);
+        else now.push(o.en);
+        values[pk] = now;
+        Array.prototype.forEach.call(box.children, function (c, j) {
+          c.setAttribute('aria-pressed', now.indexOf(f.picks[j].en) >= 0 ? 'true' : 'false');
+        });
+        compose();
+        refresh();
+      };
+      box.appendChild(b);
+    });
+    row.appendChild(box);
+    var note = el(f.t === 'area' ? 'textarea' : 'input', 'note');
+    if (f.t === 'area') note.rows = 2; else note.type = 'text';
+    note.id = 'n_' + f.id;
+    note.placeholder = t('addWords');
+    note.value = values[nk] || '';
+    note.setAttribute('aria-label', L(f) + ' — ' + t('addWords'));
+    note.oninput = function () { values[nk] = note.value; compose(); refresh(); };
+    row.appendChild(note);
+    row.appendChild(el('div', 'hint', f.one ? t('tapOne') : t('tapReasons')));
+    compose();
   }
 
   /* SITE PHOTOS (the Chairman, 10 Oct 2026: "send some site photos").
@@ -1945,7 +2222,7 @@
     report.sections.forEach(function (sec) {
       var rows = [];
       sec.fields.forEach(function (fl) {
-        if (!shown(fl)) return;
+        if (!shown(fl) || fl.quiet) return;
         /* A row is [question, answer as text]. A third entry says how a
            document should lay it out: a list as a real table, a long answer
            in full under its question. Readers that only know the first two
@@ -1957,7 +2234,7 @@
         }
         var v = fmt(fl);
         if (!has(v) || v === '— / —') return;
-        var lab = (fl.i || fl.show ? '· ' : '') + L(fl);
+        var lab = (fl.i || fl.show ? '· ' : '') + asked(L(fl));
         rows.push(fl.t === 'area' || String(v).length > 60 ? [lab, v, { long: true }] : [lab, v]);
       });
       if (rows.length) doc.push({ sec: L(sec), rows: rows });
@@ -2278,8 +2555,12 @@
   /* ---------------- live state ---------------- */
 
   /* the required questions still unanswered, by name */
+  /* A question the form works out is never one the person failed to answer:
+     until 11 Oct 2026 a weekly report whose dailies were missing went out
+     saying "25 not answered" about 22 figures nobody could have typed, and
+     the HR reader told the Chairman so. */
   function unanswered() {
-    return liveFields().filter(function (f) { return !f.opt && !filled(f); }).map(function (f) { return L(f); });
+    return liveFields().filter(function (f) { return !f.opt && !f.auto && !filled(f); }).map(function (f) { return L(f); });
   }
   function unansweredLine(list) {
     return t('notAnsweredCount').replace('{n}', list.length);
@@ -2309,6 +2590,11 @@
     if (w === 'miss') return targetMiss(p);
     if (w === 'yes' || w === 'no') return values[p.id] === w;
     if (w === 'is') return values[p.id] === f.show.v;
+    /* opened by a tap on a "what happened" list (t:'multi') */
+    if (w === 'has') {
+      var hv = String(values[p.id] || '').split(',');
+      return [].concat(f.show.v).some(function (c) { return hv.indexOf(c) >= 0; });
+    }
     if (p.t === 'ratio') {
       var a = num(values[p.id + '__a']), b = num(values[p.id + '__b']);
       if (w === 'short') return !isNaN(a) && !isNaN(b) && a < b;
@@ -2318,6 +2604,26 @@
     return !isNaN(v) && v > 0;
   }
   function liveFields() { return allFields().filter(shown); }
+  /* Does this question put anything on the screen? A worked-out yes/no read
+     off a list does not, and nor does a count that sits on the summary line
+     of a list that is shut — a section holding only those is an empty
+     heading, and an empty heading is a question people go looking for. */
+  function drawsSomething(f) {
+    if (!shown(f) || f.quiet) return false;
+    if (autoInLine(f)) {
+      var tf = fieldById(autoTable(f));
+      return !!tf && shown(tf);
+    }
+    if (f.auto && f.t !== 'table' && document.getElementById('av_' + f.id)) return !hideBlankAuto(f);
+    return true;
+  }
+  /* on a daily form only: a week or month figure that comes out empty says
+     something (your dailies did not hold it), so there it stays as a dash */
+  function hideBlankAuto(f) { return report.cadence === 'daily' && autoBlank(f); }
+  function autoBlank(f) {
+    var v = fmt(f);
+    return v === '' || v === '— / —';
+  }
 
   /* Answers that cannot be right — 11 called out of 10 new leads, sources
      that add up to more than the total. The check lives in forms.js, where
@@ -2347,7 +2653,33 @@
       out['-' + f.id + '__b'] = 1;
     });
     var keep = {};
-    Object.keys(values).forEach(function (k) { if (!out['-' + k]) keep[k] = values[k]; });
+    /* the buttons tapped and the words typed under them (pickField) are the
+       draft's business; the answer is the line they make */
+    Object.keys(values).forEach(function (k) { if (!out['-' + k] && !/__[pn]$/.test(k)) keep[k] = values[k]; });
+    /* A count that only opens when its thing happened ("Edges lifted",
+       tapped on the list) is nought when the list was answered without it.
+       `zero:1` files that nought, so the week adds a real 0 and the rulebook
+       does not read a blank as "not reported". An unanswered list files
+       nothing — that is not an answer. */
+    allFields().forEach(function (f) {
+      if (!f.zero || shown(f)) return;
+      var g = f.show && fieldById(f.show.f);
+      if (g && shown(g) && filled(g)) keep[f.id] = '0';
+    });
+    /* "Nothing needed" (a pick marked nil:1) answers the question on the
+       phone and in the message, but it is not a need: filed, it would stand
+       in the morning brief's list of who is waiting on whom (Agents.js
+       waitsOn_) as if it were one. Only the nil button, no words: nothing
+       is filed. */
+    allFields().forEach(function (f) {
+      if (!f.picks || !(f.id in keep)) return;
+      var p = Array.isArray(values[f.id + '__p']) ? values[f.id + '__p'] : [];
+      if (!p.length || String(values[f.id + '__n'] || '').trim()) return;
+      var allNil = p.every(function (code) {
+        return f.picks.some(function (o) { return o.en === code && o.nil; });
+      });
+      if (allNil) delete keep[f.id];
+    });
     return keep;
   }
 
@@ -2457,6 +2789,41 @@
   function autoOne(k) {
     if (!k) return NaN;
     if (k.of != null) return num(values[k.of]);
+    /* a yes/no read off a "tap everything that happened" list: yes when one
+       of `v` was tapped, no when the list was answered without it, blank
+       while the list is unanswered. `flip` is for a question asked the right
+       way round — "Was the floor clean?" is no when "Floor left dirty" was
+       tapped. */
+    /* rows folded out of another list, row by row: {fold:'plan_week',
+       sum:{m2:['m1','n2','n3']}, join:{jobs:['k1','k2','k3']}, keep:{notes:'notes'}}
+       — the day's total m² and its jobs from the jobs written one by one */
+    if (k.fold != null) {
+      var src = Array.isArray(values[k.fold]) ? values[k.fold] : [];
+      return src.map(function (r) {
+        r = r || {};
+        var o = {};
+        Object.keys(k.sum || {}).forEach(function (to) {
+          var tot = 0, got = 0;
+          k.sum[to].forEach(function (c) { var x = num(r[c]); if (!isNaN(x)) { tot += x; got++; } });
+          if (got) o[to] = String(round(tot, 3));
+        });
+        Object.keys(k.join || {}).forEach(function (to) {
+          var w = k.join[to].map(function (c) { return String(r[c] == null ? '' : r[c]).trim(); }).filter(Boolean);
+          if (w.length) o[to] = w.join(' ');
+        });
+        Object.keys(k.keep || {}).forEach(function (to) {
+          if (has(r[k.keep[to]])) o[to] = String(r[k.keep[to]]).trim();
+        });
+        return o;
+      });
+    }
+    if (k.picked != null) {
+      var mf = fieldById(k.picked);
+      if (!mf || !shown(mf) || !has(values[k.picked])) return '';
+      var codes = String(values[k.picked]).split(',');
+      var hit = [].concat(k.v).some(function (c) { return codes.indexOf(c) >= 0; });
+      return (hit !== !!k.flip) ? 'yes' : 'no';
+    }
     if (k.week != null) return weekFigure(k.week, k);
     /* how many days of the week were reported at all — the divisor of every
        "on average per working day" question */
@@ -2556,6 +2923,46 @@
     return NaN;
   }
 
+  /* WHAT THEY WROTE LATELY, to tap (11 Oct 2026, the Chairman: "make most
+     questions choice"). A job code, a customer, a supplier cannot be a fixed
+     list, but today's are mostly yesterday's: KK-180 was on the factory floor
+     all week. The person's own reports of the last three weeks give each
+     code-and-name box its recent answers as buttons; a tap fills the box. */
+  var RECENT = {}, recentFor = null;
+  var RECENT_COLS = /^(code|job|rcode|cust|lc|sup|psup|site|who|to|sp|owner|name|k1|k2|k3)$/;
+  function recentKey(f, c) {
+    if (c) return (c.t === 'text' && RECENT_COLS.test(c.id)) ? f.id + '.' + c.id : null;
+    return f.recent ? f.id : null;
+  }
+  function loadRecent() {
+    if (!report || recentFor === report.id) return;
+    recentFor = report.id;
+    RECENT = {};
+    if (!window.FB || !FB.ownReports || !AUTH.who()) return;
+    FB.ownReports(report.person, new Date(Date.now() - 21 * 864e5)).then(function (list) {
+      var got = {};
+      (list || []).slice().sort(function (a, b) { return b.at - a.at; }).forEach(function (d) {
+        if (d.report !== report.id) return;
+        var v = d.values || {};
+        allFields().forEach(function (f) {
+          var add = function (k, w) {
+            w = String(w == null ? '' : w).trim();
+            if (!w || w.length > 40) return;
+            var arr = got[k] = got[k] || [];
+            if (arr.length < 6 && !arr.some(function (x) { return x.toLowerCase() === w.toLowerCase(); })) arr.push(w);
+          };
+          if (recentKey(f)) add(f.id, v[f.id]);
+          (f.cols || []).forEach(function (c) {
+            var k = recentKey(f, c);
+            if (k && Array.isArray(v[f.id])) v[f.id].forEach(function (r) { if (r) add(k, r[c.id]); });
+          });
+        });
+      });
+      RECENT = got;
+      Array.prototype.forEach.call(document.querySelectorAll('[data-recent]'), function (b) { if (b.refill) b.refill(); });
+    })['catch'](function () {});
+  }
+
   /* This week's own daily reports, which the weekly report no longer asks
      anyone to add up by hand. They are this person's own filings, so the
      server hands them over (firestore.rules: your own reports); until they
@@ -2629,7 +3036,32 @@
 
   /* every auto answer, worked out. Three passes, because one can stand on
      another (a share of two counts that are themselves counted from rows). */
+  /* A count behind a tap-all list (zero:1) is nought while the list says it
+     did not happen — nought now, not only when the report is sent, so a
+     figure worked out from it (complaints still open = in − resolved) is
+     right on the screen too. If the thing is then tapped, the nought the form
+     put there is taken away again: the person types the real count. */
+  var ZEROED = {};
+  function zeroClosed() {
+    allFields().forEach(function (f) {
+      if (!f.zero) return;
+      var g = f.show && fieldById(f.show.f);
+      if (!shown(f) && g && shown(g) && filled(g)) {
+        values[f.id] = '0';
+        ZEROED[f.id] = 1;
+      } else if (ZEROED[f.id]) {
+        delete ZEROED[f.id];
+        if (values[f.id] === '0') {
+          delete values[f.id];
+          var box = document.getElementById('f_' + f.id);
+          if (box && box.value === '0') box.value = '';
+        }
+      }
+    });
+  }
+
   function computeAutos() {
+    zeroClosed();
     var fs = allFields().filter(function (f) { return f.auto; });
     if (!fs.length) return;
     for (var pass = 0; pass < 3; pass++) {
@@ -2732,9 +3164,15 @@
 
     var fields = allFields(), need = 0, done = 0;
     var firstEmpty = null;
+    /* the buttons under "what comes first tomorrow" follow today's list */
+    fields.forEach(function (f) {
+      if (!f.from && !f.recent) return;
+      var tb = document.getElementById('t_' + f.id);
+      if (tb && tb.refill) tb.refill();
+    });
     fields.forEach(function (f) {
       var open = shown(f);
-      if (f.show) {
+      if (f.show && !f.quiet) {
         var fr = document.getElementById('r_' + f.id) || document.getElementById('w_' + f.id);
         if (fr && fr.hidden === open) {
           fr.hidden = !open;
@@ -2744,7 +3182,15 @@
       if (f.auto) {
         /* the figure the form worked out, under the table it came from */
         var av = document.getElementById('av_' + f.id);
-        if (av) { var at = fmt(f); av.textContent = at === '' ? '—' : at; }
+        if (av) {
+          var at = fmt(f);
+          av.textContent = at === '' ? '—' : at;
+          /* a figure with nothing to work out from yet is a dash that reads
+             like a question left empty — it stays out of sight until there
+             is a figure to show */
+          var arow = document.getElementById('r_' + f.id);
+          if (arow) arow.hidden = !open || hideBlankAuto(f);
+        }
         /* a two-box question with one box counted: put the figure in it */
         if (f.t === 'ratio') ['a', 'b'].forEach(function (s) {
           if (!f.auto[s]) return;
@@ -2788,6 +3234,17 @@
     });
 
     /* the same count, section by section */
+    var secNo = 0;
+    report.sections.forEach(function (sec, si) {
+      var lt = document.getElementById('lgt_' + si);
+      if (lt) {
+        var bare = L(sec).replace(/^\s*\d+\s*·\s*/, '');
+        var on = sec.fields.some(drawsSomething);
+        if (on) secNo++;
+        var txt = on ? secNo + ' · ' + bare : bare;
+        if (lt.textContent !== txt) lt.textContent = txt;
+      }
+    });
     report.sections.forEach(function (sec, si) {
       var lc = document.getElementById('lgc_' + si);
       if (!lc) return;
@@ -2806,7 +3263,7 @@
          screen is a question the person goes looking for and cannot find. */
       var box = lc.parentNode && lc.parentNode.parentNode;
       if (box && box.tagName === 'FIELDSET') {
-        box.hidden = !sec.fields.some(shown);
+        box.hidden = !sec.fields.some(drawsSomething);
       }
 
       /* "5 deliveries · 4 checked · 1 rejected", under the table it is
@@ -2916,7 +3373,7 @@
 
   function colText(c, v) {
     if (!has(v)) return '\u2014';
-    if (c.t === 'yesno') return v === 'yes' ? t('yes') : t('no');
+    if (c.t === 'yesno') return ynWord(c, v === 'yes' ? 'yes' : 'no');
     if (c.t === 'choice') {
       for (var i = 0; i < c.opts.length; i++)
         if (c.opts[i].v === v) return lang === 'am' ? c.opts[i].am : c.opts[i].en;
@@ -2968,7 +3425,15 @@
 
   /* a question already ends in its own mark; "Why?:" reads as a typo */
   function said(label) {
+    label = asked(label);
     return /[?？፧]\s*$/.test(label) ? label : label + ':';
+  }
+  /* a word to the person filling it in — "Your best guess is fine.", "(Write
+     the job in the box.)" — is not part of the report; the names of a
+     two-box question's boxes, "(called / all leads)", are */
+  function asked(label) {
+    var m = /^([\s\S]*[?？፧])\s+([^?？፧]+)$/.exec(label);
+    return (m && !/\(\s*[^()]+\s\/\s[^()]+\)\s*$/.test(m[2])) ? m[1] : label;
   }
 
   function fmt(f) {
@@ -2979,7 +3444,8 @@
     }
     var v = values[f.id];
     if (!has(v)) return '';
-    if (f.t === 'yesno') return v === 'yes' ? t('yes') : t('no');
+    if (f.t === 'yesno') return ynWord(f, v === 'yes' ? 'yes' : 'no');
+    if (f.t === 'multi') return multiText(f, v);
     if (f.t === 'choice') {
       for (var oi = 0; oi < (f.opts || []).length; oi++) {
         if (f.opts[oi].v === v) return L(f.opts[oi]);
@@ -3009,7 +3475,8 @@
     report.sections.forEach(function (sec) {
       var lines = [];
       sec.fields.forEach(function (f) {
-        if (!shown(f)) return;
+        /* a yes/no read off the list says nothing the list did not */
+        if (!shown(f) || f.quiet) return;
         if (f.t === 'table' || f.t === 'grid') {
           var tl = tableLines(f);
           if (tl.length) {
@@ -3056,6 +3523,9 @@
   window.KLEVER = {
     message: function () { return buildMessage(); },
     fill: function (v) { Object.keys(v).forEach(function (k) { values[k] = v[k]; }); refresh(); },
+    /* what Send would file, and what it would call unanswered */
+    answers: function () { computeAutos(); return answers(); },
+    unanswered: function () { return unanswered(); },
     /* the same answers the forms use, for the pages that draw the company:
        who a report goes to, and what is owed today */
     recipientsOf: recipientsOf,

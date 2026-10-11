@@ -343,6 +343,12 @@ import {
     charts.appendChild(el('p', 'codenote', t('chLoading')));
     root.appendChild(charts);
 
+    /* --- what they said they would do, and whether they did (js/promises.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('prTitle')));
+    var proms = el('div', 'chproms');
+    proms.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(proms);
+
     /* --- what the agents made of it --- */
     root.appendChild(el('p', 'eyebrow', t('chAnalysis')));
     var runBtn = el('button', 'seed', t('chRunNow'));
@@ -482,7 +488,93 @@ import {
     watchAsks(advice, 'advise');
     watchReports(raw, tFiled, tMissing);
     watchCharts(charts);
+    watchPromises(proms);
     watchHealth(sys, sysAlarm);
+  }
+
+  /* SAID → DONE (the Chairman, 11 Oct 2026: "Amaha says 'I will do this
+     tomorrow for this KK' — so how is it going?"). Each promise for the next
+     working day, beside what that day's reports show; and Mahelet's 15-day
+     plan, day by day, beside what the factory reported making. The working
+     out is js/promises.js; this only reads the reports and draws. */
+  function watchPromises(into) {
+    if (!window.KleverPromises) { into.innerHTML = ''; into.appendChild(el('p', 'codenote', t('chLoadFailed'))); return; }
+    var q = query(collection(db, 'reports'), where('at', '>=', dayStart(addDays(DAY, -21))), orderBy('at', 'asc'));
+    onSnapshot(q, function (snap) {
+      var filings = [];
+      snap.forEach(function (d) {
+        var x = d.data({ serverTimestamps: 'estimate' });
+        if (!x.at || !x.at.toDate) return;
+        filings.push({ person: x.person, report: x.report, at: x.at.toDate().getTime(), values: x.values || {} });
+      });
+      drawPromises(into, filings);
+    }, failInto(into));
+  }
+  function drawPromises(into, filings) {
+    var KP = window.KleverPromises, P = KP.promises(filings, REPORTS, DAY), plan = KP.planCheck(filings, DAY);
+    into.innerHTML = '';
+    var MARK = { done: '✓', again: '↻', none: '✗', nofile: '—', due: '…' };
+    /* the last six working days that had anything to check, newest first */
+    var days = {};
+    P.forEach(function (p) { (days[p.day] = days[p.day] || { prom: [], plan: null }).prom.push(p); });
+    plan.forEach(function (d) { (days[d.day] = days[d.day] || { prom: [], plan: null }).plan = d; });
+    /* what is ahead: the next working day only; then the six days just past */
+    var next = KP.nextWorkDay(DAY);
+    var keys = (days[next] ? [next] : []).concat(Object.keys(days).sort().reverse().filter(function (d) { return d <= DAY; }).slice(0, 6));
+    if (!keys.length) { into.appendChild(el('p', 'codenote', t('prNone'))); return; }
+
+    /* the week's tally per person: kept of due */
+    var tally = {};
+    P.forEach(function (p) {
+      if (p.state === 'due' || daysFrom(p.day, DAY) > 6) return;
+      var x = tally[p.person] = tally[p.person] || { kept: 0, all: 0 };
+      x.all++; if (p.state === 'done') x.kept++;
+    });
+    var tl = Object.keys(tally);
+    if (tl.length) {
+      var sum = el('div', 'prtally');
+      tl.sort(function (a, b) { return tally[a].kept / tally[a].all - tally[b].kept / tally[b].all; }).forEach(function (who) {
+        var x = tally[who];
+        sum.appendChild(el('span', 'prtl' + (x.kept < x.all ? ' bad' : ''), String(nameOf(who)).split(' ')[0] + ' ' + x.kept + '/' + x.all));
+      });
+      into.appendChild(el('p', 'codenote', t('prTally')));
+      into.appendChild(sum);
+    }
+
+    keys.forEach(function (day) {
+      var d = days[day], box = el('div', 'prday');
+      box.appendChild(el('div', 'prhead', prettyDay(day) + (day > DAY ? ' · ' + t('prAhead') : day === DAY ? ' · ' + t('prToday') : '')));
+      if (d.plan) {
+        var pl = el('div', 'prplan');
+        pl.appendChild(el('span', 'prk', t('prPlan') + (d.plan.m2 ? ' (' + d.plan.m2 + ' m²)' : '') + ':'));
+        d.plan.rows.forEach(function (r) {
+          /* "KK-155 20 → ✓ 22 m²": planned against made, where the plan gave the job its own m² */
+          var txt = KP.kk(r.code) + ' ' + (r.plan != null ? r.plan + ' → ' : '') +
+            (r.state === 'made' ? '✓ ' + r.m2 + ' m²' : r.state === 'not' ? '✗' : r.state === 'nofile' ? '— ' + t('prNoAmaha') : '…');
+          pl.appendChild(el('span', 'prchip ' + r.state, txt));
+        });
+        if (d.plan.extra.length) {
+          pl.appendChild(el('span', 'prk', t('prExtra') + ':'));
+          d.plan.extra.forEach(function (x) { pl.appendChild(el('span', 'prchip extra', KP.kk(x.code) + ' ' + x.m2 + ' m²')); });
+        }
+        box.appendChild(pl);
+      }
+      d.prom.sort(function (a, b) { return a.person < b.person ? -1 : a.person > b.person ? 1 : a.code - b.code; }).forEach(function (p) {
+        var row = el('div', 'prrow ' + p.state);
+        row.appendChild(el('span', 'prmark', MARK[p.state]));
+        row.appendChild(el('span', 'prwho', String(nameOf(p.person)).split(' ')[0]));
+        row.appendChild(el('span', 'prcode', KP.kk(p.code)));
+        var what = t('prState_' + p.state);
+        if (p.state === 'done') {
+          var seen = {};
+          what += ': ' + p.done.filter(function (w) { var k = w.person + w.field; if (seen[k]) return false; seen[k] = 1; return true; })
+            .slice(0, 3).map(function (w) { return (w.person === p.person ? '' : String(nameOf(w.person)).split(' ')[0] + ' — ') + L(w.label); }).join(' · ');
+        }
+        row.appendChild(el('span', 'prwhat', what));
+        box.appendChild(row);
+      });
+      into.appendChild(box);
+    });
   }
 
   function tile(label, value, full) {
@@ -1312,8 +1404,15 @@ import {
       return String(v);
     }
     function show(f, v) {
-      if (f.t === 'yesno') return v === 'yes' ? t('yes') : v === 'no' ? t('no') : String(v);
+      /* the answer in its own words where the form gives them ("Locked" /
+         "Not locked"), as the person saw it */
+      if (f.t === 'yesno') return v === 'yes' ? (f.yes ? L(f.yes) : t('yes')) : v === 'no' ? (f.no ? L(f.no) : t('no')) : String(v);
       if (f.t === 'choice') return optLabel(f, v);
+      if (f.t === 'multi') {
+        return String(v).split(',').filter(Boolean).map(function (c) {
+          return c === 'none' && f.none ? L(f.none) : optLabel(f, c);
+        }).join(lang === 'am' ? '፣ ' : ', ');
+      }
       if (f.t === 'money') {
         var n = Number(String(v).replace(/[^0-9.\-]/g, ''));
         return (String(v).replace(/[^0-9.\-]/g, '') === '' || isNaN(n) ? String(v) : birr(n)) + ' ' + t('unBirr');
@@ -1344,12 +1443,15 @@ import {
         }
         var v = values[f.id];
         used[f.id] = true;
+        /* a yes/no the form read off the "what happened" list: the list
+           above already says it */
+        if (f.quiet) return;
         if (f.t === 'table' || f.t === 'grid') {
           var cols = f.cols || [];
           var rows = rowsOf(v).map(function (r, i) {
             if (!r || typeof r !== 'object') return blank(r) ? null : String(r);
             var bits = cols.filter(function (c) { return !blank(r[c.id]); }).map(function (c) {
-              return c.t === 'choice' ? optLabel(c, r[c.id]) : c.t === 'money' ? show(c, r[c.id]) : String(r[c.id]);
+              return c.t === 'choice' ? optLabel(c, r[c.id]) : (c.t === 'money' || c.t === 'yesno') ? show(c, r[c.id]) : String(r[c.id]);
             });
             if (!bits.length) return null;
             /* a grid's rows have names of their own (the days of a plan) */

@@ -51,6 +51,28 @@ const T = {
     preview:'Report preview',
 
     /* the figures the form counts from the rows, so nobody types them twice */
+    /* said → done (11 Oct 2026): what people promised for the next day */
+    prTitle:'Said → done',
+    prNone:'No promises yet. They come from "What comes first tomorrow?" and Mahelet\'s 15-day plan.',
+    prTally:'Promises kept in the last week:',
+    prAhead:'still ahead',
+    prToday:'today',
+    prPlan:'15-day plan',
+    prNoAmaha:'no production report',
+    prExtra:'made, not in the plan',
+    prState_done:'worked on',
+    prState_again:'only promised again',
+    prState_none:'not touched',
+    prState_nofile:'no report that day',
+    prState_due:'not due yet',
+
+    /* tap, don't type (11 Oct 2026) */
+    tapAll:'Tap everything that happened. Tap again to undo.',
+    tapReasons:'Tap the reason — more than one if needed.',
+    tapOne:'Tap one.',
+    addWords:'Add a few words (if you want)',
+    addWordsNeed:'Write a few words',
+
     countedFromRows:'counted from your rows',
     workedOut:'Worked out from your answers — nothing to fill in.',
     fromYourWeek:'Added up from your own daily reports this week.',
@@ -730,6 +752,26 @@ const T = {
     findNext:'ቀጣዩን ለማግኘት ይንኩ',
     ready:'ለመላክ ዝግጁ',
     preview:'የሚላከው ሪፖርት',
+
+    prTitle:'ያሉት → የሠሩት',
+    prNone:'ገና ቃል የተገባ ነገር የለም። ከ«ነገ መጀመሪያ የሚሠራው ምንድን ነው?» እና ከማህሌት የ15 ቀን ዕቅድ ይመጣል።',
+    prTally:'ባለፈው ሳምንት የተጠበቁ ቃሎች፦',
+    prAhead:'ገና ይመጣል',
+    prToday:'ዛሬ',
+    prPlan:'የ15 ቀን ዕቅድ',
+    prNoAmaha:'የምርት ሪፖርት የለም',
+    prExtra:'የተሠራ፣ በዕቅዱ የሌለ',
+    prState_done:'ተሠርቷል',
+    prState_again:'እንደገና ቃል ብቻ ተገባ',
+    prState_none:'አልተነካም',
+    prState_nofile:'በዚያ ቀን ሪፖርት የለም',
+    prState_due:'ገና ጊዜው አልደረሰም',
+
+    tapAll:'የሆነውን ሁሉ ይንኩ። ለመሰረዝ እንደገና ይንኩ።',
+    tapReasons:'ምክንያቱን ይንኩ — ከአንድ በላይ መንካት ይቻላል።',
+    tapOne:'አንዱን ይንኩ።',
+    addWords:'ጥቂት ቃላት ይጨምሩ (ከፈለጉ)',
+    addWordsNeed:'ጥቂት ቃላት ይጻፉ',
 
     countedFromRows:'ከረድፎችዎ የተቆጠረ',
     workedOut:'ከመልሶችዎ የተሰራ — የሚሞላ ነገር የለም።',

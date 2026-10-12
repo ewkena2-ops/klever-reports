@@ -122,6 +122,40 @@ function askTxt_(x) {
   return s.length > ASK_TEXT_MAX_ ? s.substring(0, ASK_TEXT_MAX_) + '…' : s;
 }
 
+/* A pick-list answer is filed as its code (choice answers are codes); the
+   reader is given the words the person tapped */
+function askWord_(q, x) {
+  return q && q.t === 'choice' ? said_(q, x) : x;
+}
+
+/* Mahelet's outside taxis (liu-daily taxi_list, 12 Oct 2026), added up in
+   code from `from` to `day`: how many, the Birr the drivers asked, and the
+   same per person who caused them. A row with no Birr is counted, not
+   priced, and said so. */
+function askTaxis_(P, from, day) {
+  var rep = P.schedule.reports.filter(function (r) { return r.id === 'liu-daily'; })[0];
+  var whoQ = null;
+  ((rep && rep.sections) || []).forEach(function (sec) {
+    (sec.fields || []).forEach(function (f) {
+      if (f.id === 'taxi_list') (f.cols || []).forEach(function (c) { if (c.id === 'who') whoQ = c; });
+    });
+  });
+  var out = { from: dayLabel_(from), to: dayLabel_(day), taxis: 0, birr: 0, without_birr: 0, by_who: {}, by_day: {} };
+  daysOf_(P, 'liu-daily').forEach(function (x) {
+    if (x.day < from || x.day > day) return;
+    rows_(x.v.taxi_list).forEach(function (r) {
+      if (!r || (blank_(r.code) && blank_(r.cost) && blank_(r.who))) return;
+      var priced = !blank_(r.cost), b = priced ? n_(r.cost) : 0;
+      var who = blank_(r.who) ? 'not said' : said_(whoQ || {}, r.who) + otherSaid_(r, 'who');
+      var w = out.by_who[who] || (out.by_who[who] = { taxis: 0, birr: 0 });
+      var d = out.by_day[dayLabel_(x.day)] || (out.by_day[dayLabel_(x.day)] = { taxis: 0, birr: 0 });
+      out.taxis++; w.taxis++; d.taxis++;
+      if (priced) { out.birr += b; w.birr += b; d.birr += b; } else out.without_birr++;
+    });
+  });
+  return out;
+}
+
 /* A report's answers under their questions, as the person saw them. Blank
    answers are left out (not reported is not zero); long writing is cut. */
 function askAnswers_(rep, v) {
@@ -139,13 +173,13 @@ function askAnswers_(rep, v) {
         var rows = rows_(val).map(function (r, i) {
           var row = {};
           if (f.t === 'grid' && f.rows && f.rows[i]) row.row = f.rows[i].en;
-          (f.cols || []).forEach(function (c) { if (r && !blank_(r[c.id])) row[c.en] = txt(r[c.id]) + otherSaid_(r, c.id); });
+          (f.cols || []).forEach(function (c) { if (r && !blank_(r[c.id])) row[c.en] = txt(askWord_(c, r[c.id])) + otherSaid_(r, c.id); });
           return row;
         }).filter(function (r) { return Object.keys(r).length > (r.row ? 1 : 0); });
         if (rows.length) out[f.en] = rows;
         return;
       }
-      if (!blank_(val)) out[f.en] = txt(val) + otherSaid_(v, f.id);
+      if (!blank_(val)) out[f.en] = txt(askWord_(f, val)) + otherSaid_(v, f.id);
     });
   });
   return out;
@@ -202,7 +236,7 @@ function askListsByDay_(rep, days) {
       var cols = f.cols || [], seen = [];
       days.forEach(function (x) {
         var rows = rows_(x.v[f.id]).map(function (r) {
-          return cols.map(function (c) { return r && !blank_(r[c.id]) ? askTxt_(r[c.id]) + otherSaid_(r, c.id) : ''; });
+          return cols.map(function (c) { return r && !blank_(r[c.id]) ? askTxt_(askWord_(c, r[c.id])) + otherSaid_(r, c.id) : ''; });
         }).filter(function (r) { return r.some(function (c) { return c !== ''; }); });
         if (!rows.length) return;
         var s = JSON.stringify(rows), label = dayLabel_(x.day);
@@ -326,6 +360,10 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
     this_month_lists: askMonthLists_(P, monthStart, day, from, latestDay, listsMax),
     this_month_so_far_added_up: operations_(askFrom_(P, monthStart)),
     last_3_weeks_added_up: operations_(askFrom_(P, addDays_(day, -20))),
+    outside_taxis_added_up: {
+      this_week: askTaxis_(P, monday, day),
+      this_month: askTaxis_(P, monthStart, day)
+    },
     by_day: {
       bank_balance: series('betty-daily', 'bank_total'),
       cash_in: series('betty-daily', 'cash_in'),
@@ -384,6 +422,10 @@ function askPrompt_(q, ctx) {
     '  this_month_lists.first_day. Each list there gives its columns once, then each row as its',
     '  values in that order, under the day it was sent. For those earlier days only the lists were',
     '  included, not the written explanations; if the question needs them, say so.',
+    '- outside_taxis_added_up is Mahelet’s outside taxis (her Daily Operations Report), added up',
+    '  in code for this week and this month: how many, the Birr the drivers asked, and each person',
+    '  who caused them. Use these totals for taxi questions rather than adding days yourself; if',
+    '  without_birr is above 0, say that many taxis had no Birr written.',
     '- last_month_summary is the summary written when last month closed.',
     '- Prices are in Birr. Production target 40 m² a day, waste at most 20%, cash reserve floor',
     '  6,000,000 Birr.',

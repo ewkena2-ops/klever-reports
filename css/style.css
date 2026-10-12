@@ -272,7 +272,10 @@ h2.eyebrow{font-family:var(--sans);font-size:11.5px;font-weight:700}
 .backlink:hover{color:var(--ink);border-color:var(--line-3)}
 
 /* ---------- inputs ---------- */
-input[type="text"],input[type="number"],input[type="date"],input[type="password"],
+/* time boxes too (12 Oct 2026): left out, "Start time" and "Finish time" in
+   a list came out grey and small — the phone's own style — and Ashenafi's
+   arrival time was a 24 px box in 13 px type that an iPhone zooms into */
+input[type="text"],input[type="number"],input[type="date"],input[type="password"],input[type="time"],
 textarea,select{
   font-family:var(--sans);font-size:16px;color:var(--ink);
   background:var(--field);border:1px solid var(--line-2);border-radius:var(--r-s);
@@ -1645,8 +1648,12 @@ svg.sky .node text{font-size:11px}
 .autoline{margin:2px 2px 10px;padding:9px 12px;border-radius:10px;
   background:var(--teal-bg);border:1px solid var(--teal-line);
   font-size:13px;line-height:1.7;color:var(--ink-2)}
-.autoline .aval{font-family:var(--mono);font-weight:600;color:var(--teal-hi);white-space:nowrap}
-.autoline .adot{margin:0 7px;color:var(--line-3)}
+/* each piece keeps its figure with its words, and moves to the next line
+   whole when it does not fit — the pieces have no space between them, so as
+   plain inline text the line could not break at all and pushed the page
+   sideways ("1 still on installation · 0 no work today", 12 Oct 2026) */
+.autoline .aval{display:inline-block;max-width:100%;font-family:var(--mono);font-weight:600;color:var(--teal-hi)}
+.autoline .adot{display:inline-block;margin:0 7px;color:var(--line-3)}
 .autoline .afrom{display:block;margin-top:2px;font-size:11.5px;color:var(--mut)}
 /* a list the week wrote itself: shown, never typed */
 .repwrap.gathered .gatheredrows{display:flex;flex-direction:column;gap:6px}
@@ -1783,3 +1790,83 @@ div.uni-find-k{cursor:default}
 /* the AI's morning list among his orders (Team.js) */
 .chord-ai{border-left:3px solid var(--teal-hi)}
 .chord-ai > .chask-note{margin:0 0 10px}
+
+/* ================================ MOTION ================================
+   12 Oct 2026, the Chairman: "upgrade the animation". Movement that says
+   something — what just changed, what opened, that a tap landed, that the
+   report went — and never decoration that holds up the work: everything
+   is over in under half a second, moves only transform and opacity (or a
+   shadow) so a cheap phone keeps up, and none of it plays for anyone whose
+   phone asks for less motion. The hooks are in js/app.js (anim-in, replay)
+   and js/chat.js (arrive). */
+:root{--ease-out:cubic-bezier(.2,.8,.2,1);--ease-pop:cubic-bezier(.34,1.56,.64,1)}
+
+@media (prefers-reduced-motion:no-preference){
+  /* the first view of a page rises in, a beat apart. Only the first: the
+     home page redraws itself every minute. Not on chat or the universe,
+     whose fixed bars would ride along with a moving container. */
+  html.anim-in body:not([data-page="chat"]):not([data-page="universe"]) #app > *{
+    animation:mRise .42s var(--ease-out) backwards}
+  html.anim-in #app > :nth-child(2){animation-delay:.04s}
+  html.anim-in #app > :nth-child(3){animation-delay:.08s}
+  html.anim-in #app > :nth-child(4){animation-delay:.12s}
+  html.anim-in #app > :nth-child(5){animation-delay:.16s}
+  html.anim-in #app > :nth-child(6){animation-delay:.2s}
+  html.anim-in #app > :nth-child(7){animation-delay:.24s}
+  html.anim-in #app > :nth-child(n+8){animation-delay:.28s}
+  html.anim-in body[data-page="form"] .bar{animation:mBarUp .45s var(--ease-out) .12s backwards}
+  /* the deadline ring draws itself round to where the time stands */
+  html.anim-in .ringarc{animation:mRingIn 1s var(--ease-out) .15s backwards}
+
+  /* a tap that landed: the chip or button pops once */
+  .chips .chip.tap,.seg button.tap{animation:mPop .28s var(--ease-pop)}
+  .chips .chip:active,.seg button:active,.addrow:active,.reports a:active{transform:scale(.97)}
+  .btn:active,.codego:active,.deck-go:active,.next-go:active{transform:translateY(1px) scale(.985)}
+
+  /* a follow-up question opens under the answer that asked for it */
+  .follow.opened{animation:mFollow .34s var(--ease-out)}
+
+  /* a figure the form worked out glows when it changes; the line of
+     figures under a list does too */
+  .flash{animation:mFlash .8s var(--ease-out)}
+  .autoline.flash{animation:mLineFlash .8s var(--ease-out)}
+  /* a section all answered: its count turns to a tick with a pop */
+  fieldset legend .lgc.full{animation:mPop .4s var(--ease-pop)}
+  /* the "still empty" count pops as it goes down; "Ready" arrives */
+  .bar .count b.tap{display:inline-block;animation:mPop .3s var(--ease-pop)}
+  .bar .count.tap{animation:mPop .4s var(--ease-pop)}
+  /* the bar along the top fills smoothly */
+  .progress i{transition:width .45s var(--ease-out)}
+
+  /* a row just added to a list rises in */
+  .reprow.fresh{animation:mRise .32s var(--ease-out)}
+
+  /* sent: the button pops and a ring goes out from it */
+  .bar .btn.sentok{position:relative;animation:mPop .4s var(--ease-pop)}
+  .bar .btn.sentok::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    animation:mRipple .9s ease-out forwards}
+
+  /* the home page's one thing to do, within the hour: it breathes */
+  .deck-go.soon{position:relative}
+  .deck-go.soon::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    animation:mHalo 2.4s ease-out infinite}
+
+  /* a message that arrives while the channel is open slides in */
+  .msg.arrive{animation:mMsg .3s var(--ease-out)}
+  .msg.own.arrive{animation-name:mMsgOwn}
+
+  /* the little note at the bottom comes up with a small bounce */
+  .toast{transition:opacity .2s ease,transform .32s var(--ease-pop)}
+}
+
+@keyframes mRise{from{opacity:0;transform:translateY(12px)}}
+@keyframes mBarUp{from{transform:translateY(100%)}}
+@keyframes mRingIn{from{stroke-dashoffset:var(--c)}}
+@keyframes mPop{0%{transform:scale(.92)}60%{transform:scale(1.04)}100%{transform:none}}
+@keyframes mFollow{from{opacity:0;transform:translateY(-8px)}}
+@keyframes mFlash{0%{color:var(--teal-hi);text-shadow:0 0 14px rgba(95,224,198,.85)}}
+@keyframes mLineFlash{0%{background:rgba(95,224,198,.22);box-shadow:0 0 0 3px rgba(95,224,198,.3)}}
+@keyframes mRipple{0%{box-shadow:0 0 0 0 rgba(95,224,198,.55)}100%{box-shadow:0 0 0 18px rgba(95,224,198,0)}}
+@keyframes mHalo{0%{box-shadow:0 0 0 0 rgba(95,224,198,.42)}70%,100%{box-shadow:0 0 0 12px rgba(95,224,198,0)}}
+@keyframes mMsg{from{opacity:0;transform:translate(-8px,6px)}}
+@keyframes mMsgOwn{from{opacity:0;transform:translate(8px,6px)}}

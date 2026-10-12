@@ -1281,6 +1281,9 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
         }
         if (!it) {
           it = addItem(d);
+          /* a message that arrives while the channel is open slides in;
+             the ones there when it opened do not (MOTION, css/style.css) */
+          if (synced && it.el) it.el.classList.add('arrive');
           if (it.pending && it.who === me) stick = true;
         } else {
           /* only the time and the "sending…" change; the picture or the

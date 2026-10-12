@@ -4,6 +4,28 @@
 (function () {
   'use strict';
 
+  /* MOTION (12 Oct 2026, the Chairman: "upgrade the animation"; the rules
+     are in css/style.css under MOTION). The first view of a page rises in
+     while <html> carries `anim-in`; it is taken off after, so the home page
+     redrawing itself every minute does not rise in again. */
+  try {
+    document.documentElement.classList.add('anim-in');
+    setTimeout(function () { document.documentElement.classList.remove('anim-in'); }, 1600);
+  } catch (e) {}
+  /* a tap that landed: the chip or button pops once (a click, so it is the
+     answer that changed, not a finger passing over) */
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('.chip, .seg button') : null;
+    if (b && b.isConnected) replay(b, 'tap');
+  });
+  /* start a one-time animation again on the same element */
+  function replay(node, cls) {
+    if (!node || !node.classList) return;
+    node.classList.remove(cls);
+    void node.offsetWidth;
+    node.classList.add(cls);
+  }
+
   var LANG_KEY = 'klever.lang';
 
   /* localStorage throws in private mode and when storage is full — never let
@@ -659,6 +681,7 @@
       stroke: 'url(#rg)', 'stroke-width': 7, 'stroke-linecap': 'round',
       'stroke-dasharray': C.toFixed(1),
       'stroke-dashoffset': (C * (1 - left)).toFixed(1),
+      'class': 'ringarc', style: '--c:' + C.toFixed(1),
       transform: 'rotate(-90 65 65)' }));
     return g;
   }
@@ -706,7 +729,8 @@
       (earlier ? dayLabel(pdr.day) + ' ' : '') + hhmm(r.dueTime) + '  ·  ' +
       (earlier ? t(WEEK_BEFORE[r.id] ? 'weekOpenTillSat' : 'weekOpenTill') : (lang === 'am' ? r.toAm : r.toEn))));
 
-    var go = el('a', 'deck-go' + (late ? ' late' : ''), t('fillItIn'));
+    /* within the hour, the button breathes — the one thing on the page to do */
+    var go = el('a', 'deck-go' + (late ? ' late' : (st.mins != null && st.mins <= 60 ? ' soon' : '')), t('fillItIn'));
     go.href = 'form.html?r=' + encodeURIComponent(r.id);
     wrap.appendChild(go);
 
@@ -1755,7 +1779,11 @@
       if (f.t === 'table') {
         var add = el('button', 'addrow', '+ ' + (lang === 'am' ? f.addAm : f.addEn));
         add.type = 'button';
-        add.onclick = function () { data.push({}); draw(); refresh(); };
+        add.onclick = function () {
+          data.push({}); draw(); refresh();
+          var rows = body.querySelectorAll('.reprow');
+          if (rows.length) rows[rows.length - 1].classList.add('fresh');
+        };
         body.appendChild(add);
       }
       if (wrap.sumUp) wrap.sumUp();
@@ -2691,6 +2719,7 @@
         sending = false;
         sentThisVisit = true;
         send.textContent = t('sentDone');
+        replay(send, 'sentok');
         clearDrafts(report.id);
         dropPending(pendKey);
         drawStatus();
@@ -2730,6 +2759,7 @@
   /* how many required questions are empty right now, and whether Send has
      asked "send it anyway?" and is waiting for the second tap */
   var missingNow = 0, oddCount = 0, sendArmed = false, sendDisarm = null;
+  var lastMissing = null;   /* the count last drawn, so a change can be shown (MOTION) */
 
   /* a message longer than chat holds, cut at line ends into numbered parts */
   function splitForChat(txt, max) {
@@ -3474,8 +3504,10 @@
         /* the figure the form worked out, under the table it came from */
         var av = document.getElementById('av_' + f.id);
         if (av) {
-          var at = fmt(f);
+          var at = fmt(f), avWas = av.textContent;
           av.textContent = at === '' ? '—' : at;
+          if (av.dataset.drawn && avWas !== av.textContent && at !== '') replay(av, 'flash');
+          av.dataset.drawn = '1';
           /* a figure with nothing to work out from yet is a dash that reads
              like a question left empty — it stays out of sight until there
              is a figure to show */
@@ -3572,6 +3604,8 @@
           line.appendChild(el('span', 'aval', autoText(x)));
         });
         line.appendChild(el('span', 'afrom', t('countedFromRows')));
+        if (line.dataset.txt != null && line.dataset.txt !== line.textContent) replay(line, 'flash');
+        line.dataset.txt = line.textContent;
       });
     });
 
@@ -3581,6 +3615,7 @@
       c.innerHTML = '';
       if (missing > 0) {
         var b = el('b', null, String(missing));
+        if (lastMissing != null && lastMissing !== missing) b.className = 'tap';
         c.appendChild(b);
         c.appendChild(document.createTextNode(' ' + t('empty')));
         /* the number alone is not help on a form ten screens long */
@@ -3602,7 +3637,9 @@
         c.textContent = t('ready');
         c.classList.remove('findable');
         c.onclick = null;
+        if (lastMissing) replay(c, 'tap');
       }
+      lastMissing = missing;
     }
     var odd = oddNow(), oddBy = {};
     odd.forEach(function (o) { (oddBy[o.f] = oddBy[o.f] || []).push(oddText(o)); });

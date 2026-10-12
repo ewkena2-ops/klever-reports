@@ -800,6 +800,7 @@ const REPORTS = [
           { v:'mat_in', g:'store', en:'Material came into the store',               am:'ዕቃ ወደ መጋዘን ገባ' },
           { v:'short',  g:'store', en:'A material is short in the store',           am:'በመጋዘን ያጠረ ዕቃ አለ' },
           { v:'out',    g:'out',   en:'A job left the factory',                     am:'ሥራ ከፋብሪካ ወጣ' },
+          { v:'taxi',   g:'out',   en:'An outside taxi was hired',                  am:'የውጭ ታክሲ ተከራየ' },
           { v:'jf',     g:'out',   en:'Job Files came from Ephrata',                am:'ከኤፍራታ ጆብ ፋይል መጣ' },
           { v:'asm',    g:'wa',    en:'The assemblers did not post their progress in a group', am:'ገጣጣሚዎች በግሩፕ ሂደታቸውን አልለጠፉም' },
           { v:'slow',   g:'wa',    en:'A customer waited over 2 hours for an answer', am:'ደንበኛ ምላሽ ለማግኘት ከ2 ሰዓት በላይ ጠበቀ' },
@@ -899,7 +900,32 @@ const REPORTS = [
       {id:'delivered', en:'How many jobs were delivered to customers today?', am:'ዛሬ ስንት ሥራዎች ለደንበኞች ደረሱ?', t:'num',
         auto:{rows:'delivered_list'}, sumEn:'jobs out', sumAm:'ሥራዎች ወጥተዋል'},
       {id:'delivered_cleared', en:'How many of them had Selam\'s clearance?', am:'ከነሱ ስንቱ የሰላም ማጽደቅ ነበረው?', t:'num',
-        auto:{rows:'delivered_list', when:{col:'fin', is:'yes'}}, sumEn:'cleared by Selam', sumAm:'በሰላም ተጽድቀዋል'}
+        auto:{rows:'delivered_list', when:{col:'fin', is:'yes'}}, sumEn:'cleared by Selam', sumAm:'በሰላም ተጽድቀዋል'},
+      /* An outside taxi is money the company truck should have saved (the
+         Chairman, 12 Oct 2026): for each one, the job, what the driver asked
+         and who caused it. "Who caused it" files the person's id (amaha,
+         getachew…) so a reader can add up each person's taxis. */
+      {id:'taxi_any', en:'Was an outside taxi hired today?', am:'ዛሬ የውጭ ታክሲ ተከራይቶ ነበር?', t:'yesno', quiet:1, auto:{picked:'o_events', v:'taxi'}},
+      {id:'taxi_list', en:'Each outside taxi: which job, how much the driver asked, and who caused it', am:'እያንዳንዱ የውጭ ታክሲ፦ ለየትኛው ሥራ፣ ሹፌሩ ስንት ብር ጠየቀ፣ ምክንያቱ ማን ነው?', t:'table', addEn:'Add a taxi', addAm:'ታክሲ ጨምር',
+        show:{f:'taxi_any', when:'yes'}, total:'cost', totalEn:'Outside taxis today', totalAm:'የዛሬ የውጭ ታክሲ',
+        cols:[
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'cost', en:'How much the driver asked', am:'ሹፌሩ የጠየቀው ብር', t:'money'},
+          {id:'who',  en:'Who caused it', am:'ምክንያቱ ማን ነው', t:'choice', opts:[
+            {v:'amaha',    en:'Amaha — production late',      am:'አማሃ — ምርቱ ዘገየ'},
+            {v:'getachew', en:'Getachew — material late',     am:'ጌታቸው — ዕቃው ዘገየ'},
+            {v:'yordanos', en:'Yordanos — the store',         am:'ዮርዳኖስ — መጋዘኑ'},
+            {v:'wude',     en:'Wude — the quality check',     am:'ውዱ — የጥራት ፍተሻው'},
+            {v:'elyas',    en:'Elyas — installation',         am:'ኤልያስ — ተከላው'},
+            {v:'ephrata',  en:'Ephrata — sales',              am:'ኤፍራታ — ሽያጩ'},
+            {v:'liu',      en:'Me',                           am:'እኔ'},
+            {v:'truck',    en:'Our truck was busy or broken', am:'የኛ መኪና ሥራ ላይ ነበር ወይም ተበላሽቷል'},
+            {v:'customer', en:'The customer',                 am:'ደንበኛው'},
+            {v:'Other',    en:'Other',                        am:'ሌላ'}
+          ]}
+        ]},
+      {id:'taxi_cost', en:'How much was spent on outside taxis today?', am:'ዛሬ ለውጭ ታክሲ ስንት ብር ወጣ?', t:'money',
+        auto:{sum:'taxi_list.cost'}, sumEn:'on outside taxis', sumAm:'ለውጭ ታክሲ'}
     ]},
     /* the three counts were a chain — received, accepted, returned — where
        the third is the first less the second, and the list of what was

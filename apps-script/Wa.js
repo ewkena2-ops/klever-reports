@@ -449,6 +449,92 @@ function waSendBrief_(results, d) {
 }
 
 /* ---------------------------------------------------------------- *
+ *  Site photos to his WhatsApp                                       *
+ * ---------------------------------------------------------------- */
+
+/* The Chairman, 12 Oct 2026: "boss has to see it on WhatsApp too". A photo
+   sent from a report (js/app.js sendPhoto — its words start "📷") into one
+   of these rooms goes to his WhatsApp through the agent, with the job code
+   and who sent it and when. The agent sends it at once if he wrote in the
+   last 24 hours, and otherwise holds it and sends it the moment he next
+   writes, as it does the brief. Each watch (ten minutes) sends what came
+   since the last; the message id travels as `ref`, so a photo the agent
+   already has is not sent twice when an answer was lost. */
+var WA_PHOTO_ROOMS_ = ['leads'];
+var WA_PHOTO_MAX_ = 12;                /* photos a watch, inside the six minutes */
+var WA_PHOTO_TRIES_ = 3;               /* watches a refused photo is tried before it is passed */
+
+function waPhotoWatch_() {
+  var cfg = waConfig_();
+  if (!cfg.url || !cfg.secret) return { sent: 0, note: 'no agent' };
+  var props = PropertiesService.getScriptProperties();
+  var names = null;
+  var out = { sent: 0, held: 0, skipped: 0, failed: 0 };
+  WA_PHOTO_ROOMS_.forEach(function (room) {
+    var key = 'WA_PHOTO_SEEN_' + room;
+    var seen = prop_(key, '');
+    /* the first watch starts the clock: photos from before are not sent */
+    if (!seen) { props.setProperty(key, new Date().toISOString()); return; }
+    var msgs;
+    try { msgs = fsQueryIn_('channels/' + room, 'messages', [['at', 'GREATER_THAN', new Date(seen)]], 'at'); }
+    catch (e) { Logger.log('wa photos read %s: %s', room, e.message); out.failed++; return; }
+    var all = msgs.filter(waIsReportPhoto_);
+    var photos = all.slice(0, WA_PHOTO_MAX_), last = null, stop = false;
+    photos.forEach(function (m) {
+      if (stop) return;
+      var parts = String(m.media).match(/^data:(image\/(?:jpeg|png));base64,(.*)$/);
+      if (!names) {
+        names = {};
+        try { (loadSchedule_().people || []).forEach(function (p) { names[p.id] = p.en; }); } catch (e) { names = {}; }
+      }
+      var caption = String(m.text || '').trim() + '\n— ' + (names[m.who] || m.who || '?') +
+                    (m.at ? ', ' + Utilities.formatDate(new Date(m.at), 'Africa/Addis_Ababa', 'EEE d MMM, HH:mm') : '');
+      var code = 0, body = null;
+      try {
+        var res = UrlFetchApp.fetch(cfg.url + '/internal/photo', {
+          method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+          headers: { 'X-Klever-Secret': cfg.secret },
+          payload: JSON.stringify({ ref: room + '/' + m._id, mime: parts[1], data: parts[2], caption: caption })
+        });
+        code = res.getResponseCode();
+        try { body = JSON.parse(res.getContentText()); } catch (e) { body = null; }
+      } catch (e) { Logger.log('wa photo %s: %s', m._id, e.message); }
+      if (code === 200) {
+        last = m.at;
+        if (body && body.sent && body.sent.length) out.sent++;
+        else if (body && body.held && body.held.length) out.held++;
+      } else if (code === 400) {
+        /* the agent will never take this one (too big, not a picture): pass it */
+        last = m.at; out.skipped++;
+        Logger.log('wa photo %s refused: %s', m._id, body ? JSON.stringify(body) : code);
+      } else {
+        /* the agent unreachable, or Meta refused the upload: the next watch
+           tries again from here — three times, then this one is passed so it
+           cannot hold back every photo after it */
+        var cache = CacheService.getScriptCache(), fk = 'waph-fail:' + m._id;
+        var tries = Number(cache.get(fk) || 0) + 1;
+        cache.put(fk, String(tries), 21600);
+        Logger.log('wa photo %s: HTTP %s (try %s)', m._id, code, tries);
+        if (tries >= WA_PHOTO_TRIES_) { last = m.at; out.skipped++; }
+        else { out.failed++; stop = true; }
+      }
+    });
+    /* the newest message read, photo or not, so a busy room is not re-read —
+       unless photos were left for the next watch: then the last one handed over */
+    var newest = msgs.length ? msgs[msgs.length - 1].at : null;
+    var mark = (stop || all.length > photos.length) ? last : (newest || last);
+    if (mark) props.setProperty(key, new Date(mark).toISOString());
+  });
+  return out;
+}
+
+/* a photo sent from a report's photo question, as a JPEG or PNG */
+function waIsReportPhoto_(m) {
+  return m && m.kind === 'image' && /^📷/.test(String(m.text || '')) &&
+         /^data:image\/(jpeg|png);base64,/.test(String(m.media || ''));
+}
+
+/* ---------------------------------------------------------------- *
  *  The customers                                                     *
  * ---------------------------------------------------------------- */
 

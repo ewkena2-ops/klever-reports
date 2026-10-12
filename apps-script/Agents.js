@@ -2189,6 +2189,8 @@ function watch_(waitMs) {
     try { teamPlanIfDue_(); } catch (e) { Logger.log('team plan: %s', e.message); }
     /* a finished piece photographed in the QC room, checked by the AI (Vision.js) */
     try { visionWatch_(); } catch (e) { Logger.log('vision: %s', e.message); }
+    /* the site photos sent from reports, to his WhatsApp (Wa.js) */
+    try { waPhotoWatch_(); } catch (e) { Logger.log('wa photos: %s', e.message); }
     /* and an instruction of his that has not reached its person's phone (Push.js) */
     notifyWaiting_();
     /* Sunday: the weekly reports, made from the dailies, if the morning did

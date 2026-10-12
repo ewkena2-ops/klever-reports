@@ -6457,7 +6457,10 @@ const REPORTS = [
         {id:'fin',   en:'Finish time', am:'የተጠናቀቀበት ሰዓት', t:'text', time:1},
         {id:'ontime',en:'On time', am:'በሰዓቱ', t:'yesno', yes:{en:'On time', am:'በሰዓቱ'}, no:{en:'Late', am:'ዘግይቷል'}},
         {id:'slip',  en:'Payment slip in hand before work started', am:'ሥራ ከመጀመሩ በፊት የክፍያ ወረቀት ነበረ', t:'yesno', yes:{en:'Slip in hand', am:'ወረቀቱ ነበረ'}, no:{en:'No slip', am:'ወረቀት አልነበረም'}},
-        {id:'called',en:'Customer called 30 min before arrival', am:'ከመድረስ 30 ደቂቃ በፊት ለደንበኛው ተደውሏል', t:'yesno', yes:{en:'Called', am:'ተደውሏል'}, no:{en:'Not called', am:'አልተደወለም'}}
+        {id:'called',en:'Customer called 30 min before arrival', am:'ከመድረስ 30 ደቂቃ በፊት ለደንበኛው ተደውሏል', t:'yesno', yes:{en:'Called', am:'ተደውሏል'}, no:{en:'Not called', am:'አልተደወለም'}},
+        /* a photo button in the row itself (the Chairman, 12 Oct 2026): sent
+           to Leads with this row's job code, counted in ph_site below */
+        {id:'photos',en:'Photos of this job', am:'የዚህ ሥራ ፎቶዎች', t:'photo', tally:'ph_site'}
       ]},
       /* the two lists the Chairman reads first, named job by job */
       {id:'j_on_list', en:'Jobs on installation now', am:'አሁን ተከላ ላይ ያሉ ሥራዎች', t:'text',

@@ -739,6 +739,8 @@ fieldset legend .lgc.full::before{content:'✓ '}
 .phbox select,.phbox input{width:100%}
 .phadd{grid-column:1/-1;position:relative;overflow:hidden}
 .phadd .phpick{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+/* the photo button in a list row is a label too; keep it a button */
+.reprow .cell label.phadd{font-size:15.5px;color:var(--teal-ink);line-height:1.2;margin-top:2px}
 .phtally{font-size:13px;color:var(--teal-hi);font-weight:600}
 .phtally:empty{display:none}
 .phstrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}

@@ -1590,6 +1590,53 @@
           var cl = el('label', null, L(c));
           cell.appendChild(cl);
           var inp;
+          /* Photos of this row's job, taken in the row (the Chairman, 12 Oct
+             2026: the "Site photos" question at the end of the section was
+             not where Elyas looks). They go to the same room with the row's
+             job code — or its customer — on them; the row keeps how many,
+             and `tally` names the report's photo question that counts them
+             by job, so the report says it once either way. */
+          if (c.t === 'photo') {
+            cell.className = 'cell wide rowphoto';
+            cl.removeAttribute('for');
+            var pk = document.createElement('input');
+            pk.type = 'file';
+            pk.accept = 'image/*';
+            pk.multiple = true;
+            pk.className = 'phpick';
+            pk.id = 'c_' + f.id + '_' + i + '_' + c.id;
+            var pb = el('label', 'btn phadd', t('photoAdd'));
+            pb.appendChild(pk);
+            var ptl = el('div', 'phtally');
+            var pst = el('div', 'phstrip');
+            var rowTally = function () { ptl.textContent = has(rowData[c.id]) ? t('photoSentSoFar') + ' ' + rowData[c.id] : ''; };
+            rowTally();
+            pk.onchange = function () {
+              var files = Array.prototype.slice.call(pk.files || []);
+              pk.value = '';
+              if (!files.length) return;
+              var chan = photoChan();
+              if (!photoReady(chan)) return;
+              var code = String(rowData.code || '').trim() || String(rowData.cust || '').trim() || PHOTO_GENERAL;
+              sendPhotos(chan, files, code, '', pst, function (by) {
+                var n = (Number(rowData[c.id]) || 0) + by;
+                if (n > 0) rowData[c.id] = String(n); else delete rowData[c.id];
+                if (c.tally) {
+                  photoBump(c.tally, code, by);
+                  var tr = document.getElementById('r_' + c.tally);
+                  if (tr && tr.drawTally) tr.drawTally();
+                }
+                rowTally();
+                refresh();
+                if (wrap.sumUp) wrap.sumUp();
+              });
+            };
+            cell.appendChild(pb);
+            cell.appendChild(ptl);
+            cell.appendChild(pst);
+            card.appendChild(cell);
+            return;
+          }
           if (c.t === 'yesno') {
             var cseg = el('div', 'seg mini' + (rowData[c.id] === 'no' ? ' no' : ''));
             cseg.id = 'c_' + f.id + '_' + i + '_' + c.id;
@@ -2276,65 +2323,78 @@
     var strip = el('div', 'phstrip');
     row.appendChild(strip);
 
-    function one(file, code, words) {
-      var item = el('div', 'phitem busy');
-      var st = el('div', 'phst', t('photoShrinking'));
-      item.appendChild(el('div', 'phcap', (code === PHOTO_GENERAL ? t('photoGeneral') : code) + (words ? ' · ' + words : '')));
-      item.appendChild(st);
-      strip.appendChild(item);
-      return window.KMEDIA.shrinkImage(file).then(function (img) {
-        var im = document.createElement('img');
-        im.src = img.data;
-        im.alt = '';
-        item.insertBefore(im, item.firstChild);
-        st.textContent = t('photoSending');
-        var text = '📷 ' + t('photoCaption') + ' · ' + (code === PHOTO_GENERAL ? t('photoGeneral') : code)
-                 + (words ? ' — ' + words : '') + ' · ' + L(report);
-        var p;
-        try { p = window.FB.postPhoto(chan, img, text, lang); } catch (e) { p = Promise.reject(e); }
-        /* counted the moment it is queued: on a site with no signal it goes
-           later by itself, and the report sent meanwhile should say so */
-        photoBump(f.id, code, 1);
-        drawTally();
-        refresh();
-        /* not returned: the next photo starts shrinking now, rather than
-           waiting all afternoon for a server this one cannot reach */
-        p.then(function () {
-          st.textContent = t('photoSent');
-          item.className = 'phitem ok';
-        }, function (e) {
-          photoBump(f.id, code, -1);
-          drawTally();
-          refresh();
-          st.textContent = (e && e.code === 'permission-denied') ? t('sendRefused') : t('photoFailed');
-          item.className = 'phitem bad';
-        });
-      }, function (e) {
-        var why = e && e.message;
-        st.textContent = why === 'too-big' ? t('chatTooBig')
-                       : why === 'file-huge' ? t('chatFileHuge')
-                       : why === 'not-an-image' ? t('chatCantRead') : t('photoFailed');
-        item.className = 'phitem bad';
-      });
-    }
+    row.drawTally = drawTally;
 
     pick.onchange = function () {
       var files = Array.prototype.slice.call(pick.files || []);
       pick.value = '';
       if (!files.length) return;
       chan = chanNow();
-      if (!chan || !window.FB || !window.FB.live() || !AUTH.who()) { toast(t('photoNeedsSignIn')); return; }
-      if (!window.KMEDIA) { toast(t('photoNotReady')); return; }
+      if (!photoReady(chan)) return;
       var code = job.value || PHOTO_GENERAL, words = note.value.trim();
       note.value = '';
-      /* one at a time: shrinking a photo holds the whole picture in memory,
-         and five at once is more than a cheap phone has */
-      var chain = Promise.resolve();
-      files.forEach(function (file) {
-        chain = chain.then(function () { return one(file, code, words); });
+      sendPhotos(chan, files, code, words, strip, function (by) {
+        photoBump(f.id, code, by);
+        drawTally();
+        refresh();
       });
     };
     return row;
+  }
+
+  /* the room a photo from this report goes to, or why it cannot go */
+  function photoChan() { return channelFor(report, AUTH.isChairman() ? 'chairman' : AUTH.who()); }
+  function photoReady(chan) {
+    if (!chan || !window.FB || !window.FB.live() || !AUTH.who()) { toast(t('photoNeedsSignIn')); return false; }
+    if (!window.KMEDIA) { toast(t('photoNotReady')); return false; }
+    return true;
+  }
+  /* Photos, one at a time: shrinking a photo holds the whole picture in
+     memory, and five at once is more than a cheap phone has. Each is shown
+     in `strip` with how it is going, and posted into the room `chan` with
+     its job code on it. `bump(+1)` counts it the moment it is queued — on a
+     site with no signal it goes later by itself, and the report sent
+     meanwhile should say so — and `bump(-1)` takes it back if refused. */
+  function sendPhotos(chan, files, code, words, strip, bump) {
+    var chain = Promise.resolve();
+    files.forEach(function (file) {
+      chain = chain.then(function () { return sendPhoto(chan, file, code, words, strip, bump); });
+    });
+  }
+  function sendPhoto(chan, file, code, words, strip, bump) {
+    var item = el('div', 'phitem busy');
+    var st = el('div', 'phst', t('photoShrinking'));
+    item.appendChild(el('div', 'phcap', (code === PHOTO_GENERAL ? t('photoGeneral') : code) + (words ? ' · ' + words : '')));
+    item.appendChild(st);
+    strip.appendChild(item);
+    return window.KMEDIA.shrinkImage(file).then(function (img) {
+      var im = document.createElement('img');
+      im.src = img.data;
+      im.alt = '';
+      item.insertBefore(im, item.firstChild);
+      st.textContent = t('photoSending');
+      var text = '📷 ' + t('photoCaption') + ' · ' + (code === PHOTO_GENERAL ? t('photoGeneral') : code)
+               + (words ? ' — ' + words : '') + ' · ' + L(report);
+      var p;
+      try { p = window.FB.postPhoto(chan, img, text, lang); } catch (e) { p = Promise.reject(e); }
+      bump(1);
+      /* not returned: the next photo starts shrinking now, rather than
+         waiting all afternoon for a server this one cannot reach */
+      p.then(function () {
+        st.textContent = t('photoSent');
+        item.className = 'phitem ok';
+      }, function (e) {
+        bump(-1);
+        st.textContent = (e && e.code === 'permission-denied') ? t('sendRefused') : t('photoFailed');
+        item.className = 'phitem bad';
+      });
+    }, function (e) {
+      var why = e && e.message;
+      st.textContent = why === 'too-big' ? t('chatTooBig')
+                     : why === 'file-huge' ? t('chatFileHuge')
+                     : why === 'not-an-image' ? t('chatCantRead') : t('photoFailed');
+      item.className = 'phitem bad';
+    });
   }
 
   /* a grid with dateFrom shows a date per row — redraw those when the date changes */
@@ -3625,6 +3685,7 @@
     }
     if (c.t === 'money') return money(v) + ' ' + t('birr');
     if (c.t === 'date') return prettyDate(String(v).trim());
+    if (c.t === 'photo') return String(v).trim() + ' 📷';
     return String(v).trim();
   }
 

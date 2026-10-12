@@ -87,6 +87,9 @@
   function dueOn(r, ymd) {
     var dow = dowOf(ymd), dom = Number(ymd.slice(8));
     if (dow === 0) return false;
+    /* a report that starts on a later day (`from` on the report) is owed by
+       nobody before it — the board check, added at 6 PM on 12 Oct 2026 */
+    if (r.from && ymd < r.from) return false;
     /* a weekly report made from the daily reports (built:1, js/weekly.js)
        is owed by nobody — the Chairman, 11 Oct 2026 */
     if (r.built) return false;
@@ -3093,6 +3096,24 @@
       });
       return out.join(', ');
     }
+    /* the row with the most of something, said in one line: the card longest
+       in one column, out of the stuck cards (12 Oct 2026) —
+       {top:'b_stuck_list', by:'days', say:['code', 'col', 'days'], unit:{…}} */
+    if (k.top != null) {
+      var topF = fieldById(k.top);
+      if (!topF || !shown(topF)) return '';
+      var topR = null, topX = -Infinity;
+      rowsWithData(k.top).forEach(function (r) {
+        var x = num(r && r[k.by]);
+        if (!isNaN(x) && x > topX) { topX = x; topR = r; }
+      });
+      if (!topR) return '';
+      return (k.say || []).map(function (c) {
+        var col = (topF.cols || []).filter(function (cc) { return cc.id === c; })[0];
+        if (!col || !has(topR[c])) return '';
+        return c === k.by && k.unit ? String(topR[c]).trim() + ' ' + L(k.unit) : colText(col, topR[c], topR);
+      }).filter(Boolean).join(' · ');
+    }
     /* a yes/no over every row: did each one carry its approval, go to the
        right job, get its photo. Blank until the rows say — "no" is a finding
        and must not be one the form invented out of an unticked box. */
@@ -3314,7 +3335,7 @@
   function autoTable(f) {
     var k = f && f.auto;
     if (!k) return null;
-    var s = k.rows || k.sum || k.grid || k.all || k.any || k.list
+    var s = k.rows || k.sum || k.grid || k.all || k.any || k.list || k.top
          || (k.a && (k.a.rows || k.a.sum || k.a.grid))
          || (k.b && (k.b.rows || k.b.sum || k.b.grid));
     return s ? String(s).split('.')[0] : null;

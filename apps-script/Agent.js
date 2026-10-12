@@ -401,6 +401,8 @@ function dueOn_(schedule, day) {
   var first = day.slice(8) === '01' || (day.slice(8) === '02' && dow_(addDays_(day, -1)) === 0);
   if (dow === 0) return [];
   return schedule.reports.filter(function (r) {
+    /* a report that starts on a later day (`from` on the report) */
+    if (r.from && day < r.from) return false;
     if (r.cadence === 'daily') return !(r.skipDays && r.skipDays.indexOf(dow) !== -1);
     if (r.cadence === 'weekly') return r.dueDay === dow;
     if (r.cadence === 'monthly') return first;

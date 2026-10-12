@@ -116,6 +116,39 @@ const MATERIAL_OPTS = MATERIALS.concat([
 ]);
 /* the same twelve as the fixed rows of a grid */
 const MATERIAL_ROWS = MATERIALS.map(function (m) { return { en:m.en, am:m.am }; });
+/* The Job Tracking Board's 15 columns (the Implementation Document; the
+   register's regB_ names), for Ephrata's daily board check */
+const BOARD_COLS = [
+  { v:'c1',  en:'Col 1: Lead / quotation sent',        am:'ዓምድ 1፦ ደንበኛ / ዋጋ ተልኳል' },
+  { v:'c2',  en:'Col 2: Advance paid, job created',    am:'ዓምድ 2፦ ቅድሚያ ተከፍሏል፣ ሥራ ተከፍቷል' },
+  { v:'c3',  en:'Col 3: Final measurement pending',    am:'ዓምድ 3፦ የመጨረሻ ልኬት ይጠበቃል' },
+  { v:'c4',  en:'Col 4: Material selection signed',    am:'ዓምድ 4፦ የቁሳቁስ ምርጫ ተፈርሟል' },
+  { v:'c5',  en:'Col 5: Materials ordered',            am:'ዓምድ 5፦ ቁሳቁስ ታዝዟል' },
+  { v:'c6',  en:'Col 6: Materials received in store',  am:'ዓምድ 6፦ ቁሳቁስ መጋዘን ገብቷል' },
+  { v:'c7',  en:'Col 7: Final payment requested',      am:'ዓምድ 7፦ የመጨረሻ ክፍያ ተጠይቋል' },
+  { v:'c8',  en:'Col 8: Final payment received',       am:'ዓምድ 8፦ የመጨረሻ ክፍያ ገብቷል' },
+  { v:'c9',  en:'Col 9: Production approved',          am:'ዓምድ 9፦ ምርት ጸድቋል' },
+  { v:'c10', en:'Col 10: Production completed',        am:'ዓምድ 10፦ ምርት ተጠናቋል' },
+  { v:'c11', en:'Col 11: QC released',                 am:'ዓምድ 11፦ የጥራት ፍተሻ አልፏል' },
+  { v:'c12', en:'Col 12: Ready for delivery',          am:'ዓምድ 12፦ ለማድረስ ዝግጁ' },
+  { v:'c13', en:'Col 13: Delivered / installed',       am:'ዓምድ 13፦ ደርሷል / ተገጥሟል' },
+  { v:'c14', en:'Col 14: Customer acceptance signed',  am:'ዓምድ 14፦ ደንበኛው ተቀብሎ ፈርሟል' },
+  { v:'c15', en:'Col 15: After-sales follow-up done',  am:'ዓምድ 15፦ የድህረ-ሽያጭ ክትትል ተደርጓል' }
+];
+/* who moves a card, or owns one that is stuck */
+const BOARD_WHO = [
+  { v:'ephrata',  en:'Ephrata — commercial',  am:'ኤፍራታ — ንግድ' },
+  { v:'sales',    en:'A salesperson',         am:'ሻጭ' },
+  { v:'designer', en:'A designer',            am:'ዲዛይነር' },
+  { v:'betty',    en:'Selam — finance',       am:'ሰላም — ፋይናንስ' },
+  { v:'getachew', en:'Getachew — purchasing', am:'ጌታቸው — ግዥ' },
+  { v:'yordanos', en:'Yordanos — store',      am:'ዮርዳኖስ — መጋዘን' },
+  { v:'liu',      en:'Mahelet — operations',  am:'ማህሌት — ኦፕሬሽን' },
+  { v:'amaha',    en:'Amaha — production',    am:'አማሃ — ምርት' },
+  { v:'wude',     en:'Wude — quality',        am:'ውዱ — ጥራት' },
+  { v:'elyas',    en:'Elyas — site',          am:'ኤልያስ — ተከላ' },
+  { v:'Other',    en:'Other',                 am:'ሌላ' }
+];
 /* the ones that come as sheets, and the ones that come as pieces — a sheet
    count and a hinge count cannot be added to each other */
 const BOARDS = ['MDF 18mm', 'MDF 16mm', 'Melamine 18mm', 'Melamine 16mm', 'Plywood', 'Back panel 3mm'];
@@ -4100,6 +4133,137 @@ const REPORTS = [
           { en:'One big customer',                       am:'አንድ ትልቅ ደንበኛ' },
           { en:'Factory or installation delays',         am:'የፋብሪካ ወይም የተከላ መዘግየት' }
         ], show:{f:'proj_achievable', when:'no'}}
+    ]}
+  ]
+},
+
+/* ============== EPHRATA — DAILY BOARD CHECK ============== */
+/* The Chairman, 12 Oct 2026: "give that to Ephrata" — the Kanban Board
+   Verification. The 15-column Job Tracking Board of the Implementation
+   Document, counted once a day, and every card moved today checked against
+   its signed paper file. The Golden Rule: no signature, no board movement;
+   a mismatch blocks the card and goes to the Chairman the same day — this
+   report is that. The totals, the matches and mismatches, PASS or FAIL, the
+   jobs at each gate and the oldest card are worked out from what she taps.
+   Not in her terms letter, so no fine (noFine) until it is. */
+{
+  id:'ephrata-board', person:'ephrata', cadence:'daily', dueTime:'16:00', noFine:1, derived:1, from:'2026-10-13',
+  en:'Daily Board Check', am:'ዕለታዊ የቦርድ ፍተሻ',
+  toEn:'Chairman', toAm:'ሊቀመንበር',
+  dueEn:'4:00 PM, Monday to Saturday', dueAm:'ከሰኞ እስከ ቅዳሜ ከቀኑ 10፡00 (4:00 PM)',
+  penEn:'No fine — not in your letter yet', penAm:'ቅጣት የለም — በደብዳቤዎ ውስጥ ገና የለም',
+  sections:[
+    { en:'The board now', am:'ቦርዱ አሁን', fields:[
+      {id:'b_cols', en:'How many cards are in each column now? (0 if none)', am:'አሁን በእያንዳንዱ ዓምድ ስንት ካርድ አለ? (ከሌለ 0)',
+       t:'grid', rows:BOARD_COLS.map(function (c) { return { en:c.en, am:c.am }; }), cols:[
+        {id:'n', en:'Cards', am:'ካርዶች', t:'num'}
+      ]},
+      {id:'b_total', en:'How many cards are on the board in all?', am:'በቦርዱ ላይ በአጠቃላይ ስንት ካርድ አለ?', t:'num',
+        auto:{grid:'b_cols.n'}, sumEn:'cards on the board', sumAm:'ካርዶች በቦርዱ ላይ'},
+      {id:'b_blocked', en:'How many cards are blocked — held until a file is signed or a payment comes? (0 if none)', am:'ስንት ካርዶች ታግደዋል — ፋይል እስኪፈረም ወይም ክፍያ እስኪመጣ የቆሙ? (ከሌለ 0)', t:'num'}
+    ]},
+    { en:'Cards moved today — board against the signed file', am:'ዛሬ የተንቀሳቀሱ ካርዶች — ቦርዱ ከተፈረመው ፋይል ጋር', fields:[
+      {id:'b_moved_any', en:'Did any card move today?', am:'ዛሬ የተንቀሳቀሰ ካርድ አለ?', t:'yesno', yes:{en:'Cards moved today', am:'ዛሬ ካርድ ተንቀሳቅሷል'}, no:{en:'No card moved today', am:'ዛሬ ምንም ካርድ አልተንቀሳቀሰም'}},
+      {id:'b_moved_list', en:'Each card moved today — and is its paper file signed?', am:'ዛሬ የተንቀሳቀሰ እያንዳንዱ ካርድ — የወረቀት ፋይሉ ተፈርሟል?', t:'table', addEn:'Add a card', addAm:'ካርድ ጨምር',
+        show:{f:'b_moved_any', when:'yes'},
+        cols:[
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'col',  en:'Moved to column', am:'የተዛወረበት ዓምድ', t:'choice', opts:BOARD_COLS},
+          {id:'by',   en:'Moved by', am:'ያንቀሳቀሰው', t:'choice', opts:BOARD_WHO},
+          {id:'signed', en:'Paper file signed', am:'የወረቀት ፋይሉ ተፈርሟል', t:'yesno', yes:{en:'File signed', am:'ፋይሉ ተፈርሟል'}, no:{en:'File NOT signed', am:'ፋይሉ አልተፈረመም'}}
+        ]},
+      {id:'b_moved', en:'How many cards moved today?', am:'ዛሬ ስንት ካርዶች ተንቀሳቀሱ?', t:'num',
+        auto:{rows:'b_moved_list'}, sumEn:'cards moved today', sumAm:'ዛሬ የተንቀሳቀሱ ካርዶች'},
+      {id:'b_match', en:'How many match their signed file?', am:'ስንቱ ከተፈረመው ፋይል ጋር ይስማማሉ?', t:'num',
+        auto:{rows:'b_moved_list', when:{col:'signed', is:'yes'}}, sumEn:'match the file', sumAm:'ከፋይሉ ጋር ይስማማሉ'},
+      {id:'b_mismatch', en:'How many moved without a signed file?', am:'ስንቱ ያለ ተፈረመ ፋይል ተንቀሳቀሱ?', t:'num',
+        auto:{rows:'b_moved_list', when:{col:'signed', is:'no'}}, sumEn:'moved without a signed file', sumAm:'ያለ ተፈረመ ፋይል ተንቀሳቅሰዋል',
+        tgt:{op:'lte', v:0, en:'The Golden Rule: no signature, no board movement', am:'ወርቃማው ሕግ፦ ፊርማ ከሌለ ካርድ አይንቀሳቀስም'}},
+      {id:'b_golden', en:'The Golden Rule today', am:'ወርቃማው ሕግ ዛሬ', t:'yesno', yes:{en:'PASS — every card moved has its signed file', am:'አልፏል — የተንቀሳቀሰ ካርድ ሁሉ ፋይሉ ተፈርሟል'}, no:{en:'FAIL — a card moved without its signed file', am:'ወድቋል — ያለ ተፈረመ ፋይል የተንቀሳቀሰ ካርድ አለ'},
+        auto:{all:'b_moved_list.signed'}, show:{f:'b_moved_any', when:'yes'}},
+      {id:'b_mis_list', en:'Each card moved without its signed file: where the board and the file stand, and what was done', am:'ያለ ተፈረመ ፋይል የተንቀሳቀሰ እያንዳንዱ ካርድ፦ ቦርዱና ፋይሉ የት ናቸው፣ ምን ተደረገ', t:'table', addEn:'Add a card', addAm:'ካርድ ጨምር',
+        show:{f:'b_mismatch', when:'pos'},
+        cols:[
+          {id:'code',  en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'board', en:'Board shows', am:'ቦርዱ የሚያሳየው', t:'choice', opts:BOARD_COLS},
+          {id:'file',  en:'Paper file shows', am:'የወረቀት ፋይሉ የሚያሳየው', t:'choice', opts:BOARD_COLS},
+          {id:'owner', en:'Who must sign', am:'መፈረም ያለበት', t:'choice', opts:BOARD_WHO},
+          {id:'why',   en:'Why', am:'ለምን', t:'text', picks:[
+            { en:'Paid in the bank, file not signed', am:'ባንክ ገብቷል፣ ፋይሉ አልተፈረመም' },
+            { en:'Moved before the work was done',    am:'ሥራው ሳይሠራ ተንቀሳቀሰ' },
+            { en:'Signed by the wrong person',        am:'የፈረመው ሌላ ሰው ነው' },
+            { en:'The file is missing',               am:'ፋይሉ የለም' }
+          ]},
+          {id:'action', en:'What was done', am:'ምን ተደረገ', t:'choice', opts:[
+            { v:'block',  en:'Card blocked until the file is signed', am:'ፋይሉ እስኪፈረም ካርዱ ታግዷል' },
+            { v:'back',   en:'Card moved back to where the file is',  am:'ካርዱ ፋይሉ ወዳለበት ተመልሷል' },
+            { v:'signed', en:'File signed now — they match',          am:'ፋይሉ አሁን ተፈርሟል — ይስማማሉ' }
+          ]}
+        ]}
+    ]},
+    { en:'Payment and release gates', am:'የክፍያና የመልቀቂያ በሮች', fields:[
+      {id:'b_gate_any', en:'Is any job held at a gate?', am:'በአንድ በር ላይ የቆመ ሥራ አለ?', t:'yesno', yes:{en:'Jobs held at a gate', am:'በበር ላይ የቆሙ ሥራዎች አሉ'}, no:{en:'No job held at a gate', am:'በበር ላይ የቆመ ሥራ የለም'}},
+      {id:'b_gate_list', en:'Each job held at a gate', am:'በበር ላይ የቆመ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+        show:{f:'b_gate_any', when:'yes'},
+        cols:[
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'gate', en:'Gate', am:'በር', t:'choice', opts:[
+            { v:'g1', en:'G1 — 50% advance, over 3 days late',      am:'G1 — 50% ቅድሚያ፣ ከ3 ቀን በላይ ዘግይቷል' },
+            { v:'g2', en:'G2 — 100% final payment, over 7 days late', am:'G2 — 100% የመጨረሻ ክፍያ፣ ከ7 ቀን በላይ ዘግይቷል' },
+            { v:'g3', en:'G3 — store release waiting',               am:'G3 — ከመጋዘን መልቀቅ ይጠበቃል' },
+            { v:'g4', en:'G4 — production approval waiting',         am:'G4 — የምርት ማጽደቅ ይጠበቃል' },
+            { v:'g5', en:'G5 — delivery clearance waiting',          am:'G5 — የማድረስ ፈቃድ ይጠበቃል' }
+          ]},
+          {id:'days', en:'Days waiting', am:'የጠበቀበት ቀን', t:'num'}
+        ]},
+      {id:'b_g1', en:'G1 — 50% advance over 3 days late', am:'G1 — 50% ቅድሚያ ከ3 ቀን በላይ የዘገየ', t:'text', auto:{list:'b_gate_list.code', when:{col:'gate', is:'g1'}}},
+      {id:'b_g2', en:'G2 — 100% final payment over 7 days late', am:'G2 — 100% የመጨረሻ ክፍያ ከ7 ቀን በላይ የዘገየ', t:'text', auto:{list:'b_gate_list.code', when:{col:'gate', is:'g2'}}},
+      {id:'b_g3', en:'G3 — store release waiting', am:'G3 — ከመጋዘን መልቀቅ የሚጠብቅ', t:'text', auto:{list:'b_gate_list.code', when:{col:'gate', is:'g3'}}},
+      {id:'b_g4', en:'G4 — production approval waiting', am:'G4 — የምርት ማጽደቅ የሚጠብቅ', t:'text', auto:{list:'b_gate_list.code', when:{col:'gate', is:'g4'}}},
+      {id:'b_g5', en:'G5 — delivery clearance waiting', am:'G5 — የማድረስ ፈቃድ የሚጠብቅ', t:'text', auto:{list:'b_gate_list.code', when:{col:'gate', is:'g5'}}}
+    ]},
+    { en:'Stuck cards', am:'የቆሙ ካርዶች', fields:[
+      {id:'b_stuck_any', en:'Is any card in the same column for more than 7 days?', am:'ከ7 ቀን በላይ በአንድ ዓምድ ላይ የቆመ ካርድ አለ?', t:'yesno', yes:{en:'Cards stuck over 7 days', am:'ከ7 ቀን በላይ የቆሙ ካርዶች አሉ'}, no:{en:'No card stuck', am:'የቆመ ካርድ የለም'}},
+      {id:'b_stuck_list', en:'Each card stuck over 7 days', am:'ከ7 ቀን በላይ የቆመ እያንዳንዱ ካርድ', t:'table', addEn:'Add a card', addAm:'ካርድ ጨምር',
+        show:{f:'b_stuck_any', when:'yes'},
+        cols:[
+          {id:'code',  en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'col',   en:'Column', am:'ዓምድ', t:'choice', opts:BOARD_COLS},
+          {id:'days',  en:'Days in that column', am:'በዚያ ዓምድ የቆየበት ቀን', t:'num'},
+          {id:'owner', en:'Whose move it is', am:'ማንቀሳቀስ ያለበት', t:'choice', opts:BOARD_WHO},
+          {id:'why',   en:'Why', am:'ለምን', t:'text', picks:[
+            { en:'The customer refuses to pay',  am:'ደንበኛው ለመክፈል አልፈቀደም' },
+            { en:'Advance not paid yet',         am:'ቅድሚያ ገና አልተከፈለም' },
+            { en:'Waiting for the customer',     am:'ደንበኛውን እየጠበቅን ነው' },
+            { en:'Waiting for material',         am:'ዕቃ እየጠበቅን ነው' },
+            { en:'The file is not signed',       am:'ፋይሉ አልተፈረመም' }
+          ]}
+        ]},
+      {id:'b_stuck', en:'How many cards are stuck over 7 days?', am:'ስንት ካርዶች ከ7 ቀን በላይ ቆመዋል?', t:'num',
+        auto:{rows:'b_stuck_list'}, sumEn:'stuck over 7 days', sumAm:'ከ7 ቀን በላይ ቆመዋል'},
+      {id:'b_oldest', en:'The card longest in one column', am:'በአንድ ዓምድ ረጅም ጊዜ የቆየው ካርድ', t:'text',
+        auto:{top:'b_stuck_list', by:'days', say:['code', 'col', 'days'], unit:{en:'days', am:'ቀን'}}}
+    ]},
+    { en:'Problems and how sure you are', am:'ችግሮችና ምን ያህል እርግጠኛ እንደሆኑ', fields:[
+      {id:'b_issue_list', en:'The top problems on the board — up to three: what, whose, by when', am:'በቦርዱ ላይ ዋና ዋና ችግሮች — እስከ ሦስት፦ ምን፣ የማን፣ እስከ መቼ', t:'table', opt:1, addEn:'Add a problem', addAm:'ችግር ጨምር',
+        cols:[
+          {id:'what',  en:'Problem', am:'ችግሩ', t:'text', picks:[
+            { en:'A card moved without its signed file', am:'ያለ ተፈረመ ፋይል የተንቀሳቀሰ ካርድ' },
+            { en:'Final payment overdue',                am:'የመጨረሻ ክፍያ ዘግይቷል' },
+            { en:'Advance overdue',                      am:'ቅድሚያ ዘግይቷል' },
+            { en:'A card stuck over 7 days',             am:'ከ7 ቀን በላይ የቆመ ካርድ' },
+            { en:'Production queue empty',               am:'የምርት ወረፋው ባዶ ነው' },
+            { en:'Material not received',                am:'ዕቃ አልደረሰም' },
+            { en:'Delivery not cleared',                 am:'ማድረስ አልተፈቀደም' }
+          ]},
+          {id:'owner', en:'Whose', am:'የማን', t:'choice', opts:BOARD_WHO},
+          {id:'by',    en:'By', am:'እስከ', t:'date'}
+        ]},
+      {id:'b_sure', en:'How sure are you of today\'s check?', am:'በዛሬው ፍተሻ ምን ያህል እርግጠኛ ነዎት?', t:'choice', opts:[
+        { v:'high', en:'Sure — I checked every card against its file', am:'እርግጠኛ ነኝ — እያንዳንዱን ካርድ ከፋይሉ ጋር አይቻለሁ' },
+        { v:'mid',  en:'Mostly — some files I did not see',          am:'በአብዛኛው — ያላየኋቸው ፋይሎች አሉ' },
+        { v:'low',  en:'Not sure — not checked properly today',      am:'እርግጠኛ አይደለሁም — ዛሬ በደንብ አልተፈተሸም' }
+      ]}
     ]}
   ]
 },

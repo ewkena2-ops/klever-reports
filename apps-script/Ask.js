@@ -139,13 +139,13 @@ function askAnswers_(rep, v) {
         var rows = rows_(val).map(function (r, i) {
           var row = {};
           if (f.t === 'grid' && f.rows && f.rows[i]) row.row = f.rows[i].en;
-          (f.cols || []).forEach(function (c) { if (r && !blank_(r[c.id])) row[c.en] = txt(r[c.id]); });
+          (f.cols || []).forEach(function (c) { if (r && !blank_(r[c.id])) row[c.en] = txt(r[c.id]) + otherSaid_(r, c.id); });
           return row;
         }).filter(function (r) { return Object.keys(r).length > (r.row ? 1 : 0); });
         if (rows.length) out[f.en] = rows;
         return;
       }
-      if (!blank_(val)) out[f.en] = txt(val);
+      if (!blank_(val)) out[f.en] = txt(val) + otherSaid_(v, f.id);
     });
   });
   return out;
@@ -202,7 +202,7 @@ function askListsByDay_(rep, days) {
       var cols = f.cols || [], seen = [];
       days.forEach(function (x) {
         var rows = rows_(x.v[f.id]).map(function (r) {
-          return cols.map(function (c) { return r && !blank_(r[c.id]) ? askTxt_(r[c.id]) : ''; });
+          return cols.map(function (c) { return r && !blank_(r[c.id]) ? askTxt_(r[c.id]) + otherSaid_(r, c.id) : ''; });
         }).filter(function (r) { return r.some(function (c) { return c !== ''; }); });
         if (!rows.length) return;
         var s = JSON.stringify(rows), label = dayLabel_(x.day);

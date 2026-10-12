@@ -246,16 +246,18 @@ function saidIn_(d, ids) {
         if (q.t === 'area' || q.t === 'text') {
           if (!blank_(x)) lines.push(q.en + ' — ' + String(x).trim());
         } else if (q.t === 'yesno' || q.t === 'choice') {
-          if (!blank_(x)) lines.push(q.en + ' — ' + said_(q, x));
+          if (!blank_(x)) lines.push(q.en + ' — ' + said_(q, x) + otherSaid_(v, q.id));
         } else if (q.t === 'table') {
           var rows = [];
           rows_(x).forEach(function (row) {
             var cells = [], typed = false;
             (q.cols || []).forEach(function (c) {
               if (!row || blank_(row[c.id])) return;
-              cells.push(c.en + ': ' + said_(c, row[c.id]));
-              /* a row with only a choice picked in it is a row not filled in */
-              if (c.t !== 'choice' && c.t !== 'yesno') typed = true;
+              var ow = otherSaid_(row, c.id);
+              cells.push(c.en + ': ' + said_(c, row[c.id]) + ow);
+              /* a row with only a choice picked in it is a row not filled in —
+                 unless "Other" was picked and what it is was written */
+              if ((c.t !== 'choice' && c.t !== 'yesno') || ow) typed = true;
             });
             if (typed) rows.push(cells.join(', '));
           });
@@ -269,6 +271,12 @@ function saidIn_(d, ids) {
     }
   });
   return out;
+}
+/* "Other" on a pick-list, and the words written for what it is: filed
+   beside the pick under <id>__other (js/app.js otherBox, 12 Oct 2026) */
+function otherSaid_(row, id) {
+  var w = row && /^other$/i.test(String(row[id] == null ? '' : row[id])) ? String(row[id + '__other'] || '').trim() : '';
+  return w ? ': ' + w : '';
 }
 /* an answer as the person saw it: the words of the option they picked, Birr
    with its thousands */

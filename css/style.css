@@ -705,6 +705,8 @@ fieldset legend .lgc.full::before{content:'✓ '}
 .chips.mini .chip{min-height:34px;padding:5px 11px;font-size:13.5px}
 .chips.cellpicks{margin-top:6px}
 .chips.cellpicks .chip{border-style:dashed}
+/* the box "Other" opens: what it is, in a few words */
+.otherbox{margin-top:6px}
 
 /* a yes/no inside a list row: the same control, smaller, its own words */
 .seg.mini{padding:3px;gap:3px;border-radius:11px}

@@ -1584,7 +1584,9 @@
           /* a yes/no in a list is two buttons with its answer words, like a
              yes/no question; with words longer than a box it takes the row */
           var longYn = c.t === 'yesno' && !!(c.yes || c.no);
-          var cell = el('div', 'cell' + (c.t === 'text' || c.t === 'date' || longPick || longYn ? ' wide' : ''));
+          /* "Other" opens a box under the pick, so it takes the row too */
+          var oth = c.t === 'choice' && hasOther(c) ? otherBox(rowData, c.id, function () { refresh(); if (wrap.sumUp) wrap.sumUp(); }) : null;
+          var cell = el('div', 'cell' + (c.t === 'text' || c.t === 'date' || longPick || longYn || oth ? ' wide' : ''));
           var cl = el('label', null, L(c));
           cell.appendChild(cl);
           var inp;
@@ -1631,6 +1633,7 @@
                 Array.prototype.forEach.call(ccb.children, function (x) {
                   x.setAttribute('aria-pressed', x.getAttribute('data-v') === rowData[c.id] ? 'true' : 'false');
                 });
+                if (oth) oth.sync(true);
                 refresh();
                 if (wrap.sumUp) wrap.sumUp();
               };
@@ -1639,6 +1642,7 @@
             cl.removeAttribute('for');
             cell.className = 'cell wide';
             cell.appendChild(ccb);
+            if (oth) cell.appendChild(oth);
             card.appendChild(cell);
             return;
           }
@@ -1672,9 +1676,10 @@
           /* words to tap under a word box: its usual answers (picks), or the
              codes and names this person filed lately (recentKey) */
           var tapBox = null;
-          var onType = function () { rowData[c.id] = inp.value; if (tapBox) tapBox.hidden = has(inp.value); refresh(); if (wrap.sumUp) wrap.sumUp(); };
+          var onType = function () { rowData[c.id] = inp.value; if (tapBox) tapBox.hidden = has(inp.value); if (oth) oth.sync(true); refresh(); if (wrap.sumUp) wrap.sumUp(); };
           inp.onchange = inp.oninput = onType;
           cell.appendChild(c.t === 'date' ? dressDate(inp) : inp);
+          if (oth) cell.appendChild(oth);
           if (c.t === 'text' && !c.time && (c.picks || recentKey(f, c))) {
             tapBox = el('div', 'chips mini cellpicks');
             tapBox.hidden = has(inp.value);
@@ -1930,6 +1935,7 @@
       cb.tabIndex = -1;
       cb.setAttribute('role', 'group');
       cb.setAttribute('aria-labelledby', lab.id);
+      var fOth = hasOther(f) ? otherBox(values, f.id, refresh) : null;
       (f.opts || []).forEach(function (o) {
         var b = el('button', 'chip', lang === 'am' ? o.am : o.en);
         b.type = 'button';
@@ -1939,11 +1945,13 @@
           Array.prototype.forEach.call(cb.children, function (c, j) {
             c.setAttribute('aria-pressed', values[f.id] === f.opts[j].v ? 'true' : 'false');
           });
+          if (fOth) fOth.sync(true);
           refresh();
         };
         cb.appendChild(b);
       });
       row.appendChild(cb);
+      if (fOth) row.appendChild(fOth);
     } else if (f.t === 'text') {
       var ti = document.createElement('input');
       ti.type = f.time ? 'time' : 'text'; ti.id = 'f_' + f.id;
@@ -2775,6 +2783,7 @@
       out['-' + f.id] = 1;
       out['-' + f.id + '__a'] = 1;
       out['-' + f.id + '__b'] = 1;
+      out['-' + f.id + '__other'] = 1;
     });
     var keep = {};
     /* the buttons tapped and the words typed under them (pickField) are the
@@ -3281,7 +3290,7 @@
         if (!has(r[c.id])) return;
         var cell = el('span', 'gcell');
         cell.appendChild(el('span', 'gk', L(c)));
-        cell.appendChild(el('span', 'gv', colText(c, r[c.id])));
+        cell.appendChild(el('span', 'gv', colText(c, r[c.id], r)));
         line.appendChild(cell);
       });
       box.appendChild(line);
@@ -3572,12 +3581,46 @@
     return base;
   }
 
-  function colText(c, v) {
+  /* "Other" on a pick-list (12 Oct 2026). "Material: Other" tells the store
+     and the readers nothing, so picking it opens a box to write what it is.
+     The pick still files as "Other" \u2014 every count by code stays as it was \u2014
+     and the words file beside it under `<id>__other`, in the row for a list. */
+  function isOther(v) { return /^other$/i.test(String(v == null ? '' : v)); }
+  function hasOther(q) { return (q.opts || []).some(function (o) { return isOther(o.v); }); }
+  function otherBox(obj, id, changed) {
+    var key = id + '__other';
+    var box = document.createElement('input');
+    box.type = 'text';
+    box.className = 'otherbox';
+    box.placeholder = t('otherWhat');
+    box.setAttribute('aria-label', t('otherWhat'));
+    box.value = obj[key] || '';
+    box.hidden = !isOther(obj[id]);
+    box.oninput = box.onchange = function () {
+      if (has(box.value)) obj[key] = box.value; else delete obj[key];
+      changed();
+    };
+    /* after a pick: open (and bring up the keyboard) on "Other", close and
+       forget the words on anything else */
+    box.sync = function (tapped) {
+      var on = isOther(obj[id]);
+      if (on && box.hidden && tapped) setTimeout(function () { box.focus(); }, 0);
+      box.hidden = !on;
+      if (!on) { delete obj[key]; box.value = ''; }
+    };
+    return box;
+  }
+  function otherWords(obj, id) {
+    var w = obj && isOther(obj[id]) ? String(obj[id + '__other'] || '').trim() : '';
+    return w ? ': ' + w : '';
+  }
+
+  function colText(c, v, row) {
     if (!has(v)) return '\u2014';
     if (c.t === 'yesno') return ynWord(c, v === 'yes' ? 'yes' : 'no');
     if (c.t === 'choice') {
       for (var i = 0; i < c.opts.length; i++)
-        if (c.opts[i].v === v) return lang === 'am' ? c.opts[i].am : c.opts[i].en;
+        if (c.opts[i].v === v) return (lang === 'am' ? c.opts[i].am : c.opts[i].en) + otherWords(row, c.id);
       return v;
     }
     if (c.t === 'money') return money(v) + ' ' + t('birr');
@@ -3594,7 +3637,7 @@
     data.forEach(function (row, i) {
       if (!rowHasData(row, f.cols)) return;
       any = true;
-      var cells = f.cols.map(function (c) { return colText(c, row[c.id]); });
+      var cells = f.cols.map(function (c) { return colText(c, row[c.id], row); });
       if (f.t === 'grid') {
         out.push(gridRowLabel(f, i) + ' \u00b7 ' + cells.join(' \u00b7 '));
       } else {
@@ -3618,7 +3661,7 @@
     data.forEach(function (row, i) {
       if (!rowHasData(row, f.cols)) return;
       out.rows.push([grid ? gridRowLabel(f, i) : String(i + 1)]
-        .concat(f.cols.map(function (c) { return colText(c, row[c.id]); })));
+        .concat(f.cols.map(function (c) { return colText(c, row[c.id], row); })));
     });
     if (out.rows.length && f.total) out.total = totalLine(f);
     return out;
@@ -3649,7 +3692,7 @@
     if (f.t === 'multi') return multiText(f, v);
     if (f.t === 'choice') {
       for (var oi = 0; oi < (f.opts || []).length; oi++) {
-        if (f.opts[oi].v === v) return L(f.opts[oi]);
+        if (f.opts[oi].v === v) return L(f.opts[oi]) + otherWords(values, f.id);
       }
       return String(v);
     }

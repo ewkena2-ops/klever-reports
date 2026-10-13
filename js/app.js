@@ -1970,6 +1970,19 @@
             if (!c.picks) { tapBox.setAttribute('data-recent', '1'); tapBox.refill = fillTaps; }
             cell.appendChild(tapBox);
           }
+          /* a box asked only once another in the row is answered — and not
+             with one of `ifNot` ("How many pieces?" once a material to cut
+             again is picked, not for "Nothing new"); its answer goes if that
+             changes */
+          if (c.ifCol) {
+            var syncIf = function () {
+              var on = has(rowData[c.ifCol]) && (c.ifNot || []).indexOf(rowData[c.ifCol]) === -1;
+              cell.hidden = !on;
+              if (!on && has(rowData[c.id])) { delete rowData[c.id]; inp.value = ''; }
+            };
+            (card.syncs = card.syncs || []).push(syncIf);
+            syncIf();
+          }
           card.appendChild(cell);
         });
         body.appendChild(card);

@@ -63,10 +63,12 @@ var REG_SOURCES_ = [
   { r: 'yordanos-daily', f: 'rec_list', k: 'received', job: 'code', what: 'item', ok: 'ok', colour: 'colour' },
   { r: 'betty-daily', f: 'final_req_list', k: 'finalreq', cust: 'cust', job: 'code', amount: 'amount' },
   { r: 'betty-joblist', f: 'jl_held_list', k: 'held', cust: 'cust', job: 'code', amount: 'owed', what: 'expect' },
-  { r: 'amaha-daily', f: 'qc_defects_list', k: 'defect', job: 'code', what: 'what' },
+  /* `redo`: what each defect needs cut again, its colour and pieces (13 Oct 2026) */
+  { r: 'amaha-daily', f: 'qc_defects_list', k: 'defect', job: 'code', what: 'what', redo: 1 },
   { r: 'amaha-weekly', f: 'j_done_list', k: 'jobdone', job: 'code', ok: 'rework' },
-  { r: 'wude-daily', f: 'd_rows', k: 'defect', job: 'code', what: 'type', state: 'act' },
-  { r: 'ashenafi-daily', f: 'q_found_list', k: 'defect', job: 'code', what: 'what' },
+  { r: 'wude-daily', f: 'd_rows', k: 'defect', job: 'code', what: 'type', state: 'act', redo: 1 },
+  { r: 'ashenafi-daily', f: 'q_found_list', k: 'defect', job: 'code', what: 'what', redo: 1 },
+  { r: 'elyas-daily', f: 'q_rw_list', k: 'defect', job: 'code', whatIs: 'Rework on site', redo: 1 },
   { r: 'elyas-daily', f: 'r_rows', k: 'siteready', job: 'rcode',
     fails: { rwalls: 'walls and floor not finished', rpower: 'no power', rwater: 'water and drain not ready',
              rlevel: 'floor not level', rmeas: 'site does not match our measurement', rappl: 'appliances missing or wrong' } },
@@ -223,6 +225,15 @@ function regEventsOf_(filing) {
         if (s[x] && !blank_(row[s[x]])) e[x] = String(row[s[x]]).trim().toUpperCase().replace(/[^0-9A-Z_-]/g, '').substring(0, 20);
       });
       if (e.colour) e.what = (e.what ? e.what + ' ' : '') + e.colour;
+      if (s.whatIs && !e.what) e.what = s.whatIs;
+      /* what a defect needs cut again: "Melamine 18mm KKUV-18 ×2" — nothing
+         when it was fixed as it is */
+      if (s.redo && !blank_(row.rmat) && row.rmat !== 'none') {
+        var rm = row.rmat === 'Other' && !blank_(row.rmat__other) ? String(row.rmat__other).trim() : String(row.rmat).trim();
+        var rc = blank_(row.rcol) ? '' : String(row.rcol).trim().toUpperCase().replace(/[^0-9A-Z_-]/g, '').substring(0, 20);
+        var rq = blank_(row.rqty) ? null : n_(row.rqty);
+        e.redo = (rm + (rc ? ' ' + rc : '') + (rq ? ' ×' + rq : '')).substring(0, 120);
+      }
       if (s.next) e.hn = true;            /* this list asks for a next step */
       /* the customer's code: the 4-digit lead no. the salesperson gave, or —
          on a list that is not a contract — the KK code once they have paid */
@@ -469,7 +480,7 @@ function regFold_(events, today, names, sellers) {
         J.matPending = { day: e.day, what: e.what || '', expect: e.state || '' };
         break;
       case 'defect':
-        J.defects.push({ day: e.day, what: e.what || '', by: who(e.person) });
+        J.defects.push({ day: e.day, what: e.what || '', by: who(e.person), redo: e.redo || '' });
         break;
       case 'jobdone':
         if (!J.made) J.made = e.day;
@@ -571,7 +582,7 @@ function regFold_(events, today, names, sellers) {
     var fresh = J.defects.filter(function (d) { return !(J.qcPassed && J.qcPassed > d.day) && !(J.accepted && J.accepted > d.day); });
     if (fresh.length) {
       var d0 = fresh[fresh.length - 1];
-      rework.push('Defect: ' + d0.what + ' (' + d0.by + ', ' + pushDay_(d0.day) + ')');
+      rework.push('Defect: ' + d0.what + (d0.redo ? ' — cut again: ' + d0.redo : '') + ' (' + d0.by + ', ' + pushDay_(d0.day) + ')');
     }
     if (J.held && !(finalDay && finalDay >= J.held.day)) {
       holds.push('Waiting for the final payment' + (J.held.amount ? ': ' + fmt_(J.held.amount) + ' Birr still owed' : '') +

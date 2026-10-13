@@ -115,6 +115,13 @@ const MATERIAL_OPTS = MATERIALS.concat([
   { v:'Tools',       en:'Tools',                                 am:'መሣሪያዎች' },
   { v:'Other',       en:'Other',                                 am:'ሌላ' }
 ]);
+/* REWORK (the Chairman, 13 Oct 2026: "so it's easy to say, when there is
+   rework, which material"): each defect says what must be cut again — or
+   that nothing new is needed — with its colour by picture and how many
+   pieces, so Amaha cuts it and Getachew and Yordanos know what it takes. */
+const REDO_OPTS = [{ v:'none', en:'Nothing new — fixed as it is', am:'አዲስ ዕቃ አያስፈልግም — እንዳለ ተስተካክሏል' }].concat(MATERIALS, [
+  { v:'Other', en:'Other', am:'ሌላ' }
+]);
 /* the same twelve as the fixed rows of a grid */
 const MATERIAL_ROWS = MATERIALS.map(function (m) { return { en:m.en, am:m.am }; });
 /* THE COLOURS (the Chairman, 13 Oct 2026: "pick colour by picture"). Klever's
@@ -5400,6 +5407,9 @@ const REPORTS = [
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'what', en:'Defect', am:'ጉድለቱ', t:'text', picks:COL_DEFECT},
           {id:'stage', en:'Started at (stage)', am:'የጀመረበት ደረጃ', t:'text', picks:COL_STAGE},
+          {id:'rmat', en:'Material to cut again', am:'በድጋሚ የሚቆረጥ ዕቃ', t:'choice', opts:REDO_OPTS},
+          {id:'rcol', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'rmat'},
+          {id:'rqty', en:'How many pieces?', am:'ስንት ቁራጭ?', t:'num', ifCol:'rmat', ifNot:['none']},
           {id:'told', en:'Mahelet told at once', am:'ለማህሌት ወዲያው ተነግሯል', t:'yesno', yes:{en:'Told at once', am:'ወዲያው ተነግሯታል'}, no:{en:'Not told', am:'አልተነገራትም'}},
           {id:'rel', en:'Reached finished goods', am:'ወደ ዝግጁ ዕቃ ገብቷል', t:'yesno', yes:{en:'Reached finished goods', am:'ወደ ዝግጁ ዕቃ ገብቷል'}, no:{en:'Caught before', am:'ሳይገባ ተይዟል'}}
         ]},
@@ -6035,6 +6045,9 @@ const REPORTS = [
           {v:'rework', en:'Rework', am:'ዳግም ሥራ'},
           {v:'reject', en:'Reject', am:'ውድቅ'}
         ]},
+        {id:'rmat', en:'Material to cut again', am:'በድጋሚ የሚቆረጥ ዕቃ', t:'choice', opts:REDO_OPTS},
+        {id:'rcol', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'rmat'},
+        {id:'rqty', en:'How many pieces?', am:'ስንት ቁራጭ?', t:'num', ifCol:'rmat', ifNot:['none']},
         {id:'out', en:'Reached finished goods', am:'ወደ ዝግጁ ዕቃ ገብቷል', t:'yesno', yes:{en:'Reached finished goods', am:'ወደ ዝግጁ ዕቃ ገብቷል'}, no:{en:'Caught before', am:'ሳይገባ ተይዟል'}},
         {id:'doc', en:'Documented with photo', am:'በፎቶ ተመዝግቧል', t:'yesno', yes:{en:'Photo taken', am:'ፎቶ ተነስቷል'}, no:{en:'No photo', am:'ፎቶ አልተነሳም'}}
       ]},
@@ -6980,6 +6993,14 @@ const REPORTS = [
           { en:'Damaged in transport',             am:'በማጓጓዝ ተጎዳ' },
           { en:'Assembler mistake',                am:'የገጣጣሚ ስህተት' }
         ], show:{f:'q_rework', when:'yes'}},
+      /* what each rework on site needs cut again (13 Oct 2026) */
+      {id:'q_rw_list', en:'What must the factory cut again for it? One row a job.', am:'ለዚህ ፋብሪካው በድጋሚ ምን መቁረጥ አለበት? ለአንድ ሥራ አንድ መስመር።', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+        show:{f:'q_rework', when:'yes'}, cols:[
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'rmat', en:'Material to cut again', am:'በድጋሚ የሚቆረጥ ዕቃ', t:'choice', opts:REDO_OPTS},
+          {id:'rcol', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'rmat'},
+          {id:'rqty', en:'How many pieces?', am:'ስንት ቁራጭ?', t:'num', ifCol:'rmat', ifNot:['none']}
+        ]},
       {id:'q_reported', en:'Was the rework reported to Mahelet the same day?', am:'ዳግም ሥራው በዕለቱ ለማህሌት ተነግሯል?', t:'yesno', yes:{en:'Told today', am:'ዛሬ ተነግሯታል'}, no:{en:'Not told', am:'አልተነገራትም'},
         show:{f:'q_rework', when:'yes'}}
     ]},
@@ -7491,6 +7512,9 @@ const REPORTS = [
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'what', en:'Defect', am:'ጉድለት', t:'text', picks:COL_DEFECT},
           {id:'where', en:'Where exactly', am:'በትክክል የት', t:'text', picks:COL_CABINET},
+          {id:'rmat', en:'Material to cut again', am:'በድጋሚ የሚቆረጥ ዕቃ', t:'choice', opts:REDO_OPTS},
+          {id:'rcol', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'rmat'},
+          {id:'rqty', en:'How many pieces?', am:'ስንት ቁራጭ?', t:'num', ifCol:'rmat', ifNot:['none']},
           {id:'told', en:'Told to Elyas', am:'ለኤልያስ ተነግሯል', t:'yesno', yes:{en:'Elyas was told', am:'ለኤልያስ ተነግሮታል'}, no:{en:'Not told', am:'አልተነገረውም'}}
         ]},
       {id:'q_found', en:'How many defects did you find on finished work today?', am:'ዛሬ በተጠናቀቀ ሥራ ላይ ስንት ጉድለቶች አገኙ?', t:'num',

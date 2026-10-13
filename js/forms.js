@@ -102,6 +102,8 @@ const MATERIALS = [
   { v:'Melamine 16mm',       en:'Melamine 16mm',       am:'ሜላሚን 16ሚሜ' },
   { v:'Plywood',             en:'Plywood',             am:'ፕላይውድ' },
   { v:'Back panel 3mm',      en:'Back panel 3mm',      am:'የኋላ ሰሌዳ 3ሚሜ' },
+  /* the backs are 3 or 6 mm (the plugin nails "a thin 3/6 mm back"); 13 Oct 2026 */
+  { v:'Back panel 6mm',      en:'Back panel 6mm',      am:'የኋላ ሰሌዳ 6ሚሜ' },
   { v:'Edge banding (m)',    en:'Edge banding (m)',    am:'ጠርዝ ማሰሪያ (ሜትር)' },
   { v:'Hinges',              en:'Hinges',              am:'ማጠፊያዎች' },
   { v:'Drawer slides',       en:'Drawer slides',       am:'የመሳቢያ ተንሸራታቾች' },
@@ -151,7 +153,7 @@ const COLOURS = [
   { v:'KKMDF-04', g:'MDF' }, { v:'KKMDF-05', g:'MDF' }, { v:'KKMDF-06', g:'MDF' }, { v:'KKMDF-07', g:'MDF' }
 ];
 const COLOUR_GROUPS = ['UV', 'SW', 'SM', 'SUV', 'MDF'];
-const COLOUR_ITEMS = ['MDF 18mm', 'MDF 16mm', 'Melamine 18mm', 'Melamine 16mm', 'Back panel 3mm', 'Edge banding (m)'];
+const COLOUR_ITEMS = ['MDF 18mm', 'MDF 16mm', 'Melamine 18mm', 'Melamine 16mm', 'Back panel 3mm', 'Back panel 6mm', 'Edge banding (m)'];
 /* The Job Tracking Board's 15 columns (the Implementation Document; the
    register's regB_ names), for Ephrata's daily board check */
 const BOARD_COLS = [
@@ -187,7 +189,7 @@ const BOARD_WHO = [
 ];
 /* the ones that come as sheets, and the ones that come as pieces — a sheet
    count and a hinge count cannot be added to each other */
-const BOARDS = ['MDF 18mm', 'MDF 16mm', 'Melamine 18mm', 'Melamine 16mm', 'Plywood', 'Back panel 3mm'];
+const BOARDS = ['MDF 18mm', 'MDF 16mm', 'Melamine 18mm', 'Melamine 16mm', 'Plywood', 'Back panel 3mm', 'Back panel 6mm'];
 const ACCESSORIES = ['Hinges', 'Drawer slides', 'Handles', 'Legs and shelf pins'];
 
 /* ======================== TAP THE REASON (11 Oct 2026) ====================
@@ -2087,6 +2089,8 @@ const REPORTS = [
           { v:'r3', en:'Melamine 16mm', am:'ሜላሚን 16ሚሜ' },
           { v:'r4', en:'Plywood', am:'ፕላይውድ' },
           { v:'r5', en:'Back panel 3mm', am:'የኋላ ሰሌዳ 3ሚሜ' },
+          /* added 13 Oct 2026 as the grid's last row, so no row moves */
+          { v:'r12', en:'Back panel 6mm', am:'የኋላ ሰሌዳ 6ሚሜ' },
           { v:'r6', en:'Edge banding (m)', am:'ጠርዝ ማሰሪያ (ሜትር)' },
           { v:'r7', en:'Hinges', am:'ማጠፊያዎች' },
           { v:'r8', en:'Drawer slides', am:'የመሳቢያ ተንሸራታቾች' },
@@ -2096,7 +2100,7 @@ const REPORTS = [
         ]},
       {id:'k_stock', en:'Fill in the materials you counted today. Your best guess is fine.',
        am:'ዛሬ የቆጠሩትን ዕቃ ይሙሉ። ግምትዎ በቂ ነው።',
-       show:{f:'k_counted', when:'has', v:['r0', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11']},
+       show:{f:'k_counted', when:'has', v:['r0', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11', 'r12']},
        rowsOn:'k_counted',
        t:'grid', opt:1, rows:[
         {en:'MDF 18mm', am:'ኤምዲኤፍ 18ሚሜ'},
@@ -2110,7 +2114,8 @@ const REPORTS = [
         {en:'Drawer slides', am:'የመሳቢያ ተንሸራታቾች'},
         {en:'Handles', am:'መያዣዎች'},
         {en:'Legs and shelf pins', am:'እግሮችና የመደርደሪያ ችንካሮች'},
-        {en:'Glue and screws', am:'ሙጫና ብሎኖች'}
+        {en:'Glue and screws', am:'ሙጫና ብሎኖች'},
+        {en:'Back panel 6mm', am:'የኋላ ሰሌዳ 6ሚሜ'}
       ], cols:[
         {id:'qty',  en:'On hand at close', am:'በመዝጊያ ሰዓት ያለ', t:'num'},
         {id:'out', en:'Out today', am:'ዛሬ የወጣ', t:'num'},
@@ -4442,6 +4447,7 @@ const REPORTS = [
             {v:'Melamine 16mm',       en:'Melamine 16mm',       am:'ሜላሚን 16ሚሜ'},
             {v:'Plywood',             en:'Plywood',             am:'ፕላይውድ'},
             {v:'Back panel 3mm',      en:'Back panel 3mm',      am:'የኋላ ሰሌዳ 3ሚሜ'},
+            {v:'Back panel 6mm',      en:'Back panel 6mm',      am:'የኋላ ሰሌዳ 6ሚሜ'},
             {v:'Edge banding (m)',    en:'Edge banding (m)',    am:'ጠርዝ ማሰሪያ (ሜትር)'},
             {v:'Hinges',              en:'Hinges',              am:'ማጠፊያዎች'},
             {v:'Drawer slides',       en:'Drawer slides',       am:'የመሳቢያ ተንሸራታቾች'},

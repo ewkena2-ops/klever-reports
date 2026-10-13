@@ -653,11 +653,14 @@ const REPORTS = [
         ]},
       {id:'collected_today', en:'How much was collected from customers today?', am:'ዛሬ ከደንበኞች ስንት ብር ተሰበሰበ?', t:'money',
         auto:{sum:'collected_list.amount'}, sumEn:'collected', sumAm:'ተሰብስቧል'},
-      /* empty in every report filed; nothing fines it, and the Sales
-         Director adds up the week from collected_today itself (Sales.js) —
-         this stays as her own figure, for the days she has it */
-      {id:'week_total', en:'How much has come in this week so far? (If you know it.)', am:'በዚህ ሳምንት እስካሁን ስንት ብር ገባ? (ካወቁ።)', t:'money', opt:1,
-        tgt:{op:'gte', v:3000000, en:'Commission starts at 3,000,000 Birr/week', am:'ኮሚሽን የሚጀምረው በሳምንት ከ3,000,000 ብር ነው'}},
+      /* Worked out, not typed (the Chairman, 13 Oct 2026): her own daily
+         reports since Monday, with today's — her corrected figure for a day
+         she fixed (Money.js) — fresh each Monday. Before Thursday it is not
+         judged: the hint says what is still to go, and nothing turns red on
+         a Monday; from Thursday, below the line asks who closes the gap. */
+      {id:'week_total', en:'How much has come in this week so far?', am:'በዚህ ሳምንት እስካሁን ስንት ብር ገባ?', t:'money',
+        auto:{soFar:'collected_today', fixes:1},
+        tgt:{op:'gte', v:3000000, from:4, en:'Commission starts at 3,000,000 Birr/week', am:'ኮሚሽን የሚጀምረው በሳምንት ከ3,000,000 ብር ነው'}},
       {id:'week_gap', en:'Below 3,000,000 Birr. Who will close the gap by Saturday? (Write the customers and amounts in the box.)', am:'ከ3,000,000 ብር በታች ነው። እስከ ቅዳሜ ክፍተቱን የሚሞሉት እነማን ናቸው? (ደንበኞቹንና መጠኑን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
           { en:'Final payments due this week',     am:'በዚህ ሳምንት የሚጠበቁ የመጨረሻ ክፍያዎች' },

@@ -1586,6 +1586,7 @@
     /* a weekly or monthly report adds up its own week: fetch it, then the
        figures fill themselves in */
     loadWeekValues();
+    loadSoFar();
     loadRecent();
     /* the status line keeps time while the form is open */
     renderForm.tick = setInterval(drawStatus, 30000);
@@ -2070,7 +2071,15 @@
       av.id = 'av_' + f.id;
       av.textContent = '—';
       ar.appendChild(av);
-      ar.appendChild(el('div', 'hint', t(f.auto.week != null ? 'fromYourWeek' : 'workedOut')));
+      ar.appendChild(el('div', 'hint', t(f.auto.week != null ? 'fromYourWeek' : f.auto.soFar != null ? 'fromYourDays' : 'workedOut')));
+      /* its line, as a typed answer has it: red below it, and before the
+         day it is judged from, what is still to go */
+      if (f.tgt) {
+        var ah = el('div', 'hint');
+        ah.id = 'h_' + f.id;
+        ah.textContent = lang === 'am' ? f.tgt.am : f.tgt.en;
+        ar.appendChild(ah);
+      }
       return ar;
     }
     if (f.t === 'photos') return photoField(f);
@@ -3365,6 +3374,7 @@
       return (hit !== !!k.flip) ? 'yes' : 'no';
     }
     if (k.week != null) return weekFigure(k.week, k);
+    if (k.soFar != null) return soFarFigure(k);
     /* how many days of the week were reported at all — the divisor of every
        "on average per working day" question */
     if (k.weekDays) return WEEKVALS ? (weekFilings(k).length || NaN) : NaN;
@@ -3536,6 +3546,63 @@
       refresh();
     })['catch'](function () { WEEKVALS = []; refresh(); });
   }
+  /* A DAILY FIGURE FOR THE WEEK SO FAR ({soFar:'key'}, 13 Oct 2026): this
+     report's own filings from Monday to yesterday — the later one where a
+     day was filed twice — with today's answer on the form, so the box fills
+     itself and starts again each Monday. `fixes`: a day she corrected
+     (Ephrata's collections, Money.js) counts as corrected. */
+  var SOFAR = null, soFarFor = null, SOFAR_FIX = {};
+  function mondayOf(ymd) { return addDays(ymd, -((dowOf(ymd) + 6) % 7)); }
+  function loadSoFar() {
+    if (!report || report.cadence !== 'daily' || soFarFor === report.id) return;
+    var ks = allFields().filter(function (f) { return f.auto && f.auto.soFar != null; });
+    if (!ks.length) return;
+    soFarFor = report.id;
+    SOFAR = null;
+    if (!window.FB || !FB.ownReports || !AUTH.who()) return;
+    FB.ownReports(report.person, new Date(dayStartMs(mondayOf(stamp())))).then(function (list) {
+      SOFAR = list || [];
+      refresh();
+    })['catch'](function () { SOFAR = []; refresh(); });
+    if (ks.some(function (f) { return f.auto.fixes; }) && FB.watchMyMoneyFix) {
+      FB.watchMyMoneyFix(function (docs, mine) {
+        var at = {};
+        SOFAR_FIX = {};
+        (mine || []).forEach(function (x) {
+          var w = x.at && x.at.toDate ? x.at.toDate().getTime() : 0;
+          if (x.day && x.total != null && !(at[x.day] > w)) { at[x.day] = w; SOFAR_FIX[x.day] = Number(x.total); }
+        });
+        refresh();
+      });
+    }
+  }
+  function soFarFigure(k) {
+    if (SOFAR === null && !(window.FB && FB.ownReports && AUTH.who())) return num(values[k.soFar]);
+    if (SOFAR === null) return NaN;
+    var today = stamp(), mon = mondayOf(today), best = {};
+    SOFAR.forEach(function (d) {
+      if (d.report !== report.id) return;
+      var day = ymdOf(addis(d.at));
+      if (day < mon || day >= today) return;
+      if (!best[day] || d.at > best[day].at) best[day] = d;
+    });
+    var sum = 0, any = false;
+    Object.keys(best).forEach(function (day) {
+      var x = k.fixes && SOFAR_FIX[day] != null ? SOFAR_FIX[day] : num((best[day].values || {})[k.soFar]);
+      if (!isNaN(x)) { sum += x; any = true; }
+    });
+    var tv = num(values[k.soFar]);
+    if (!isNaN(tv)) { sum += tv; any = true; }
+    return any ? round(sum, 3) : NaN;
+  }
+  /* a line judged only from a day of the week on (tgt.from: 4 = Thursday):
+     a week's figure is not short on a Monday */
+  function tgtJudged(f) {
+    if (!f.tgt || f.tgt.from == null) return true;
+    var dw = dowOf(stamp());
+    return dw === 0 || dw >= f.tgt.from;
+  }
+
   /* the week's own filings that count: one report, one day, and where a day
      was filed twice the later filing is the correction that stands */
   function weekFilings(k) {
@@ -3733,6 +3800,7 @@
   function targetMiss(f) {
     if (f.t === 'table' || f.t === 'grid') return false;
     if (!f.tgt) return false;
+    if (!tgtJudged(f)) return false;
     var v = targetValue(f);
     if (isNaN(v)) return false;
     return f.tgt.op === 'gte' ? v < f.tgt.v : v > f.tgt.v;
@@ -3856,10 +3924,12 @@
       if (f.tgt) {
         var h = document.getElementById('h_' + f.id);
         if (h) {
-          var miss = targetMiss(f);
-          h.className = 'hint' + (miss ? ' bad' : (!isNaN(targetValue(f)) ? ' good' : ''));
+          var miss = targetMiss(f), tv = targetValue(f);
+          var early = !tgtJudged(f) && !isNaN(tv) && f.tgt.op === 'gte' && tv < f.tgt.v;
+          h.className = 'hint' + (miss ? ' bad' : (early ? '' : (!isNaN(tv) ? ' good' : '')));
           h.textContent = (lang === 'am' ? f.tgt.am : f.tgt.en) +
-            (miss ? ' — ' + (f.tgt.op === 'gte' ? t('below') : t('above')) : '');
+            (miss ? ' — ' + (f.tgt.op === 'gte' ? t('below') : t('above'))
+                  : early ? ' — ' + t('tgtToGo').replace('{n}', money(String(round(f.tgt.v - tv, 2)))) : '');
         }
       }
     });

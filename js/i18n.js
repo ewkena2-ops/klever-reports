@@ -77,6 +77,7 @@ const T = {
     /* the two buttons under "how many of them" in a two-step count */
     ratioAll:'All {n}',
     ratioNone:'None',
+    fromYourDays:'Added up from your own daily reports since Monday, with today’s. It starts again each Monday.', tgtToGo:'{n} still to go by Saturday',
     fromYourWeek:'Added up from your own daily reports this week.',
     fromYourWeekRows:'Gathered from your own daily reports this week — you listed these as they happened.',
     weekHadNone:'Nothing of this kind in your daily reports this week.',
@@ -814,6 +815,7 @@ const T = {
     workedOut:'ከመልሶችዎ የተሰራ — የሚሞላ ነገር የለም።',
     ratioAll:'ሁሉም {n}',
     ratioNone:'ምንም',
+    fromYourDays:'ከሰኞ ጀምሮ ከላኳቸው ዕለታዊ ሪፖርቶች፣ ከዛሬው ጋር ተደምሮ። በየሰኞ እንደገና ይጀምራል።', tgtToGo:'እስከ ቅዳሜ {n} ይቀራል',
     fromYourWeek:'በዚህ ሳምንት ከራስዎ ዕለታዊ ሪፖርቶች የተደመረ።',
     fromYourWeekRows:'በዚህ ሳምንት ከራስዎ ዕለታዊ ሪፖርቶች የተሰበሰበ — በወቅቱ እርስዎ ዘርዝረዋቸዋል።',
     weekHadNone:'በዚህ ሳምንት ዕለታዊ ሪፖርቶችዎ ውስጥ ይህን የሚመስል የለም።',

@@ -713,7 +713,19 @@ const T = {
     chgPassOk:'at or above the 98% bonus line', chgPassBad:'under the 98% bonus line',
     chgLegendMet:'met', chgLegendShort:'missed', chgLegendNone:'not reported', chgLegendSoFar:'week not over',
     chgNumbers:'The numbers',
-    chgDay:'Day', chgValue:'Figure', chgWeek:'Week', chgPerson:'Person'
+    chgDay:'Day', chgValue:'Figure', chgWeek:'Week', chgPerson:'Person',
+    chgSales:'Collected by each salesperson',
+    chgSalesSub:'Money from customers, from the payments each salesperson lists in their daily report, against their weekly target of 2,000,000 Birr. Tap a bar to see the payments.',
+    chgSalesWeek:'This week', chgSalesLast:'Last week', chgSalesMonth:'This month',
+    chgSalesTarget:'2,000,000 Birr weekly target, each',
+    chgSalesNowWeek:'This week so far: {list} Birr — the target is 2,000,000 each',
+    chgSalesNowLast:'Last week: {list} Birr — the target is 2,000,000 each',
+    chgSalesNowMonth:'This month: {list} Birr',
+    chgSalesNone:'No money collected reported yet',
+    chgSalesPay1:'1 payment', chgSalesPays:'{n} payments', chgSalesMore:'+{n} more',
+    chgSalesContracts:'Contracts signed: {n}, {v} Birr',
+    chgSalesEph:'Ephrata’s report for the same days says {e} Birr collected; the salespeople’s together say {s} Birr.',
+    chgSalesCol:'Collected'
   },
   am:{
     siteTitle:'የክሌቨር ሪፖርቶች',
@@ -1419,6 +1431,18 @@ const T = {
     chgPassOk:'በ98% የጉርሻ መስመር ወይም ከዚያ በላይ', chgPassBad:'ከ98% የጉርሻ መስመር በታች',
     chgLegendMet:'ደርሷል', chgLegendShort:'አልደረሰም', chgLegendNone:'አልተገለጸም', chgLegendSoFar:'ሳምንቱ ገና አላለቀም',
     chgNumbers:'ቁጥሮቹ',
-    chgDay:'ቀን', chgValue:'አሃዝ', chgWeek:'ሳምንት', chgPerson:'ሰው'
+    chgDay:'ቀን', chgValue:'አሃዝ', chgWeek:'ሳምንት', chgPerson:'ሰው',
+    chgSales:'እያንዳንዱ የሽያጭ ባለሙያ የሰበሰበው',
+    chgSalesSub:'ከደንበኞች የተሰበሰበ ገንዘብ፣ እያንዳንዱ የሽያጭ ባለሙያ በዕለት ሪፖርቱ ከዘረዘራቸው ክፍያዎች፣ ከሳምንቱ 2,000,000 ብር ዒላማ ጋር። ክፍያዎቹን ለማየት መስመሩን ይንኩ።',
+    chgSalesWeek:'ይህ ሳምንት', chgSalesLast:'ያለፈው ሳምንት', chgSalesMonth:'ይህ ወር',
+    chgSalesTarget:'የእያንዳንዳቸው የሳምንት ዒላማ 2,000,000 ብር',
+    chgSalesNowWeek:'በዚህ ሳምንት እስካሁን፦ {list} ብር — ዒላማው ለእያንዳንዳቸው 2,000,000 ነው',
+    chgSalesNowLast:'ያለፈው ሳምንት፦ {list} ብር — ዒላማው ለእያንዳንዳቸው 2,000,000 ነው',
+    chgSalesNowMonth:'በዚህ ወር፦ {list} ብር',
+    chgSalesNone:'እስካሁን የተሰበሰበ ገንዘብ አልተገለጸም',
+    chgSalesPay1:'1 ክፍያ', chgSalesPays:'{n} ክፍያዎች', chgSalesMore:'+{n} ተጨማሪ',
+    chgSalesContracts:'የተፈረሙ ውሎች፦ {n}፣ {v} ብር',
+    chgSalesEph:'የኤፍራታ ሪፖርት ለእነዚሁ ቀናት {e} ብር ተሰብስቧል ይላል፤ የሽያጭ ባለሙያዎቹ ሪፖርቶች በአንድ ላይ {s} ብር ይላሉ።',
+    chgSalesCol:'የተሰበሰበ'
   }
 };

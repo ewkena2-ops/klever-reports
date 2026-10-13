@@ -956,7 +956,9 @@ import {
      A figure that was not reported is shown as not reported, never as 0 —
      the same rule the agents follow. */
   var TODAY_FEED = { all: null, fns: [] };
-  var CHART_PEOPLE = ['betty', 'ephrata', 'amaha', 'wude'];
+  /* the salespeople: whoever has a "-sales-daily" report (forms.js) */
+  var SALES_REPORTS = REPORTS.filter(function (r) { return /-sales-daily$/.test(r.id); });
+  var CHART_PEOPLE = ['betty', 'ephrata', 'amaha', 'wude'].concat(SALES_REPORTS.map(function (r) { return r.person; }));
   var WD = {
     en: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
     am: ['እ', 'ሰ', 'ማ', 'ረ', 'ሐ', 'ዓ', 'ቅ']
@@ -1157,6 +1159,7 @@ import {
       box.appendChild(whoChart());
       box.appendChild(bankChart());
       box.appendChild(collectChart());
+      if (SALES_REPORTS.length) box.appendChild(salesChart());
       box.appendChild(dailyChart({ report: 'amaha-daily', field: 'p_total', title: t('chgProd'), sub: t('chgProdSub'),
         ref: { v: 40, label: t('chgTarget40'), good: 'above' }, unit: ' m²', ok: 'chgProdOk', bad: 'chgProdBad' }));
       box.appendChild(dailyChart({ report: 'amaha-daily', field: 'w_pct', title: t('chgWaste'), sub: t('chgWasteSub'),
@@ -1301,6 +1304,97 @@ import {
                  ['is-partial', t('chgLegendSoFar'), ''], ['is-none', t('chgLegendNone'), '–']],
         numbers: { title: t('chgNumbers'), head: [t('chgWeek'), t('chgValue')],
                    rows: pts.map(function (p) { return [p.title + ' · ' + p.note, p.v == null ? t('chgNotRep') : birr(p.v)]; }) }
+      });
+    }
+
+    /* ---- collected by each salesperson: this week, last week, this month ----
+       The Chairman, 13 Oct 2026: "this much this salesperson, and this much
+       that one". From the payments each lists in their daily report (k_list,
+       added up in k_today), against their 2,000,000 Birr weekly target.
+       Ephrata's own report counts the whole team's collections, so it is set
+       beside theirs in words, never added to them. */
+    function salesChart() {
+      var names = shortNames(), monday = addDays(DAY, -((dow(DAY) + 6) % 7));
+      var mStart = DAY.slice(0, 8) + '01';
+      var people = SALES_REPORTS.map(function (r) { return { id: r.person, by: byDay(r.id) }; });
+      var eph = byDay('ephrata-daily');
+      function daysFrom(a, b) {
+        var out = [];
+        for (var d = a; d <= b; d = addDays(d, 1)) if (dow(d) !== 0) out.push(d);
+        return out;
+      }
+      function sumFor(p, days) {
+        var v = null, pays = [], cn = 0, cv = 0;
+        days.forEach(function (d) {
+          var x = p.by[d];
+          if (!x) return;
+          var k = fig(x.k_today);
+          if (k != null) v = (v || 0) + k;
+          (Array.isArray(x.k_list) ? x.k_list : []).forEach(function (row) {
+            var a = row && fig(row.amount);
+            if (a != null) pays.push({ day: d, code: String(row.lc || '').trim(), cust: String(row.cust || '').trim(), v: a });
+          });
+          cn += fig(x.c_signed) || 0;
+          cv += fig(x.c_value) || 0;
+        });
+        return { v: v, pays: pays, cn: cn, cv: cv };
+      }
+      function view(label, days, nowKey, ref, partial) {
+        var any = false, eSum = null, sSum = 0;
+        var rows = people.map(function (p) {
+          var r = sumFor(p, days);
+          if (r.v != null) any = true;
+          var tip = r.pays.slice(0, 5).map(function (x) {
+            return [x.code, x.cust, birr(Math.round(x.v))].filter(Boolean).join(' · ');
+          });
+          if (r.pays.length > 5) tip.push(tfill('chgSalesMore', { n: r.pays.length - 5 }));
+          if (r.cn) tip.push(tfill('chgSalesContracts', { n: r.cn, v: birr(Math.round(r.cv)) }));
+          return { name: names[p.id], v: r.v, partial: partial, tip: tip,
+                   sub: r.v == null ? '' : r.pays.length === 1 ? t('chgSalesPay1') : tfill('chgSalesPays', { n: r.pays.length }) };
+        });
+        /* Ephrata's figure beside theirs, on the days she gave one — a day she
+           left blank says nothing either way */
+        days.forEach(function (d) {
+          var e = fig((eph[d] || {}).collected_today);
+          if (e == null) return;
+          eSum = (eSum || 0) + e;
+          people.forEach(function (p) { sSum += fig((p.by[d] || {}).k_today) || 0; });
+        });
+        var list = rows.map(function (r) { return r.name + ' ' + (r.v == null ? '–' : birr(Math.round(r.v))); }).join(' · ');
+        var short_ = ref && rows.some(function (r) { return r.v == null || r.v < ref.v; });
+        var status = !any ? { kind: 'none', icon: '–', text: t('chgSalesNone') }
+          : { kind: !ref ? 'none' : !short_ ? 'good' : partial ? 'warn' : 'bad',
+              icon: !ref ? '·' : !short_ ? '✓' : partial ? '!' : '✕', text: tfill(nowKey, { list: list }) };
+        var caption = any && eSum != null && Math.round(eSum) !== Math.round(sSum)
+          ? tfill('chgSalesEph', { e: birr(Math.round(eSum)), s: birr(Math.round(sSum)) }) : '';
+        return { label: label, rows: rows, ref: ref, status: status, caption: caption };
+      }
+      var ref = { v: 2000000, label: t('chgSalesTarget'), good: 'above' };
+      var views = [
+        view(t('chgSalesWeek'), daysFrom(monday, DAY), 'chgSalesNowWeek', ref, dow(DAY) !== 0),
+        view(t('chgSalesLast'), daysFrom(addDays(monday, -7), addDays(monday, -1)), 'chgSalesNowLast', ref, false),
+        view(t('chgSalesMonth'), daysFrom(mStart, DAY), 'chgSalesNowMonth', null, false)
+      ];
+      /* the numbers: five weeks and the month, one column a salesperson */
+      var rowsN = [];
+      for (var w = 4; w >= 0; w--) {
+        var m = addDays(monday, -7 * w), days = daysFrom(m, w ? addDays(m, 5) : DAY);
+        rowsN.push([tfill('chgWeekOf', { day: dayShort(m) })].concat(people.map(function (p) {
+          var r = sumFor(p, days);
+          return r.v == null ? t('chgNotRep') : birr(Math.round(r.v));
+        })));
+      }
+      rowsN.push([t('chgSalesMonth')].concat(people.map(function (p) {
+        var r = sumFor(p, daysFrom(mStart, DAY));
+        return r.v == null ? t('chgNotRep') : birr(Math.round(r.v));
+      })));
+      return C.bars({
+        title: t('chgSales'), sub: t('chgSalesSub'), views: views, pick: 0,
+        fmt: function (v) { return birr(Math.round(v)) + ' ' + t('unBirr'); },
+        tick: function (v) { return short(v); }, lab: function (v) { return short(v); },
+        words: { notRep: t('chgNotRep') },
+        legend: [['is-good', t('chgLegendMet'), '✓'], ['is-bad', t('chgLegendShort'), '✕'], ['is-partial', t('chgLegendSoFar'), '']],
+        numbers: { title: t('chgNumbers'), head: [t('chgWeek')].concat(people.map(function (p) { return names[p.id]; })), rows: rowsN }
       });
     }
 

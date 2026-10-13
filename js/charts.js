@@ -376,5 +376,110 @@
     return box;
   }
 
-  window.KleverCharts = { grid: grid, columns: columns, line: line, niceMax: niceMax };
+  /* ================= one bar a person, side by side ================= */
+
+  /* "This much this salesperson, this much that one" (the Chairman, 13 Oct
+     2026). Bars run across, so a name and a figure in millions both fit on a
+     phone. A row of buttons above picks the period; each period brings its
+     own headline, target and caption.
+     opts: {title, sub, fmt(v), tick(v), lab(v), words:{notRep},
+            views:[{label, status, caption, ref:{v, label, good}|null,
+                    rows:[{name, sub, v|null, partial, tip:[...]}]}],
+            pick (the view shown first), legend:[[cls, label, icon]], numbers} */
+  function bars(o) {
+    var box = el('section', 'cg cg-bars');
+    var cur = o.pick || 0;
+    var top = el('div', null, null, box);
+    var seg = el('div', 'cg-seg', null, box);
+    seg.setAttribute('role', 'group');
+    seg.setAttribute('aria-label', o.title);
+    var wrap = el('div', 'cg-plot', null, box);
+    var tip = tipFor(wrap);
+    var lg = el('div', null, null, box), cap = el('p', 'cg-cap', null, box);
+    var draw = null, lastW = 0;
+
+    o.views.forEach(function (v, i) {
+      var b = el('button', null, v.label, seg);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', i === cur ? 'true' : 'false');
+      b.onclick = function () {
+        cur = i;
+        Array.prototype.forEach.call(seg.children, function (x, j) { x.setAttribute('aria-pressed', j === i ? 'true' : 'false'); });
+        words();
+        if (draw && lastW) draw(lastW);
+      };
+    });
+    if (o.views.length < 2) seg.hidden = true;
+
+    function words() {
+      var v = o.views[cur];
+      top.innerHTML = '';
+      head(top, { title: o.title, sub: o.sub, status: v.status });
+      lg.innerHTML = '';
+      legend(lg, { ref: v.ref, legend: v.ref ? o.legend : null });
+      cap.textContent = v.caption || '';
+      cap.hidden = !v.caption;
+    }
+    words();
+
+    draw = function (W) {
+      lastW = W;
+      /* a bar taken away under the pointer never says it was left */
+      tip.hide();
+      Array.prototype.slice.call(wrap.querySelectorAll('svg')).forEach(function (s) { s.remove(); });
+      var v = o.views[cur], rows = v.rows;
+      /* room on the right for the figure ("1.14M"), so it always sits beside its bar */
+      var nameW = Math.min(118, Math.max(86, Math.round(W * 0.27))), R = 52;
+      var rowH = 40, bh = 18, T = 4, B = 22, H = T + rows.length * rowH + B;
+      var pw = W - nameW - R;
+      var vals = rows.filter(function (r) { return r.v != null; }).map(function (r) { return r.v; });
+      var max = niceMax(Math.max(v.ref ? v.ref.v * 1.15 : 0, Math.max.apply(null, vals.concat([0])) * 1.08));
+      var x = function (n) { return nameW + Math.max(0, Math.min(1, n / max)) * pw; };
+      var svg = sv('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, 'class': 'cg-svg',
+                            role: 'group', 'aria-label': o.title + ' — ' + v.label });
+      wrap.insertBefore(svg, wrap.firstChild);
+
+      /* the scale: zero, the target in bold, and the top when it has room */
+      var yb = T + rows.length * rowH;
+      sv('line', { x1: nameW, x2: nameW, y1: T, y2: yb, 'class': 'cg-base' }, svg);
+      [[0, false], v.ref ? [v.ref.v, true] : [max / 2, false], [max, false]].forEach(function (tk) {
+        if (!tk[1] && v.ref && Math.abs(x(tk[0]) - x(v.ref.v)) < 44) return;
+        if (!tk[1] && tk[0] > 0) sv('line', { x1: x(tk[0]), x2: x(tk[0]), y1: T, y2: yb, 'class': 'cg-grid' }, svg);
+        var anchor = tk[0] === 0 ? 'start' : x(tk[0]) > W - R - 20 ? 'end' : 'middle';
+        stext(svg, x(tk[0]), yb + 15, (o.tick || o.fmt)(tk[0]), tk[1] ? 'cg-tick cg-reftick' : 'cg-tick', anchor);
+      });
+
+      rows.forEach(function (r, i) {
+        var y0 = T + i * rowH, by = y0 + (rowH - bh) / 2 - 3;
+        stext(svg, 0, by + 11, r.name, 'cg-name');
+        if (r.sub) stext(svg, 0, by + 26, r.sub, 'cg-tick');
+        var g = sv('g', null, svg), lines;
+        if (r.v == null) {
+          sv('rect', { x: nameW + 2, y: by + bh / 2 - 1, width: 10, height: 2, rx: 1, 'class': 'cg-none' }, g);
+          stext(g, nameW + 18, by + bh / 2 + 4, o.words.notRep, 'cg-tick');
+          lines = [o.words.notRep, r.name + ' · ' + v.label];
+        } else {
+          var w = Math.max(1.5, x(r.v) - nameW), rr = Math.min(4, w, bh / 2), x1 = nameW + w;
+          var cls = !v.ref ? 'is-plain' : r.partial && r.v < v.ref.v ? 'is-partial'
+                  : (v.ref.good === 'below' ? r.v <= v.ref.v : r.v >= v.ref.v) ? 'is-good' : 'is-bad';
+          sv('path', { d: 'M' + nameW + ',' + by + 'H' + (x1 - rr) + 'Q' + x1 + ',' + by + ' ' + x1 + ',' + (by + rr) +
+                          'V' + (by + bh - rr) + 'Q' + x1 + ',' + (by + bh) + ' ' + (x1 - rr) + ',' + (by + bh) +
+                          'H' + nameW + 'Z', 'class': 'cg-bar ' + cls }, g);
+          /* the figure at the bar's end */
+          stext(svg, x1 + 6, by + bh / 2 + 4, (o.lab || o.fmt)(r.v), 'cg-val', 'start');
+          lines = [o.fmt(r.v), r.name + ' · ' + v.label].concat(r.tip || []);
+        }
+        hit(g, { x: 0, y: y0, width: W, height: rowH }, lines, tip, wrap,
+            function () { g.classList.add('on'); }, function () { g.classList.remove('on'); });
+      });
+      /* the target, over the bars */
+      if (v.ref) sv('line', { x1: x(v.ref.v), x2: x(v.ref.v), y1: T, y2: yb, 'class': 'cg-ref' }, svg);
+    };
+    sized(wrap, draw);
+
+    if (o.numbers) box.appendChild(table(o.numbers.title, o.numbers.head, o.numbers.rows));
+    return box;
+  }
+
+  window.KleverCharts = { grid: grid, columns: columns, line: line, bars: bars, niceMax: niceMax };
 })();

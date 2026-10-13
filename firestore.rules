@@ -138,6 +138,14 @@ service cloud.firestore {
            the QC photos room — this room only — and answers each photo there,
            as 'qcvision', text only, at the server's time. */
         allow read: if cid == 'qc' && isLedger();
+
+        /* Site photos to the Chairman's WhatsApp (apps-script/Wa.js
+           waPhotoWatch_, 12-13 Oct 2026): the script reads the photos in
+           Leads (Elyas's) and Site (Ashenafi's) — the photos only, never
+           what people write there. Without this the read was refused and no
+           photo ever reached his phone. */
+        allow read: if cid in ['leads', 'site'] && isLedger()
+                    && resource.data.kind == 'image';
         allow create: if cid == 'qc'
                       && isLedger()
                       && request.resource.data.who == 'qcvision'

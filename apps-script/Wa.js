@@ -460,7 +460,10 @@ function waSendBrief_(results, d) {
    writes, as it does the brief. Each watch (ten minutes) sends what came
    since the last; the message id travels as `ref`, so a photo the agent
    already has is not sent twice when an answer was lost. */
-var WA_PHOTO_ROOMS_ = ['leads'];
+/* Elyas's photos go to Leads, Ashenafi's to Site (13 Oct 2026). Only the
+   photos are read (kind == 'image'): the rules let the script's account see
+   nothing else in these rooms. */
+var WA_PHOTO_ROOMS_ = ['leads', 'site'];
 var WA_PHOTO_MAX_ = 12;                /* photos a watch, inside the six minutes */
 var WA_PHOTO_TRIES_ = 3;               /* watches a refused photo is tried before it is passed */
 
@@ -476,7 +479,7 @@ function waPhotoWatch_() {
     /* the first watch starts the clock: photos from before are not sent */
     if (!seen) { props.setProperty(key, new Date().toISOString()); return; }
     var msgs;
-    try { msgs = fsQueryIn_('channels/' + room, 'messages', [['at', 'GREATER_THAN', new Date(seen)]], 'at'); }
+    try { msgs = fsQueryIn_('channels/' + room, 'messages', [['kind', 'EQUAL', 'image'], ['at', 'GREATER_THAN', new Date(seen)]], 'at'); }
     catch (e) { Logger.log('wa photos read %s: %s', room, e.message); out.failed++; return; }
     var all = msgs.filter(waIsReportPhoto_);
     var photos = all.slice(0, WA_PHOTO_MAX_), last = null, stop = false;

@@ -7358,10 +7358,16 @@ const REPORTS = [
        t:'table', addEn:'Add site', addAm:'ቦታ ጨምር', cols:[
         {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
         {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
-        {id:'site', en:'Site', am:'ቦታ', t:'text'}
+        {id:'site', en:'Site', am:'ቦታ', t:'text'},
+        /* a photo button in each site row, as Elyas has (the Chairman, 13 Oct
+           2026): sent to the Site room with this row's job code, counted in
+           ph_site below */
+        {id:'photos',en:'Photos of this site', am:'የዚህ ቦታ ፎቶዎች', t:'photo', tally:'ph_site'}
       ]},
       {id:'s_count', en:'How many sites did you support today?', am:'ዛሬ ስንት ቦታዎችን ደገፉ?', t:'num',
         auto:{rows:'s_rows'}, sumEn:'sites', sumAm:'ቦታዎች'},
+      /* photos not tied to one site row; the tally says which jobs have photos */
+      {id:'ph_site', en:'Site photos', am:'የቦታ ፎቶዎች', t:'photos', jobsFrom:'s_rows.code', opt:1},
       {id:'s_arrive', en:'What time did you arrive at the first site?', am:'መጀመሪያው ቦታ ስንት ሰዓት ደረሱ?', t:'text', time:1},
       {id:'s_depart', en:'What time did you leave the last site?', am:'ከመጨረሻው ቦታ ስንት ሰዓት ወጡ?', t:'text', time:1},
       /* five rows of "done" were five taps every day, and nothing reads them;

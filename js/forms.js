@@ -2,6 +2,7 @@
    To change a form, edit the data here — nothing else needs touching.
 
    field keys:  id  en  am  t(type)  i(indent)  tgt(target check)  opt(not required)
+                must(cannot be sent empty — on a question, or on a list's column: every row)
    types:       num money pct text area ratio yesno choice
    target:      {op:'gte'|'lte', v:<number>, en:'', am:''}            */
 
@@ -5053,7 +5054,9 @@ const REPORTS = [
        t:'table', addEn:'Add job', addAm:'ሥራ ጨምር', cols:[
         {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
         {id:'tgt',  en:'m² target', am:'የታቀደ ካሬ ሜትር', t:'num'},
-        {id:'done', en:'m² produced', am:'የተመረተ ካሬ ሜትር', t:'num'},
+        /* must: no row goes without its m² (13 Oct 2026, the Chairman — Monday's
+           report named three jobs and not one m²); 0 is an answer */
+        {id:'done', en:'m² produced', am:'የተመረተ ካሬ ሜትር', t:'num', must:1},
         {id:'for',  en:'Whose job', am:'የማን ሥራ', t:'choice', opts:[
           {v:'ext',  en:'External customer',     am:'የውጭ ደንበኛ'},
           {v:'rove', en:'Rovestone / internal',  am:'ሮቭስቶን / የውስጥ'}
@@ -5064,7 +5067,7 @@ const REPORTS = [
         ]}
       ]},
       {id:'p_total', en:'How many m² did the factory produce today?', am:'ፋብሪካው ዛሬ ስንት ካሬ ሜትር አመረተ?', t:'num',
-        auto:{sum:'p_jobs.done'},
+        auto:{sum:'p_jobs.done'}, must:1,
         tgt:{op:'gte', v:40, en:'Daily target 40 m² — below is –300 Birr/day from commission',
              am:'የቀኑ ዒላማ 40 ካሬ ሜትር — ከዚህ በታች ከኮሚሽን –300 ብር'}},
       {id:'p_ext', en:'For external customers', am:'ለውጭ ደንበኞች', t:'num', i:1,

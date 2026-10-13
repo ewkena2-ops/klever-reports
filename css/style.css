@@ -302,6 +302,11 @@ input:focus,textarea:focus,select:focus{
 input.miss,textarea.miss,select.miss{
   border-color:var(--coral);box-shadow:0 0 0 3px rgba(238,124,97,.14);
 }
+/* a `must` box (forms.js): the report does not go until it is filled */
+input.mustgap,textarea.mustgap,select.mustgap{
+  border-color:var(--coral);box-shadow:0 0 0 3px rgba(238,124,97,.14);
+}
+.repwrap.mustgap .replabel{color:var(--coral)}
 
 /* ---------- a grouped list: rows on one card ---------- */
 .reports,.people,.chanlist,.dayl{

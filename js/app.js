@@ -2628,6 +2628,21 @@
 
     send.onclick = function () {
       if (sending) return;
+      /* a `must` box empty: it does not go at all — say which, and go to it */
+      var gaps = mustGaps();
+      if (gaps.length) {
+        clearTimeout(sendDisarm);
+        sendArmed = false;
+        marking = true;
+        refresh();
+        toast(t('mustFill').replace('{list}', gaps.map(mustName).join(', ')));
+        var gap = document.getElementById(gaps[0].id);
+        if (gap) {
+          gap.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          try { gap.focus({ preventScroll: true }); } catch (e) {}
+        }
+        return;
+      }
       /* not everything answered: ask once, show which, then send on the
          second tap within a few seconds */
       if ((missingNow > 0 || oddCount > 0) && !sendArmed) {
@@ -2829,6 +2844,39 @@
     return !isNaN(v) && v > 0;
   }
   function liveFields() { return allFields().filter(shown); }
+  /* A box marked `must` in forms.js cannot be left empty: Send does not go,
+     not even on the second tap, until it is filled (13 Oct 2026, the
+     Chairman: "he must add m² — don't let him send without it"; Amaha's
+     Monday report named three jobs and not one m²). On a question it is the
+     answer, typed or worked out; on a list's column it is that box in every
+     row with anything in it. Each gap carries the id of the box to mark. When
+     a row's box is the gap, the question worked out from it is not named too. */
+  function mustGaps() {
+    var cells = [], whole = [];
+    liveFields().forEach(function (f) {
+      if (f.t === 'table') {
+        (f.cols || []).forEach(function (c) {
+          if (!c.must) return;
+          (values[f.id] || []).forEach(function (row, i) {
+            if (row && rowHasData(row, f.cols) && !has(row[c.id])) {
+              cells.push({ f: f, c: c, row: row, id: 'c_' + f.id + '_' + i + '_' + c.id, n: i + 1 });
+            }
+          });
+        });
+      }
+      if (f.must && !filled(f)) {
+        var src = autoTable(f);
+        whole.push({ f: f, id: src ? 'w_' + src : (document.getElementById('f_' + f.id) ? 'f_' + f.id : 'w_' + f.id) });
+      }
+    });
+    return cells.length ? cells : whole;
+  }
+  function mustName(g) {
+    if (!g.c) return L(g.f);
+    /* the row by its first box ("rbt3375"), or its number */
+    var first = g.f.cols[0], v = first && g.row[first.id];
+    return L(g.c) + ' (' + (has(v) && first.t !== 'choice' ? String(v).trim() : '#' + g.n) + ')';
+  }
   /* Does this question put anything on the screen? A worked-out yes/no read
      off a list does not, and nor does a count that sits on the summary line
      of a list that is shut — a section holding only those is an empty
@@ -3609,7 +3657,19 @@
       });
     });
 
-    var missing = need - done;
+    /* the `must` boxes still empty count as empty too, marked like the rest */
+    var gapIds = {}, gapsNow = mustGaps();
+    gapsNow.forEach(function (g) { gapIds[g.id] = 1; });
+    Array.prototype.forEach.call(document.querySelectorAll('.mustgap'), function (n) {
+      if (!marking || !gapIds[n.id]) n.classList.remove('mustgap');
+    });
+    gapsNow.forEach(function (g) {
+      var n = document.getElementById(g.id);
+      if (!n) return;
+      if (marking) n.classList.add('mustgap');
+      if (!firstEmpty) firstEmpty = n;
+    });
+    var missing = need - done + gapsNow.length;
     var c = document.getElementById('count');
     if (c) {
       c.innerHTML = '';
@@ -3628,7 +3688,7 @@
             /* first tap turns the marks on, so the rest of the hunt is visible */
             marking = true;
             refresh();
-            var target = document.querySelector('.miss') || firstEmpty;
+            var target = document.querySelector('.miss, .mustgap') || firstEmpty;
             target.scrollIntoView({ block: 'center', behavior: 'smooth' });
             try { target.focus({ preventScroll: true }); } catch (e) {}
           };

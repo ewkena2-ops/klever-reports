@@ -91,8 +91,8 @@
     },
     commercial: {
       en: 'Sales', am: 'ሽያጭ',
-      watchEn: 'Whether the week reaches 3,000,000 Birr, and which sources of leads actually become contracts.',
-      watchAm: 'ሳምንቱ 3,000,000 ብር እንደሚደርስ፣ የትኞቹ የደንበኛ ምንጮች በእርግጥ ውል እንደሚሆኑ።',
+      watchEn: 'Whether the week reaches 4,000,000 Birr, and which sources of leads actually become contracts.',
+      watchAm: 'ሳምንቱ 4,000,000 ብር እንደሚደርስ፣ የትኞቹ የደንበኛ ምንጮች በእርግጥ ውል እንደሚሆኑ።',
       reads: [['Ephrata’s daily commercial report', 'የኤፍራታ ዕለታዊ የንግድ ሪፖርት'],
               ['Both salespeople', 'ሁለቱ ሻጮች']]
     },

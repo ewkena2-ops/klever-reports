@@ -4,8 +4,9 @@
 
    WHAT IT ADDS. The commercial analyst reads Ephrata's own day. This reads
    the sales team as a team: each of Ephrata and the two salespeople against
-   their own weekly collection target (3,000,000 Birr for Ephrata's
-   commission, 2,000,000 for each salesperson, from their letters and
+   their own weekly collection target (4,000,000 Birr for Ephrata — the
+   Chairman, 13 Oct 2026; her commission still starts at 3,000,000 —
+   2,000,000 for each salesperson, from their letters and
    forms), what each remaining working day now needs; who did yesterday's
    work; four weeks of leads → visits → quotes → contracts and where the
    leads came from; and, from the leads register (Register.js), the named
@@ -30,8 +31,8 @@ var SD_SALES_F_ = { leads: 'l_total', called: 'r_1hr', quotes: 'q_issued',
                     contracts: 'c_signed', value: 'c_value', collected: 'k_today', week: 'k_week', unans: 'w_unans',
                     quoteList: 'q_list', margin: 'q_margin' };
 var SD_TEAM_ = [
-  { id: 'ephrata', report: 'ephrata-daily', target: 3000000,
-    target_is: 'collected this week — Ephrata’s commission starts at 3,000,000 Birr',
+  { id: 'ephrata', report: 'ephrata-daily', target: 4000000,
+    target_is: 'collected this week — the floor is 4,000,000 Birr; Ephrata’s commission starts at 3,000,000',
     f: { visits: 'visits_done', visitsLate: 'visits_late', quotes: 'quotes_issued',
          contracts: 'contracts', value: 'contract_value', collected: 'collected_today', week: 'week_total', unans: 'wa_unanswered' } },
   { id: 'tsega', report: 'tsega-sales-daily', target: 2000000,

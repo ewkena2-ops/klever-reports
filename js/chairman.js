@@ -1302,7 +1302,8 @@ import {
       });
     }
 
-    /* ---- collected each week, against the 3,000,000 floor ---- */
+    /* ---- collected each week, against the 4,000,000 floor (the Chairman, 13 Oct 2026;
+       her commission still starts at 3,000,000, js/rules.js) ---- */
     function collectChart() {
       var eph = byDay('ephrata-daily'), monday = addDays(DAY, -((dow(DAY) + 6) % 7)), pts = [];
       for (var w = 4; w >= 0; w--) {
@@ -1324,11 +1325,11 @@ import {
       }
       var now = pts[pts.length - 1];
       var status = now.v == null ? { kind: 'none', icon: '–', text: t('chgCollectNone') }
-        : now.v >= 3000000 ? { kind: 'good', icon: '✓', text: tfill('chgCollectMet', { v: birr(now.v) }) }
+        : now.v >= 4000000 ? { kind: 'good', icon: '✓', text: tfill('chgCollectMet', { v: birr(now.v) }) }
         : { kind: 'warn', icon: '!', text: tfill('chgCollectNow', { v: birr(now.v), n: now.rep, m: now.owed }) };
       return C.columns({
         title: t('chgCollect'), sub: t('chgCollectSub'), status: status, points: pts,
-        ref: { v: 3000000, label: t('chgFloor'), good: 'above' },
+        ref: { v: 4000000, label: t('chgFloor'), good: 'above' },
         fmt: function (v) { return birr(v) + ' ' + t('unBirr'); }, tick: function (v) { return short(v); },
         lab: function (v) { return short(v); },
         words: { notRep: t('chgNotRep'), notYet: t('chgNotYet'), none: t('chgNoneDays') },

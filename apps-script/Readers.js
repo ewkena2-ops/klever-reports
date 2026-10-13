@@ -300,8 +300,8 @@ function riskFacts_(P, base, kind, ctx, done) {
       over === null ? 'Getachew’s weekly credit not reported' : fmt_(over) + ' Birr past its date', 'Getachew, Selam');
   /* sales */
   var col = o.sales ? o.sales.collected : null;
-  var share = col === null || col === undefined ? null : col / 3000000;
-  add('sales', 'Sales', 'Collections fall short of the 3,000,000 a week', 4, share === null ? null : share < 0.5 ? 5 : share < 0.8 ? 4 : share < 1 ? 3 : 1,
+  var share = col === null || col === undefined ? null : col / 4000000;
+  add('sales', 'Sales', 'Collections fall short of the 4,000,000 a week', 4, share === null ? null : share < 0.5 ? 5 : share < 0.8 ? 4 : share < 1 ? 3 : 1,
       col == null ? 'collections not reported' : fmt_(col) + ' Birr collected this week', 'Ephrata');
   /* controls */
   var la = audit === null ? null : audit.high_findings >= 3 ? 5 : audit.high_findings >= 1 ? 4 : audit.medium_findings ? 3 : 1;

@@ -36,7 +36,7 @@ var ADVISE_RULES_ = [
   'Margin floor: 6,000 Birr per m²; a quotation below it needs approval.',
   'Factory target: 40 m² a working day, 240 a week (Monday to Saturday); waste at most 20%.',
   'Quotations are valid 7 days; a new lead gets its pre-measurement visit within 48 hours.',
-  'Ephrata’s commission starts at 3,000,000 Birr collected in a week; each salesperson’s target is 2,000,000.',
+  'Ephrata’s weekly collection floor is 4,000,000 Birr; her commission starts at 3,000,000 (her letter); each salesperson’s target is 2,000,000.',
   'Fines from the terms letters come off pay; as we read Ethiopian labour law, a deduction may not pass a third of the wage.'
 ];
 var ADVISE_WORDS_ = 350;

@@ -1065,7 +1065,8 @@ var AGENTS = [
       contracts_signed: a_(ephrata, 'contracts'), contract_value: a_(ephrata, 'contract_value'),
       collected_today: a_(ephrata, 'collected_today'),
       week_to_date: a_(ephrata, 'week_total'),
-      weekly_floor: 3000000,
+      weekly_floor: 4000000,
+      commission_starts_at: 3000000,
       /* the question is how many waited over 2 hours for an answer — late,
          not still waiting; "Ephrata must answer the pending message" was
          said of one answered that morning */
@@ -1075,7 +1076,7 @@ var AGENTS = [
       biruktayet_filed: !!got_(d.filed, 'biruktayet-sales-daily'),
       collected_last_7_days: series_(d, 'ephrata-daily', 'collected_today'),
       collected_since_monday_from_her_daily_reports: sinceMonday_(d, 'ephrata-daily', 'collected_today'),
-      left_to_reach_the_3m_floor: Math.max(0, 3000000 -
+      left_to_reach_the_4m_floor: Math.max(0, 4000000 -
         sinceMonday_(d, 'ephrata-daily', 'collected_today').total),
       /* Monday to Saturday; the first live run said "tomorrow cannot close
          the gap" on a Thursday, with Friday and Saturday both still to come */
@@ -1088,7 +1089,7 @@ var AGENTS = [
   },
   ask:'Compare what she expected to collect with what actually came in: an expected '+
       'payment that keeps sliding to next week is a customer who is not paying. '+
-      'Is the week going to reach 3,000,000 Birr, and if not say it now rather than on '+
+      'Is the week going to reach the 4,000,000 Birr floor, and if not say it now rather than on '+
       'Saturday. Look at where leads came from against which ones converted — if one source '+
       'produces volume and no contracts, that is money being spent for nothing. A WhatsApp '+
       'message that waited over 2 hours is a customer kept waiting; the figure counts messages '+

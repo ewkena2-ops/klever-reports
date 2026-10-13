@@ -1009,6 +1009,114 @@
     return wrap;
   }
 
+  /* ---------------- collections that do not match ----------------
+
+     The Chairman, 13 Oct 2026: when Ephrata's collections and the
+     salespeople's differ, she is asked at once and types what was really
+     collected (apps-script/Money.js). One card a day, above everything
+     else: each payment, both figures, a tap for either and a box for the
+     real one. It goes when every box is filled; what she sends becomes the
+     day's figure everywhere it is read. Her report itself stays as filed. */
+  var stopMf = null;
+  function moneyFixCard() {
+    if (stopMf) { try { stopMf(); } catch (e) {} stopMf = null; }
+    var wrap = el('div', 'inswrap mfwrap');
+    if (!window.FB || !window.FB.live() || AUTH.isChairman() || !window.FB.watchMyMoneyFix) return wrap;
+    var sentNow = {};
+    stopMf = window.FB.watchMyMoneyFix(function (docs, mine) {
+      wrap.innerHTML = '';
+      /* what she has already answered, by day */
+      var answered = {};
+      mine.forEach(function (f) { (f.items || []).forEach(function (x) { (answered[f.day] = answered[f.day] || {})[x.key] = 1; }); });
+      var open = docs.filter(function (d) {
+        if (d.status !== 'open') return false;
+        var a = answered[d.day] || sentNow[d.day] || {};
+        return (d.items || []).some(function (it) { return !a[it.key]; });
+      }).sort(function (a, b) { return a.day < b.day ? -1 : 1; });
+      if (!open.length) return;
+      wrap.appendChild(el('h2', 'eyebrow', t('mfTitle')));
+      open.forEach(function (d) { wrap.appendChild(moneyFixRow(d, function (keys) { sentNow[d.day] = keys; })); });
+    });
+    return wrap;
+  }
+  function moneyFixRow(d, onSent) {
+    var row = el('div', 'ins over mf');
+    row.appendChild(el('div', 'inst', tfill_('mfDay', { day: dayLabel(d.day) })));
+    row.appendChild(el('div', 'mfhow', t('mfHow')));
+    var items = (d.items || []).slice(), boxes = [];
+    var go = el('button', 'pushbtn insgo', t('mfSend'));
+    go.type = 'button';
+    function check() { go.disabled = boxes.some(function (b) { return b.value.trim() === '' || isNaN(num_(b.value)); }); }
+    items.forEach(function (it) {
+      var p = el('div', 'mfitem');
+      var who = it.who ? personName_(it.who) : '';
+      p.appendChild(el('div', 'mfcust', [it.cust, it.code].filter(Boolean).join(' · ') || t('mfNoName')));
+      var said = it.kind === 'missing' ? tfill_('mfMissing', { who: who, v: money(Math.round(it.sales)) })
+               : it.kind === 'amount' ? tfill_('mfAmount', { who: who, v: money(Math.round(it.sales)), mine: money(Math.round(it.eph)) })
+               : tfill_('mfExtra', { mine: money(Math.round(it.eph)) });
+      p.appendChild(el('div', 'mfsaid', said));
+      var line = el('div', 'mfline');
+      var box = el('input', 'mfbox');
+      box.type = 'text'; box.inputMode = 'decimal';
+      box.placeholder = t('mfType');
+      box.setAttribute('aria-label', t('mfType') + ' — ' + (it.cust || it.code || ''));
+      box.id = 'mf_' + d.day + '_' + boxes.length;
+      box.oninput = check;
+      /* one tap for either figure; 0 when it was not collected */
+      /* each figure says whose it is */
+      var mine = t('mfYou');
+      var picks = it.kind === 'missing' ? [[who, it.sales], ['', 0]] : it.kind === 'amount' ? [[who, it.sales], [mine, it.eph]] : [[mine, it.eph], ['', 0]];
+      picks.forEach(function (pk) {
+        var v = pk[1];
+        var b = el('button', 'mfpick', v ? (pk[0] ? pk[0] + ' ' : '') + money(Math.round(v)) : t('mfNone'));
+        b.type = 'button';
+        b.onclick = function () { box.value = v ? money(Math.round(v)) : '0'; check(); };
+        line.appendChild(b);
+      });
+      line.appendChild(box);
+      p.appendChild(line);
+      boxes.push(box);
+      row.appendChild(p);
+    });
+    check();
+    go.onclick = function () {
+      if (go.disabled) return;
+      go.disabled = true;
+      /* the day's list as it now stands: her rows, corrected; a payment she
+         had not listed, added; one she says was not collected, taken out */
+      var list = (d.baseList || []).map(function (r) { return r && typeof r === 'object' ? Object.assign({}, r) : null; });
+      var answers = items.map(function (it, i) { return { key: it.key, amount: num_(boxes[i].value) }; });
+      items.forEach(function (it, i) {
+        var v = answers[i].amount;
+        if (it.kind === 'missing') {
+          if (v > 0) list.push({ cust: it.cust || '', lc: it.code || '', amount: money(v), kind: it.payKind || '' });
+          return;
+        }
+        if (it.row >= 0 && list[it.row]) {
+          if (v > 0) list[it.row].amount = money(v); else list[it.row] = null;
+        }
+      });
+      list = list.filter(function (r) { return r; });
+      var total = list.reduce(function (a, r) { var x = num_(r.amount); return a + (isNaN(x) ? 0 : x); }, 0);
+      window.FB.fileMoneyFix({ day: d.day, items: answers, list: list, total: Math.round(total * 100) / 100 }).then(function () {
+        onSent(answers.reduce(function (o, a) { o[a.key] = 1; return o; }, {}));
+        row.innerHTML = '';
+        row.className = 'ins mf done';
+        row.appendChild(el('div', 'inst', tfill_('mfThanks', { day: dayLabel(d.day), v: money(Math.round(total)) })));
+      }, function () {
+        go.disabled = false;
+        toast(t('mfFailed'));
+      });
+    };
+    var box = el('div', 'insbox');
+    box.appendChild(go);
+    row.appendChild(box);
+    return row;
+  }
+  function num_(v) { var x = String(v == null ? '' : v).replace(/[^0-9.\-]/g, ''); return x === '' ? NaN : Number(x); }
+  function tfill_(k, o) { return t(k).replace(/\{(\w+)\}/g, function (m, n) { return o[n] != null ? o[n] : m; }); }
+  function personName_(id) { var p = PEOPLE.filter(function (x) { return x.id === id; })[0]; return p ? L(p).split(' ')[0] : id; }
+
   /* The readings of the agents this person owns (apps-script/Owners.js):
      the morning's and the week's, newest first, each folded to its title. */
   var stopRd = null;
@@ -1257,6 +1365,7 @@
 
     var st = standing(p.id);
     root.appendChild(deck(p, st));
+    root.appendChild(moneyFixCard());
     root.appendChild(instructionsCard());
     root.appendChild(readingsCard());
     if (!AUTH.isChairman()) root.appendChild(pushCard());

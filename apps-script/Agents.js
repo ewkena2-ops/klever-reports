@@ -2276,6 +2276,8 @@ function watch_(waitMs) {
     try { waPhotoWatch_(); } catch (e) { Logger.log('wa photos: %s', e.message); }
     /* and an instruction of his that has not reached its person's phone (Push.js) */
     notifyWaiting_();
+    /* a day whose collections she was asked to fix: closed when her fix is in (Money.js) */
+    try { moneyWatch_(); } catch (e) { Logger.log('money watch: %s', e.message); }
     /* Sunday: the weekly reports, made from the dailies, if the morning did
        not make them; again at 8 PM for a daily corrected since (Weekly.js) */
     try { weeklyIfDue_('watch:'); } catch (e) { Logger.log('weekly reports: %s', e.message); }
@@ -2353,6 +2355,8 @@ function runIfNew_() {
   }
   /* every lead and job they name, into his tables (Register.js) */
   try { registerUpdate_(fresh); } catch (e) { Logger.log('register: %s', e.message); }
+  /* Ephrata's collections against the salespeople's: a difference goes to her phone now (Money.js) */
+  try { moneyAfter_(fresh); } catch (e) { Logger.log('money: %s', e.message); }
   Logger.log('%s new report(s) since %s — reading today again.', fresh.length, from.toISOString());
   ran_('reading', function () {
     runAgents({ quiet: true });

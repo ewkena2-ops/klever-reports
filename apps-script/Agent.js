@@ -545,6 +545,8 @@ function fsQuery_(collection, where, orderBy) {
   JSON.parse(res.getContentText()).forEach(function (row) {
     if (row.document) out.push(fsDoc_(row.document));   /* an empty result carries one blank entry */
   });
+  /* Ephrata's collections as she fixed them, wherever her reports are read (Money.js) */
+  if (collection === 'reports' && typeof moneyPatch_ === 'function') moneyPatch_(out);
   return out;
 }
 

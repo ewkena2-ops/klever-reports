@@ -499,6 +499,20 @@ input.mustgap,textarea.mustgap,select.mustgap{
 .ins.over .insd{color:var(--coral)}
 .insbox{display:flex;flex-direction:column;gap:9px}
 .insbox .insgo{align-self:flex-start;background:linear-gradient(180deg,var(--teal-hi),var(--teal));color:var(--teal-ink);border:0}
+/* collections to fix (Ephrata's home): each payment, both figures, a tap for either, a box for the real one */
+.mfhow{font-size:13.5px;color:var(--ink-2);line-height:1.5;margin:6px 0 10px}
+.mfitem{border-top:1px solid var(--line);padding:10px 0 12px}
+.mfcust{font-weight:700;font-size:14.5px;color:var(--ink)}
+.mfsaid{font-size:13.5px;color:var(--ink-2);margin:2px 0 8px;line-height:1.45}
+.mfline{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.mfpick{min-height:40px;padding:0 12px;border-radius:999px;cursor:pointer;font:600 13px var(--sans);
+  background:var(--field);border:1px solid var(--line-2);color:var(--ink)}
+.mfpick:hover{border-color:var(--teal-line)}
+.mfpick:active{background:var(--teal-bg)}
+.mfbox{flex:1 1 140px;min-width:0;min-height:42px;font-family:var(--mono)}
+.insgo:disabled{opacity:.45;cursor:default}
+.ins.mf.done::before{background:var(--teal-hi)}
+.ins.mf.done .inst{font-family:var(--sans);font-size:15px;color:var(--teal-hi)}
 
 /* ---------- the older home parts, still used on the Chairman's roster ---------- */
 .next{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r-l);padding:18px;margin:0 0 20px}

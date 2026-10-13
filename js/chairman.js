@@ -1102,6 +1102,9 @@ import {
     var C = window.KleverCharts;
     if (!C) { box.innerHTML = ''; return; }
     var ledgers = null, reps = null, whoSig = '';
+    /* Ephrata's fixes of her collections, and the days she was asked to fix
+       (apps-script/Money.js): her fixed day is the one the charts show */
+    var fixes = {}, mfix = {};
 
     onSnapshot(query(collection(db, 'ledger'), where('day', '>=', addDays(DAY, -20)), orderBy('day', 'asc')),
       function (qs) {
@@ -1109,6 +1112,24 @@ import {
         qs.forEach(function (d) { ledgers.push(d.data()); });
         draw();
       }, failInto(box));
+    onSnapshot(query(collection(db, 'fixes'), where('person', '==', 'ephrata')),
+      function (qs) {
+        var by = {};
+        qs.forEach(function (d) {
+          var x = d.data({ serverTimestamps: 'estimate' });
+          var at = x.at && x.at.toDate ? x.at.toDate() : new Date();
+          if (x.day && (!by[x.day] || at > by[x.day].at)) by[x.day] = { at: at, list: x.list || [], total: x.total };
+        });
+        fixes = by;
+        draw();
+      }, function () {});
+    onSnapshot(collection(db, 'moneyfix'),
+      function (qs) {
+        var by = {};
+        qs.forEach(function (d) { var x = d.data(); if (x.day) by[x.day] = x; });
+        mfix = by;
+        draw();
+      }, function () {});
     onSnapshot(query(collection(db, 'reports'), where('person', 'in', CHART_PEOPLE),
                      where('at', '>=', dayStart(addDays(DAY, -41)))),
       function (qs) {
@@ -1231,10 +1252,21 @@ import {
 
     /* the last filing of a report on each Addis day: {day: values} */
     function byDay(reportId) {
-      var out = {};
+      var out = {}, whenOf = {};
       reps.filter(function (f) { return f.report === reportId; })
           .sort(function (a, b) { return a.when - b.when; })
-          .forEach(function (f) { out[addisYmd(f.when)] = f.values || {}; });
+          .forEach(function (f) { var d = addisYmd(f.when); out[d] = f.values || {}; whenOf[d] = f.when; });
+      /* her day as she fixed it, unless she filed again after the fix */
+      if (reportId === 'ephrata-daily') Object.keys(fixes).forEach(function (d) {
+        var fx = fixes[d];
+        if (!out[d] || !(whenOf[d] < fx.at)) return;
+        var v = {};
+        Object.keys(out[d]).forEach(function (k) { v[k] = out[d][k]; });
+        v.collected_list = fx.list;
+        v.collected_today = String(fx.total);
+        v.collected_fixed = 'yes';
+        out[d] = v;
+      });
       return out;
     }
 
@@ -1367,6 +1399,12 @@ import {
               icon: !ref ? '·' : !short_ ? '✓' : partial ? '!' : '✕', text: tfill(nowKey, { list: list }) };
         var caption = any && eSum != null && Math.round(eSum) !== Math.round(sSum)
           ? tfill('chgSalesEph', { e: birr(Math.round(eSum)), s: birr(Math.round(sSum)) }) : '';
+        /* and what was done about it (apps-script/Money.js) */
+        var asked = days.some(function (d) { return mfix[d] && mfix[d].status === 'open'; });
+        var fixedDays = days.filter(function (d) { return fixes[d]; });
+        if (asked) caption = (caption ? caption + ' ' : '') + t('chgSalesAsked');
+        if (fixedDays.length) caption = (caption ? caption + ' ' : '') +
+          tfill('chgSalesFixed', { days: fixedDays.map(dayShort).join(', ') });
         return { label: label, rows: rows, ref: ref, status: status, caption: caption };
       }
       var ref = { v: 2000000, label: t('chgSalesTarget'), good: 'above' };

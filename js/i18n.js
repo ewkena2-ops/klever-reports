@@ -665,6 +665,18 @@ const T = {
     sendAnyway:'Send with {n} empty?',
     sendPartialWarn:'{n} questions are still empty (marked in red). Tap Send again to send it as it is.',
     mustFill:'This report cannot be sent until you fill in: {list}.',
+    mfTitle:'Collections to fix',
+    mfDay:'Your collections for {day} do not match the salespeople’s reports.',
+    mfHow:'For each payment, tap the right figure or type what was really collected (0 if nothing came). What you send replaces that day’s figure everywhere it is read.',
+    mfSend:'Send the fix',
+    mfNoName:'A payment with no name',
+    mfMissing:'{who} lists {v} Birr — you did not list it.',
+    mfAmount:'{who} says {v} Birr — you said {mine}.',
+    mfExtra:'You listed {mine} Birr — no salesperson listed it.',
+    mfType:'Birr really collected',
+    mfNone:'0 — not collected', mfYou:'You',
+    mfThanks:'Sent. {day} now reads {v} Birr collected.',
+    mfFailed:'Not sent — check the connection and try again.',
     notAnswered:'Not answered',
     notAnsweredCount:'{n} not answered',
     oddCount:'{n} to check — cannot be right as written',
@@ -725,7 +737,8 @@ const T = {
     chgSalesPay1:'1 payment', chgSalesPays:'{n} payments', chgSalesMore:'+{n} more',
     chgSalesContracts:'Contracts signed: {n}, {v} Birr',
     chgSalesEph:'Ephrata’s report for the same days says {e} Birr collected; the salespeople’s together say {s} Birr.',
-    chgSalesCol:'Collected'
+    chgSalesCol:'Collected',
+    chgSalesAsked:'Ephrata has been asked to fix it.', chgSalesFixed:'Ephrata has fixed her figures for: {days}.'
   },
   am:{
     siteTitle:'የክሌቨር ሪፖርቶች',
@@ -1383,6 +1396,18 @@ const T = {
     sendAnyway:'{n} ባዶ ሆነው ይላክ?',
     sendPartialWarn:'{n} ጥያቄዎች ገና ባዶ ናቸው (በቀይ ተመልክተዋል)። እንዳለ ለመላክ «ላክ»ን እንደገና ይንኩ።',
     mustFill:'ሪፖርቱ አይላክም። መጀመሪያ ይሙሉ፦ {list}።',
+    mfTitle:'የሚስተካከሉ ክፍያዎች',
+    mfDay:'የ{day} የተሰበሰበ ገንዘብዎ ከሽያጭ ባለሙያዎቹ ሪፖርት ጋር አይጣጣምም።',
+    mfHow:'ለእያንዳንዱ ክፍያ ትክክለኛውን ቁጥር ይንኩ፣ ወይም በእውነት የተሰበሰበውን ይጻፉ (ምንም ካልገባ 0)። የሚልኩት ቁጥር የዚያን ቀን ቁጥር በሁሉም ቦታ ይተካል።',
+    mfSend:'ማስተካከያውን ላክ',
+    mfNoName:'ስም የሌለው ክፍያ',
+    mfMissing:'{who} {v} ብር ዘርዝሯል — እርስዎ አልዘረዘሩትም።',
+    mfAmount:'{who} {v} ብር ይላል — እርስዎ {mine} ብለዋል።',
+    mfExtra:'እርስዎ {mine} ብር ዘርዝረዋል — የትኛውም የሽያጭ ባለሙያ አልዘረዘረውም።',
+    mfType:'በእውነት የተሰበሰበ ብር',
+    mfNone:'0 — አልተሰበሰበም', mfYou:'እርስዎ',
+    mfThanks:'ተልኳል። የ{day} የተሰበሰበ ገንዘብ አሁን {v} ብር ነው።',
+    mfFailed:'አልተላከም — ኢንተርኔቱን አይተው እንደገና ይሞክሩ።',
     notAnswered:'ያልተመለሱ',
     notAnsweredCount:'{n} ያልተመለሱ',
     oddCount:'{n} የሚፈተሹ — እንደተጻፉት ትክክል ሊሆኑ አይችሉም',
@@ -1443,6 +1468,7 @@ const T = {
     chgSalesPay1:'1 ክፍያ', chgSalesPays:'{n} ክፍያዎች', chgSalesMore:'+{n} ተጨማሪ',
     chgSalesContracts:'የተፈረሙ ውሎች፦ {n}፣ {v} ብር',
     chgSalesEph:'የኤፍራታ ሪፖርት ለእነዚሁ ቀናት {e} ብር ተሰብስቧል ይላል፤ የሽያጭ ባለሙያዎቹ ሪፖርቶች በአንድ ላይ {s} ብር ይላሉ።',
-    chgSalesCol:'የተሰበሰበ'
+    chgSalesCol:'የተሰበሰበ',
+    chgSalesAsked:'ኤፍራታ እንድታስተካክል ተጠይቃለች።', chgSalesFixed:'ኤፍራታ ቁጥሮቿን አስተካክላለች፦ {days}።'
   }
 };

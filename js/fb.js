@@ -262,6 +262,38 @@
       });
     },
 
+    /* The days my collections did not match the salespeople's
+       (apps-script/Money.js), and the fixes I have sent for them:
+       cb(moneyfix docs, my fixes). */
+    watchMyMoneyFix: function (cb) {
+      return later(function () {
+      if (!user) return null;
+      var docs = null, mine = null;
+      function both() { if (docs && mine) cb(docs, mine); }
+      var a = F.onSnapshot(F.query(F.collection(db, 'moneyfix'), F.where('to', '==', idOf(user))), function (snap) {
+        docs = [];
+        snap.forEach(function (d) { var x = d.data(); x.id = d.id; docs.push(x); });
+        both();
+      }, function () { docs = []; both(); });
+      var b = F.onSnapshot(F.query(F.collection(db, 'fixes'), F.where('person', '==', idOf(user))), function (snap) {
+        mine = [];
+        snap.forEach(function (d) { var x = d.data({ serverTimestamps: 'estimate' }); x.id = d.id; mine.push(x); });
+        both();
+      }, function () { mine = []; both(); });
+      return function () { a(); b(); };
+      });
+    },
+    /* My answer for one day: what was really collected, payment by
+       payment, and the day's list as it now stands. Filed, never changed. */
+    fileMoneyFix: function (fix) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      return F.addDoc(F.collection(db, 'fixes'), {
+        day: fix.day, person: idOf(user), by: idOf(user),
+        items: fix.items, list: fix.list, total: fix.total,
+        at: F.serverTimestamp()
+      });
+    },
+
     /* My agents' readings (apps-script/Owners.js): the latest of each. */
     watchMyReadings: function (cb) {
       return later(function () {

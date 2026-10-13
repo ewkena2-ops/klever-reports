@@ -15,7 +15,6 @@ const T = {
 
     fillItIn:'Fill it in',
     designPreview:'Design sketches →',
-    printBtn:'PDF',
     from:'From',
     footSaved:'Klever Küche · every report you send is filed, and delivered to the people it is addressed to.',
     signInSub:'Enter your password. The site knows who you are.',
@@ -754,7 +753,6 @@ const T = {
 
     fillItIn:'ይሙሉት',
     designPreview:'የንድፍ ሙከራዎች →',
-    printBtn:'PDF',
     from:'ላኪ',
     footSaved:'ክሌቨር ኩሽ · የላኩት እያንዳንዱ ሪፖርት ተመዝግቦ ለሚመለከታቸው ሰዎች ይደርሳል።',
     signInSub:'የይለፍ ቃልዎን ያስገቡ። ድረ-ገጹ ማን እንደሆኑ ያውቃል።',

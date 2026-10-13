@@ -2700,10 +2700,8 @@
     });
     var bar = el('div', 'bar'), inner = el('div', 'bar-in');
     var count = el('button', 'count'); count.id = 'count'; count.type = 'button';
-    var pdf = el('button', 'btn ghost', t('printBtn'));
-    pdf.type = 'button';
-    pdf.onclick = function () { window.print(); };
-    /* Ctrl+P, or a phone's own Print menu, must give the same document */
+    /* No PDF button (13 Oct): nobody used it. Ctrl+P, or a phone's own
+       Print menu, still gives the same document */
     window.addEventListener('beforeprint', buildPrintDoc);
     var send = el('button', 'btn', t('send'));
     send.type = 'button'; send.id = 'send';
@@ -2860,7 +2858,7 @@
       /* delivery goes at once too: offline, it waits with the filing */
       deliver();
     };
-    inner.appendChild(count); inner.appendChild(pdf);
+    inner.appendChild(count);
     inner.appendChild(retry);
     inner.appendChild(send);
     bar.appendChild(inner);

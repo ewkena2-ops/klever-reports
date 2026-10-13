@@ -1469,29 +1469,12 @@ function dailyRun_() {
       catch (e) { Logger.log('pay refresh: %s', e.message); warn.push('Pay tab: ' + e.message); }
     }
   }
-  /* supplier credit two days from its pay-by date: a reminder to Selam and
-     Getachew (Credit.js) — every morning, Sunday too, before any return */
-  try { creditReminders_(todayAddis_()); }
-  catch (e) { Logger.log('credit reminders: %s', e.message); warn.push('Credit reminders: ' + e.message); }
-  /* the Sheet tab the legal check reads wages and signing dates from
-     (Legal.js): made, and new staff added, before a Sunday needs it */
-  try { legalStaffTab_(loadSchedule_()); }
-  catch (e) { Logger.log('legal tab: %s', e.message); warn.push('Staff wages tab: ' + e.message); }
-  /* and the tabs the specialists read: budgets, the legal & compliance
-     register, the maintenance plan (Registers.js) */
-  try { registersEnsure_(); routePlacesEnsure_(); }
-  catch (e) { Logger.log('register tabs: %s', e.message); warn.push('Register tabs: ' + e.message); }
-  /* a permit, licence or filing coming due — to its owner, at 14, 7 and 1 days (Owners.js) */
-  try { permitAlerts_(todayAddis_(), loadSchedule_()); }
-  catch (e) { Logger.log('permit alerts: %s', e.message); warn.push('Permit alerts: ' + e.message); }
-  /* the Klever Kitchen bot's leads and jobs, read fresh (Botfeed.js) — a
-     failure there leaves yesterday's copy standing */
-  try { botFeedRefresh_(); PropertiesService.getScriptProperties().setProperty('BOTFEED_DAY', todayAddis_()); }
-  catch (e) { Logger.log('bot feed: %s', e.message); warn.push('Bot leads: ' + e.message); }
-  /* his leads and jobs: built again (a lead goes quiet by the calendar
-     alone) and the morning's note written (Register.js) */
-  try { registerBuild_(todayAddis_(), true); }
-  catch (e) { Logger.log('register: %s', e.message); warn.push('Leads & jobs: ' + e.message); }
+  /* The credit reminders, the Sheet tabs, the permit alerts, the bot's
+     leads and the leads & jobs register used to be done here, before the
+     close. 13 Oct 2026: with them, Monday's run took 322 s with nothing to
+     close, Google stops a run at six minutes, and Tuesday's was stopped
+     before it closed Monday — no ledger, no reading, no email, no error. They are the watch's now, after 7 AM, one a look
+     (morningChores_). This run closes the day and reads it, nothing else. */
   /* Yesterday was Sunday: the week. The watch closed it at 9 PM and sent
      its summary if all went well; whatever it did not do is done now. The
      week's summary is its reading — the agents read working days. */
@@ -1521,6 +1504,12 @@ function dailyRun_() {
              note: 'before counting starts (' + start + ') — not closed' +
                    (caught.length ? '; also closed ' + caught.join(', ') + ', which had been missed' : '') };
   }
+  return closeAndRead_(day, warn, caught, '');
+}
+
+/* Close a working day, have the agents read it, send the morning email —
+   from the morning run, or from the watch when that run did not finish. */
+function closeAndRead_(day, warn, caught, by) {
   var c = closeDay_(day);
   /* the month's bonuses so far, for the Bonuses section of his page */
   try { bonusStanding_(day); }
@@ -1530,10 +1519,100 @@ function dailyRun_() {
                note: (c.due.length ? c.due.length + ' due, ' + c.filed.length + ' filed, ' +
                                      fmt_(owed) + ' Birr in report fines'
                                    : 'nothing was due') +
-                     (caught.length ? '; also closed ' + caught.join(', ') + ', which had been missed' : '') };
+                     (caught.length ? '; also closed ' + caught.join(', ') + ', which had been missed' : '') +
+                     by };
   if (!c.due.length) return done;
   runOn_(c, false);
   return done;
+}
+
+/* The watch's net under the morning run. Google stops a run at six minutes
+   and a stopped run leaves nothing: no ledger, no health line, no failure
+   email (13 Oct 2026 — Monday was never closed). From 7:30, when the morning
+   run is long over and has left no line on /health/daily, a working
+   yesterday that was owed reports and has no ledger is closed here, read
+   and mailed as the morning would have. One look
+   an hour: a failed close mails him (ran_) and pays the model, so not every
+   ten minutes. */
+var MISSED_FROM_ = '07:30';
+function closeMissed_() {
+  if (Utilities.formatDate(new Date(), tz_(), 'HH:mm') < MISSED_FROM_) return false;
+  var today = todayAddis_();
+  var day = addDays_(today, -1);
+  /* a Sunday is the week's, closed at 9 PM; the morning after only mends it,
+     and a later morning's catch-up does that if this one could not */
+  if (dow_(day) === 0) return false;
+  var start = prop_('LEDGER_START', '');
+  if (start && day < start) return false;
+  /* looked at once an hour, before anything is read, so a Firestore or
+     forms.js failure here cannot hold up every look */
+  var props = PropertiesService.getScriptProperties();
+  var hour = today + 'T' + Utilities.formatDate(new Date(), tz_(), 'HH');
+  if (props.getProperty('MISSED_TRY') === hour) return false;
+  props.setProperty('MISSED_TRY', hour);
+  if (fsGet_('ledger/' + day)) return false;
+  /* the morning run, finished, writes its line on /health/daily — with an
+     error, it has mailed him and tomorrow's catch-up closes the day. Only a
+     run that left no line since 6 AM (stopped, or never started) is the
+     net's; and no line at all is a new system, not a stopped run. */
+  var h = fsGet_('health/daily');
+  if (!h || (h.at && h.at.getTime() >= dayStart_(today).getTime() + 6 * 3600 * 1000)) return false;
+  if (!owedOn_(loadSchedule_(), day).length) return false;
+  ran_('daily', function () {
+    var warn = [], caught = [];
+    try { caught = catchUp_(day); }
+    catch (e) { warn.push('Catching up missed days: ' + e.message); }
+    return closeAndRead_(day, warn, caught, ' — closed by the ten-minute watch at ' +
+                         Utilities.formatDate(new Date(), tz_(), 'HH:mm') + '; the morning run did not finish');
+  });
+  return true;
+}
+
+/* What the morning run did before the close until 13 Oct 2026, done by the
+   watch from 7 AM instead: each chore once a day, one chore a look, in a
+   look that read nothing, so no look runs long. A chore that fails is tried
+   again the next hour. True when a chore ran. */
+var CHORES_FROM_HOUR_ = 7;
+var MORNING_CHORES_ = [
+  ['extras', function (today) {
+    var schedule = loadSchedule_();
+    /* supplier credit two days from its pay-by date: a reminder to Selam
+       and Getachew (Credit.js) — every morning, Sunday too */
+    try { creditReminders_(today); } catch (e) { Logger.log('credit reminders: %s', e.message); }
+    /* the Sheet tab the legal check reads wages and signing dates from
+       (Legal.js): made, and new staff added, before a Sunday needs it */
+    try { legalStaffTab_(schedule); } catch (e) { Logger.log('legal tab: %s', e.message); }
+    /* and the tabs the specialists read: budgets, the legal & compliance
+       register, the maintenance plan (Registers.js) */
+    try { registersEnsure_(); routePlacesEnsure_(); } catch (e) { Logger.log('register tabs: %s', e.message); }
+    /* a permit, licence or filing coming due — to its owner, at 14, 7 and 1 days (Owners.js) */
+    try { permitAlerts_(today, schedule); } catch (e) { Logger.log('permit alerts: %s', e.message); }
+  }],
+  ['register', function (today) {
+    /* the Klever Kitchen bot's leads and jobs, read fresh (Botfeed.js) — a
+       failure there leaves the last copy standing */
+    try { botFeedRefresh_(); PropertiesService.getScriptProperties().setProperty('BOTFEED_DAY', today); }
+    catch (e) { Logger.log('bot feed: %s', e.message); }
+    /* his leads and jobs: built again (a lead goes quiet by the calendar
+       alone) and the morning's note written (Register.js) */
+    registerBuild_(today, true);
+  }]
+];
+function morningChores_() {
+  if (Number(Utilities.formatDate(new Date(), tz_(), 'HH')) < CHORES_FROM_HOUR_) return false;
+  var today = todayAddis_();
+  var props = PropertiesService.getScriptProperties();
+  var hour = today + 'T' + Utilities.formatDate(new Date(), tz_(), 'HH');
+  for (var i = 0; i < MORNING_CHORES_.length; i++) {
+    var name = MORNING_CHORES_[i][0];
+    if (props.getProperty('CHORE_' + name) === today) continue;
+    if (props.getProperty('CHORE_TRY_' + name) === hour) continue;
+    props.setProperty('CHORE_TRY_' + name, hour);
+    MORNING_CHORES_[i][1](today);
+    props.setProperty('CHORE_' + name, today);
+    return true;
+  }
+  return false;
 }
 
 /* The days in the week before `day` that were owed a report, could be
@@ -2184,9 +2263,13 @@ function watch_(waitMs) {
     answerWaiting_();
     /* and an order of his, for the AI to find who does it (Orders.js) */
     planWaiting_();
+    /* yesterday, if the morning run did not close it — before the team's
+       list, which reads it; a look that closed a day does nothing more */
+    try { if (closeMissed_()) return; } catch (e) { Logger.log('close missed: %s', e.message); return; }
     /* a working morning: the AI's list of what each person should do
        today, drafted for him to check and send (Team.js) */
-    try { teamPlanIfDue_(); } catch (e) { Logger.log('team plan: %s', e.message); }
+    var planned = false;
+    try { planned = teamPlanIfDue_(); } catch (e) { Logger.log('team plan: %s', e.message); }
     /* a finished piece photographed in the QC room, checked by the AI (Vision.js) */
     try { visionWatch_(); } catch (e) { Logger.log('vision: %s', e.message); }
     /* the site photos sent from reports, to his WhatsApp (Wa.js) */
@@ -2219,7 +2302,12 @@ function watch_(waitMs) {
     if (res.getResponseCode() !== 404) {            /* 404: nobody asked */
       Logger.log('control/run unreadable: HTTP %s', res.getResponseCode());
     }
-    runIfNew_();
+    var read = runIfNew_();
+    /* the morning's slower chores, one a look, in a look that read nothing
+       and drafted no list — a new report is never kept waiting for them */
+    if (!read && !planned) {
+      try { morningChores_(); } catch (e) { Logger.log('morning chores: %s', e.message); }
+    }
   } finally {
     if (lock) lock.releaseLock();
   }
@@ -2250,8 +2338,8 @@ function runIfNew_() {
   if (seen && new Date(seen).getTime() > from.getTime()) from = new Date(seen);
   var fresh;
   try { fresh = fsQuery_('reports', [['at', 'GREATER_THAN', from]], 'at'); }
-  catch (e) { Logger.log('new-report check failed: %s', e.message); return; }
-  if (!fresh.length) return;
+  catch (e) { Logger.log('new-report check failed: %s', e.message); return false; }
+  if (!fresh.length) return false;
   markSeen_(fresh[fresh.length - 1].at);
   /* the alerts that cannot wait for the morning: a lead not called, a
      delivery rejected, a new complaint (Owners.js) */
@@ -2270,4 +2358,5 @@ function runIfNew_() {
     runAgents({ quiet: true });
     return { note: fresh.length + ' new report' + (fresh.length === 1 ? '' : 's') };
   });
+  return true;
 }

@@ -131,7 +131,24 @@
         flags:   row.flags || [],
         text:    row.text || '',
         lang:    row.lang || 'en',
+        /* who it is for, besides the Chairman: they read it on their home
+           page (reports are not posted in chat since 13 Oct 2026) */
+        to:      (row.to || []).slice(0, 6),
         at:      F.serverTimestamp()
+      });
+    },
+
+    /* The reports sent to me, newest first: the last 40, kept current. */
+    watchReportsToMe: function (cb) {
+      return later(function () {
+      if (!user) return null;
+      var q = F.query(F.collection(db, 'reports'), F.where('to', 'array-contains', idOf(user)),
+                      F.orderBy('at', 'desc'), F.limit(40));
+      return F.onSnapshot(q, function (snap) {
+        var out = [];
+        snap.forEach(function (d) { var x = d.data({ serverTimestamps: 'estimate' }); x.id = d.id; out.push(x); });
+        cb(out);
+      }, function () { cb([]); });
       });
     },
 
@@ -177,25 +194,6 @@
           });
           return out;
         });
-      });
-    },
-
-    /* Put the filed report in front of the people it is addressed to.
-
-       A report that is filed and not read is a report nobody acted on. Every
-       one of them names its recipients, and every one of those people has a
-       channel, so the sending is a real delivery rather than a suggestion that
-       the person go and find a WhatsApp group.
-
-       It posts as the person who filed it, which the rules require anyway, so
-       the message carries their name and cannot be written by anyone else. */
-    deliverReport: function (channelId, text) {
-      if (!db || !user) return Promise.reject(new Error('not signed in'));
-      return F.addDoc(F.collection(db, 'channels', channelId, 'messages'), {
-        who: idOf(user),
-        text: text,
-        lang: 'en',
-        at: F.serverTimestamp()
       });
     },
 

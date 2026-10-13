@@ -576,6 +576,12 @@
     return out;
   }
 
+  /* Who a filed report is for, besides the Chairman (who sees every report
+     on his page) and the sender: they read it on their home page. */
+  function reportTo(r) {
+    return recipientsOf(r).filter(function (id) { return id !== 'chairman' && id !== r.person; });
+  }
+
   /* A channel both the sender and the recipients can open.
 
      Sending it to #leads because that is where the recipients are only works
@@ -1119,6 +1125,39 @@
 
   /* The readings of the agents this person owns (apps-script/Owners.js):
      the morning's and the week's, newest first, each folded to its title. */
+  /* The reports sent to me (13 Oct 2026: reports are not posted in chat).
+     The people a report is addressed to read it here; what came since their
+     last visit is marked. The Chairman reads every report on his own page. */
+  var stopTo = null;
+  function reportsToMeCard() {
+    if (stopTo) { try { stopTo(); } catch (e) {} stopTo = null; }
+    var wrap = el('div', 'rdwrap tome');
+    if (!window.FB || !window.FB.live() || AUTH.isChairman() || !window.FB.watchReportsToMe) return wrap;
+    var key = 'klever.toSeen.' + AUTH.who(), seen = 0;
+    try { seen = Number(localStorage.getItem(key)) || 0; } catch (e) { seen = 0; }
+    stopTo = window.FB.watchReportsToMe(function (all) {
+      wrap.innerHTML = '';
+      if (!all.length) return;
+      wrap.appendChild(el('h2', 'eyebrow', t('toMeTitle')));
+      var newest = seen;
+      all.slice(0, 20).forEach(function (r) {
+        var when = r.at && r.at.toDate ? r.at.toDate() : null, ms = when ? when.getTime() : 0;
+        if (ms > newest) newest = ms;
+        var rep = reportById(r.report), who = personById(r.person);
+        var card = el('details', 'rdcard' + (seen && ms > seen ? ' isnew' : ''));
+        var s = el('summary', 'rdcard-s');
+        s.appendChild(el('span', 'rdcard-t', (who ? L(who) : r.person) + ' · ' + (rep ? L(rep) : r.report)));
+        s.appendChild(el('span', 'rdcard-d', (when ? dayLabel(ymdOf(addis(ms))) + ' · ' + clockOf(when) : '') +
+                                             (r.late ? ' · ' + t('toMeLate') : '')));
+        card.appendChild(s);
+        card.appendChild(el('div', 'rdcard-x', r.text || ''));
+        wrap.appendChild(card);
+      });
+      try { if (newest > seen) localStorage.setItem(key, String(newest)); } catch (e) {}
+    });
+    return wrap;
+  }
+
   var stopRd = null;
   function readingsCard() {
     if (stopRd) { try { stopRd(); } catch (e) {} stopRd = null; }
@@ -1367,6 +1406,7 @@
     root.appendChild(deck(p, st));
     root.appendChild(moneyFixCard());
     root.appendChild(instructionsCard());
+    root.appendChild(reportsToMeCard());
     root.appendChild(readingsCard());
     if (!AUTH.isChairman()) root.appendChild(pushCard());
 
@@ -2705,33 +2745,10 @@
     window.addEventListener('beforeprint', buildPrintDoc);
     var send = el('button', 'btn', t('send'));
     send.type = 'button'; send.id = 'send';
-    var retry = el('button', 'btn ghost retry', t('retryDelivery'));
-    retry.type = 'button';
-    retry.hidden = true;
-
-    /* Deliver it into chat. Filing is the record; this puts it in front of
-       the people who have to act on it. Only this part is ever retried — a
-       second press used to file the report and its Sheet row again. A long
-       report goes in parts, because a chat message holds 4,000 characters. */
-    var toDeliver = null;
-    function deliver() {
-      if (!toDeliver) return;
-      var job = toDeliver, names = lang === 'am' ? report.toAm : report.toEn;
-      retry.hidden = true;
-      if (!job.chan || !window.FB || !window.FB.live()) { retry.hidden = false; toast(t('sendNotDelivered')); return; }
-      /* cut and numbered once: a retry sends the parts still owed as they
-         were, rather than cutting the numbered text again ("(1/2) (1/2)") */
-      var parts = job.parts || (job.parts = splitForChat(job.text, 3900)), i = job.sent || 0;
-      (function next() {
-        if (i >= parts.length) { toDeliver = null; toast(t('sentTo').replace('{who}', names)); return; }
-        window.FB.deliverReport(job.chan, parts[i]).then(function () { i++; job.sent = i; next(); })['catch'](function (e) {
-          /* keep the parts not yet delivered, and offer to try those again */
-          retry.hidden = false;
-          toast((e && e.code === 'permission-denied') ? t('sendRefused') : t('sendNotDelivered'));
-        });
-      })();
-    }
-    retry.onclick = deliver;
+    /* Reports are not posted in chat (the Chairman, 13 Oct 2026: "it
+       shouldn't be on chat"). The filing carries who it is for (`to`), and
+       they read it under "Reports sent to you" on their own home page. */
+    var names = lang === 'am' ? report.toAm : report.toEn;
 
     send.onclick = function () {
       if (sending) return;
@@ -2800,12 +2817,9 @@
         lang: lang
       });
 
-      toDeliver = { chan: channelFor(report, AUTH.isChairman() ? 'chairman' : AUTH.who()), text: txt };
-
       if (!(window.FB && window.FB.live() && AUTH.who())) {
         sending = false;
         send.textContent = t('sentDone');
-        deliver();
         return;
       }
       /* With no signal the filing waits in this phone's store and goes when
@@ -2835,13 +2849,15 @@
         values: answers(),
         flags: reportFlags(),
         text: txt,
-        lang: lang
+        lang: lang,
+        to: reportTo(report)
       }).then(function () {
         clearTimeout(slow);
         sending = false;
         sentThisVisit = true;
         send.textContent = t('sentDone');
         replay(send, 'sentok');
+        if (reportTo(report).length && names) toast(t('sentTo').replace('{who}', names));
         clearDrafts(report.id);
         dropPending(pendKey);
         drawStatus();
@@ -2855,11 +2871,8 @@
         send.textContent = t('send');
         toast((e && e.code === 'permission-denied') ? t('sendRefused') : t('sendFailed'));
       });
-      /* delivery goes at once too: offline, it waits with the filing */
-      deliver();
     };
     inner.appendChild(count);
-    inner.appendChild(retry);
     inner.appendChild(send);
     bar.appendChild(inner);
     document.body.appendChild(bar);
@@ -2882,22 +2895,6 @@
      asked "send it anyway?" and is waiting for the second tap */
   var missingNow = 0, oddCount = 0, sendArmed = false, sendDisarm = null;
   var lastMissing = null;   /* the count last drawn, so a change can be shown (MOTION) */
-
-  /* a message longer than chat holds, cut at line ends into numbered parts */
-  function splitForChat(txt, max) {
-    if (txt.length <= max) return [txt];
-    var parts = [], cur = '';
-    txt.split('\n').forEach(function (line) {
-      /* what came before an overlong line goes first, or the answer arrives
-         as part 1 and the report's own header as part 2 */
-      if (line.length > max && cur) { parts.push(cur); cur = ''; }
-      while (line.length > max) { parts.push(line.slice(0, max)); line = line.slice(max); }
-      if ((cur + '\n' + line).length > max) { parts.push(cur); cur = line; }
-      else cur = cur ? cur + '\n' + line : line;
-    });
-    if (cur) parts.push(cur);
-    return parts.map(function (p, i) { return '(' + (i + 1) + '/' + parts.length + ')\n' + p; });
-  }
 
   /* ---------------- live state ---------------- */
 

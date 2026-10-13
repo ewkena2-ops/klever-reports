@@ -103,12 +103,17 @@ function buildWeeklies_(sunday, opts) {
   return out;
 }
 
-/* One weekly report into the three places a phone puts one */
+/* One weekly report into the two places a phone puts one: the filing (with who it is for) and the Sheet */
 function fileBuilt_(rep, b, person, lib) {
   var text = b.text.substring(0, 60000);
+  /* who it is for, besides the Chairman: they read it on their home page.
+     Reports are not posted in chat (the Chairman, 13 Oct 2026). */
+  var to = [];
+  try { to = lib.W.recipientsOf(rep).filter(function (id) { return id !== 'chairman' && id !== rep.person; }).slice(0, 6); }
+  catch (e) { to = []; }
   fsCreateNow_('reports', {
     person: rep.person, report: rep.id, by: 'auto', late: false, due: rep.dueEn || '',
-    values: b.values, flags: b.flags || [], text: text, lang: 'en'
+    values: b.values, flags: b.flags || [], text: text, lang: 'en', to: to
   }, 'at');
   /* the Sheet is the Chairman's window; a failure there must not stop the
      rest, and is said in the run's warnings */
@@ -120,12 +125,6 @@ function fileBuilt_(rep, b, person, lib) {
       values: b.values, text: text, doc: b.doc, flags: b.flags
     });
   } catch (e) { Logger.log('weekly sheet %s: %s', rep.id, e.message); }
-  try {
-    var room = lib.W.channelFor(rep, lib.CHANNELS);
-    if (room) lib.W.splitForChat(text, 3900).forEach(function (part) {
-      fsCreateNow_('channels/' + room + '/messages', { who: rep.person, text: part, via: 'weekly', lang: 'en' }, 'at');
-    });
-  } catch (e) { Logger.log('weekly chat %s: %s', rep.id, e.message); }
 }
 
 /* One email for the week's weekly reports, each with its PDF — rather than

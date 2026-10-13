@@ -187,24 +187,9 @@ service cloud.firestore {
                       && request.resource.data.text.size() <= 4000
                       && request.resource.data.at == request.time;
 
-        /* A weekly report made from its person's daily reports (the
-           Chairman, 11 Oct 2026; apps-script/Weekly.js): written by the
-           script's account in that person's name, marked via 'weekly', text
-           only, at the server's time, in a room the person is in — never
-           #all, never a private line someone else holds. */
-        allow create: if isLedger()
-                      && cid != 'all'
-                      && request.resource.data.via == 'weekly'
-                      && request.resource.data.who is string
-                      && known(request.resource.data.who)
-                      && request.resource.data.who != 'chairman'
-                      && request.resource.data.who != 'ledger'
-                      && request.resource.data.who in get(/databases/$(database)/documents/channels/$(cid)).data.members
-                      && request.resource.data.keys().hasOnly(['who','text','at','via','lang'])
-                      && request.resource.data.text is string
-                      && request.resource.data.text.size() > 0
-                      && request.resource.data.text.size() <= 4000
-                      && request.resource.data.at == request.time;
+        /* (Weekly reports made from the dailies were posted here by the
+           script until 13 Oct 2026; reports are not posted in chat now — the
+           filing carries who it is for, match /reports.) */
 
         /* append-only, for everyone, forever */
         allow update, delete: if false;
@@ -229,9 +214,12 @@ service cloud.firestore {
 
     match /reports/{rid} {
 
-      /* your own reports, and the Chairman sees everyone's */
+      /* your own reports, and the Chairman sees everyone's — and a report
+         sent to you (`to`, 13 Oct 2026: reports are not posted in chat; the
+         people one is addressed to read it on their home page) */
       allow get, list: if signedIn()
-                       && (isChairman() || isLedger() || resource.data.person == me());
+                       && (isChairman() || isLedger() || resource.data.person == me()
+                           || me() in resource.data.to);
 
       allow create: if signedIn()
                     /* the ledger reads; it does not report */
@@ -255,9 +243,11 @@ service cloud.firestore {
                        would count the colleague's report as in. */
                     && request.resource.data.report.matches('^' + request.resource.data.person + '-[a-z0-9-]+$')
                     && request.resource.data.keys().hasOnly(
-                         ['person','report','by','late','due','values','flags','text','lang','at'])
+                         ['person','report','by','late','due','values','flags','text','lang','at','to'])
                     && (!('text' in request.resource.data)
-                        || (request.resource.data.text is string && request.resource.data.text.size() <= 60000));
+                        || (request.resource.data.text is string && request.resource.data.text.size() <= 60000))
+                    && (!('to' in request.resource.data)
+                        || (request.resource.data.to is list && request.resource.data.to.size() <= 6));
 
       /* A weekly summary made from the person's own daily reports (the
          Chairman, 11 Oct 2026: nobody fills a weekly report any more;
@@ -274,9 +264,11 @@ service cloud.firestore {
                     && request.resource.data.report is string
                     && request.resource.data.report.matches('^' + request.resource.data.person + '-([a-z0-9-]+-)?weekly(-cx)?$')
                     && request.resource.data.keys().hasOnly(
-                         ['person','report','by','late','due','values','flags','text','lang','at'])
+                         ['person','report','by','late','due','values','flags','text','lang','at','to'])
                     && (!('text' in request.resource.data)
-                        || (request.resource.data.text is string && request.resource.data.text.size() <= 60000));
+                        || (request.resource.data.text is string && request.resource.data.text.size() <= 60000))
+                    && (!('to' in request.resource.data)
+                        || (request.resource.data.to is list && request.resource.data.to.size() <= 6));
 
       /* a filed report is filed. A correction is a new filing. */
       allow update, delete: if false;

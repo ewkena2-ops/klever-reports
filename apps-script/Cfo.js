@@ -183,7 +183,9 @@ function cfoFacts_(P, ops) {
     plan_note: plan ? null : 'Selam did not file a 4-week cash projection the week before',
     /* what Klever owes suppliers, from Getachew's weekly report — money the
        bank will have to find */
-    supplier_credit: supplierCredit_(P)
+    supplier_credit: supplierCredit_(P),
+    /* and the bank loans, payment by payment (Loans.js) */
+    bank_loans: (function () { try { return loansFacts_(addDays_(P.end, 1)); } catch (e) { return null; } })()
   };
 }
 
@@ -214,7 +216,9 @@ var CFO_ASK_ =
   'cash_instead would cost and save a month (say it is before tax and pension). Then money '+
   'in against money out, and how many weeks the bank stays above the 6,000,000 floor at this '+
   'rate. Then whether Selam’s own plan held. Then supplier credit: what Klever owes suppliers, '+
-  'what falls due next week and anything past its date, against the bank. Quote the figures as given.';
+  'what falls due next week and anything past its date, against the bank. Then the bank loans '+
+  '(bank_loans): the next payment, its Birr and day, and whether the bank covers it above the floor; '+
+  'a past payment not shown paid is for Selam to confirm with the bank. Quote the figures as given.';
 
 function cfoRead_(facts, P) {
   if (!facts.spending_reported) {

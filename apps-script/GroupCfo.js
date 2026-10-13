@@ -129,6 +129,9 @@ function groupCfo_(d) {
   var noDate = unpaid.filter(function (c) { return !c.due; }).map(cr);
   var sumLeft = function (xs) { return xs.reduce(function (a, c) { return a + (c.birr_left || 0); }, 0); };
   var geta = gcLatest_(by['getachew-daily'], d.day);
+  /* and the bank loans, payment by payment (Loans.js) */
+  var loans = null;
+  try { loans = loansFacts_(today); } catch (e) { Logger.log('group cfo loans: %s', e.message); }
 
   /* the same-day controls */
   var controls = [];
@@ -163,6 +166,8 @@ function groupCfo_(d) {
   if (bank !== null && bank < GC_FLOOR_) {
     add('betty', 'hold every non-essential payment until the bank is back above 6,000,000', 'bank ' + fmt_(bank) + ' on ' + dayLabel_(d.day) + ', ' + fmt_(GC_FLOOR_ - bank) + ' below the floor');
   }
+  loansActions_(loans, bank !== null ? bank : (last ? last.birr : null), GC_FLOOR_, fc && forecast ? { day: fc.day, going_out: forecast.going_out_7_days } : null)
+    .forEach(function (x) { add(x[0], x[1], x[2]); });
   controls.filter(function (c) { return c.who === 'betty'; }).forEach(function (c) { add('betty', 'put right: ' + c.what, 'from her report of ' + dayLabel_(d.day)); });
   owed.forEach(function (o) { add('betty', 'chase the final payment for ' + o.job + (o.customer ? ' (' + o.customer + ')' : '') + ' — ' + fmt_(o.owed_birr) + ' Birr', 'requested ' + (o.since || 'earlier') + (o.expected ? ', expected ' + o.expected : '')); });
   bigNoKidan.forEach(function (p) { add('kidan', 'review the ' + fmt_(p.birr) + ' Birr payment to ' + p.to, 'approved by Selam on ' + dayLabel_(d.day) + ' without you; over 50,000 needs you'); });
@@ -201,7 +206,8 @@ function groupCfo_(d) {
       supplier_credit_past_its_date: overdue, past_its_date_birr: sumLeft(overdue),
       supplier_credit_due_within_7_days: dueSoon, due_within_7_days_birr: sumLeft(dueSoon),
       supplier_credit_with_no_date: noDate,
-      getachew_reported: geta ? { as_of: dayLabel_(geta.day), owed_now: a_(geta.v, 'cr_owed'), past_its_date: a_(geta.v, 'cr_overdue') } : null
+      getachew_reported: geta ? { as_of: dayLabel_(geta.day), owed_now: a_(geta.v, 'cr_owed'), past_its_date: a_(geta.v, 'cr_overdue') } : null,
+      bank_loans: loans
     },
     same_day_controls_broken: controls.map(function (c) { return c.what; }),
     group: group,

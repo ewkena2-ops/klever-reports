@@ -31,6 +31,7 @@
 var ADVISE_RULES_ = [
   'Cash reserve floor: 6,000,000 Birr in the bank (Selam’s letter); falling below it is reported the same day.',
   'Any payment over 50,000 Birr needs Kidan’s approval (Group Finance).',
+  'Bank loans (bank_loans): each payment on the bank’s schedule is money going out against the 6,000,000 floor; a payment past its date that the bank paper does not show paid is for Selam to confirm, never assumed paid or missed.',
   'No production before the final payment is recorded (Mahelet’s and Selam’s letters).',
   'Margin floor: 6,000 Birr per m²; a quotation below it needs approval.',
   'Factory target: 40 m² a working day, 240 a week (Monday to Saturday); waste at most 20%.',
@@ -88,9 +89,9 @@ function advisePrompt_(q, ctx) {
   var r = ctx.the_reports;
   var slim = {};
   Object.keys(r).forEach(function (k) {
-    if (['cfo_last_week', 'operations_last_week', 'hr_last_week', 'legal_check_last_week', 'specialists_last_week'].indexOf(k) < 0) slim[k] = r[k];
+    if (['cfo_last_week', 'operations_last_week', 'hr_last_week', 'legal_check_last_week', 'specialists_last_week', 'bank_loans'].indexOf(k) < 0) slim[k] = r[k];
   });
-  var head = JSON.stringify({ today: ctx.today, house_rules: ctx.house_rules, this_mornings_readings: ctx.this_mornings_readings,
+  var head = JSON.stringify({ today: ctx.today, house_rules: ctx.house_rules, bank_loans: r.bank_loans, this_mornings_readings: ctx.this_mornings_readings,
                               open_decisions: ctx.open_decisions, already_decided: ctx.already_decided,
                               leads_and_jobs: ctx.leads_and_jobs, weekly_readers_last_week: ctx.weekly_readers_last_week });
   var data = head + '\n' + JSON.stringify(slim);

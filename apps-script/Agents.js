@@ -1001,7 +1001,14 @@ var AGENTS = [
          already breached is said on a day Selam did not file, rather than
          left to be spotted in a list of seven */
       last_bank_balance_reported: lastKnown_(d, [['betty-daily', 'bank_total'], ['betty-forecast', 'cf7_bank']], 6000000),
-      days_until_below_6m_at_this_rate: daysToFloor_(series_(d, 'betty-forecast', 'cf7_bank'), 6000000)
+      days_until_below_6m_at_this_rate: daysToFloor_(series_(d, 'betty-forecast', 'cf7_bank'), 6000000),
+      /* the bank loans (Loans.js): a payment due this week, and one past its date not shown paid */
+      bank_loans: (function () {
+        var lf = null;
+        try { lf = loansFacts_(d.provisional ? d.day : addDays_(d.day, 1)); } catch (e) { lf = null; }
+        return lf ? { due_within_7_days: lf.due_within_7_days, due_within_7_days_birr: lf.due_within_7_days_birr,
+                      past_their_date_not_shown_paid: lf.past_their_date_not_shown_paid } : null;
+      })()
     };
   },
   ask:'Is the money where it should be. The reserve floor is 6,000,000 Birr and falling '+
@@ -1010,7 +1017,10 @@ var AGENTS = [
       'month-end one. If days_until_below_6m_at_this_rate gives a number, say it — that is '+
       'the warning Selam’s letter fines for not giving. If it gives none, do not '+
       'estimate one. If last_bank_balance_reported is below the reserve, say so with its day '+
-      'even when today’s report is missing — the last thing known is that the floor was broken.' },
+      'even when today’s report is missing — the last thing known is that the floor was broken. '+
+      'If bank_loans has a payment due within 7 days, say it with its Birr and day and whether the '+
+      'bank covers it and stays above the floor; a past payment not shown paid is for Selam to confirm '+
+      'with the bank — never say it was paid or missed.' },
 
 /* THE DAILY GROUP CFO (8 Oct 2026). The finance analyst reads Selam's day
    and the Sunday CFO the week's spending; nobody watched the group's cash
@@ -1029,7 +1039,9 @@ var AGENTS = [
       'the bank against the floor, how many days the headroom lasts at this rate if a number is given, '+
       'and the lowest point and first day below the floor in Selam’s forecast. Then what is due in '+
       '(final payments owed, what Ephrata expects) against what is due out (supplier credit past its '+
-      'date and due within 7 days). Then the three sister companies in one line each, and any that did '+
+      'date and due within 7 days, and the bank loan payments in going_out.bank_loans: one due within '+
+      '7 days, whether the bank can pay it and stay above the floor, and any past payment the bank paper '+
+      'does not show paid — never say it was paid or missed). Then the three sister companies in one line each, and any that did '+
       'not report. Never add the companies together. End with TODAY, one line per person: their actions '+
       'in today_actions, in that order, and only those.' },
 

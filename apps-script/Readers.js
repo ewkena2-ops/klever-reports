@@ -254,6 +254,20 @@ function riskFacts_(P, base, kind, ctx, done) {
   var lc = bank === null ? null : bank < GC_FLOOR_ ? 5 : (cfo && cfo.weeks_above_floor_at_this_rate !== null && cfo.weeks_above_floor_at_this_rate < 4) ? 4 : bank - GC_FLOOR_ < 1000000 ? 3 : 2;
   add('cash', 'Money', 'The bank falls below the 6,000,000 reserve', 5, lc,
       bank === null ? 'no bank balance reported this week' : 'bank ' + fmt_(bank) + (cfo && cfo.weeks_above_floor_at_this_rate !== null ? '; ' + cfo.weeks_above_floor_at_this_rate + ' weeks above the floor at this rate (CFO)' : ''), 'Selam, Kidan');
+  /* the bank loans (Loans.js): the payments in the next 30 days against the bank */
+  var lf = null;
+  try { lf = loansFacts_(addDays_(P.end, 1)); } catch (e) { lf = null; }
+  if (lf) {
+    var due30 = lf.next_payments_by_date.filter(function (p) { return p.in_days <= 30; });
+    var sum30 = due30.reduce(function (a, p) { return a + p.birr; }, 0);
+    var past = lf.past_their_date_not_shown_paid || [];
+    var ll = (!due30.length && !past.length) ? 1 : bank === null ? 3 : bank - sum30 < GC_FLOOR_ ? (bank < GC_FLOOR_ ? 5 : 4) : 2;
+    add('loans', 'Money', 'A bank loan payment cannot be met without going below the 6,000,000 reserve', 5, ll,
+        (due30.length ? due30.map(function (p) { return fmt_(p.birr) + ' due ' + p.due + ' (' + p.loan + ')'; }).join('; ') : 'no loan payment in the next 30 days') +
+        (bank !== null ? '; bank ' + fmt_(bank) : '') +
+        (past.length ? '; ' + past.length + ' past payment(s) the bank paper does not show paid, ' + fmt_(lf.past_their_date_birr) + ' Birr — Selam to confirm' : ''),
+        'Selam, Kidan');
+  }
   /* deliveries */
   var late = ops && ops.jobs_against_mahelets_dates ? ops.jobs_against_mahelets_dates.delivery_behind_plan.length : null;
   add('deliveries', 'Customers', 'Customers’ kitchens delivered late', 4, late === null ? null : late >= 3 ? 5 : late === 2 ? 4 : late === 1 ? 3 : 1,
@@ -379,11 +393,23 @@ function forecastFacts_(P) {
     if (pv !== null) { outWeek = Math.round(pv / 4); outFrom = 'payments Selam approved over 4 weeks (her weekly spending was not reported)'; }
   }
   var net = inWeek !== null && outWeek !== null ? inWeek - outWeek : null;
-  var at = function (days) { return bank !== null && net !== null ? Math.round(bank + net * days / 7) : null; };
+  /* the bank loans (Loans.js): a payment every quarter is not in a weekly
+     run rate, so each is taken off on the day it falls due */
+  var lf = null;
+  try { lf = loansFacts_(addDays_(end, 1)); } catch (e) { lf = null; }
+  var loanPays = lf ? lf.next_payments_by_date : [];
+  var loansIn = function (from, to) {
+    return loanPays.filter(function (p) { return p.date >= from && p.date <= to; }).reduce(function (a, p) { return a + p.birr; }, 0);
+  };
+  var at = function (days) { return bank !== null && net !== null ? Math.round(bank + net * days / 7 - loansIn(addDays_(end, 1), addDays_(end, days))) : null; };
   var cash = { bank_now: bank, bank_on: bankDay ? dayLabel_(bankDay) : null,
                money_in_a_week: inWeek, weeks_of_cash_in: wk.length, money_out_a_week: outWeek, money_out_from: outFrom,
                net_a_week: net, bank_in_30_days: at(30), bank_in_60_days: at(60), bank_in_90_days: at(90),
-               method: 'bank now + (average money in a week − average money out a week) × weeks; known items below are not added on top' };
+               bank_loan_payments_in_30_days: loansIn(addDays_(end, 1), addDays_(end, 30)),
+               bank_loan_payments_in_90_days: loansIn(addDays_(end, 1), addDays_(end, 90)),
+               method: 'bank now + (average money in a week − average money out a week) × weeks, minus each bank loan payment on its due date; the other known items below are not added on top' };
+  cash.bank_loans = lf ? { next_payments: loanPays, left_to_repay_all_loans: lf.left_to_repay_all_loans_birr,
+                           past_their_date_not_shown_paid: lf.past_their_date_not_shown_paid, note: lf.past_their_date_note } : null;
   cash.first_below_the_floor = cash.bank_in_30_days !== null && cash.bank_in_30_days < GC_FLOOR_ ? 'within 30 days'
     : cash.bank_in_60_days !== null && cash.bank_in_60_days < GC_FLOOR_ ? 'within 60 days'
     : cash.bank_in_90_days !== null && cash.bank_in_90_days < GC_FLOOR_ ? 'within 90 days' : null;
@@ -405,13 +431,14 @@ function forecastFacts_(P) {
     var run = bank;
     for (var k = 1; k <= 13; k++) {
       var inK = projW[k - 1] !== undefined && projW[k - 1] !== null ? projW[k - 1] : inWeek;
-      run += inK - outWeek;
+      var loanK = loansIn(addDays_(sundayOf_(end), 7 * (k - 1) + 1), addDays_(sundayOf_(end), 7 * k));
+      run += inK - outWeek - loanK;
       thirteen.push({ week: k, week_ending: dayLabel_(addDays_(sundayOf_(end), 7 * k)), money_in: inK, money_out: outWeek,
-                      bank: Math.round(run), below_the_floor: run < GC_FLOOR_ });
+                      bank_loan_payment: loanK || 0, bank: Math.round(run), below_the_floor: run < GC_FLOOR_ });
     }
   }
   cash.thirteen_weeks = thirteen;
-  cash.thirteen_weeks_method = 'weeks 1–4 money in from Ephrata’s 4-week projection where she gave it, otherwise the run rate; money out at the run rate';
+  cash.thirteen_weeks_method = 'weeks 1–4 money in from Ephrata’s 4-week projection where she gave it, otherwise the run rate; money out at the run rate, plus any bank loan payment in the week it falls due';
   var firstLow = thirteen.filter(function (x) { return x.below_the_floor; })[0];
   cash.first_week_below_the_floor = firstLow ? 'week ' + firstLow.week + ' (' + firstLow.week_ending + ')' : null;
   cash.known = { final_payments_owed_on_jobs: owed, supplier_credit_due_within_30_days: due30,
@@ -471,7 +498,9 @@ var FORECAST_ASK_ =
   'You are the Chairman’s forecaster. In at most 150 words, short bullets: cash at 30, 60 and 90 days and '+
   'whether and when it falls below the 6,000,000 floor, with the method in a few words, and the first week '+
   'below the floor in the 13-week view if there is one; how the run rate '+
-  'compares with what is known (final payments owed, credit due, Ephrata’s projection). Then sales at 30/60/90 '+
+  'compares with what is known (final payments owed, credit due, Ephrata’s projection). The bank loan payments are '+
+  'already taken off on their due dates (cash.bank_loans): name the next one and its Birr, and any past payment '+
+  'not shown paid as one for Selam to confirm with the bank. Then sales at 30/60/90 '+
   'against Ephrata’s weighted pipeline, saying the weights are an assumption. Then production: output at this '+
   'pace against 40 m² a day, and how many working days of work are in hand. Say plainly where a figure is '+
   'missing and the forecast cannot be made.';

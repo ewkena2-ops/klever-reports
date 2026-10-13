@@ -309,6 +309,18 @@ service cloud.firestore {
       allow create, update: if isLedger();
       allow delete: if false;
     }
+    /* The bank loans (apps-script/Loans.js, 13 Oct 2026): each loan and the
+       bank's repayment schedule, written by the Chairman — never in the
+       code, which is public — and read by him and the script, whose AI
+       readers count every payment as money going out. */
+    match /loans/{id} {
+      allow get, list: if isChairman() || isLedger();
+      allow create, update: if isChairman()
+                            && request.resource.data.schedule is list
+                            && request.resource.data.schedule.size() <= 120;
+      allow delete: if false;
+    }
+
     match /packs/{id} {
       allow get, list: if isChairman() || isLedger();
       allow create, update: if isLedger();

@@ -117,6 +117,34 @@ const MATERIAL_OPTS = MATERIALS.concat([
 ]);
 /* the same twelve as the fixed rows of a grid */
 const MATERIAL_ROWS = MATERIALS.map(function (m) { return { en:m.en, am:m.am }; });
+/* THE COLOURS (the Chairman, 13 Oct 2026: "pick colour by picture"). Klever's
+   board colour codes, as the SketchUp plugin and the cut lists write them
+   ("18mm KKUV-18"), in their five ranges; each has its picture in
+   assets/mat/<code>.webp, cut from the photo the plugin keeps. A colour column
+   (t:'colour') opens these as pictures to tap; it stores the code. `of` names
+   the row's material column: the colour is asked only for the materials in
+   COLOUR_ITEMS — a hinge has no colour code. The supplier codes and prices
+   stay in the plugin: this code is public. */
+const COLOURS = [
+  { v:'KKUV-01', g:'UV' }, { v:'KKUV-02', g:'UV' }, { v:'KKUV-03', g:'UV' }, { v:'KKUV-04', g:'UV' },
+  { v:'KKUV-05', g:'UV' }, { v:'KKUV-06', g:'UV' }, { v:'KKUV-07', g:'UV' }, { v:'KKUV-08', g:'UV' },
+  { v:'KKUV-09', g:'UV' }, { v:'KKUV-10', g:'UV' }, { v:'KKUV-11', g:'UV' }, { v:'KKUV-12', g:'UV' },
+  { v:'KKUV-13', g:'UV' }, { v:'KKUV-14', g:'UV' }, { v:'KKUV-15', g:'UV' }, { v:'KKUV-16', g:'UV' },
+  { v:'KKUV-17', g:'UV' }, { v:'KKUV-18', g:'UV' }, { v:'KKUV-19', g:'UV' }, { v:'KKUV-20', g:'UV' },
+  { v:'KKUV-21', g:'UV' }, { v:'KKUV-22', g:'UV' },
+  { v:'KKSW-01', g:'SW' }, { v:'KKSW-02', g:'SW' }, { v:'KKSW-03', g:'SW' }, { v:'KKSW-04', g:'SW' },
+  { v:'KKSW-05', g:'SW' }, { v:'KKSW-06', g:'SW' }, { v:'KKSW-07', g:'SW' }, { v:'KKSW-08', g:'SW' },
+  { v:'KKSW-09', g:'SW' }, { v:'KKSW-10', g:'SW' }, { v:'KKSW-11', g:'SW' }, { v:'KKSW-12', g:'SW' },
+  { v:'KKSW-13', g:'SW' }, { v:'KKSW-14', g:'SW' }, { v:'KKSW-15', g:'SW' }, { v:'KKSW-16', g:'SW' },
+  { v:'KKSM-01', g:'SM' }, { v:'KKSM-02', g:'SM' }, { v:'KKSM-03', g:'SM' }, { v:'KKSM-04', g:'SM' },
+  { v:'KKSM-05', g:'SM' }, { v:'KKSM-06', g:'SM' }, { v:'KKSM-07', g:'SM' }, { v:'KKSM-08', g:'SM' },
+  { v:'KKSM-09', g:'SM' }, { v:'KKSM-10', g:'SM' }, { v:'KKSM-11', g:'SM' }, { v:'KKSM-12', g:'SM' },
+  { v:'KKSUV-01', g:'SUV' }, { v:'KKSUV-02', g:'SUV' }, { v:'KKSUV-03', g:'SUV', noimg:1 }, { v:'KKSUV-04', g:'SUV' },
+  { v:'KKMDF-000', g:'MDF' }, { v:'KKMDF-01', g:'MDF' }, { v:'KKMDF-02', g:'MDF' }, { v:'KKMDF-03', g:'MDF' },
+  { v:'KKMDF-04', g:'MDF' }, { v:'KKMDF-05', g:'MDF' }, { v:'KKMDF-06', g:'MDF' }, { v:'KKMDF-07', g:'MDF' }
+];
+const COLOUR_GROUPS = ['UV', 'SW', 'SM', 'SUV', 'MDF'];
+const COLOUR_ITEMS = ['MDF 18mm', 'MDF 16mm', 'Melamine 18mm', 'Melamine 16mm', 'Back panel 3mm', 'Edge banding (m)'];
 /* The Job Tracking Board's 15 columns (the Implementation Document; the
    register's regB_ names), for Ephrata's daily board check */
 const BOARD_COLS = [
@@ -1533,6 +1561,7 @@ const REPORTS = [
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'item', en:'Materials', am:'ዕቃዎች', t:'choice', opts:MATERIAL_OPTS},
+          {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'quotes', en:'Quotes attached', am:'የተያዙ ፕሮፎርማዎች', t:'num'},
           {id:'state', en:'Where it stands', am:'የደረሰበት', t:'choice', opts:[
@@ -1581,6 +1610,7 @@ const REPORTS = [
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
+          {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'paid', en:'Cheque given, or on credit?', am:'ቼክ ተሰጥቷል ወይስ በዱቤ?', t:'choice', opts:[
             {v:'cheque', en:'Cheque given', am:'ቼክ ተሰጥቷል'},
@@ -1668,6 +1698,7 @@ const REPORTS = [
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
+          {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
           {id:'was', en:'Promised date', am:'ቃል የተገባው ቀን', t:'text'},
           {id:'now', en:'New date', am:'አዲሱ ቀን', t:'text'},
           {id:'stops', en:'Holds up production?', am:'ምርት ያቆማል?', t:'yesno', yes:{en:'Holds up production', am:'ምርት ያቆማል'}, no:{en:'Does not hold it up', am:'ምርት አያቆምም'}}
@@ -1686,6 +1717,7 @@ const REPORTS = [
         show:{f:'del_rej_any', when:'yes'},
         cols:[
           {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
+          {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'why', en:'Reason', am:'ምክንያት', t:'text', picks:COL_REJECTED},
@@ -1729,6 +1761,7 @@ const REPORTS = [
       {id:'p_rows', en:'Which prices changed? One row a material — the price now and last time.', am:'የተቀየሩት ዋጋዎች የትኞቹ ናቸው? ለአንድ ዕቃ አንድ ረድፍ — የአሁኑና ያለፈው ዋጋ።',
        t:'table', addEn:'Add material', addAm:'ዕቃ ጨምር', show:{f:'g_events', when:'has', v:'price'}, cols:[
         {id:'pitem', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
+        {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'pitem'},
         {id:'psup',  en:'Supplier', am:'አቅራቢ', t:'text'},
         {id:'punit', en:'Unit', am:'መለኪያ', t:'text'},
         {id:'pnow',  en:'Price now', am:'የአሁን ዋጋ', t:'money'},
@@ -1935,6 +1968,7 @@ const REPORTS = [
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
+          {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
           {id:'qty', en:'Quantity', am:'ብዛት', t:'num'},
           /* one tap where there used to be two questions and a ratio: whether
              it was checked at all, and whether it matched */
@@ -1991,6 +2025,7 @@ const REPORTS = [
         show:{f:'iss_any', when:'yes'},
         cols:[
           {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
+          {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
           {id:'qty', en:'Quantity', am:'ብዛት', t:'num'},
           {id:'code', en:'For which job', am:'ለየትኛው ሥራ', t:'text'},
           {id:'who', en:'Taken by', am:'የወሰደው', t:'text'},
@@ -2144,6 +2179,7 @@ const REPORTS = [
         show:{f:'sh_any', when:'yes'},
         cols:[
           {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
+          {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
           {id:'code', en:'Jobs waiting on it', am:'የሚጠብቁት ሥራዎች', t:'text'},
           {id:'told', en:'Told to', am:'የተነገረው ለ', t:'text', picks:[{ en:'Getachew', am:'ጌታቸው' }, { en:'Mahelet', am:'ማህሌት' }, { en:'Amaha', am:'አማሃ' }]},
           {id:'due', en:'Expected in', am:'የሚጠበቅበት ቀን', t:'date'}
@@ -2178,6 +2214,7 @@ const REPORTS = [
         show:{f:'st_any', when:'yes'},
         cols:[
           {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
+          {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
           {id:'book', en:'On record', am:'በመዝገብ', t:'num'},
           {id:'shelf', en:'On the shelf', am:'በመደርደሪያ', t:'num'},
           {id:'why', en:'Likely reason', am:'ሊሆን የሚችል ምክንያት', t:'text', picks:COL_STOCK_DIFF},
@@ -5095,6 +5132,7 @@ const REPORTS = [
        am:'ለዛሬዎቹ ሥራዎች የዋሉት ዕቃዎችና መለዋወጫዎች የትኞቹ ናቸው?',
        t:'table', addEn:'Add a material', addAm:'ዕቃ ጨምር', cols:[
         {id:'item', en:'Material or accessory', am:'ዕቃ ወይም መለዋወጫ', t:'choice', opts:MATERIAL_OPTS},
+        {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
         {id:'qty',  en:'How much — sheets, metres or pieces', am:'ብዛት — ሉህ፣ ሜትር ወይም ቁጥር', t:'num'},
         {id:'code', en:'For which job', am:'ለየትኛው ሥራ', t:'text'},
         {id:'panels', en:'Panels cut (boards only)', am:'የተቆረጡ ፓኔሎች (ለሰሌዳ ብቻ)', t:'num'},
@@ -5312,6 +5350,7 @@ const REPORTS = [
       {id:'sav_rows', en:'Where did you use less material than the BOM today?', am:'ዛሬ ከዕቃ ዝርዝሩ ያነሰ ዕቃ የተጠቀሙት በየትኛው ሥራ ነው?',
        t:'table', addEn:'Add material', addAm:'ቁሳቁስ ጨምር', show:{f:'sav_any', when:'yes'}, cols:[
         {id:'mat',  en:'Material', am:'ቁሳቁስ', t:'choice', opts:MATERIAL_OPTS},
+        {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'mat'},
         {id:'code', en:'Job', am:'ሥራ', t:'text'},
         {id:'bom',  en:'BOM qty', am:'በዝርዝሩ ያለው መጠን', t:'num'},
         {id:'used', en:'Actual used', am:'የዋለው መጠን', t:'num'},
@@ -8612,6 +8651,10 @@ const DESIGN_DAILY = {
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'opt', en:'Option signed', am:'የተፈረመው አማራጭ', t:'choice', opts:[{v:'A', en:'Option A (stock)', am:'አማራጭ A (በመጋዘን ያለ)'}, {v:'B', en:'Option B (imported)', am:'አማራጭ B (ከውጭ የሚመጣ)'}]},
+          /* the colours on the signed form, by picture (the Chairman, 13 Oct 2026): the register
+             shows them on the job, and a colour bought or received for it that is neither is said */
+          {id:'front', en:'Fronts colour (doors, drawers)', am:'የፊት ቀለም (በሮች፣ መሳቢያዎች)', t:'colour', must:1},
+          {id:'body', en:'Cabinet body colour', am:'የካቢኔው አካል ቀለም', t:'colour', must:1},
           {id:'photo', en:'Photo posted in the WhatsApp group?', am:'ፎቶ በዋትስአፕ ግሩፕ ተልኳል?', t:'yesno', yes:{en:'Posted', am:'ተልኳል'}, no:{en:'Not posted', am:'አልተላከም'}},
           {id:'codes', en:'Board and PVC edge codes in the Job File?', am:'የቦርድና የPVC ጠርዝ ኮዶች በሥራ ፋይሉ አሉ?', t:'yesno', yes:{en:'The codes are in', am:'ኮዶቹ አሉ'}, no:{en:'Missing', am:'ኮዶቹ የሉም'}}
         ]},

@@ -1813,6 +1813,48 @@
             card.appendChild(cell);
             return;
           }
+          /* A colour code, picked from the pictures (the Chairman, 13 Oct
+             2026). `of` names the row's material column: only a board or edge
+             tape has a colour (COLOUR_ITEMS), so the box shows for those
+             alone, and a colour left on a row changed to hinges goes with it. */
+          if (c.t === 'colour') {
+            cell.className = 'cell wide colcell';
+            cl.removeAttribute('for');
+            var cb = el('button', 'colpick');
+            cb.type = 'button';
+            cb.id = 'c_' + f.id + '_' + i + '_' + c.id;
+            cb.setAttribute('aria-label', L(c));
+            var drawCb = function () {
+              cb.innerHTML = '';
+              var v = rowData[c.id];
+              if (has(v)) {
+                cb.appendChild(swatch(String(v)));
+                cb.appendChild(el('span', 'colcode', String(v)));
+                cb.appendChild(el('span', 'colchange', t('colChange')));
+              } else cb.appendChild(el('span', 'colnone', t('colPick')));
+            };
+            drawCb();
+            cb.onclick = function () {
+              colourSheet(rowData[c.id], function (v) {
+                if (v) rowData[c.id] = v; else delete rowData[c.id];
+                drawCb();
+                refresh();
+                if (wrap.sumUp) wrap.sumUp();
+              });
+            };
+            cell.appendChild(cb);
+            if (c.of) {
+              var syncCol = function () {
+                var on = COLOUR_ITEMS.indexOf(rowData[c.of]) !== -1;
+                cell.hidden = !on;
+                if (!on && has(rowData[c.id])) { delete rowData[c.id]; drawCb(); }
+              };
+              (card.syncs = card.syncs || []).push(syncCol);
+              syncCol();
+            }
+            card.appendChild(cell);
+            return;
+          }
           if (c.t === 'yesno') {
             var cseg = el('div', 'seg mini' + (rowData[c.id] === 'no' ? ' no' : ''));
             cseg.id = 'c_' + f.id + '_' + i + '_' + c.id;
@@ -1856,6 +1898,7 @@
                 Array.prototype.forEach.call(ccb.children, function (x) {
                   x.setAttribute('aria-pressed', x.getAttribute('data-v') === rowData[c.id] ? 'true' : 'false');
                 });
+                if (card.syncs) card.syncs.forEach(function (fn) { fn(); });
                 if (oth) oth.sync(true);
                 refresh();
                 if (wrap.sumUp) wrap.sumUp();
@@ -1899,7 +1942,14 @@
           /* words to tap under a word box: its usual answers (picks), or the
              codes and names this person filed lately (recentKey) */
           var tapBox = null;
-          var onType = function () { rowData[c.id] = inp.value; if (tapBox) tapBox.hidden = has(inp.value); if (oth) oth.sync(true); refresh(); if (wrap.sumUp) wrap.sumUp(); };
+          var onType = function () {
+            rowData[c.id] = inp.value;
+            if (tapBox) tapBox.hidden = has(inp.value);
+            if (card.syncs) card.syncs.forEach(function (fn) { fn(); });
+            if (oth) oth.sync(true);
+            refresh();
+            if (wrap.sumUp) wrap.sumUp();
+          };
           inp.onchange = inp.oninput = onType;
           cell.appendChild(c.t === 'date' ? dressDate(inp) : inp);
           if (oth) cell.appendChild(oth);
@@ -2520,6 +2570,99 @@
       });
     };
     return row;
+  }
+
+  /* A colour's picture (assets/mat/<code>.webp), or a plain square for a
+     code with none — one written in by hand, or KKSUV-03 */
+  function swatch(code, big) {
+    var known = null;
+    for (var i = 0; i < COLOURS.length; i++) if (COLOURS[i].v === code) known = COLOURS[i];
+    if (known && !known.noimg) {
+      var im = document.createElement('img');
+      im.className = 'colsw' + (big ? ' big' : '');
+      im.src = 'assets/mat/' + code + '.webp';
+      im.alt = '';
+      im.loading = 'lazy';
+      return im;
+    }
+    return el('span', 'colsw none' + (big ? ' big' : ''), '?');
+  }
+  /* The colours as pictures to tap, by range, over the form. `done(code)`
+     gets the code tapped or written; '' is "no colour"; closing changes
+     nothing. */
+  function colourSheet(cur, done) {
+    var back = el('div', 'colsheet-back');
+    var sh = el('div', 'colsheet');
+    sh.setAttribute('role', 'dialog');
+    sh.setAttribute('aria-modal', 'true');
+    sh.setAttribute('aria-label', t('colPickTitle'));
+    var top = el('div', 'colsheet-top');
+    top.appendChild(el('div', 'colsheet-title', t('colPickTitle')));
+    var x = el('button', 'colsheet-x', '\u00d7');
+    x.type = 'button';
+    x.setAttribute('aria-label', t('colClose'));
+    top.appendChild(x);
+    sh.appendChild(top);
+    var body = el('div', 'colsheet-body');
+    var listed = false;
+    COLOUR_GROUPS.forEach(function (g) {
+      body.appendChild(el('div', 'colgroup', g));
+      var grid = el('div', 'colgrid');
+      COLOURS.forEach(function (c) {
+        if (c.g !== g) return;
+        if (c.v === cur) listed = true;
+        var b = el('button', 'coltile' + (c.v === cur ? ' on' : ''));
+        b.type = 'button';
+        b.setAttribute('data-v', c.v);
+        b.setAttribute('aria-pressed', c.v === cur ? 'true' : 'false');
+        b.appendChild(swatch(c.v, true));
+        b.appendChild(el('span', 'coltile-code', c.v));
+        b.onclick = function () { close(c.v); };
+        grid.appendChild(b);
+      });
+      body.appendChild(grid);
+    });
+    /* a code that is not in the list yet: written in */
+    var own = el('div', 'colown');
+    var oi = document.createElement('input');
+    oi.type = 'text';
+    oi.id = 'colown';
+    oi.autocapitalize = 'characters';
+    oi.placeholder = t('colOwn');
+    oi.setAttribute('aria-label', t('colOwn'));
+    if (cur && !listed) oi.value = cur;
+    var ob = el('button', 'btn ghost', t('colOwnUse'));
+    ob.type = 'button';
+    ob.onclick = function () {
+      var v = oi.value.trim().toUpperCase().replace(/[^0-9A-Z_-]/g, '').slice(0, 20);
+      if (v) close(v); else oi.focus();
+    };
+    own.appendChild(oi);
+    own.appendChild(ob);
+    body.appendChild(own);
+    if (cur) {
+      var clr = el('button', 'colclear', t('colClear'));
+      clr.type = 'button';
+      clr.onclick = function () { close(''); };
+      body.appendChild(clr);
+    }
+    sh.appendChild(body);
+    back.appendChild(sh);
+    document.body.appendChild(back);
+    document.body.classList.add('noscroll');
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+    function close(v) {
+      document.removeEventListener('keydown', onKey);
+      if (back.parentNode) back.parentNode.removeChild(back);
+      document.body.classList.remove('noscroll');
+      if (v !== undefined) done(v);
+    }
+    x.onclick = function () { close(); };
+    back.onclick = function (e) { if (e.target === back) close(); };
+    var on = body.querySelector('.coltile.on');
+    if (on) on.scrollIntoView({ block: 'center' });
+    x.focus();
   }
 
   /* the room a photo from this report goes to, or why it cannot go */

@@ -54,11 +54,13 @@ var REG_SOURCES_ = [
   { r: '-sales-weekly', f: 's_contracts_list', k: 'contract', cust: 'cust', lc: 'lc', job: 'code', value: 'value' },
   { r: '-design-daily', f: 'm_pre_list', k: 'predesign', cust: 'cust', lc: 'lc', next: 'next' },
   { r: '-design-daily', f: 'm_fin_list', k: 'measure', cust: 'cust', job: 'code', ok: 'green' },
-  { r: '-design-daily', f: 'ms_list', k: 'selection', cust: 'cust', job: 'code', what: 'opt' },
+  /* the colours on the signed form, by picture (13 Oct 2026) */
+  { r: '-design-daily', f: 'ms_list', k: 'selection', cust: 'cust', job: 'code', what: 'opt', front: 'front', body: 'body' },
   { r: '-design-weekly', f: 'jf_incomplete_list', k: 'jfmissing', cust: 'cust', job: 'code', what: 'what' },
-  { r: 'getachew-daily', f: 'pr_list', k: 'request', job: 'code', what: 'item', amount: 'amount' },
-  { r: 'getachew-daily', f: 'ord_list', k: 'ordered', job: 'code', what: 'item', amount: 'amount' },
-  { r: 'yordanos-daily', f: 'rec_list', k: 'received', job: 'code', what: 'item', ok: 'ok' },
+  /* `colour`: the board's colour code, picked by picture (13 Oct 2026) */
+  { r: 'getachew-daily', f: 'pr_list', k: 'request', job: 'code', what: 'item', amount: 'amount', colour: 'colour' },
+  { r: 'getachew-daily', f: 'ord_list', k: 'ordered', job: 'code', what: 'item', amount: 'amount', colour: 'colour' },
+  { r: 'yordanos-daily', f: 'rec_list', k: 'received', job: 'code', what: 'item', ok: 'ok', colour: 'colour' },
   { r: 'betty-daily', f: 'final_req_list', k: 'finalreq', cust: 'cust', job: 'code', amount: 'amount' },
   { r: 'betty-joblist', f: 'jl_held_list', k: 'held', cust: 'cust', job: 'code', amount: 'owed', what: 'expect' },
   { r: 'amaha-daily', f: 'qc_defects_list', k: 'defect', job: 'code', what: 'what' },
@@ -85,10 +87,10 @@ var REG_SOURCES_ = [
   /* "Where is it now?" — finished today, or still on installation (the
      Chairman, 10 Oct 2026) */
   { r: 'elyas-daily', f: 'j_rows', k: 'site', cust: 'cust', job: 'code', ok: 'ontime', state: 'state' },
-  { r: 'getachew-daily', f: 'sup_delay_list', k: 'matdelay', job: 'code', what: 'item', ok: 'stops' },
+  { r: 'getachew-daily', f: 'sup_delay_list', k: 'matdelay', job: 'code', what: 'item', ok: 'stops', colour: 'colour' },
   /* the same list says the job is waiting, and the day it is now promised
      (the Chairman, 8 Oct 2026: purchasing is Getachew's to report) */
-  { r: 'getachew-daily', f: 'sup_delay_list', k: 'matpending', job: 'code', what: 'item', state: 'now' }
+  { r: 'getachew-daily', f: 'sup_delay_list', k: 'matpending', job: 'code', what: 'item', state: 'now', colour: 'colour' }
 ];
 
 /* the steps of a lead, in order */
@@ -190,6 +192,15 @@ function regDate_(s) {
   return /^\d{4}-\d{2}-\d{2}$/.test(t) && dayOf_(new Date(t + 'T12:00:00' + ADDIS_)) === t ? t : '';
 }
 
+/* A colour requested, ordered or received for a job, once per code and step:
+   what it was, who said so, the first day. */
+function regColourUsed_(J, e, who) {
+  J.colourUsed = J.colourUsed || [];
+  var had = J.colourUsed.filter(function (u) { return u.code === e.colour && u.k === e.k; })[0];
+  if (had) return;
+  J.colourUsed.push({ code: e.colour, k: e.k, day: e.day, by: who(e.person), what: String(e.what || '').replace(' ' + e.colour, '') });
+}
+
 /* One filing reduced to its register lines. */
 function regEventsOf_(filing) {
   var v = filing.values || {}, out = [];
@@ -207,6 +218,11 @@ function regEventsOf_(filing) {
       ['date', 'start', 'done', 'qc', 'del'].forEach(function (x) {
         if (s[x] && regDate_(row[s[x]])) e[x] = regDate_(row[s[x]]);
       });
+      /* colour codes, as the picker writes them ("KKUV-18") */
+      ['colour', 'front', 'body'].forEach(function (x) {
+        if (s[x] && !blank_(row[s[x]])) e[x] = String(row[s[x]]).trim().toUpperCase().replace(/[^0-9A-Z_-]/g, '').substring(0, 20);
+      });
+      if (e.colour) e.what = (e.what ? e.what + ' ' : '') + e.colour;
       if (s.next) e.hn = true;            /* this list asks for a next step */
       /* the customer's code: the 4-digit lead no. the salesperson gave, or —
          on a list that is not a contract — the KK code once they have paid */
@@ -422,15 +438,23 @@ function regFold_(events, today, names, sellers) {
       case 'selection':
         if (!J.selection) J.selection = e.day;
         if (e.what) J.selOpt = e.what;
+        /* the latest signed form's colours stand */
+        if (e.front || e.body) {
+          J.colours = { front: e.front || (J.colours ? J.colours.front : ''), body: e.body || (J.colours ? J.colours.body : ''),
+                        day: e.day, by: who(e.person) };
+        }
         break;
       case 'request':
         if (!J.requested) J.requested = e.day;
+        if (e.colour) regColourUsed_(J, e, who);
         break;
       case 'ordered':
         if (!J.ordered) J.ordered = e.day;
+        if (e.colour) regColourUsed_(J, e, who);
         break;
       case 'received':
         if (!J.received) J.received = e.day;
+        if (e.colour) regColourUsed_(J, e, who);
         J.receivedLast = e.day;
         if (e.ok === 'no') J.bomMismatch = { day: e.day, what: e.what || '' };
         break;
@@ -608,6 +632,15 @@ function regFold_(events, today, names, sellers) {
     if (J.unhappy) p.push({ code: 'unhappy', text: 'Customer not happy at the follow-up call (' + pushDay_(J.unhappy) + ')' });
     if (J.delivered && J.cleared === false) p.push({ code: 'not-cleared', text: 'Delivered ' + pushDay_(J.delivered) + ' without Selam’s clearance' });
     if (J.delivered && J.cleared == null) notes.push('Delivered ' + pushDay_(J.delivered) + '; whether Selam cleared it was not written');
+    /* a colour bought for the job that is not on its signed form */
+    if (J.colours && J.colourUsed) {
+      var chosen = [J.colours.front, J.colours.body].filter(Boolean);
+      J.colourUsed.filter(function (u) { return chosen.indexOf(u.code) === -1; }).forEach(function (u) {
+        notes.push((u.k === 'received' ? 'Received ' : u.k === 'ordered' ? 'Ordered ' : 'Requested ') + u.code +
+                   (u.what ? ' (' + u.what + ')' : '') + ' — the signed Material Selection says fronts ' +
+                   (J.colours.front || '—') + ', body ' + (J.colours.body || '—') + ' (' + u.by + ', ' + pushDay_(u.day) + ')');
+      });
+    }
     if (J.plan && J.plan.del && J.plan.del < today && !J.delivered) {
       p.push({ code: 'late', text: 'Delivery was planned for ' + pushDay_(J.plan.del) + '; not delivered' });
     }

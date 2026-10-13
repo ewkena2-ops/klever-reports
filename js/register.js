@@ -212,6 +212,33 @@ import {
     if (w.ai) card.appendChild(line('regaitag', t('regAiRead') + (w.old ? ' · ' + t('regOlder') : '')));
   }
   function line(cls, text) { return el('div', cls, text); }
+  /* A job's colours, as the designer picked them on the signed Material
+     Selection Form (13 Oct 2026): each with its picture (assets/mat). */
+  function colourPic(code) {
+    var known = (typeof COLOURS !== 'undefined' ? COLOURS : []).filter(function (x) { return x.v === code; })[0];
+    if (known && !known.noimg) {
+      var im = document.createElement('img');
+      im.className = 'regsw';
+      im.src = 'assets/mat/' + code + '.webp';
+      im.alt = '';
+      im.loading = 'lazy';
+      return im;
+    }
+    return el('span', 'regsw none', '?');
+  }
+  function coloursOf(j, short) {
+    var c = j && j.colours;
+    if (!c || !(c.front || c.body)) return null;
+    var box = el('span', 'regcols');
+    [['front', 'regColFront'], ['body', 'regColBody']].forEach(function (p) {
+      if (!c[p[0]]) return;
+      var it = el('span', 'regcol');
+      it.appendChild(colourPic(c[p[0]]));
+      it.appendChild(el('span', 'regcol-t', (short ? '' : t(p[1]) + ' ') + c[p[0]]));
+      box.appendChild(it);
+    });
+    return box;
+  }
   function problemsInto(card, problems, notes) {
     (problems || []).forEach(function (p) { card.appendChild(line('regprob', '⚠ ' + p.text)); });
     (notes || []).forEach(function (n) { card.appendChild(line('regnoteline', n)); });
@@ -270,6 +297,13 @@ import {
                  t('regAdvIn') + ' ' + birr(j.advIn || 0),
                  t('regFinalIn') + ' ' + birr(j.finalIn || 0)].filter(Boolean).join(' · ');
     c.appendChild(line('regmeta', money));
+    var cols = coloursOf(j, false);
+    if (cols) {
+      var cl = el('div', 'regline');
+      cl.appendChild(document.createTextNode(t('regColours') + ': '));
+      cl.appendChild(cols);
+      c.appendChild(cl);
+    }
     if (j.plan) {
       var pl = [j.plan.start ? t('regPlanStart') + ' ' + day(j.plan.start) : '',
                 j.plan.done ? t('regPlanDone') + ' ' + day(j.plan.done) : '',
@@ -332,7 +366,7 @@ import {
     var head = el('tr');
     var STEP_COLS = ['lead', 'visit', 'predesign', 'quote', 'measure', 'selection', 'ordered', 'received', 'finalreq',
                      'production', 'made', 'qc', 'delivered', 'installed', 'accepted', 'aftersales'];
-    ['Customer', 'Stage', 'Status', 'Why', 'Next', 'Sales', 'Contract', 'Advance', 'Final']
+    ['Customer', 'Stage', 'Status', 'Why', 'Next', 'Sales', 'Contract', 'Advance', 'Final', 'Colours']
       .forEach(function (k, i) { head.appendChild(el('th', i === 0 ? 'c' : null, t('regCol' + k))); });
     STEP_COLS.forEach(function (b) { head.appendChild(el('th', null, t('regCs_' + b))); });
     head.appendChild(el('th', null, t('regColProblems')));
@@ -361,6 +395,8 @@ import {
       cell(j ? j.job + (j.value != null ? ' · ' + num(j.value) : '') : (l && l.job) || '', 'regcode');
       cell(j ? num(j.advIn) : '');
       cell(j ? num(j.finalIn) : '');
+      var cc = coloursOf(j, true);
+      if (cc) { var ctd = el('td', 'regcolcell'); ctd.appendChild(cc); tr.appendChild(ctd); } else cell('');
       /* the day of each board step: the lead's own, then the job's */
       var days = {};
       Object.keys(at).forEach(function (k) { days[k] = at[k]; });

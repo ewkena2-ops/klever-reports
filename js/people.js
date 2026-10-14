@@ -58,7 +58,7 @@ const PEOPLE = [
   { id:'natenael', en:'Natenael Samson', am:'ናትናኤል ሳምሶን', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
   { id:'webalem', en:'Webalem Tesfay', am:'ወባለም ተስፋይ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
   { id:'yosef', en:'Yosef Fikadu', am:'ዮሴፍ ፍቃዱ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
-  { id:'birutukan', en:'Birutukan Adugna', am:'ብሩክታን አዱኛ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
+  { id:'birutukan', en:'Birutukan Adugna', am:'ብርቱካን አዱኛ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
   { id:'semayat', en:'Semayat Woticho', am:'ሰማያት ወቲቾ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
   { id:'yeshareg', en:'Yeshareg Mengestu', am:'የሻረግ መንግስቱ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
   { id:'bezawit', en:'Bezawit Arba', am:'ቤዛዊት አርባ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },

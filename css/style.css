@@ -2177,3 +2177,5 @@ body.gatepage{padding:0;overflow-x:hidden}
 .chf.gtrow2 .chfv{white-space:normal}
 .atdl .gtwhy{grid-column:1/-1;justify-self:start;min-height:34px;margin-top:4px}
 .atdl .atask{grid-column:1/-1}
+.gtpics{display:flex;gap:6px;flex:none}
+@media (max-width:480px){.gtcheck{flex-wrap:wrap}.gtcheck>div:last-child{flex:1 1 220px}}

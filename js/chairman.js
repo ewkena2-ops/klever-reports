@@ -817,7 +817,7 @@ import {
     }, failInto(into));
     onSnapshot(query(collection(db, 'gatephoto'), where('day', '==', DAY)), function (snap) {
       st.photos = {};
-      snap.forEach(function (d) { var x = d.data(); st.photos[x.person] = x.photo; });
+      snap.forEach(function (d) { var x = d.data(); st.photos[d.id.slice(11)] = x.photo; });
       draw();
     }, failInto(into));
     onSnapshot(collection(db, 'faces'), function (snap) {
@@ -844,6 +844,15 @@ import {
   function gtTomorrow() {
     var d = addDays(DAY, 1);
     return new Date(d + 'T12:00:00Z').getUTCDay() === 0 ? addDays(d, 1) : d;
+  }
+  /* the arrival that counts (apps-script/Attend.js atEffective_): a tapped
+     name he or Amaha said was someone else is none — or the person's own
+     face, if the camera saw it after */
+  function gtEff(x) {
+    if (!x || x.check !== 'not') return x || {};
+    var f = x.face;
+    return f && f.at ? { scanAt: f.at, hm: f.hm, late: !!f.late, minsLate: f.minsLate || 0, how: 'face', why: x.why, note: x.note, check: 'not' }
+                     : { why: x.why, note: x.note, check: 'not' };
   }
   function gtWhy(why, note) { return (t('gtWhy_' + why) || t('atWhy_' + why) || why) + (note ? ' — ' + note : ''); }
   function gtPic(src) {
@@ -896,11 +905,16 @@ import {
       into.appendChild(el('p', 'skysub', tfill('gtToCheck', { n: toCheck.length })));
       toCheck.forEach(function (c) {
         var row = el('div', 'gtcheck');
-        var pic = gtPic(c.day === DAY ? st.photos[c.p.id] : '');
-        if (c.day !== DAY) getDoc(doc(db, 'gatephoto', c.day + '_' + c.p.id)).then(function (d) { if (d.exists()) pic.src = d.data().photo; }, function () {});
-        row.appendChild(pic);
+        var pics = el('div', 'gtpics');
+        [c.p.id].concat(c.x.face ? [c.p.id + '_face'] : []).forEach(function (id) {
+          var pic = gtPic(c.day === DAY ? st.photos[id] : '');
+          if (c.day !== DAY) getDoc(doc(db, 'gatephoto', c.day + '_' + id)).then(function (d) { if (d.exists()) pic.src = d.data().photo; }, function () {});
+          pics.appendChild(pic);
+        });
+        row.appendChild(pics);
         var right = el('div');
         right.appendChild(el('div', 'atq', prettyDay(c.day) + ' · ' + c.x.hm + ' · ' + tfill('gtCheckIt', { name: L(c.p) })));
+        if (c.x.face) right.appendChild(el('div', 'codenote', tfill('gtFaceToo', { name: L(c.p), at: c.x.face.hm })));
         var bar = el('div', 'atpicks');
         [[true, 'gtItIs'], [false, 'gtNotThem']].forEach(function (o) {
           var b = el('button', 'mfpick', t(o[1]));
@@ -926,19 +940,19 @@ import {
       var a = new Date(Date.now() + 3 * 3600000), nowMin = a.getUTCHours() * 60 + a.getUTCMinutes();
       var counts = { on: 0, late: 0, none: 0 }, list = el('div', 'atlist');
       people.forEach(function (p) {
-        var x = (by[DAY] || {})[p.id] || {};
-        var scanned = x.scanAt && x.check !== 'not';
+        var x0 = (by[DAY] || {})[p.id] || {}, x = gtEff(x0);
+        var scanned = !!x.scanAt;
         var r = el('div', 'chf atrow gtrow2');
-        r.appendChild(gtPic(scanned ? st.photos[p.id] : ''));
+        r.appendChild(gtPic(scanned ? st.photos[x0.check === 'not' ? p.id + '_face' : p.id] : ''));
         r.appendChild(el('span', 'chfk', L(p)));
         var s, cls;
         if (scanned && !x.late) { s = '✓ ' + x.hm; cls = 'good'; counts.on++; }
         else if (scanned) { s = tfill('atLateShort', { at: x.hm, m: atDur(x.minsLate) }); cls = 'late'; counts.late++; }
         else { s = nowMin <= 8 * 60 ? t('gtNotIn') : t('atNoScanShort'); cls = 'none'; counts.none++; }
         var notes = [];
-        if (x.how === 'tap') notes.push(t('gtByTap'));
-        if (x.check === 'ok') notes.push(t('gtCheckedOk'));
-        if (x.check === 'not') notes.push(t('gtCheckedNot'));
+        if (x0.how === 'tap') notes.push(t('gtByTap'));
+        if (x0.check === 'ok') notes.push(t('gtCheckedOk'));
+        if (x0.check === 'not') notes.push(t(x.scanAt ? 'gtCheckedNotFace' : 'gtCheckedNot'));
         if (x.why) notes.push(gtWhy(x.why, x.note));
         if (notes.length) s += ' · ' + notes.join(' · ');
         r.appendChild(el('span', 'chfv at ' + cls, s));
@@ -960,8 +974,8 @@ import {
     people.forEach(function (p) {
       var on = 0, late = 0, none = 0, lines = [];
       days.forEach(function (day) {
-        var x = (by[day] || {})[p.id] || {};
-        var scanned = x.scanAt && x.check !== 'not';
+        var x = gtEff((by[day] || {})[p.id]);
+        var scanned = !!x.scanAt;
         if (scanned && !x.late) { on++; lines.push(dayName(day) + ': ✓ ' + x.hm + (x.how === 'tap' ? ' (' + t('gtByTap') + ')' : '')); return; }
         if (day === DAY && !scanned && !x.why) return;          /* today is not over */
         if (scanned) late++; else none++;

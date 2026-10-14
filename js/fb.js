@@ -391,7 +391,7 @@
       if (!user) return null;
       return F.onSnapshot(F.query(F.collection(db, 'gatephoto'), F.where('day', '==', day)), function (snap) {
         var out = {};
-        snap.forEach(function (d) { var x = d.data(); if (x.person) out[x.person] = x.photo; });
+        snap.forEach(function (d) { var x = d.data(); out[d.id.slice(11)] = x.photo; });
         cb(out);
       }, function () { cb({}); });
       });

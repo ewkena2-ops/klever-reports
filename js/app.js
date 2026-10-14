@@ -1496,9 +1496,11 @@
      person's reports come in, so the same box is handed back each time —
      a new one would drop the answer on the floor. */
   function atScanCard() {
+    if (atScanBox && atScanBox.day !== stamp()) return el('div');   /* yesterday's answer, on a page kept open */
     if (atScanBox) return atScanBox;
     if (!atScanAsked() || !window.FB || !window.FB.live()) return el('div');
     var box = atScanBox = el('div', 'ins atscan');
+    box.day = stamp();
     try {
       var q = new URLSearchParams(location.search);
       q.delete('scan');
@@ -1636,10 +1638,12 @@
     return box;
   }
   /* a scan at the gate that Amaha or the Chairman said was someone else's is no scan */
+  /* …unless the person's own face was seen after it (`face`, Gate.js): then that is the arrival */
   function atReal(x) {
     if (!x || x.check !== 'not') return x;
     var y = {};
-    Object.keys(x).forEach(function (k) { if (['scanAt', 'hm', 'late', 'minsLate'].indexOf(k) === -1) y[k] = x[k]; });
+    Object.keys(x).forEach(function (k) { if (['scanAt', 'hm', 'late', 'minsLate', 'how'].indexOf(k) === -1) y[k] = x[k]; });
+    if (x.face && x.face.at) { y.scanAt = x.face.at; y.hm = x.face.hm; y.late = !!x.face.late; y.minsLate = x.face.minsLate || 0; y.how = 'face'; }
     return y;
   }
   function atDay(day, x, isToday, nowMin, noAsk) {
@@ -1729,9 +1733,15 @@
   var gateHeadBox = null;
   function gateHeadCard(p) {
     if (!p || p.id !== 'amaha' || AUTH.isChairman() || !window.FB || !window.FB.live() || !window.FB.watchFactory) return el('div');
+    /* a page left open overnight: the new day gets a new card (the bug hunt,
+       15 Oct 2026 — it kept showing yesterday as today, and saved reasons to it) */
+    if (gateHeadBox && gateHeadBox.day !== stamp()) {
+      (gateHeadBox.stops || []).forEach(function (s) { try { if (s) s(); } catch (e) {} });
+      gateHeadBox = null;
+    }
     if (gateHeadBox) return gateHeadBox;
     var wrap = gateHeadBox = el('div', 'atcard gthead');
-    var today = stamp();
+    var today = wrap.day = stamp();
     var st = { docs: null, photos: {}, faces: null, from: undefined };
     function draw() {
       if (!st.docs || !st.faces || st.from === undefined) return;
@@ -1743,10 +1753,12 @@
       drawGateHead(wrap, st, today);
     }
     /* a read that failed (null) is not "nobody came": the card waits */
-    window.FB.watchFactory(addDays(today, -7), function (d) { if (d) { st.docs = d; draw(); } });
-    window.FB.watchGatePhotos(today, function (ph) { st.photos = ph || {}; draw(); });
-    window.FB.watchFaces(function (f) { if (f) { st.faces = f; draw(); } });
-    window.FB.watchGateConf(function (d) { st.from = d || null; draw(); });
+    wrap.stops = [
+      window.FB.watchFactory(addDays(today, -7), function (d) { if (d) { st.docs = d; draw(); } }),
+      window.FB.watchGatePhotos(today, function (ph) { st.photos = ph || {}; draw(); }),
+      window.FB.watchFaces(function (f) { if (f) { st.faces = f; draw(); } }),
+      window.FB.watchGateConf(function (d) { st.from = d || null; draw(); })
+    ];
     return wrap;
   }
   /* everyone at the gate: `gate` in js/forms.js, and the payroll-only people whose face was added */
@@ -1790,15 +1802,22 @@
       b.onclick = function () { b.replaceWith(atAsk(day, late, x0, saver(id))); };
       return b;
     }
-    function check(q, day, x, into) {
-      var c = el('div', 'gtcheck');
+    function photoOf(day, id) {
       var pic = el('img', 'gtpic');
       pic.alt = '';
-      if (day === today && st.photos[q.id]) pic.src = st.photos[q.id];
-      else if (window.FB.gatePhoto) window.FB.gatePhoto(day, q.id).then(function (src) { if (src) pic.src = src; });
-      c.appendChild(pic);
+      if (day === today && st.photos[id]) pic.src = st.photos[id];
+      else if (window.FB.gatePhoto) window.FB.gatePhoto(day, id).then(function (src) { if (src) pic.src = src; });
+      return pic;
+    }
+    function check(q, day, x, into) {
+      var c = el('div', 'gtcheck');
+      var pics = el('div', 'gtpics');
+      pics.appendChild(photoOf(day, q.id));
+      if (x.face) pics.appendChild(photoOf(day, q.id + '_face'));
+      c.appendChild(pics);
       var right = el('div');
       right.appendChild(el('div', 'atq', tfill_('gtCheckIt', { name: L(q) })));
+      if (x.face) right.appendChild(el('div', 'atsub', tfill_('gtFaceToo', { name: L(q), at: x.face.hm })));
       var bar = el('div', 'atpicks');
       [[true, 'gtItIs'], [false, 'gtNotThem']].forEach(function (o) {
         var b = el('button', 'mfpick', t(o[1]));
@@ -1833,7 +1852,7 @@
         var notes = [];
         if (x0 && x0.how === 'tap') notes.push(t('gtByTap'));
         if (x0 && x0.check === 'ok') notes.push(t('gtCheckedOk'));
-        if (x0 && x0.check === 'not') notes.push(t('gtCheckedNot'));
+        if (x0 && x0.check === 'not') notes.push(t(x && x.scanAt ? 'gtCheckedNotFace' : 'gtCheckedNot'));
         if (x && x.why) notes.push(t('atWhyIs') + ' ' + atWhyText(x.why, x.note));
         if (notes.length) r.appendChild(el('div', 'atdw', notes.join(' · ')));
         list.appendChild(r);

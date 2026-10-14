@@ -324,7 +324,7 @@
       var a = null;
       try { a = JSON.parse(txt); } catch (e) { a = null; }
       if (a && a.why === 'not-gate') problem('gtNotGate');
-      if (!a || (!a.ok && a.why !== 'unknown')) throw new Error(String(txt).slice(0, 80));
+      if (!a || (!a.ok && a.why !== 'unknown' && a.why !== 'stale')) throw new Error(String(txt).slice(0, 80));
       queue.shift();
       saveQueue();
       pumping = false;
@@ -457,7 +457,21 @@
   function checkIn(person, how, d, photo) {
     var now = Date.now(), day = dayOf(now), m = minsOf(now);
     var done = doneOf(day);
-    if (done[person]) { answer(person, { already: true, m: done[person].m }); return; }
+    if (done[person]) {
+      /* their name was tapped earlier — perhaps by someone else: their own
+         face goes to the script once, kept beside the tap for Amaha to
+         compare (the bug hunt, 15 Oct 2026: it used to be dropped here) */
+      if (how === 'face' && done[person].how === 'tap' && done[person].face == null) {
+        done[person].face = m;
+        store(DKEY + day, done);
+        queue.push({ person: person, how: 'face', dist: d == null ? null : Math.round(d * 1000) / 1000, at: now, photo: photo || '' });
+        saveQueue();
+        drawQueue();
+        pump();
+      }
+      answer(person, { already: true, m: done[person].m });
+      return;
+    }
     var sunday = new Date(day + 'T12:00:00Z').getUTCDay() === 0;
     var late = !sunday && m > LATE;
     done[person] = { m: m, late: late, how: how };
@@ -835,13 +849,32 @@
     box.appendChild(go);
     root.appendChild(box);
   }
-  function message(k, extra) {
+  /* An error screen. `retry`: the tablet tries again by itself every minute
+     and when the line comes back — nobody is standing by it to press reload
+     (the bug hunt, 15 Oct 2026: a camera still busy after the nightly
+     reload left the gate dead all day). */
+  var retryTimer = null;
+  function message(k, extra, retry) {
     mode = 'message';
     root.innerHTML = '';
     var box = el('div', 'gtform solo');
     box.appendChild(two(k, null, 'gtsub'));
     if (extra) box.appendChild(extra);
     root.appendChild(box);
+    clearTimeout(retryTimer);
+    if (retry) retryTimer = setTimeout(again, 60000);
+  }
+  function again() {
+    if (mode !== 'message') return;
+    /* Firebase never loaded: only a fresh page can bring it */
+    if (!window.FB.live()) { lineUp(function () { location.reload(); }); retryTimer = setTimeout(again, 60000); return; }
+    start();
+  }
+  /* is the line up? — asked past the kept copies (gate-sw.js) */
+  function lineUp(then) {
+    if (navigator.onLine === false) return;
+    fetch('gate.webmanifest?gate-probe=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { if (r && r.ok) then(); }, function () {});
   }
 
   /* ---------------- start ---------------- */
@@ -851,7 +884,7 @@
     root.innerHTML = '';
     root.appendChild(two('gtStarting', null, 'gtsub gtwait'));
     var who = window.FB.who();
-    if (!window.FB.live() && !who) { message('gtOffline'); return; }
+    if (!window.FB.live() && !who) { message('gtOffline', null, true); return; }
     if (!who) { signInPage(); return; }
     if (who !== 'gate' && ENROLLERS.indexOf(who) === -1) {
       var a = el('a', 'gtbtn gtghost', '← Klever');
@@ -885,8 +918,35 @@
         if (s) enrolStart(s); else signInPage();
       }
     }, function () {
-      message('gtNoCamera');
+      message('gtNoCamera', null, true);
     });
+    keepForOffline();
+  }
+
+  /* everything this page loaded, kept on the tablet for gate-sw.js — so a
+     reload with the line down still opens the gate */
+  var kept = false;
+  function keepForOffline() {
+    if (kept || !window.caches || !('serviceWorker' in navigator)) return;
+    kept = true;
+    setTimeout(function () {
+      var mine = location.origin;
+      var urls = [location.origin + location.pathname].concat((performance.getEntriesByType('resource') || []).map(function (e) { return e.name; }))
+        .filter(function (u) {
+          return u.indexOf(mine) === 0 ? !/gate-probe/.test(u)
+               : /^https:\/\/(www\.gstatic\.com\/firebasejs\/|cdn\.jsdelivr\.net\/|fonts\.googleapis\.com\/|fonts\.gstatic\.com\/)/.test(u);
+        });
+      caches.open('klever-gate-v1').then(function (c) {
+        urls.forEach(function (u) {
+          c.match(u).then(function (hit) {
+            if (hit) return;
+            fetch(u, u.indexOf(mine) === 0 ? {} : { mode: 'cors' }).then(function (res) {
+              if (res && (res.ok || res.type === 'opaque')) c.put(u, res);
+            }, function () {});
+          });
+        });
+      }, function () {});
+    }, 20000);
   }
 
   /* the screen stays on; once a night the page starts afresh */
@@ -907,14 +967,16 @@
   setInterval(function () {
     tickClock();
     var m = minsOf();
-    if (mode === 'kiosk' && sub === 'idle' && m >= 180 && m < 190 && Date.now() - startedAt > 3600000) location.reload();
+    if (mode === 'kiosk' && sub === 'idle' && m >= 180 && m < 190 && Date.now() - startedAt > 3600000) {
+      lineUp(function () { if (mode === 'kiosk' && sub === 'idle') location.reload(); });
+    }
   }, 15000);
-  window.addEventListener('online', pump);
+  window.addEventListener('online', function () { pump(); if (mode === 'message') again(); });
 
   window.GATE = {
     nearest: nearest, sure: sure, dist: dist, toB64: toB64, fromB64: fromB64, readFaces: readFaces,
     dayOf: dayOf, minsOf: minsOf, eth: eth, clockAm: clockAm, clockEn: clockEn,
-    state: function () { return { mode: mode, sub: sub, queue: queue.length, faces: faces.length, engine: engineOk }; }
+    state: function () { return { mode: mode, sub: sub, queue: queue.length, faces: faces.length, engine: engineOk, kept: kept }; }
   };
 
   function boot() {
@@ -923,6 +985,9 @@
     document.documentElement.lang = 'am';
     queue = store(QKEY) || [];
     sweepDone();
+    try {
+      if ('serviceWorker' in navigator) navigator.serviceWorker.register('gate-sw.js', { scope: './gate' })['catch'](function () {});
+    } catch (e) {}
     if (!window.FB) { setTimeout(boot, 100); return; }
     window.FB.ready.then(function () { start(); setTimeout(pump, 1500); });
   }

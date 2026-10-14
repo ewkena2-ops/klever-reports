@@ -118,18 +118,28 @@ function attendPost_(row, poster) {
    office's people unless others are given (the factory gate, Gate.js). A
    scan Amaha or the Chairman said was not this person counts as none; a
    tapped name not looked at yet is said so. */
+/* The arrival that counts on a day's document: the scan — or, when Amaha
+   said a tapped name was someone else, the person's own face seen later
+   (`face`, Gate.js), or none. */
+function atEffective_(d) {
+  if (!d || d.check !== 'not') return d || {};
+  var f = d.face;
+  return f && f.at ? { scanAt: f.at, hm: f.hm, late: !!f.late, minsLate: f.minsLate || 0, how: 'face', why: d.why, note: d.note }
+                   : { why: d.why, note: d.note };
+}
 function attendDay_(schedule, day, docs, people) {
   var by = {};
   (docs || []).forEach(function (d) { if (d.day === day) by[d.person] = d; });
   return (people || atPeople_(schedule)).filter(function (p) { return !p.from || p.from <= day; }).map(function (p) {
-    var d = by[p.id] || {};
-    var scanned = d.scanAt && d.check !== 'not';
+    var raw = by[p.id] || {}, d = atEffective_(raw);
+    var scanned = !!d.scanAt;
     var r = { id: p.id, name: p.en,
               status: scanned ? (d.late ? 'late' : 'on time') : 'no scan',
               at: scanned ? d.hm || null : null, minutes_late: scanned && d.late ? d.minsLate : 0,
               why: d.why || null, note: d.note || null };
-    if (scanned && d.check === 'open') r.name_tapped_picture_not_checked_yet = true;
-    if (d.check === 'not') r.scan_was_someone_else = true;
+    if (scanned && raw.check === 'open') r.name_tapped_picture_not_checked_yet = true;
+    if (raw.check === 'open' && raw.face) r.own_face_also_seen_at = raw.face.hm;
+    if (raw.check === 'not') r.tapped_scan_was_someone_else = true;
     return r;
   });
 }

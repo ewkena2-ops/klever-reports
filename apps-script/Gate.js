@@ -12,14 +12,21 @@
    Amaha: a few pictures each, kept as the numbers that describe a face,
    and one small picture — and recognises them on the tablet itself. A face
    it knows, or a name tapped when it does not, comes here with a small
-   picture taken at that moment (/gatephoto). The time is the tablet's
-   when it is from the last three hours (a scan waits on the tablet while
-   the line is down) and not ahead of this clock; the server's otherwise.
-   Late after 8:00 AM, as the office (Attend.js).
+   picture taken at that moment (/gatephoto). The time is the tablet's —
+   a scan waits on the tablet while the line is down, for minutes or a
+   whole morning, and is filed for the day and the time it was made, never
+   for when it got through (the bug hunt, 15 Oct 2026: a 7:35 arrival sent
+   at 10:45 had been filed as 10:45, late). Only a clock ahead of this one
+   is not believed, and a scan two days old is refused. Late after 8:00 AM,
+   as the office (Attend.js).
 
    A tapped name proves nothing by itself: it comes in with check 'open',
    and Amaha or the Chairman looks at the picture and says it is them
-   ('ok') or not ('not' — then it counts as no scan). Workers have no
+   ('ok') or not ('not' — then it counts as no scan). The real person's
+   face, seen after someone tapped their name, is kept beside the tap
+   (`face`): if Amaha says the tap was someone else, the face is the
+   arrival; until then the tap stands — a person who tapped their own name
+   at 7:30 and walks past the camera at noon is not made late. Workers have no
    phones, so Amaha says why for a worker who did not come or came late;
    Amaha, Wude and Yordanos say it for themselves, as the office does.
 
@@ -28,7 +35,7 @@
    office.                                                                 */
 
 var GT_PLACE_ = 'factory';
-var GT_BACK_MS_ = 3 * 3600 * 1000;      /* a scan may wait on the tablet this long */
+var GT_STALE_MS_ = 48 * 3600 * 1000;    /* a scan that waited on the tablet longer is refused */
 var GT_AHEAD_MS_ = 2 * 60 * 1000;       /* a tablet clock this far ahead is still believed */
 var GT_PHOTO_MAX_ = 90000;              /* characters of a data: picture */
 
@@ -99,34 +106,51 @@ function gatePost_(row, poster) {
   if (!p && !(face && /^pay-/.test(person))) return JSON.stringify({ ok: false, why: 'unknown' });
   var name = p ? p.en : (face.name || person);
 
-  /* the tablet's time, when it is believable */
+  /* the tablet's time — when it was made, however long it waited */
   var now = new Date(), when = now, at = Number(row.at);
-  if (isFinite(at) && at > 0 && at <= now.getTime() + GT_AHEAD_MS_ && at >= now.getTime() - GT_BACK_MS_) {
+  if (isFinite(at) && at > 0 && at <= now.getTime() + GT_AHEAD_MS_) {
+    if (at < now.getTime() - GT_STALE_MS_) return JSON.stringify({ ok: false, why: 'stale' });
     when = new Date(Math.min(at, now.getTime()));
   }
+  var waited = Math.round((now.getTime() - when.getTime()) / 60000);
   var day = Utilities.formatDate(when, tz_(), 'yyyy-MM-dd'), mins = atMinutes_(when);
   var path = 'attend/' + day + '_' + person;
+  var how = row.how === 'face' ? 'face' : 'tap';
+  var sunday = dow_(day) === 0;
+  var photo = String(row.photo || '');
+  var goodPhoto = /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+\/=]+$/.test(photo) && photo.length <= GT_PHOTO_MAX_;
   var had = null;
   try { had = fsGet_(path); } catch (e) { had = null; }
   if (had && had.scanAt && had.check !== 'not') {
+    /* the face of someone whose name was tapped earlier and not yet looked
+       at: kept beside the tap, with its picture, for Amaha to compare */
+    if (how === 'face' && had.how === 'tap' && had.check !== 'ok' && !had.face) {
+      var fl = !sunday && mins > AT_LATE_AFTER_;
+      var seen = { at: when, hm: atClock_(mins), late: fl, minsLate: fl ? mins - AT_LATE_AFTER_ : 0 };
+      if (isFinite(Number(row.dist))) seen.dist = Math.round(Number(row.dist) * 1000) / 1000;
+      fsUpdate_(path, { face: seen });
+      if (goodPhoto) {
+        try { fsPut_('gatephoto/' + day + '_' + person + '_face', { person: person, day: day, photo: photo, how: 'face', at: when }); }
+        catch (e) { Logger.log('gatephoto face %s: %s', person, e.message); }
+      }
+    }
     return JSON.stringify({ ok: true, already: true, name: name, at: had.hm, late: !!had.late, minsLate: had.minsLate || 0 });
   }
-  var how = row.how === 'face' ? 'face' : 'tap';
-  var sunday = dow_(day) === 0;
   var late = !sunday && mins > AT_LATE_AFTER_;
   var scan = { person: person, day: day, place: GT_PLACE_, scanAt: when, hm: atClock_(mins), late: late,
                minsLate: late ? mins - AT_LATE_AFTER_ : 0, how: how, by: 'gate', sentAt: now,
                /* a tapped name waits for Amaha or the Chairman to look at the picture */
                check: how === 'tap' ? 'open' : '' };
   if (how === 'face' && isFinite(Number(row.dist))) scan.dist = Math.round(Number(row.dist) * 1000) / 1000;
+  /* sent long after it was made (the line was down): said, for whoever reads it */
+  if (waited > 30) scan.waited = waited;
   /* a reason given before (Amaha said "sick", then he came) stays with it;
      a scan he said was not this person is replaced */
   if (had) {
-    if (had.check === 'not') { scan.checkBy = ''; }
+    if (had.check === 'not') { scan.checkBy = ''; scan.face = null; }
     fsUpdate_(path, scan);
   } else fsPut_(path, scan);
-  var photo = String(row.photo || '');
-  if (/^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+\/=]+$/.test(photo) && photo.length <= GT_PHOTO_MAX_) {
+  if (goodPhoto) {
     try {
       fsPut_('gatephoto/' + day + '_' + person, { person: person, day: day, photo: photo, how: how, at: when });
     } catch (e) { Logger.log('gatephoto %s: %s', person, e.message); }

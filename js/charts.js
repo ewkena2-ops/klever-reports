@@ -171,7 +171,7 @@
   /* ================= who reported: a grid of people and days ================= */
 
   /* opts: {title, sub, cols:[{top, bottom, title, today, tip:[...]}],
-            rows:[{name, cells:[{s:'ok'|'late'|'miss'|'wait'|null, tip:[...]}]}],
+            rows:[{name, cells:[{s:'ok'|'late'|'miss'|'wait'|null, parts?:[s, s], tip:[...]}]}],
             legend:[[s, icon, label]], numbers, caption} */
   var ICON = { ok: '✓', late: '!', miss: '✕', wait: '·' };
 
@@ -211,9 +211,22 @@
             sv('rect', { x: x + cw / 2 - 1.5, y: y + cell / 2 - 1.5, width: 3, height: 3, rx: 1.5, 'class': 'cg-none' }, svg);
             return;
           }
-          var g = sv('g', { 'class': 'cg-cell s-' + c.s }, svg);
-          sv('rect', { x: x, y: y, width: cw, height: cell, rx: 4, 'class': 'cg-sq' }, g);
-          if (cell >= 14) stext(g, x + cw / 2, y + cell / 2 + 4, ICON[c.s], 'cg-ic', 'middle');
+          var g;
+          if (c.parts && c.parts.length > 1) {
+            /* one part a report, side by side, each its own colour and mark */
+            g = sv('g', { 'class': 'cg-cell cg-split' }, svg);
+            var pw = cw / c.parts.length;
+            c.parts.forEach(function (s, k) {
+              var pg = sv('g', { 'class': 'cg-cell s-' + s }, g);
+              sv('rect', { x: x + k * pw + (k ? 0.75 : 0), y: y, width: pw - (k < c.parts.length - 1 ? 0.75 : 0) - (k ? 0.75 : 0),
+                           height: cell, rx: 3, 'class': 'cg-sq' }, pg);
+              if (cell >= 14 && pw >= 8) stext(pg, x + k * pw + pw / 2, y + cell / 2 + 3.5, ICON[s], 'cg-ic cg-ic-s', 'middle');
+            });
+          } else {
+            g = sv('g', { 'class': 'cg-cell s-' + c.s }, svg);
+            sv('rect', { x: x, y: y, width: cw, height: cell, rx: 4, 'class': 'cg-sq' }, g);
+            if (cell >= 14) stext(g, x + cw / 2, y + cell / 2 + 4, ICON[c.s], 'cg-ic', 'middle');
+          }
           hit(g, { x: x - 1, y: y - 1, width: cw + 2, height: cell + 2 }, c.tip, tip, wrap,
               function () { g.classList.add('on'); }, function () { g.classList.remove('on'); }, c.open);
         });

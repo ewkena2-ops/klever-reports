@@ -1480,7 +1480,13 @@ import {
           var mine = c.lines.filter(function (l) { return l.person === p.id; });
           if (!mine.length) return null;
           var worst = mine.reduce(function (a, l) { return RANK[l.s] > RANK[a] ? l.s : a; }, 'wait');
-          return { s: worst, tip: [L(p) + ' · ' + (c.today ? t('chgToday') : dayShort(c.day))].concat(mine.map(function (l) {
+          /* Two reports that day that came out differently — Ephrata's Commercial
+             Report sent late, her Board Check not sent — are two halves, each
+             its own colour. One red square read as "nothing sent" (the
+             Chairman, 14 Oct 2026). */
+          var parts = mine.map(function (l) { return l.s; });
+          var mixed = parts.some(function (s) { return s !== parts[0]; });
+          return { s: worst, parts: mixed ? parts.slice(0, 3) : null, tip: [L(p) + ' · ' + (c.today ? t('chgToday') : dayShort(c.day))].concat(mine.map(function (l) {
             return l.report + ' — ' + (l.w || WORD[l.s]) + (l.at ? ', ' + hhmm(l.at) : '');
           })),
             /* a tap opens what they filed that day, in their own words */
@@ -1506,7 +1512,7 @@ import {
       });
       return C.grid({
         title: t('chgWho'), sub: t('chgWhoSub'), cols: colsOut, rows: rows, caption: cap,
-        legend: [['ok', '✓', WORD.ok], ['late', '!', WORD.late], ['miss', '✕', WORD.miss], ['wait', '·', WORD.wait]],
+        legend: [['ok', '✓', WORD.ok], ['late', '!', WORD.late], ['miss', '✕', WORD.miss], ['wait', '·', WORD.wait], ['split', '', t('chgSplit')]],
         numbers: { title: t('chgNumbers'), head: [t('chgPerson'), '✓ ' + WORD.ok, '! ' + WORD.late, '✕ ' + WORD.miss], rows: tally }
       });
     }

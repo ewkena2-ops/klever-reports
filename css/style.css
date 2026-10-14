@@ -1231,6 +1231,8 @@ g.on .cg-bar,g.on .cg-dot{filter:brightness(1.18)}
 .cg-cell.s-miss .cg-sq{fill:var(--miss)}
 .cg-cell.s-wait .cg-sq{fill:none;stroke:var(--line-3);stroke-width:1}
 .cg-cell .cg-ic{font:700 11px var(--sans);fill:#06120f;pointer-events:none}
+.cg-cell .cg-ic-s{font-size:9px}
+.cg-key.s-split i{background:linear-gradient(90deg,var(--gold) 0 48%,transparent 48% 52%,var(--miss) 52% 100%)}
 .cg-cell.s-wait .cg-ic{fill:var(--dim)}
 .cg-cell.on .cg-sq{filter:brightness(1.18)}
 .cg-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0 0;font-size:12px;color:var(--mut)}

@@ -85,6 +85,10 @@ var REG_SOURCES_ = [
   { r: 'liu-weekly', f: 'pl_delayed_list', k: 'delay', job: 'code', what: 'why', date: 'new' },
   { r: 'amaha-daily', f: 'p_jobs', k: 'production', job: 'code', state: 'st' },
   { r: 'wude-daily', f: 'i_jobs', k: 'qc', cust: 'cust', job: 'code', ok: 'pass', what: 'why' },
+  /* a job that did not pass, asked again the next day (the Chairman, 14 Oct
+     2026): "inspected again — passed / still not passing" is an inspection;
+     the other answers (still in rework, not started) are not one */
+  { r: 'wude-daily', f: 'qc_back', k: 'qc', job: 'code', ok: 'now', okMap: { pass: 'yes', fail: 'no' }, what: 'why' },
   { r: 'wude-weekly', f: 'c_recv_list', k: 'complaint', cust: 'cust', job: 'code', what: 'what' },
   /* "Where is it now?" — finished today, or still on installation (the
      Chairman, 10 Oct 2026) */
@@ -224,6 +228,11 @@ function regEventsOf_(filing) {
       ['colour', 'front', 'body'].forEach(function (x) {
         if (s[x] && !blank_(row[s[x]])) e[x] = String(row[s[x]]).trim().toUpperCase().replace(/[^0-9A-Z_-]/g, '').substring(0, 20);
       });
+      /* an answer that is a yes or a no in its own words; any other is no line */
+      if (s.okMap) {
+        if (!s.okMap[e.ok]) return;
+        e.ok = s.okMap[e.ok];
+      }
       if (e.colour) e.what = (e.what ? e.what + ' ' : '') + e.colour;
       if (s.whatIs && !e.what) e.what = s.whatIs;
       /* what a defect needs cut again: "Melamine 18mm KKUV-18 ×2" — nothing

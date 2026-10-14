@@ -3601,6 +3601,21 @@
   function carryAnswered(f, r) {
     return !!r && f.cols.some(function (c, i) { return i > 0 && has(r[c.id]); });
   }
+  /* the job codes one filing names in a source: 'list.col', a question's
+     words, or {f, col, when:{col, is|in}} — only the rows that say so (a job
+     that did not pass, a defect sent for rework) */
+  function carryCodes(v, src) {
+    var s = typeof src === 'string' ? { f: src.split('.')[0], col: src.split('.')[1] } : src;
+    var x = v[s.f], out = [];
+    if (!s.col) return jobCodes(x, false);
+    if (Array.isArray(x)) x.forEach(function (r) {
+      if (!r) return;
+      var w = s.when, cv = w ? r[w.col] : null;
+      if (w && (w.in ? w.in.indexOf(cv) === -1 : cv !== w.is)) return;
+      out = out.concat(jobCodes(r[s.col], true));
+    });
+    return out;
+  }
   /* the codes still open, oldest named first */
   function carryOpen(f, filings, day) {
     var c = f.carry, close = c.close || {}, open = [], first = f.cols[0].id;
@@ -3608,11 +3623,8 @@
       return d.report === report.id && ymdOf(addis(d.at)) < day;
     }).sort(function (a, b) { return a.at - b.at; }).forEach(function (d) {
       var v = d.values || {}, named = [], shut = [];
-      (c.from || []).forEach(function (src) {
-        var p = String(src).split('.'), x = v[p[0]];
-        if (!p[1]) { named = named.concat(jobCodes(x, false)); return; }
-        if (Array.isArray(x)) x.forEach(function (r) { if (r) named = named.concat(jobCodes(r[p[1]], true)); });
-      });
+      (c.from || []).forEach(function (src) { named = named.concat(carryCodes(v, src)); });
+      (c.shut || []).forEach(function (src) { shut = shut.concat(carryCodes(v, src)); });
       /* its own rows: answered "not yet" keeps a job open, closed shuts it */
       (Array.isArray(v[f.id]) ? v[f.id] : []).forEach(function (r) {
         if (!r) return;

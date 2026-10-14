@@ -4,7 +4,8 @@
    field keys:  id  en  am  t(type)  i(indent)  tgt(target check)  opt(not required)
                 must(cannot be sent empty — on a question, or on a list's column: every row)
                 carry(a list whose rows are the job codes of this person's earlier
-                      reports still open — {from:['list.col'|'question'], close:{col, in:[…]}, days};
+                      reports still open — {from:['list.col'|'question'|{f, col, when:{col, is|in}}],
+                      shut:[same — a later mention that closes the job], close:{col, in:[…]}, days};
                       or the jobs the script asks this person about — {ask:'<kind>', close:{col}})
    types:       num money pct text area ratio yesno choice
    target:      {op:'gte'|'lte', v:<number>, en:'', am:''}            */
@@ -6076,6 +6077,35 @@ const REPORTS = [
        yes/no answers the rulebook and the Chairman's brief read (i_all,
        pr_any, r_register) are worked out from the list ({picked:…},
        quiet:1). */
+    /* THE JOBS THAT DID NOT PASS (the Chairman, 14 Oct 2026: "if she reports
+       a job not finished, ask her tomorrow about that job"). A job she failed
+       at inspection, or sent for rework or rejected, comes back on her next
+       report as a row of its own, and she taps where it stands now — until
+       it has passed, or the job is stopped. A pass in "Each job inspected
+       today" closes it too. "Passed" and "still not passing" reach the
+       register as an inspection (Register.js), so its "failed QC, not
+       passed since" clears. */
+    { en:'Jobs that did not pass before', am:'ከዚህ በፊት ያላለፉ ሥራዎች', fields:[
+      {id:'qc_back', en:'Where does each of these jobs stand now?', am:'እያንዳንዱ ሥራ አሁን የት ደርሷል?', t:'table',
+        carry:{from:[{f:'i_jobs', col:'code', when:{col:'pass', is:'no'}},
+                     {f:'d_rows', col:'code', when:{col:'act', in:['rework', 'reject']}}],
+               shut:[{f:'i_jobs', col:'code', when:{col:'pass', is:'yes'}}],
+               close:{col:'now', in:['pass', 'stop']}, days:30},
+        cols:[
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'now', en:'Where is it now?', am:'አሁን የት ደርሷል?', t:'choice', must:1, opts:[
+            {v:'pass',   en:'Inspected again — passed',             am:'እንደገና ተመርምሮ አልፏል'},
+            {v:'fail',   en:'Inspected again — still not passing',  am:'እንደገና ተመርምሮ አሁንም አላለፈም'},
+            {v:'rework', en:'Still in rework',                      am:'አሁንም በዳግም ሥራ ላይ ነው'},
+            {v:'wait',   en:'Rework not started yet',               am:'ዳግም ሥራው ገና አልተጀመረም'},
+            {v:'stop',   en:'The job is stopped or cancelled',      am:'ሥራው ቆሟል ወይም ተሰርዟል'}
+          ]},
+          {id:'why', en:'What is still wrong?', am:'አሁንም ምን ችግር አለበት?', t:'text', picks:COL_DEFECT,
+            ifCol:'now', ifIn:['fail']},
+          {id:'when', en:'When will it be ready to inspect again?', am:'እንደገና ለመመርመር መቼ ይደርሳል?', t:'date',
+            ifCol:'now', ifIn:['rework', 'wait']}
+        ]}
+    ]},
     { en:'Jobs inspected today', am:'ዛሬ የተመረመሩ ሥራዎች', fields:[
       /* The four figures that stood above this list were the list: how many
          inspected, how many passed, how many failed, and the rate between

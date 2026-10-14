@@ -92,6 +92,22 @@
   }
   function timeOf(v) { return v && v.toDate ? v.toDate() : new Date(); }
 
+  /* what one person adding faces may do, with their own sign-in */
+  function faceSession(dbx, u, end) {
+    return {
+      who: idOf(u),
+      saveFace: function (person, name, descr, photo) {
+        return F.setDoc(F.doc(dbx, 'faces', person), {
+          person: person, name: String(name || person).slice(0, 80), descr: descr.slice(0, 12),
+          photo: photo || '', n: descr.length, by: idOf(u), at: F.serverTimestamp()
+        });
+      },
+      deleteFace: function (person) { return F.deleteDoc(F.doc(dbx, 'faces', person)); },
+      token: function () { return u.getIdToken(); },
+      end: end
+    };
+  }
+
   window.FB = {
     ready: ready,
     on: function (fn) { listeners.push(fn); },
@@ -313,6 +329,92 @@
       var me = idOf(user), ref = F.doc(db, 'attend', day + '_' + me);
       var x = { why: why, note: String(note || '').slice(0, 300), whyAt: F.serverTimestamp() };
       return exists ? F.updateDoc(ref, x) : F.setDoc(ref, Object.assign({ person: me, day: day }, x));
+    },
+    /* THE FACTORY GATE (gate.html, js/gate.js, apps-script/Gate.js) */
+    /* the faces the gate knows: cb([{person, name, descr, photo, n}]), or
+       cb(null) when they cannot be read */
+    watchFaces: function (cb) {
+      return later(function () {
+      if (!user) return null;
+      return F.onSnapshot(F.collection(db, 'faces'), function (snap) {
+        var out = [];
+        snap.forEach(function (d) { var x = d.data({ serverTimestamps: 'estimate' }); x.person = x.person || d.id; out.push(x); });
+        cb(out);
+      }, function () { cb(null); });
+      });
+    },
+    /* the day the gate is counted from: cb('yyyy-mm-dd' | null) */
+    watchGateConf: function (cb) {
+      return later(function () {
+      if (!user) return null;
+      return F.onSnapshot(F.doc(db, 'gateconf', 'factory'), function (d) {
+        var x = d.exists() ? d.data() : null;
+        cb(x && x.from ? x.from : null);
+      }, function () { cb(null); });
+      });
+    },
+    /* Adding faces. On the gate's tablet the Chairman or Amaha signs in
+       beside the gate's own sign-in, which stays: a second Firebase app,
+       kept in memory only, gone with the page. On their own phone it is
+       their own sign-in. Either way: { who, saveFace, deleteFace, token, end } */
+    enrolAs: function (id, password) {
+      return ready.then(function () {
+        if (!auth) throw new Error('offline');
+        var app2 = F.getApps().filter(function (a) { return a.name === 'enrol'; })[0] || F.initializeApp(FIREBASE_CONFIG, 'enrol');
+        var auth2;
+        try { auth2 = F.initializeAuth(app2, { persistence: F.inMemoryPersistence }); }
+        catch (e) { auth2 = F.getAuth(app2); }
+        var db2 = F.getFirestore(app2);
+        return F.signInWithEmailAndPassword(auth2, id + '@' + KLEVER_DOMAIN, password).then(function (cred) {
+          return faceSession(db2, cred.user, function () { return F.signOut(auth2); });
+        });
+      });
+    },
+    enrolSelf: function () {
+      if (!db || !user) return null;
+      return faceSession(db, user, function () { return Promise.resolve(); });
+    },
+    /* Amaha's page: the gate's days from a day on: cb(docs) */
+    watchFactory: function (fromDay, cb) {
+      return later(function () {
+      if (!user) return null;
+      return F.onSnapshot(F.query(F.collection(db, 'attend'), F.where('place', '==', 'factory'), F.where('day', '>=', fromDay)), function (snap) {
+        var out = [];
+        snap.forEach(function (d) { var x = d.data({ serverTimestamps: 'estimate' }); x.id = d.id; out.push(x); });
+        cb(out);
+      }, function () { cb(null); });
+      });
+    },
+    /* the pictures taken at the gate on one day: cb({person: dataUrl}) */
+    watchGatePhotos: function (day, cb) {
+      return later(function () {
+      if (!user) return null;
+      return F.onSnapshot(F.query(F.collection(db, 'gatephoto'), F.where('day', '==', day)), function (snap) {
+        var out = {};
+        snap.forEach(function (d) { var x = d.data(); if (x.person) out[x.person] = x.photo; });
+        cb(out);
+      }, function () { cb({}); });
+      });
+    },
+    /* one picture from the gate, or null */
+    gatePhoto: function (day, person) {
+      if (!db || !user) return Promise.resolve(null);
+      return F.getDoc(F.doc(db, 'gatephoto', day + '_' + person)).then(function (d) {
+        return d.exists() ? d.data().photo || null : null;
+      })['catch'](function () { return null; });
+    },
+    /* Amaha says why a worker (no phone) did not come, or came late */
+    saveGateWhy: function (person, day, why, note, exists) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      var ref = F.doc(db, 'attend', day + '_' + person);
+      var x = { why: why, note: String(note || '').slice(0, 300), whyAt: F.serverTimestamp(), whyBy: idOf(user) };
+      return exists ? F.updateDoc(ref, x) : F.setDoc(ref, Object.assign({ person: person, day: day, place: 'factory' }, x));
+    },
+    /* after looking at the picture: it is them (true) or not (false) */
+    checkGate: function (person, day, isThem) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      return F.updateDoc(F.doc(db, 'attend', day + '_' + person),
+                         { check: isThem ? 'ok' : 'not', checkBy: idOf(user), checkAt: F.serverTimestamp() });
     },
     /* The payroll months still open for what only Selam knows — overtime,
        loans, advances, cost sharing, court (apps-script/Payroll.js):

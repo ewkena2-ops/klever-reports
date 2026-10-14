@@ -114,16 +114,23 @@ function attendPost_(row, poster) {
   return JSON.stringify({ ok: true, at: scan.hm, late: late, minsLate: scan.minsLate });
 }
 
-/* One day, person by person: on time / late / no scan, and why. */
-function attendDay_(schedule, day, docs) {
+/* One day, person by person: on time / late / no scan, and why. The
+   office's people unless others are given (the factory gate, Gate.js). A
+   scan Amaha or the Chairman said was not this person counts as none; a
+   tapped name not looked at yet is said so. */
+function attendDay_(schedule, day, docs, people) {
   var by = {};
   (docs || []).forEach(function (d) { if (d.day === day) by[d.person] = d; });
-  return atPeople_(schedule).filter(function (p) { return !p.from || p.from <= day; }).map(function (p) {
+  return (people || atPeople_(schedule)).filter(function (p) { return !p.from || p.from <= day; }).map(function (p) {
     var d = by[p.id] || {};
-    return { id: p.id, name: p.en,
-             status: d.scanAt ? (d.late ? 'late' : 'on time') : 'no scan',
-             at: d.hm || null, minutes_late: d.late ? d.minsLate : 0,
-             why: d.why || null, note: d.note || null };
+    var scanned = d.scanAt && d.check !== 'not';
+    var r = { id: p.id, name: p.en,
+              status: scanned ? (d.late ? 'late' : 'on time') : 'no scan',
+              at: scanned ? d.hm || null : null, minutes_late: scanned && d.late ? d.minsLate : 0,
+              why: d.why || null, note: d.note || null };
+    if (scanned && d.check === 'open') r.name_tapped_picture_not_checked_yet = true;
+    if (d.check === 'not') r.scan_was_someone_else = true;
+    return r;
   });
 }
 

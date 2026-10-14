@@ -2042,3 +2042,138 @@ body.noscroll{overflow:hidden}
 .regsw.none{display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:var(--mut)}
 .regcol-t{font-family:var(--mono);font-size:12.5px}
 .regcolcell .regcols{flex-wrap:nowrap}
+
+/* ---------------------------------------------------------------- *
+ *  THE FACTORY GATE'S TABLET (gate.html, js/gate.js, 14 Oct 2026)    *
+ *  Read from a step away, by people who may not read English: big    *
+ *  Amharic first, English small under it; one colour per answer.     *
+ * ---------------------------------------------------------------- */
+body.gatepage{padding:0;overflow-x:hidden}
+#gate{min-height:100vh;min-height:100dvh}
+.gtw .gtam{font-weight:700;line-height:1.25}
+.gtw .gten{color:var(--mut);font-size:.72em;line-height:1.3;margin-top:2px}
+.gtscreen{position:relative;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;
+  min-height:100vh;min-height:100dvh;padding:20px;box-sizing:border-box;align-items:center}
+.gtcam{position:relative;width:100%;aspect-ratio:4/3;border-radius:22px;overflow:hidden;background:#000;
+  box-shadow:inset 0 0 0 1px var(--line-2)}
+.gtvideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.gtring{position:absolute;inset:0;border-radius:22px;box-shadow:inset 0 0 0 6px transparent;transition:box-shadow .25s ease;pointer-events:none}
+.gtring.near{box-shadow:inset 0 0 0 6px var(--line-3)}
+.gtring.far{box-shadow:inset 0 0 0 6px rgba(255,255,255,.08)}
+.gtring.good{box-shadow:inset 0 0 0 10px var(--teal-hi)}
+.gtring.late{box-shadow:inset 0 0 0 10px var(--gold)}
+.gtring.again{box-shadow:inset 0 0 0 10px #8fb3ff}
+.gtside{display:flex;flex-direction:column;gap:18px;min-width:0}
+.gtclock{display:flex;flex-direction:column;gap:2px}
+.gttime{font-size:clamp(40px,7vw,76px);font-weight:700;letter-spacing:-.02em;line-height:1}
+.gttime2{font-size:clamp(16px,2.2vw,22px);color:var(--ink-2);font-weight:600}
+.gtdate{font-size:clamp(16px,2vw,21px);margin-top:6px}
+.gtsay{font-size:clamp(22px,3.4vw,36px);min-height:2.6em}
+.gtsay.gtUnknown .gtam,.gtsay.gtNoEngine .gtam{color:var(--gold)}
+.gtanswer:empty{display:none}
+.gtresult{display:flex;gap:18px;align-items:center;padding:18px;border-radius:20px;background:var(--card);
+  box-shadow:inset 0 0 0 2px var(--teal-line);animation:gtin .25s ease-out}
+.gtresult.late{box-shadow:inset 0 0 0 2px var(--gold);background:var(--gold-bg)}
+.gtresult.again{box-shadow:inset 0 0 0 2px rgba(143,179,255,.6)}
+.gtresult.good{background:var(--teal-bg)}
+.gtresulttxt{min-width:0;display:flex;flex-direction:column;gap:6px}
+.gtname{font-size:clamp(26px,3.6vw,40px)}
+.gtstatus{font-size:clamp(20px,2.8vw,30px)}
+.gtresult.good .gtstatus .gtam{color:var(--teal-hi)}
+.gtresult.late .gtstatus .gtam{color:var(--gold)}
+.gtsmall{font-size:15px;color:var(--ink-2)}
+@keyframes gtin{from{transform:scale(.97);opacity:0}to{transform:none;opacity:1}}
+.gtav{width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none;background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--line-3)}
+.gtav.big{width:120px;height:120px}
+.gtini{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:26px;color:var(--ink-2)}
+.gtini.none{color:var(--coral);font-size:22px}
+.gtbtn{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:64px;
+  padding:10px 22px;border-radius:16px;border:0;cursor:pointer;font-family:var(--sans);color:var(--ink);
+  background:var(--raise);box-shadow:inset 0 0 0 1px var(--line-3);text-decoration:none;-webkit-tap-highlight-color:transparent}
+.gtbtn:active{transform:scale(.98)}
+.gtbtn:disabled{opacity:.5;cursor:default}
+.gtbam{font-size:20px;font-weight:700;line-height:1.2}
+.gtben{font-size:13px;color:var(--mut);line-height:1.25}
+.gtbtn.gtyes{background:var(--teal);color:var(--teal-ink);box-shadow:none}
+.gtbtn.gtyes .gtben{color:rgba(3,32,25,.75)}
+.gtbtn.gtghost{background:transparent}
+.gtbtn.danger .gtbam{color:var(--coral)}
+.gtbtn.armed{box-shadow:inset 0 0 0 2px var(--coral)}
+.gtbtn.gtpick.on{box-shadow:inset 0 0 0 2px var(--teal-hi);background:var(--teal-bg)}
+.gttap{min-height:84px;width:100%}
+.gttap .gtbam{font-size:26px}
+.gttap.glow{box-shadow:inset 0 0 0 3px var(--gold);animation:gtpulse 1.6s ease-in-out infinite}
+@keyframes gtpulse{50%{box-shadow:inset 0 0 0 3px rgba(227,181,71,.35)}}
+.gtqueue{font-size:16px;color:var(--gold)}
+.gtqueue:empty{display:none}
+.gtcorner{position:absolute;left:12px;bottom:10px;width:44px;height:44px;border-radius:50%;border:0;background:transparent;
+  color:var(--dim);font-size:20px;cursor:pointer;opacity:.55}
+.gtlayer{display:none}
+.gtlayer.on{display:flex;flex-direction:column;position:fixed;inset:0;z-index:20;background:rgba(6,11,10,.985);
+  padding:20px;box-sizing:border-box;overflow-y:auto;gap:16px}
+.gtlayerhead{display:flex;justify-content:space-between;align-items:center;gap:16px;font-size:clamp(24px,3.2vw,34px)}
+.gtnames{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.gtnamebtn{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;border:0;cursor:pointer;
+  background:var(--card);box-shadow:inset 0 0 0 1px var(--line-2);color:var(--ink);text-align:left;font-family:var(--sans);min-height:84px}
+.gtnamebtn:active{background:var(--raise)}
+.gtnamewords{display:flex;flex-direction:column;min-width:0}
+.gtconfirm{margin:auto;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;font-size:clamp(24px,3.2vw,34px)}
+.gtsnap{width:min(260px,60vw);height:min(260px,60vw);border-radius:20px;object-fit:cover;box-shadow:inset 0 0 0 1px var(--line-3)}
+.gtrow{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center}
+.gtform{display:flex;flex-direction:column;gap:16px;max-width:520px;margin:auto;width:100%}
+.gtform.solo{min-height:100vh;min-height:100dvh;justify-content:center;padding:20px;box-sizing:border-box}
+.gtsub{font-size:clamp(22px,3vw,30px)}
+.gtnote{font-size:15px;color:var(--ink-2)}
+.gtnote.bad .gtam{color:var(--gold)}
+.gtinput{min-height:56px;border-radius:14px;border:0;padding:0 16px;font:600 18px var(--sans);color:var(--ink);
+  background:var(--field);box-shadow:inset 0 0 0 1px var(--line-3)}
+.gtinput:focus{outline:none;box-shadow:inset 0 0 0 2px var(--teal-hi)}
+.gtwait{padding:40px 20px;text-align:center}
+.gttoast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;max-width:min(92vw,560px);
+  padding:14px 20px;border-radius:16px;background:var(--raise);box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 0 0 1px var(--line-3);font-size:18px}
+.gtenrol{max-width:760px;margin:0 auto;padding:18px 16px 60px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box}
+.gtenrol.cap .gtcam{max-width:560px;margin:0 auto}
+.gtenrolhead{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;font-size:24px}
+.gtenrolhead .gtsmall{grid-column:1}
+.gtenrolhead .gtbtn{grid-row:1/3;grid-column:2}
+.gtcount{font-size:18px;color:var(--teal-hi)}
+.gtlist{display:flex;flex-direction:column;gap:8px}
+.gtlrow{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 12px;border-radius:16px;
+  background:var(--card);box-shadow:inset 0 0 0 1px var(--line-2)}
+.gtlrow.has{box-shadow:inset 0 0 0 1px var(--teal-line)}
+.gtlname{min-width:0}
+.gtlacts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.gtlacts .gtbtn{min-height:52px;padding:6px 14px}
+.gtdots{display:flex;gap:10px;justify-content:center}
+.gtdot{width:16px;height:16px;border-radius:50%;background:var(--raise);box-shadow:inset 0 0 0 1px var(--line-3)}
+.gtdot.on{background:var(--teal-hi);box-shadow:none}
+@media (orientation:portrait),(max-width:760px){
+  .gtscreen{grid-template-columns:1fr;align-content:start;gap:14px;padding:14px 16px 64px}
+  .gtcam{max-height:46vh}
+  .gtav.big{width:88px;height:88px}
+  .gtresult{padding:14px;gap:14px}
+  .gtlrow{grid-template-columns:auto 1fr}
+  .gtlacts{grid-column:1/-1;justify-content:flex-start}
+}
+@media (prefers-reduced-motion:reduce){
+  .gtresult,.gttap.glow{animation:none}
+  .gtring{transition:none}
+}
+
+/* the gate on Amaha's page and the Chairman's: the picture each scan took */
+.gtpic{width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none;background:var(--raise);box-shadow:inset 0 0 0 1px var(--line-2);cursor:zoom-in}
+.gtpic:not([src]){visibility:hidden}
+.gtpic.big{width:200px;height:200px;cursor:zoom-out}
+.gtcheck{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+.gtcheck .gtpic{width:96px;height:96px}
+.gtcheck .gtpic.big{width:200px;height:200px}
+.gtgo{display:inline-flex;align-items:center;text-decoration:none;justify-self:start;width:max-content}
+.gthead .gtgo{margin-top:8px}
+.gtnoface{color:var(--gold)}
+.chf.gtrow2{display:grid;grid-template-columns:44px minmax(0,1fr);gap:2px 12px;align-items:center}
+.chf.gtrow2 .gtpic{grid-row:1/3;align-self:center}
+.chf.gtrow2 .chfk,.chf.gtrow2 .chfv{grid-column:2;margin:0;text-align:left;justify-self:start}
+.chf.gtrow2 .chfv{white-space:normal}
+.atdl .gtwhy{grid-column:1/-1;justify-self:start;min-height:34px;margin-top:4px}
+.atdl .atask{grid-column:1/-1}

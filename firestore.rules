@@ -40,7 +40,10 @@ service cloud.firestore {
                     /* Rovestone's Operations Lead, added 4 Oct 2026 — and
                        left out of this list until the 5 Oct live test found
                        every report of hers refused */
-                    'frewoyni'];
+                    'frewoyni',
+                    /* the factory gate's tablet (gate.html), 14 Oct 2026 —
+                       not a person: it reads the faces and posts check-ins */
+                    'gate'];
     }
 
     function signedIn() {
@@ -68,6 +71,34 @@ service cloud.firestore {
        property. */
     function isLedger() {
       return signedIn() && me() == 'ledger';
+    }
+
+    /* THE FACTORY GATE (gate.html, apps-script/Gate.js, 14 Oct 2026: "they
+       don't have phones"). The gate's own account, on the tablet; Amaha, who
+       runs the factory; the people at the gate who have no account — the
+       production workers of js/forms.js (`worker`), and anyone on the
+       payroll only (pay-…) — for whom Amaha says why and adds the face. */
+    function isGate() {
+      return signedIn() && me() == 'gate';
+    }
+    function isAmaha() {
+      return signedIn() && me() == 'amaha';
+    }
+    function gateWorker(p) {
+      return p is string
+          && (p in ['bisrat', 'natenael', 'webalem', 'yosef', 'birutukan', 'semayat', 'yeshareg',
+                    'bezawit', 'addisu', 'cheru-moshe', 'tsegaye', 'etaferaw', 'fasika', 'yared',
+                    'kiflom', 'meseret', 'haben', 'gebeyaw', 'cheru-melaku', 'tsegenet', 'hiwot',
+                    'bereke']
+              || p.matches('^pay-[a-z0-9-]{2,60}$'));
+    }
+    function gateFolk(p) {
+      return gateWorker(p) || p in ['amaha', 'wude', 'yordanos'];
+    }
+    function attendWhy(d) {
+      return d.why in ['visit', 'sick', 'leave', 'forgot', 'holiday', 'transport', 'other']
+          && (!('note' in d) || (d.note is string && d.note.size() <= 300))
+          && d.whyAt == request.time;
     }
 
     /* one read of the channel document, cached for the rest of this request */
@@ -634,8 +665,21 @@ service cloud.firestore {
      *  server's time — never the time or the place of a scan. */
     match /attend/{id} {
       allow get, list: if isChairman() || isLedger()
-                       || (signedIn() && resource.data.person == me());
+                       || (signedIn() && resource.data.person == me())
+                       /* Amaha: the factory gate's days, everyone's */
+                       || (isAmaha() && resource.data.place == 'factory');
       allow create: if isLedger()
+                    /* Amaha (or the Chairman) says why a worker with no
+                       phone did not come, or came late */
+                    || ((isAmaha() || isChairman())
+                        && request.resource.data.keys().hasOnly(['person', 'day', 'place', 'why', 'note', 'whyAt', 'whyBy'])
+                        && gateWorker(request.resource.data.person)
+                        && request.resource.data.place == 'factory'
+                        && request.resource.data.day is string
+                        && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                        && id == request.resource.data.day + '_' + request.resource.data.person
+                        && request.resource.data.whyBy == me()
+                        && attendWhy(request.resource.data))
                     || (signedIn()
                         && request.resource.data.keys().hasOnly(['person', 'day', 'why', 'note', 'whyAt'])
                         && request.resource.data.person == me()
@@ -646,6 +690,22 @@ service cloud.firestore {
                         && (!('note' in request.resource.data) || (request.resource.data.note is string && request.resource.data.note.size() <= 300))
                         && request.resource.data.whyAt == request.time);
       allow update: if isLedger()
+                    || ((isAmaha() || isChairman())
+                        && resource.data.place == 'factory'
+                        && gateWorker(resource.data.person)
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['why', 'note', 'whyAt', 'whyBy'])
+                        && request.resource.data.whyBy == me()
+                        && attendWhy(request.resource.data))
+                    /* a scan at the gate: "it is them" or "not them", after
+                       looking at its picture — never one's own */
+                    || ((isAmaha() || isChairman())
+                        && resource.data.place == 'factory'
+                        && 'scanAt' in resource.data
+                        && resource.data.person != me()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['check', 'checkBy', 'checkAt'])
+                        && request.resource.data.check in ['ok', 'not']
+                        && request.resource.data.checkBy == me()
+                        && request.resource.data.checkAt == request.time)
                     || (signedIn()
                         && resource.data.person == me()
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['why', 'note', 'whyAt'])
@@ -672,6 +732,46 @@ service cloud.firestore {
                                 && request.resource.data.ips.size() <= 4
                                 && (!('ignored' in request.resource.data)
                                     || (request.resource.data.ignored is list && request.resource.data.ignored.size() <= 100))
+                                && request.resource.data.setBy == 'chairman'
+                                && request.resource.data.setAt == request.time);
+      allow delete: if false;
+    }
+    /* The faces the gate knows: the numbers that describe a face (a few
+       pictures' worth, as text) and one small picture. Read by the gate's
+       tablet and by those who add them; added, replaced and removed only by
+       the Chairman or Amaha, for the people at the gate, as themselves. */
+    match /faces/{person} {
+      allow get, list: if isChairman() || isLedger() || isGate() || isAmaha();
+      allow create, update: if (isChairman() || isAmaha())
+                            && gateFolk(person)
+                            && request.resource.data.keys().hasOnly(['person', 'name', 'descr', 'photo', 'n', 'by', 'at'])
+                            && request.resource.data.person == person
+                            && request.resource.data.name is string
+                            && request.resource.data.name.size() > 0
+                            && request.resource.data.name.size() <= 80
+                            && request.resource.data.descr is list
+                            && request.resource.data.descr.size() > 0
+                            && request.resource.data.descr.size() <= 12
+                            && request.resource.data.photo is string
+                            && request.resource.data.photo.size() <= 60000
+                            && request.resource.data.by == me()
+                            && request.resource.data.at == request.time;
+      allow delete: if isChairman() || isAmaha();
+    }
+    /* the picture taken at each gate scan — written by the script */
+    match /gatephoto/{id} {
+      allow get, list: if isChairman() || isLedger() || isAmaha();
+      allow create, update: if isLedger();
+      allow delete: if false;
+    }
+    /* the day the gate starts to count — the Chairman's */
+    match /gateconf/{place} {
+      allow get: if signedIn();
+      allow create, update: if isLedger()
+                            || (isChairman()
+                                && request.resource.data.keys().hasOnly(['from', 'setAt', 'setBy'])
+                                && request.resource.data.from is string
+                                && request.resource.data.from.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
                                 && request.resource.data.setBy == 'chairman'
                                 && request.resource.data.setAt == request.time);
       allow delete: if false;

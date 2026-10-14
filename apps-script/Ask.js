@@ -380,6 +380,7 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
     legal_check_last_week: legal,
     payroll: askPayroll_(),
     office_checkins: askAttend_(day),
+    factory_gate_checkins: askGate_(day),
     operations_last_week: opsW,
     specialists_last_week: spec,
     last_week_summary: lastWeek ? { week_ending: lastWeek.end, text: lastWeek.text } : null,
@@ -393,6 +394,10 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
 }
 
 /* the office staff's check-in, today and the month so far (Attend.js) */
+function askGate_(day) {
+  try { return typeof gateFacts_ === 'function' ? gateFacts_(day) : null; }
+  catch (e) { Logger.log('ask gate: %s', e.message); return null; }
+}
 function askAttend_(day) {
   try { return typeof attendFacts_ === 'function' ? attendFacts_(day) : null; }
   catch (e) { Logger.log('ask attend: %s', e.message); return null; }

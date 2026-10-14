@@ -441,6 +441,12 @@ import {
     var atBox = el('div', 'chattend');
     atBox.appendChild(el('p', 'codenote', t('chLoading')));
     root.appendChild(atBox);
+
+    /* --- everyone at the factory, by face at the gate's tablet (js/gate.js, apps-script/Gate.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('gtChTitle')));
+    var gtBox = el('div', 'chattend chgate');
+    gtBox.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(gtBox);
     var record = el('div', 'chrecord');
     root.appendChild(record);
 
@@ -504,6 +510,7 @@ import {
     watchCharges({ fines: charges, bonus: bonusBox, pay: payBox }, tOwed, tBonus);
     watchPayroll(pyBox);
     watchAttend(atBox);
+    watchGate(gtBox);
     watchStanding(standing);
     watchEvents(record);
     watchWeek(week, cfo, hr, legal, opsBox, specialists);
@@ -784,6 +791,182 @@ import {
         if (x.scanAt) late++; else none++;
         lines.push(dayName(day) + ': ' + (x.scanAt ? tfill('atLateShort', { at: x.hm, m: atDur(x.minsLate) }) : t('atNoScanShort')) +
                    ' — ' + (x.why ? atWhyText(x.why, x.note) : t('atNoReason')));
+      });
+      var row = el('details', 'atperson');
+      row.appendChild(el('summary', null, L(p) + ' · ' + tfill('atCounts', { on: on, late: late, none: none })));
+      lines.forEach(function (l) { row.appendChild(el('div', 'atline', l)); });
+      det.appendChild(row);
+    });
+    into.appendChild(det);
+  }
+  /* THE FACTORY GATE (the user, 14 Oct 2026: "the next step, for
+     production, is a face scan — they don't have phones"). Everyone at the
+     factory checks in by face at one tablet (js/gate.js); the scans are the
+     script's (apps-script/Gate.js). Here: whether it counts yet — he starts
+     it, from tomorrow, once the tablet is up and the faces are in — who has
+     a face, today with the picture each scan took, the tapped names to look
+     at, and the Ethiopian month day by day. */
+  function watchGate(into) {
+    var monthStart = window.KLEVER && window.KLEVER.ethMonthStart ? window.KLEVER.ethMonthStart(DAY) : DAY.slice(0, 8) + '01';
+    var st = { docs: null, photos: null, faces: null, from: undefined };
+    function draw() { if (st.docs && st.photos && st.faces && st.from !== undefined) drawGate(into, st, monthStart); }
+    onSnapshot(query(collection(db, 'attend'), where('day', '>=', monthStart)), function (snap) {
+      st.docs = [];
+      snap.forEach(function (d) { st.docs.push(d.data({ serverTimestamps: 'estimate' })); });
+      draw();
+    }, failInto(into));
+    onSnapshot(query(collection(db, 'gatephoto'), where('day', '==', DAY)), function (snap) {
+      st.photos = {};
+      snap.forEach(function (d) { var x = d.data(); st.photos[x.person] = x.photo; });
+      draw();
+    }, failInto(into));
+    onSnapshot(collection(db, 'faces'), function (snap) {
+      st.faces = [];
+      snap.forEach(function (d) { var x = d.data(); st.faces.push({ person: x.person || d.id, name: x.name, photo: x.photo }); });
+      draw();
+    }, failInto(into));
+    onSnapshot(doc(db, 'gateconf', 'factory'), function (d) {
+      st.from = d.exists() && d.data().from ? d.data().from : null;
+      draw();
+    }, failInto(into));
+  }
+  function gtPeople(faces) {
+    var out = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.gate && !p.company; })
+      .map(function (p) { return { id: p.id, en: p.en, am: p.am, worker: !!p.worker }; });
+    var have = {};
+    out.forEach(function (p) { have[p.id] = 1; });
+    faces.forEach(function (f) {
+      if (f.person && !have[f.person]) { have[f.person] = 1; out.push({ id: f.person, en: f.name || f.person, am: '', worker: true }); }
+    });
+    return out;
+  }
+  /* the day after today that is not a Sunday */
+  function gtTomorrow() {
+    var d = addDays(DAY, 1);
+    return new Date(d + 'T12:00:00Z').getUTCDay() === 0 ? addDays(d, 1) : d;
+  }
+  function gtWhy(why, note) { return (t('gtWhy_' + why) || t('atWhy_' + why) || why) + (note ? ' — ' + note : ''); }
+  function gtPic(src) {
+    var i = el('img', 'gtpic');
+    i.alt = '';
+    if (src) i.src = src;
+    i.onclick = function () { i.classList.toggle('big'); };
+    return i;
+  }
+  function drawGate(into, st, monthStart) {
+    into.innerHTML = '';
+    var people = gtPeople(st.faces);
+    var by = {};
+    st.docs.forEach(function (d) { if (d.place === 'factory' || people.some(function (p) { return p.id === d.person; })) (by[d.day] = by[d.day] || {})[d.person] = d; });
+    var counting = !!st.from && DAY >= st.from;
+
+    /* counted from when */
+    var head = el('div', 'atwifi');
+    if (st.from) head.appendChild(el('p', 'codenote', tfill('gtCounting', { day: prettyDay(st.from) })));
+    else {
+      head.appendChild(el('p', 'pywarn', t('gtNotCounting')));
+      var go = el('button', 'pushbtn atthis', tfill('gtStartCount', { day: prettyDay(gtTomorrow()) }));
+      go.type = 'button';
+      twoTaps(go, function () {
+        return setDoc(doc(db, 'gateconf', 'factory'), { from: gtTomorrow(), setAt: serverTimestamp(), setBy: 'chairman' });
+      });
+      head.appendChild(go);
+    }
+    /* who has a face */
+    var faced = {};
+    st.faces.forEach(function (f) { faced[f.person] = f; });
+    var named = people.filter(function (p) { return !/^pay-/.test(p.id); });
+    head.appendChild(el('p', 'codenote', tfill('gtFaceCount', { n: named.filter(function (p) { return faced[p.id]; }).length, all: named.length })));
+    var noFace = people.filter(function (p) { return !faced[p.id]; });
+    if (noFace.length) head.appendChild(el('p', 'codenote', tfill('gtNoFaceYet', { names: noFace.map(L).join(', ') })));
+    var open = el('a', 'mfpick gtgo', t('gtAddFaces'));
+    open.href = 'gate.html';
+    head.appendChild(open);
+    into.appendChild(head);
+
+    /* tapped names to look at, this month */
+    var toCheck = [];
+    Object.keys(by).sort().forEach(function (d) {
+      people.forEach(function (p) {
+        var x = by[d][p.id];
+        if (x && x.scanAt && x.how === 'tap' && x.check === 'open') toCheck.push({ day: d, p: p, x: x });
+      });
+    });
+    if (toCheck.length) {
+      into.appendChild(el('p', 'skysub', tfill('gtToCheck', { n: toCheck.length })));
+      toCheck.forEach(function (c) {
+        var row = el('div', 'gtcheck');
+        var pic = gtPic(c.day === DAY ? st.photos[c.p.id] : '');
+        if (c.day !== DAY) getDoc(doc(db, 'gatephoto', c.day + '_' + c.p.id)).then(function (d) { if (d.exists()) pic.src = d.data().photo; }, function () {});
+        row.appendChild(pic);
+        var right = el('div');
+        right.appendChild(el('div', 'atq', prettyDay(c.day) + ' · ' + c.x.hm + ' · ' + tfill('gtCheckIt', { name: L(c.p) })));
+        var bar = el('div', 'atpicks');
+        [[true, 'gtItIs'], [false, 'gtNotThem']].forEach(function (o) {
+          var b = el('button', 'mfpick', t(o[1]));
+          b.type = 'button';
+          b.onclick = function () {
+            b.disabled = true;
+            updateDoc(doc(db, 'attend', c.day + '_' + c.p.id), { check: o[0] ? 'ok' : 'not', checkBy: 'chairman', checkAt: serverTimestamp() })
+              .then(null, function (e) { b.disabled = false; alert(t('atSetFailed') + ' ' + ((e && e.message) || e)); });
+          };
+          bar.appendChild(b);
+        });
+        right.appendChild(bar);
+        row.appendChild(right);
+        into.appendChild(row);
+      });
+    }
+
+    /* today */
+    var sunday = new Date(DAY + 'T12:00:00Z').getUTCDay() === 0;
+    into.appendChild(el('p', 'skysub', t('atTodayHead') + ' · ' + prettyDay(DAY) + (counting ? '' : ' · ' + t('atTest'))));
+    if (sunday) into.appendChild(el('p', 'codenote', t('atSundayNote')));
+    else {
+      var a = new Date(Date.now() + 3 * 3600000), nowMin = a.getUTCHours() * 60 + a.getUTCMinutes();
+      var counts = { on: 0, late: 0, none: 0 }, list = el('div', 'atlist');
+      people.forEach(function (p) {
+        var x = (by[DAY] || {})[p.id] || {};
+        var scanned = x.scanAt && x.check !== 'not';
+        var r = el('div', 'chf atrow gtrow2');
+        r.appendChild(gtPic(scanned ? st.photos[p.id] : ''));
+        r.appendChild(el('span', 'chfk', L(p)));
+        var s, cls;
+        if (scanned && !x.late) { s = '✓ ' + x.hm; cls = 'good'; counts.on++; }
+        else if (scanned) { s = tfill('atLateShort', { at: x.hm, m: atDur(x.minsLate) }); cls = 'late'; counts.late++; }
+        else { s = nowMin <= 8 * 60 ? t('gtNotIn') : t('atNoScanShort'); cls = 'none'; counts.none++; }
+        var notes = [];
+        if (x.how === 'tap') notes.push(t('gtByTap'));
+        if (x.check === 'ok') notes.push(t('gtCheckedOk'));
+        if (x.check === 'not') notes.push(t('gtCheckedNot'));
+        if (x.why) notes.push(gtWhy(x.why, x.note));
+        if (notes.length) s += ' · ' + notes.join(' · ');
+        r.appendChild(el('span', 'chfv at ' + cls, s));
+        list.appendChild(r);
+      });
+      into.appendChild(el('p', 'atcounts', tfill('gtHeadCounts', counts)));
+      into.appendChild(list);
+    }
+    if (!st.from) return;
+
+    /* this month, every day with its time */
+    var since = monthStart < st.from ? st.from : monthStart;
+    var days = [];
+    for (var d = since; d <= DAY; d = addDays(d, 1)) if (new Date(d + 'T12:00:00Z').getUTCDay() !== 0) days.push(d);
+    if (!days.length) return;
+    var dayName = window.KLEVER && window.KLEVER.ethDayLabel ? window.KLEVER.ethDayLabel : prettyDay;
+    var det = el('details', 'chmonth atmonth');
+    det.appendChild(el('summary', null, tfill('atMonthEth', { month: window.KLEVER && window.KLEVER.ethMonthName ? window.KLEVER.ethMonthName(DAY) : '', day: prettyDay(since) })));
+    people.forEach(function (p) {
+      var on = 0, late = 0, none = 0, lines = [];
+      days.forEach(function (day) {
+        var x = (by[day] || {})[p.id] || {};
+        var scanned = x.scanAt && x.check !== 'not';
+        if (scanned && !x.late) { on++; lines.push(dayName(day) + ': ✓ ' + x.hm + (x.how === 'tap' ? ' (' + t('gtByTap') + ')' : '')); return; }
+        if (day === DAY && !scanned && !x.why) return;          /* today is not over */
+        if (scanned) late++; else none++;
+        lines.push(dayName(day) + ': ' + (scanned ? tfill('atLateShort', { at: x.hm, m: atDur(x.minsLate) }) : t('atNoScanShort')) +
+                   ' — ' + (x.why ? gtWhy(x.why, x.note) : t('atNoReason')));
       });
       var row = el('details', 'atperson');
       row.appendChild(el('summary', null, L(p) + ' · ' + tfill('atCounts', { on: on, late: late, none: none })));

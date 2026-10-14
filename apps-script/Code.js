@@ -119,6 +119,10 @@ function doPost(e) {
   if (row.kind === 'attend') {
     return ContentService.createTextOutput(attendPost_(row, poster));
   }
+  /* a face at the factory gate's tablet, from the gate's own account (Gate.js) */
+  if (row.kind === 'gate') {
+    return ContentService.createTextOutput(gatePost_(row, poster));
+  }
   /* a question from the Chairman's page (Ask.js) — his, and nobody else's */
   if (row.kind === 'ask') {
     return ContentService.createTextOutput(poster === 'chairman' ? askPost_(row.k) : 'refused');

@@ -1539,13 +1539,30 @@
      user, 14 Oct 2026: "the person who scans sees his month — missed, late
      or on time") */
   var stopAt = null;
+  /* The factory's heads (Amaha, Wude, Yordanos) check in by face at the
+     gate's tablet (js/gate.js, 14 Oct 2026): the same card, the gate's words
+     ('gt…' in place of 'at…' where the place is named), and counted from the
+     day the Chairman started the gate — until then a scan shows as a test
+     and nothing is asked. */
+  var atKind = 'at', gateFrom, stopGateConf = null, gateRedraw = null;
+  function atT(k) {
+    var g = atKind === 'gt' && T[lang]['gt' + k.slice(2)];
+    return g || t(k);
+  }
   function attendCard(p) {
     if (stopAt) { try { stopAt(); } catch (e) {} stopAt = null; }
     var wrap = el('div', 'atcard');
-    if (!p || !p.scan || AUTH.isChairman() || !window.FB || !window.FB.live() || !window.FB.watchMyAttend) return wrap;
-    var from = typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-15';
+    if (!p || !(p.scan || p.gate) || AUTH.isChairman() || !window.FB || !window.FB.live() || !window.FB.watchMyAttend) return wrap;
+    atKind = p.gate && !p.scan ? 'gt' : 'at';
+    if (atKind === 'gt' && !stopGateConf && window.FB.watchGateConf) {
+      stopGateConf = window.FB.watchGateConf(function (d) { gateFrom = d || null; if (gateRedraw) gateRedraw(); });
+    }
     var mstart = ethMonthStart(stamp()), back = addDays(stamp(), -7);
-    stopAt = window.FB.watchMyAttend(mstart < back ? mstart : back, function (docs) {
+    var docs = null;
+    function draw() {
+      if (!docs) return;
+      var from = atKind === 'gt' ? gateFrom || '9999-12-31'
+                                 : typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-15';
       var by = {};
       docs.forEach(function (d) { by[d.day] = d; });
       wrap.innerHTML = '';
@@ -1555,7 +1572,7 @@
       for (var i = 7; i >= 1; i--) {
         var d = addDays(today, -i);
         if (d < from || (p.from && d < p.from) || dowOf(d) === 0) continue;
-        var x = by[d];
+        var x = atReal(by[d]);
         if (x && (x.why || (x.scanAt && !x.late))) continue;
         rows.push(atDay(d, x, false));
       }
@@ -1564,10 +1581,12 @@
         if (today >= from) rows.push(atDay(today, by[today], true, nowMin));
         else if (by[today] && by[today].scanAt) rows.push(atDay(today, by[today], true, nowMin));
       }
-      wrap.appendChild(el('h2', 'eyebrow', t('atTitle')));
+      wrap.appendChild(el('h2', 'eyebrow', atT('atTitle')));
       rows.forEach(function (r) { wrap.appendChild(r); });
       wrap.appendChild(atMonth(p, by, today, nowMin, from));
-    });
+    }
+    gateRedraw = atKind === 'gt' ? draw : null;
+    stopAt = window.FB.watchMyAttend(mstart < back ? mstart : back, function (list) { docs = list; draw(); });
     return wrap;
   }
   /* The month so far: on time / late / missed, and each day with its reason.
@@ -1582,14 +1601,14 @@
     if (p.from && p.from > start) start = p.from;
     var n = { on: 0, late: 0, missed: 0 }, rows = [];
     for (var d = start; d <= today; d = addDays(d, 1)) {
-      var x = by[d], test = d < from;
+      var x = atReal(by[d]), test = d < from;
       if (test && !(x && x.scanAt)) continue;
       var st, cls, why = '';
       if (dowOf(d) === 0) { st = t('atSundayOff'); cls = 'off'; }
       else if (x && x.scanAt && !x.late) { st = '✓ ' + x.hm; cls = 'good'; if (!test) n.on++; }
       else if (x && x.scanAt) { st = '! ' + tfill_('atLateShortMine', { at: x.hm, m: atDur(x.minsLate) }); cls = 'late'; if (!test) n.late++; }
       else if (d === today) {
-        if (nowMin <= AT_LATE && !(x && x.why)) { st = t('atNotYetToday'); cls = 'none'; }
+        if (nowMin <= AT_LATE && !(x && x.why)) { st = atT('atNotYetToday'); cls = 'none'; }
         else { st = t('atNotYet'); cls = 'none'; }
       }
       else { st = '✕ ' + t('atMissed'); cls = 'missed'; n.missed++; }
@@ -1616,7 +1635,15 @@
     box.appendChild(list);
     return box;
   }
+  /* a scan at the gate that Amaha or the Chairman said was someone else's is no scan */
+  function atReal(x) {
+    if (!x || x.check !== 'not') return x;
+    var y = {};
+    Object.keys(x).forEach(function (k) { if (['scanAt', 'hm', 'late', 'minsLate'].indexOf(k) === -1) y[k] = x[k]; });
+    return y;
+  }
   function atDay(day, x, isToday, nowMin, noAsk) {
+    x = atReal(x);
     var box = el('div', 'ins at');
     var label = isToday ? t('atToday') : dayLabel(day);
     if (x && x.scanAt && !x.late) {
@@ -1632,23 +1659,23 @@
       return box;
     }
     if (isToday && nowMin <= AT_LATE && !(x && x.why)) {
-      box.appendChild(el('div', 'inst', label + ' · ' + t('atScanHow')));
+      box.appendChild(el('div', 'inst', label + ' · ' + atT('atScanHow')));
       return box;
     }
     box.className = 'ins at missing';
     box.appendChild(el('div', 'inst', label + ' · ' + t('atNoScan')));
     if (x && x.why) box.appendChild(el('div', 'atsub', t('atWhyIs') + ' ' + atWhyText(x.why, x.note)));
     else {
-      if (isToday) box.appendChild(el('div', 'atsub', t('atScanOrSay')));
+      if (isToday) box.appendChild(el('div', 'atsub', atT('atScanOrSay')));
       box.appendChild(atAsk(day, false, x));
     }
     return box;
   }
   function atWhyText(why, note) {
-    return t('atWhy_' + why) + (note ? ' — ' + note : '');
+    return atT('atWhy_' + why) + (note ? ' — ' + note : '');
   }
   /* the reasons, a tap each; a few words for "Other" */
-  function atAsk(day, late, x) {
+  function atAsk(day, late, x, save) {
     var f = el('div', 'atask');
     var picks = el('div', 'atpicks');
     var chosen = null;
@@ -1662,7 +1689,7 @@
     go.disabled = true;
     function check() { go.disabled = !chosen || (chosen === 'other' && !note.value.trim()); }
     (late ? AT_WHY_LATE : AT_WHY_NOSCAN).forEach(function (w) {
-      var b = el('button', 'mfpick', t('atWhy_' + w));
+      var b = el('button', 'mfpick', atT('atWhy_' + w));
       b.type = 'button';
       b.onclick = function () {
         chosen = w;
@@ -1675,7 +1702,7 @@
     go.onclick = function () {
       if (go.disabled) return;
       go.disabled = true;
-      window.FB.saveAttendWhy(day, chosen, note.value.trim(), !!x).then(function () {
+      (save || window.FB.saveAttendWhy)(day, chosen, note.value.trim(), !!x).then(function () {
         toast(t('atThanks'));
       }, function () {
         go.disabled = false;
@@ -1689,6 +1716,161 @@
     bar.appendChild(go);
     f.appendChild(bar);
     return f;
+  }
+
+  /* AMAHA'S CARD: the factory gate today (the user, 14 Oct 2026: "the next
+     step, for production, is a face scan — they don't have phones"). Who is
+     in and when, who is not; a tapped name's picture to say yes or no to;
+     and why, for the workers who have no phone to say it themselves — today
+     and the working days of the week before. From /attend (place
+     'factory'), /gatephoto, /faces and /gateconf (js/gate.js, Gate.js).
+     One card for the page's life: the home page redraws itself as reports
+     come in, and a reason half typed must not go with it. */
+  var gateHeadBox = null;
+  function gateHeadCard(p) {
+    if (!p || p.id !== 'amaha' || AUTH.isChairman() || !window.FB || !window.FB.live() || !window.FB.watchFactory) return el('div');
+    if (gateHeadBox) return gateHeadBox;
+    var wrap = gateHeadBox = el('div', 'atcard gthead');
+    var today = stamp();
+    var st = { docs: null, photos: {}, faces: null, from: undefined };
+    function draw() {
+      if (!st.docs || !st.faces || st.from === undefined) return;
+      var a = document.activeElement;
+      if (a && a.tagName === 'INPUT' && wrap.contains(a)) {
+        a.addEventListener('blur', function again() { a.removeEventListener('blur', again); setTimeout(draw, 200); });
+        return;
+      }
+      drawGateHead(wrap, st, today);
+    }
+    /* a read that failed (null) is not "nobody came": the card waits */
+    window.FB.watchFactory(addDays(today, -7), function (d) { if (d) { st.docs = d; draw(); } });
+    window.FB.watchGatePhotos(today, function (ph) { st.photos = ph || {}; draw(); });
+    window.FB.watchFaces(function (f) { if (f) { st.faces = f; draw(); } });
+    window.FB.watchGateConf(function (d) { st.from = d || null; draw(); });
+    return wrap;
+  }
+  /* everyone at the gate: `gate` in js/forms.js, and the payroll-only people whose face was added */
+  function gatePeopleOf(faces) {
+    var out = PEOPLE.filter(function (q) { return q.gate && !q.company; })
+      .map(function (q) { return { id: q.id, en: q.en, am: q.am, worker: !!q.worker }; });
+    var have = {};
+    out.forEach(function (q) { have[q.id] = 1; });
+    (faces || []).forEach(function (f) {
+      if (f.person && !have[f.person]) { have[f.person] = 1; out.push({ id: f.person, en: f.name || f.person, am: '', worker: true }); }
+    });
+    return out;
+  }
+  function drawGateHead(wrap, st, today) {
+    wrap.innerHTML = '';
+    atKind = 'gt';
+    var people = gatePeopleOf(st.faces);
+    var counting = !!st.from && today >= st.from;
+    var by = {};
+    st.docs.forEach(function (d) { (by[d.day] = by[d.day] || {})[d.person] = d; });
+    var a = addis(), nowMin = a.getUTCHours() * 60 + a.getUTCMinutes();
+    wrap.appendChild(el('h2', 'eyebrow', t('gtHeadTitle')));
+    var box = el('div', 'ins gtday');
+    box.appendChild(el('div', 'atsub', counting ? tfill_('gtCounting', { day: dayLabel(st.from) }) : t('gtNotCounting')));
+    var go = el('a', 'pushbtn gtgo', t('gtAddFaces'));
+    go.href = 'gate.html';
+    box.appendChild(go);
+    var faced = {};
+    (st.faces || []).forEach(function (f) { faced[f.person] = 1; });
+    var noFace = people.filter(function (q) { return !faced[q.id]; });
+    if (noFace.length) box.appendChild(el('div', 'atsub gtnoface', tfill_('gtNoFaceYet', { names: noFace.map(L).join(', ') })));
+    wrap.appendChild(box);
+    var saver = function (id) {
+      return function (day, why, note, exists) { return window.FB.saveGateWhy(id, day, why, note, exists); };
+    };
+    /* one small "Why?" a person; the reasons open on a tap — twenty
+       pickers at once would bury the list */
+    function askLater(day, late, x0, id) {
+      var b = el('button', 'mfpick gtwhy', t(late ? 'atWhyLate' : 'atWhyNoScan'));
+      b.type = 'button';
+      b.onclick = function () { b.replaceWith(atAsk(day, late, x0, saver(id))); };
+      return b;
+    }
+    function check(q, day, x, into) {
+      var c = el('div', 'gtcheck');
+      var pic = el('img', 'gtpic');
+      pic.alt = '';
+      if (day === today && st.photos[q.id]) pic.src = st.photos[q.id];
+      else if (window.FB.gatePhoto) window.FB.gatePhoto(day, q.id).then(function (src) { if (src) pic.src = src; });
+      c.appendChild(pic);
+      var right = el('div');
+      right.appendChild(el('div', 'atq', tfill_('gtCheckIt', { name: L(q) })));
+      var bar = el('div', 'atpicks');
+      [[true, 'gtItIs'], [false, 'gtNotThem']].forEach(function (o) {
+        var b = el('button', 'mfpick', t(o[1]));
+        b.type = 'button';
+        b.onclick = function () {
+          b.disabled = true;
+          window.FB.checkGate(q.id, day, o[0]).then(function () { toast(t('atThanks')); }, function () { b.disabled = false; toast(t('atSendFailed')); });
+        };
+        bar.appendChild(b);
+      });
+      right.appendChild(bar);
+      c.appendChild(right);
+      into.appendChild(c);
+    }
+    /* today, everyone */
+    if (dowOf(today) === 0) wrap.appendChild(el('p', 'codenote', t('atSundayOff')));
+    else {
+      var n = { on: 0, late: 0, none: 0 };
+      var list = el('div', 'ins gtlistday');
+      people.forEach(function (q) {
+        var x0 = (by[today] || {})[q.id], x = atReal(x0);
+        var r = el('div', 'atdl');
+        var left = el('div', 'atdd');
+        left.appendChild(el('span', null, L(q)));
+        r.appendChild(left);
+        var s, cls;
+        if (x && x.scanAt && !x.late) { s = '✓ ' + x.hm; cls = 'good'; n.on++; }
+        else if (x && x.scanAt) { s = '! ' + tfill_('atLateShortMine', { at: x.hm, m: atDur(x.minsLate) }); cls = 'late'; n.late++; }
+        else { s = nowMin <= AT_LATE ? t('gtNotIn') : '✕ ' + t('atNoScanShort'); cls = nowMin <= AT_LATE ? 'none' : 'missed'; n.none++; }
+        r.className = 'atdl ' + cls;
+        r.appendChild(el('div', 'atds', s));
+        var notes = [];
+        if (x0 && x0.how === 'tap') notes.push(t('gtByTap'));
+        if (x0 && x0.check === 'ok') notes.push(t('gtCheckedOk'));
+        if (x0 && x0.check === 'not') notes.push(t('gtCheckedNot'));
+        if (x && x.why) notes.push(t('atWhyIs') + ' ' + atWhyText(x.why, x.note));
+        if (notes.length) r.appendChild(el('div', 'atdw', notes.join(' · ')));
+        list.appendChild(r);
+        if (x0 && x0.how === 'tap' && x0.check === 'open' && q.id !== 'amaha') check(q, today, x0, list);
+        if (counting && q.worker && !(x && x.why) && (cls === 'late' || cls === 'missed')) {
+          r.appendChild(askLater(today, cls === 'late', x0, q.id));
+        }
+      });
+      wrap.appendChild(el('p', 'atcounts', tfill_('gtHeadCounts', n)));
+      wrap.appendChild(list);
+    }
+    /* the week before: a tapped name not looked at; a worker with no reason */
+    var earlier = el('div');
+    for (var i = 1; i <= 7; i++) {
+      var d = addDays(today, -i);
+      if (dowOf(d) === 0) continue;
+      people.forEach(function (q) {
+        var x0 = (by[d] || {})[q.id], x = atReal(x0);
+        if (x0 && x0.how === 'tap' && x0.check === 'open' && q.id !== 'amaha') {
+          var row = el('div', 'ins at');
+          row.appendChild(el('div', 'inst', dayLabel(d) + ' · ' + L(q) + ' · ' + x0.hm));
+          check(q, d, x0, row);
+          earlier.appendChild(row);
+        }
+        if (!counting || d < st.from || !q.worker || (x && x.why) || (x && x.scanAt && !x.late)) return;
+        var late = !!(x && x.scanAt);
+        var r = el('div', 'ins at ' + (late ? 'late' : 'missing'));
+        r.appendChild(el('div', 'inst', dayLabel(d) + ' · ' + L(q) + ' · ' +
+                         (late ? tfill_('atLateShortMine', { at: x.hm, m: atDur(x.minsLate) }) : t('atNoScanShort'))));
+        r.appendChild(askLater(d, late, x0, q.id));
+        earlier.appendChild(r);
+      });
+    }
+    if (earlier.children.length) {
+      wrap.appendChild(el('p', 'skysub', t('gtWorkersWhy')));
+      wrap.appendChild(earlier);
+    }
   }
 
   /* What only Selam knows, for the payroll: overtime hours, loans, salary
@@ -2120,6 +2302,7 @@
     root.appendChild(atScanCard());
     root.appendChild(deck(p, st));
     root.appendChild(attendCard(p));
+    root.appendChild(gateHeadCard(p));
     root.appendChild(moneyFixCard());
     root.appendChild(payrollCard());
     root.appendChild(payAddCard());

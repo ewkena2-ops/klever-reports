@@ -10,8 +10,8 @@
    gives no phone numbers or emails, and answers only to the secret code kept
    in /config/botfeed {url, key, token} — never in this public repository.
 
-   Each morning (and once, the first time the watch sees it is due) the feed
-   is turned into register lines, the same kind every report gives
+   Every hour (from the watch; it was each morning until 14 Oct 2026) the
+   feed is turned into register lines, the same kind every report gives
    (Register.js regEventsOf_), and kept in /regEvents/bot_feed — replaced
    each time, so the bot's current picture is what stands. The reports keep
    adding what the bot never knows: the factory, the store, the site.
@@ -200,12 +200,14 @@ function botFeedRefresh_() {
   return got.counts;
 }
 
-/* From the watch and the morning: once a day, then the register again. */
+/* From the watch and the morning: once an hour, then the register again.
+   It was once a day; the user, 14 Oct 2026, seeing five leads the bot took
+   that afternoon missing from the register: "it has to reach us". A lead
+   the bot takes at 4 PM is on the register before 5. */
 function botFeedIfDue_(from) {
   var today = todayAddis_();
   var props = PropertiesService.getScriptProperties();
-  if (props.getProperty('BOTFEED_DAY') === today) return null;
-  /* one try an hour: a feed that fails is not asked every ten minutes */
+  /* one try an hour, whether the last worked or not */
   var hour = today + 'T' + Utilities.formatDate(new Date(), 'Africa/Addis_Ababa', 'HH');
   if (props.getProperty('BOTFEED_TRY') === hour) return null;
   props.setProperty('BOTFEED_TRY', hour);

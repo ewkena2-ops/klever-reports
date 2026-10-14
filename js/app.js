@@ -2213,11 +2213,24 @@
     var restoredFrom = null;
     try { values = JSON.parse(store.get(draftKey) || 'null'); } catch (e) { values = null; }
     bareCarry(values);
+    /* What was sent for this period stays on this phone until the period is
+       over (the user, 14 Oct 2026: "they may miss something — when they
+       notice, they fill it in and send again"). Opening the form again shows
+       it, to correct and send again: the last one sent holds the figures,
+       the first one decides on time (apps-script/Agents.js got_, Agent.js). */
+    var sentCopy = null;
+    try { sentCopy = JSON.parse(store.get(sentKeyOf(draftKey)) || 'null'); } catch (e) { sentCopy = null; }
+    sentBefore = sentCopy && sentCopy.at ? sentCopy.at : null;
     /* an empty draft (the form was only opened) does not hide a real one */
     if (!values || typeof values !== 'object' || !hasContent(values)) {
       values = {};
-      var older = latestDraft(report.id, draftKey);
-      if (older) { values = older.values; restoredFrom = older.day; }
+      if (sentCopy && sentCopy.values && typeof sentCopy.values === 'object') {
+        values = sentCopy.values;
+        bareCarry(values);
+      } else {
+        var older = latestDraft(report.id, draftKey);
+        if (older) { values = older.values; restoredFrom = older.day; }
+      }
     }
 
     root.innerHTML = '';
@@ -2255,6 +2268,9 @@
     already.id = 'sentnote';
     already.hidden = true;
     head.appendChild(already);
+    if (sentBefore) {
+      head.appendChild(el('div', 'penalty soft sentkept', tfill_('sentKept', { at: clockOf(new Date(sentBefore)) })));
+    }
     if (restoredFrom) {
       head.appendChild(el('div', 'penalty soft', t('draftRestored').replace('{day}', dayLabel(restoredFrom))));
     }
@@ -2402,6 +2418,8 @@
         if (!k || k.indexOf(prefix) !== 0 || k === except) continue;
         var day = k.slice(prefix.length);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < addDays(stamp(), -7)) continue;
+        /* a day whose report was sent: what is left is that day's, never another's */
+        if (localStorage.getItem('klever.sent.' + reportId + '.' + day)) continue;
         var v = JSON.parse(localStorage.getItem(k) || 'null');
         bareCarry(v, reportById(reportId));
         if (v && hasContent(v) && (!best || day > best.day)) best = { day: day, values: v };
@@ -3749,6 +3767,9 @@
         clearTimeout(slow);
         sending = false;
         sentThisVisit = true;
+        lastSent = sentDraft;
+        sentBefore = Date.now();
+        try { store.set(sentKeyOf(draftKey), JSON.stringify({ at: sentBefore, values: JSON.parse(sentDraft) })); } catch (e) {}
         send.textContent = t('sentDone');
         replay(send, 'sentok');
         if (reportTo(report).length && names) toast(t('sentTo').replace('{who}', names));
@@ -3785,6 +3806,10 @@
 
   /* a sent report is not sent twice by accident */
   var sending = false, sentThisVisit = false;
+  /* what was last sent from this page, and when this period's report was
+     first sent from this phone — a change after it is a correction */
+  var lastSent = '', sentBefore = null;
+  function sentKeyOf(dk) { return String(dk).replace('klever.draft.', 'klever.sent.'); }
   /* how many required questions are empty right now, and whether Send has
      asked "send it anyway?" and is waiting for the second tap */
   var missingNow = 0, oddCount = 0, sendArmed = false, sendDisarm = null;
@@ -4937,10 +4962,11 @@
        report is on its way must not re-arm it, nor while it asks. */
     missingNow = missing;
     oddCount = odd.length;
+    if (sentThisVisit && lastSent && JSON.stringify(values) !== lastSent) sentThisVisit = false;
     if (send && !sending && !sentThisVisit) {
       send.disabled = false;
       send.classList.toggle('partial', missing > 0 || odd.length > 0);
-      if (!sendArmed) send.textContent = t('send');
+      if (!sendArmed) send.textContent = t(sentBefore ? 'sendCorrection' : 'send');
     }
 
     var bar = document.querySelector('.progress i');
@@ -5202,7 +5228,7 @@
       var kill = [], oldest = addDays(stamp(), -8);
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (k && k.indexOf('klever.draft.') === 0 && k.slice(-10) < oldest) kill.push(k);
+        if (k && (k.indexOf('klever.draft.') === 0 || k.indexOf('klever.sent.') === 0) && k.slice(-10) < oldest) kill.push(k);
       }
       kill.forEach(function (k) { localStorage.removeItem(k); });
     } catch (e) { /* a full or blocked store is not worth taking the page down for */ }

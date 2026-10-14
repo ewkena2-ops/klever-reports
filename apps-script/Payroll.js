@@ -237,6 +237,9 @@ function payrollRun_(month, mode, dry, opt) {
   var names = {};
   (schedule.people || []).forEach(function (p) { names[p.id] = p.en; });
   var ledgers = ledgersBetween_(start, next);
+  /* a final month built again for a Sheet correction keeps the days it was
+     made from: its fines and bonuses were final on the 5th */
+  if (opt.upTo) ledgers = ledgers.filter(function (l) { return l.day <= opt.upTo; });
   var monthDoc = tryQuery_('months', [['month', 'EQUAL', month]], null)[0] || null;
   var waivers = fsQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start], ['day', 'LESS_THAN', next]], 'day');
   var carry = {}, carryBonus = {}, prevM = prPrevMonth_(month), prev = null;
@@ -345,9 +348,9 @@ function payrollWatch_() {
          puts right in the Sheet tab reaches it — built again, quietly, when
          the figures differ (the bug hunt, 15 Oct 2026: a final month could
          never be corrected before approval). Approved, it is never touched. */
-      var again = payrollRun_(prevM, 'final', true);
+      var again = payrollRun_(prevM, 'final', true, { upTo: doc.upTo });
       if (JSON.stringify([again.rows, again.totals]) !== JSON.stringify([doc.rows, doc.totals])) {
-        payrollRun_(prevM, 'final', false, { quiet: true });
+        payrollRun_(prevM, 'final', false, { quiet: true, upTo: doc.upTo });
       }
     } else if (!doc || doc.status === 'sofar') {
       var closed = tryQuery_('months', [['month', 'EQUAL', prevM]], null).length > 0;

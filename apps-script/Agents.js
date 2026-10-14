@@ -2435,7 +2435,10 @@ function runIfNew_(opt) {
   try { jobMoneyAfter_(fresh); } catch (e) { Logger.log('job money: %s', e.message); }
   if (opt.noRead) return true;
   Logger.log('%s new report(s) since %s.', fresh.length, from.toISOString());
-  if (fresh.some(function (f) { return dayOf_(f.at) === today; })) props.setProperty('READ_PENDING', String(fresh.length));
+  /* added up until the reading runs: a later look's count replaced the earlier one */
+  if (fresh.some(function (f) { return dayOf_(f.at) === today; })) {
+    props.setProperty('READ_PENDING', String(Number(props.getProperty('READ_PENDING') || 0) + fresh.length));
+  }
   readIfDue_();
   return true;
 }

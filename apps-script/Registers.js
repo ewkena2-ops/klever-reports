@@ -163,7 +163,9 @@ function workforceFacts_(P) {
   var started = staff.filter(function (p) { var r = tab.byId[p.id] || {}; return r.started && r.started > yearAgo && r.started <= to; });
   var left = staff.filter(function (p) { var r = tab.byId[p.id] || {}; return r.left && r.left > yearAgo && r.left <= to; });
   var current = staff.filter(function (p) { var r = tab.byId[p.id] || {}; return !r.left || r.left > to; });
-  var dates = staff.filter(function (p) { return (tab.byId[p.id] || {}).started; }).length;
+  /* a start or a leave date: a leave date alone is enough for turnover (it
+     said "no dates yet" with one entered — the bug hunt, 15 Oct 2026) */
+  var dates = staff.filter(function (p) { var r = tab.byId[p.id] || {}; return r.started || r.left; }).length;
   var assigned = rdSum_(ad, 'mp_assigned', back, to), present = rdSum_(ad, 'mp_present', back, to);
   var b = budgetRead_() || {};
   var pb = b[BUDGET_EXTRA_[0].en], hb = b[BUDGET_EXTRA_[1].en];

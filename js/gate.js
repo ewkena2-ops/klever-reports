@@ -319,7 +319,7 @@
       if (!tok) throw new Error('signin');
       return fetch(POST, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                            body: JSON.stringify({ kind: 'gate', idToken: tok, person: item.person, how: item.how,
-                                                  dist: item.dist, at: item.at, photo: item.photo }) });
+                                                  dist: item.dist, at: item.at, sentAt: Date.now(), photo: item.photo }) });
     }).then(function (r) { return r.text(); }).then(function (txt) {
       var a = null;
       try { a = JSON.parse(txt); } catch (e) { a = null; }
@@ -506,7 +506,9 @@
     say('gtWelcome');
     clearTimeout(K.answerTimer);
     K.answerTimer = setTimeout(function () {
-      if (mode !== 'kiosk') return;
+      /* only if the answer is still what shows: a names, confirm or
+         sign-in screen opened since stays (bug hunt, 15 Oct 2026) */
+      if (mode !== 'kiosk' || sub !== 'answer') { K.answer.innerHTML = ''; K.ring.className = 'gtring'; return; }
       K.answer.innerHTML = '';
       sub = 'idle';
       K.ring.className = 'gtring';
@@ -586,6 +588,7 @@
   /* ---------------- adding faces ---------------- */
 
   /* on the tablet: the Chairman or Amaha signs in beside the gate */
+  var SIGNIN_IDLE_MS = 60000;
   function enrolSignIn() {
     if (mode !== 'kiosk') return;
     sub = 'signin';
@@ -620,12 +623,27 @@
     row.appendChild(btn('gtCancel', 'gtghost', back));
     box.appendChild(row);
     K.layer.appendChild(box);
+    /* left open, it went back to scanning on its own — one tap on the gear
+       stopped check-in until someone pressed Cancel (bug hunt, 15 Oct 2026) */
+    var idleSignIn = function () {
+      clearTimeout(namesTimer);
+      namesTimer = setTimeout(function () { if (mode === 'kiosk' && sub === 'signin') back(); }, SIGNIN_IDLE_MS);
+    };
+    K.layer.onpointerdown = idleSignIn;
+    pw.oninput = idleSignIn;
+    idleSignIn();
     pw.focus();
   }
   function passwordBox() {
-    var pw = el('input', 'gtinput');
-    pw.type = 'password';
-    pw.autocomplete = 'current-password';
+    /* typed hidden but not a password box: the browser never offers to save
+       it on a tablet anyone at the gate can touch (bug hunt, 15 Oct 2026) */
+    var pw = el('input', 'gtinput gtsecret');
+    pw.type = 'text';
+    pw.autocomplete = 'off';
+    pw.setAttribute('autocapitalize', 'off');
+    pw.setAttribute('autocorrect', 'off');
+    pw.spellcheck = false;
+    pw.setAttribute('data-lpignore', 'true');
     pw.placeholder = word('gtPassword').am + ' · ' + word('gtPassword').en;
     pw.setAttribute('aria-label', word('gtPassword').en);
     return pw;
@@ -679,7 +697,8 @@
       }));
     }
     if (engineOk === false) page.appendChild(two('gtNoEngine', null, 'gtnote bad'));
-    var all = gatePeople().filter(function (p) { return !/^pay-/.test(p.id); });
+    /* Amaha's own face is the Chairman's to set (firestore.rules) */
+    var all = gatePeople().filter(function (p) { return !/^pay-/.test(p.id) && !(session.who === 'amaha' && p.id === 'amaha'); });
     var n = all.filter(function (p) { return faceOf(p.id); }).length;
     page.appendChild(two('gtFacesCount', { n: n, all: all.length }, 'gtcount'));
     var list = el('div', 'gtlist');

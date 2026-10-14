@@ -117,7 +117,8 @@ function visionWatch_() {
     var day = m.at ? dayOf_(m.at) : todayAddis_();
     fsPut_('vision/' + m._id, { message: m._id, job: job, by: m.who || '', photoAt: m.at || null, day: day, at: new Date(),
                                 ok: !!v.looks_ok, worst: v.worst || 'none', defects: v.defects || [], confidence: v.confidence || '',
-                                note: v.note || '', error: v.error || '', words: words, model: brain_().label });
+                                note: v.note || '', error: v.error || '', judged: v.photo_good_enough !== false,
+                                words: words, model: brain_().label });
     try { fsCreateNow_('channels/' + QC_ROOM_ + '/messages', { who: 'qcvision', text: words }, 'at'); }
     catch (e) { Logger.log('vision post: %s', e.message); }
     if (v.worst === 'major' || v.worst === 'critical') {
@@ -144,7 +145,10 @@ function visionWeek_(from, to) {
     photos_checked: rows.length,
     with_a_defect: rows.filter(function (r) { return r.defects && r.defects.length; }).length,
     major_or_critical: rows.filter(function (r) { return r.worst === 'major' || r.worst === 'critical'; }).length,
-    could_not_judge: rows.filter(function (r) { return r.error || /too dark|blurred/.test(r.words || ''); }).length,
+    /* kept with each photo since 15 Oct 2026; older ones by their words */
+    could_not_judge: rows.filter(function (r) {
+      return r.error || r.judged === false || (r.judged === undefined && /cannot judge|too dark|blurred/.test(r.words || ''));
+    }).length,
     jobs_flagged: Object.keys(byJob).map(function (k) { return { job: k, worst: byJob[k].indexOf('critical') >= 0 ? 'critical' : byJob[k].indexOf('major') >= 0 ? 'major' : 'minor' }; })
   };
 }

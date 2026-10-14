@@ -158,7 +158,11 @@ function checkRowCond(id, c, fdef) {
   /* {qc:'code', is:'passed'|'known'} — the jobs register's QC record of the job in that column (Rules.js) */
   if (c && c.qc) {
     if (!(fdef.cols || []).some(x => x.id === c.qc)) err(id, 'table ' + fdef.id + ' has no column ' + c.qc);
-    if (!['passed', 'known'].includes(c.is)) err(id, 'qc condition must say is: passed or known');
+    if (!['passed', 'known', 'clean'].includes(c.is)) err(id, 'qc condition must say is: passed, known or clean');
+    return;
+  }
+  if (c && c.blank) {
+    if (!(fdef.cols || []).some(x => x.id === c.blank)) err(id, 'table ' + fdef.id + ' has no column ' + c.blank);
     return;
   }
   err(id, 'cannot judge row ' + JSON.stringify(c));

@@ -112,6 +112,11 @@ function jmBuild_(filings, regRows, today) {
     return j;
   }
 
+  /* once Amaha has reported today, today's m² are in what was made: the
+     plan's today is no longer still to make — it was counted twice every
+     evening (the bug hunt, 15 Oct 2026) */
+  var leftFrom = dayLast.some(function (f) { return f.report === 'amaha-daily' && dayOf_(new Date(jmAt_(f))) === today; })
+    ? addDays_(today, 1) : today;
   if (plan) {
     var week = rows_(plan.v.plan_week), days = rows_(plan.v.plan_days);
     for (var k = 1; k <= 15; k++) {
@@ -125,7 +130,7 @@ function jmBuild_(filings, regRows, today) {
           var j = seen(c, d);
           if (cs.length === 1 && m2 !== null && m2 > 0 && m2 <= PM_PLAN_MAX_) {
             j.m2Plan += m2; j.m2Known = true;
-            if (d >= today) j.m2Left += m2;
+            if (d >= leftFrom) j.m2Left += m2;
           }
         });
       });
@@ -137,7 +142,7 @@ function jmBuild_(filings, regRows, today) {
         var j = seen(c, d);
         if (cs2.length === 1 && dm2 !== null && dm2 > 0 && dm2 <= PM_PLAN_MAX_) {
           j.m2Plan += dm2; j.m2Known = true;
-          if (d >= today) j.m2Left += dm2;
+          if (d >= leftFrom) j.m2Left += dm2;
         }
       });
     }

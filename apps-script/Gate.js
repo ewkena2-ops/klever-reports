@@ -108,6 +108,11 @@ function gatePost_(row, poster) {
 
   /* the tablet's time — when it was made, however long it waited */
   var now = new Date(), when = now, at = Number(row.at);
+  /* by the tablet's own clock, when it was made and when it was sent: the
+     difference is the wait, whatever the tablet's clock says — a clock 45
+     minutes slow made a late arrival on time (bug hunt, 15 Oct 2026) */
+  var sentAt = Number(row.sentAt);
+  if (isFinite(at) && at > 0 && isFinite(sentAt) && sentAt >= at) at = now.getTime() - (sentAt - at);
   if (isFinite(at) && at > 0 && at <= now.getTime() + GT_AHEAD_MS_) {
     if (at < now.getTime() - GT_STALE_MS_) return JSON.stringify({ ok: false, why: 'stale' });
     when = new Date(Math.min(at, now.getTime()));

@@ -68,17 +68,20 @@ function opsPlanMaterials_(P, plan) {
   /* the store's latest count of the same twelve */
   var yord = daysOf_(P, 'yordanos-daily');
   var labels = pmGridLabels_(loadSchedule_(), 'yordanos-daily', 'k_stock');
-  var onHand = null, counted = null;
-  for (var i = yord.length - 1; i >= 0 && onHand === null; i--) {
-    var grid = rows_(yord[i].v.k_stock);
-    if (!grid.length) continue;
-    var any = false, map = {};
-    grid.forEach(function (r, k) {
+  /* each material from the last day it was counted: since 11 Oct he taps
+     only what he counts that day, so the newest day alone left the rest
+     "not counted" (the bug hunt, 15 Oct 2026) */
+  var onHand = null, counted = null, countedOn = {};
+  for (var i = yord.length - 1; i >= 0; i--) {
+    rows_(yord[i].v.k_stock).forEach(function (r, k) {
       var q = a_(r, 'qty');
       if (q === null) q = a_(r, 'onhand');
-      if (q !== null && labels[k]) { map[labels[k]] = q; any = true; }
+      if (q === null || !labels[k] || countedOn[labels[k]]) return;
+      onHand = onHand || {};
+      onHand[labels[k]] = q;
+      countedOn[labels[k]] = yord[i].day;
+      if (!counted) counted = yord[i].day;
     });
-    if (any) { onHand = map; counted = yord[i].day; }
   }
   var need = {};
   want.forEach(function (r) {
@@ -96,6 +99,7 @@ function opsPlanMaterials_(P, plan) {
   var lines = Object.keys(need).map(function (m) {
     var x = need[m];
     x.on_hand = onHand ? (onHand[m] === undefined ? null : onHand[m]) : null;
+    x.counted_on = countedOn[m] ? dayLabel_(countedOn[m]) : null;
     x.short_by = x.on_hand === null ? null : Math.max(0, Math.round((x.needed - x.on_hand) * 100) / 100);
     /* the first of those jobs is the day to buy against */
     x.first_job_starts = x.firstStart ? dayLabel_(x.firstStart) : null;
@@ -252,7 +256,7 @@ function opsBottlenecks_(P, ops) {
     machines_that_stopped: Object.keys(machines).map(function (k) { return machines[k]; })
       .sort(function (a, b) { return b.hours - a.hours; }),
     factory_hours_lost_to_other_causes: ops.production.hours_lost,
-    what_held_the_factory_up: hrSaid_(daysOf_(P, 'amaha-daily'), 'w_block'),
+    what_held_the_factory_up: opsBlocks_(P),
     days_stopped_for_board: ops.production.days_stopped_for_board,
     days_a_material_was_short: short.length,
     materials_short: short.map(function (x) { return dayLabel_(x.day).split(' ')[0] + ': ' + String(x.v.shortage_what || 'not named').trim(); }),
@@ -330,6 +334,21 @@ function opsFacts_(P, ops) {
   };
 }
 
+/* what held the factory up, day by day, in words: the answer is a code
+   ('hw', 'asm'), and 'none' is a day nothing did (the bug hunt, 15 Oct 2026) */
+function opsBlocks_(P) {
+  var L = {};
+  try { L = choiceLabels_(P.schedule || loadSchedule_(), 'amaha-daily', 'w_block'); } catch (e) { L = {}; }
+  return daysOf_(P, 'amaha-daily').filter(function (x) {
+    var c = String(x.v.w_block == null ? '' : x.v.w_block).trim();
+    return c && c !== 'none';
+  }).map(function (x) {
+    var c = String(x.v.w_block).trim();
+    var other = blank_(x.v.w_block__other) ? '' : ': ' + String(x.v.w_block__other).trim();
+    return dayLabel_(x.day).split(' ')[0] + ': ' + (L[c] || c) + other;
+  });
+}
+
 var OPS_ASK_ =
   'You are the Chairman’s head of operations. Write him the week from plan to site in at most 150 '+
   'words, short bullets. Lead with the one thing most likely to make a customer’s delivery late, with '+
@@ -338,7 +357,8 @@ var OPS_ASK_ =
   'production and delivery — by job code with days late. Then where open jobs are piling up and the '+
   'ones stuck longest, with whose move it is. Then what lost the most this week, comparing the hours '+
   'and days given, and what Mahelet said caused it. Then deliveries and installations on time. Then any '+
-  'decision Mahelet asked of him. Quote the figures as given.';
+  'decision Mahelet asked of him. If plan_materials.to_buy has lines, name each material and how much '+
+  'short, and the job that needs it first. Quote the figures as given.';
 
 function opsRead_(facts, P) {
   var d = facts.delivery_and_installation;

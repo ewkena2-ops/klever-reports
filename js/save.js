@@ -29,9 +29,17 @@ var ARCHIVE = {
   },
   waiting: function () { return this.read().length; },
 
+  /* who is signed in on this phone now ('' before sign-in) */
+  me: function () {
+    try { return window.AUTH && AUTH.who ? String(AUTH.who() || '') : ''; } catch (e) { return ''; }
+  },
+
   file: function (row) {
     if (!this.on()) return;
     row.k = row.k || Math.random().toString(36).slice(2) + Date.now().toString(36);
+    /* whose row: on a shared phone each row goes with its own filer's
+       token, never the next person's (the bug hunt, 15 Oct 2026) */
+    if (!row.filer) row.filer = this.me();
     var box = this.read();
     box.push(row);
     this.write(box);
@@ -40,6 +48,13 @@ var ARCHIVE = {
 
   remove: function (k) {
     this.write(this.read().filter(function (r) { return r.k !== k; }));
+  },
+  /* a row the script did not take: tried again later, 25 times at most */
+  retryLater: function (k) {
+    this.write(this.read().map(function (r) {
+      if (r.k === k) r.tries = (r.tries || 0) + 1;
+      return r;
+    }).filter(function (r) { return (r.tries || 0) < 25; }));
   },
 
   /* called on every page load and whenever the signal returns */
@@ -52,14 +67,27 @@ var ARCHIVE = {
     if (!box.length) return;
     this.busy = true;
     var token = (window.FB && window.FB.token) ? window.FB.token() : Promise.resolve(null);
+    var who = this.me();
     token.then(function (tok) {
       /* not signed in (yet): the rows wait, they are not thrown away */
       if (!tok) return;
-      return Promise.all(box.map(function (row) {
+      self.lastTok = tok;
+      return Promise.all(box.filter(function (row) {
+        /* another person's rows wait for them to sign in here again */
+        return !row.filer || row.filer === who;
+      }).map(function (row) {
         if (!row.k) { row.k = Math.random().toString(36).slice(2); }
         var body = JSON.parse(JSON.stringify(row));
+        delete body.filer; delete body.tries;
         body.idToken = tok;
-        return self.post(body).then(function () { self.remove(row.k); }, function () { /* next time */ });
+        /* only the script's own "ok" (or a "refused", which no retry
+           mends) takes a row out: a "busy" or an error page left it lost
+           for good (the bug hunt, 15 Oct 2026) */
+        return self.post(body).then(function (r) { return r.text(); }).then(function (txt) {
+          txt = String(txt || '').trim();
+          if (txt === 'ok' || txt === 'refused') { self.remove(row.k); return; }
+          self.retryLater(row.k);
+        }, function () { self.retryLater(row.k); });
       }));
     })['catch'](function () {}).then(function () {
       self.busy = false;
@@ -69,18 +97,39 @@ var ARCHIVE = {
 
   post: function (row) {
     /* text/plain keeps the browser from sending a preflight Apps Script
-       cannot answer; no-cors means we never see the reply, only whether the
-       request left the phone. keepalive lets a small row finish leaving
-       even as the page closes (browsers cap it at 64 KB). */
-    var body = JSON.stringify(row);
+       cannot answer, and the script's reply is read (as gate.js does) */
     return fetch(SAVE_URL, {
       method: 'POST',
-      mode: 'no-cors',
-      keepalive: body.length < 60000,
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: body
+      body: JSON.stringify(row)
+    });
+  },
+
+  /* the page is closing with rows still waiting: sent once more without
+     waiting for the reply (keepalive lets a small row finish leaving); the
+     script files a key once, so a row that also arrives later is not
+     filed twice. They stay in the outbox until an "ok" is read. */
+  last: function () {
+    var tok = this.lastTok, who = this.me(), room = 60000;
+    if (!this.on() || !tok) return;
+    this.read().forEach(function (row) {
+      if (row.filer && row.filer !== who) return;
+      var body = JSON.parse(JSON.stringify(row));
+      delete body.filer; delete body.tries;
+      body.idToken = tok;
+      var s = JSON.stringify(body);
+      /* the browser's 64 KB for all of them together, in bytes: Amharic
+         is three a letter (bug hunt, 15 Oct 2026) */
+      var bytes = typeof Blob !== 'undefined' ? new Blob([s]).size : s.length * 3;
+      if (bytes > room) return;
+      room -= bytes;
+      try {
+        fetch(SAVE_URL, { method: 'POST', mode: 'no-cors', keepalive: true,
+                          headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: s })['catch'](function () {});
+      } catch (e) {}
     });
   }
 };
 
 window.addEventListener('online', function () { ARCHIVE.flush(); });
+window.addEventListener('pagehide', function () { ARCHIVE.last(); });

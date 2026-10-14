@@ -188,10 +188,31 @@ function regGroups_(names) {
   return groups;
 }
 /* two spellings of one name share a word of 3 letters or more */
+/* two names share a word — or one spelled a letter or two apart ("Abebe" /
+   "Abbebe", "Tesfaye" / "Tesfay"): most "one KK code, two customers" alarms
+   were one customer spelled two ways (the bug hunt, 15 Oct 2026). Names in
+   two scripts are not compared. */
+function regNear_(x, y) {
+  if (x === y) return true;
+  var n = Math.min(x.length, y.length);
+  if (n < 4 || Math.abs(x.length - y.length) > 2) return false;
+  if (/[\u1200-\u137F]/.test(x) !== /[\u1200-\u137F]/.test(y)) return false;
+  var max = n >= 7 ? 2 : 1, prev = [], cur;
+  for (var j = 0; j <= y.length; j++) prev.push(j);
+  for (var i = 1; i <= x.length; i++) {
+    cur = [i];
+    for (var k = 1; k <= y.length; k++) {
+      cur.push(Math.min(prev[k] + 1, cur[k - 1] + 1, prev[k - 1] + (x[i - 1] === y[k - 1] ? 0 : 1)));
+    }
+    prev = cur;
+  }
+  return prev[y.length] <= max;
+}
 function regShareWord_(a, b) {
-  var w = {};
-  String(a).split(' ').forEach(function (x) { if (x.length >= 3) w[x] = true; });
-  return String(b).split(' ').some(function (x) { return x.length >= 3 && w[x]; });
+  var wa = String(a).split(' ').filter(function (x) { return x.length >= 3; });
+  return String(b).split(' ').some(function (x) {
+    return x.length >= 3 && wa.some(function (y) { return regNear_(x, y); });
+  });
 }
 function regDate_(s) {
   var t = String(s || '').trim();
@@ -266,6 +287,11 @@ function regEventsOf_(filing) {
       if (e.job) {
         e.job = regJob_(e.job);
         if (/^\d{1,3}$/.test(e.job)) e.job = 'KK-' + e.job;
+        /* a four-digit number in a job column is a lead's number: the
+           salespeople's follow-up list writes them there, and each one
+           became a job of its own, "after-sales done" (the bug hunt, 15 Oct
+           2026) — it joins its lead instead */
+        else if (/^\d{4}$/.test(e.job)) { if (!e.lead) e.lead = e.job; delete e.job; }
       }
       if (!e.cust && !e.job && !e.lead) return;
       out.push(e);
@@ -282,8 +308,12 @@ function regEventsOf_(filing) {
       var val = String(v[f.id] == null ? '' : v[f.id]).trim();
       if (!val) return;
       var named = {};
-      (val.match(/\bK{1,2}\s*-?\s*\d{2,5}\b/gi) || []).forEach(function (m) {
-        var job = regJob_(m);
+      /* "k.k 155", "K.K=165", "kk-160": the dotted and equals forms became
+         "K-155" or were missed, and the line never reached its job (the bug
+         hunt, 15 Oct 2026) */
+      var re = /(^|[^a-z0-9])k(?:\W{0,3}k)+\W{0,3}0*(\d{2,5})(?!\d)/gi, mm, codes = [];
+      while ((mm = re.exec(val))) codes.push('KK-' + Number(mm[2]));
+      codes.forEach(function (job) {
         if (named[job]) return;
         named[job] = true;
         out.push({ k: 'said', day: day, person: filing.person || '', job: job,
@@ -458,6 +488,7 @@ function regFold_(events, today, names, sellers) {
         break;
       case 'matdelay':
         if (e.ok === 'yes') J.matDelay = { day: e.day, what: e.what || '' };
+        else if (J.matDelay && J.matDelay.what === (e.what || '')) J.matDelay = null;
         break;
       case 'measure':
         if (!J.measured) J.measured = e.day;
@@ -484,7 +515,11 @@ function regFold_(events, today, names, sellers) {
         if (!J.received) J.received = e.day;
         if (e.colour) regColourUsed_(J, e, who);
         J.receivedLast = e.day;
-        if (e.ok === 'no') J.bomMismatch = { day: e.day, what: e.what || '' };
+        /* since 9 Oct the column is three-way: yes (matches), diff (does not
+           match), no (not checked) — "no" was read as a mismatch and a real
+           one ignored (the bug hunt, 15 Oct 2026) */
+        if (e.ok === 'diff') J.bomMismatch = { day: e.day, what: e.what || '' };
+        else if (e.ok === 'no') J.bomUnchecked = { day: e.day, what: e.what || '' };
         break;
       case 'finalreq':
         if (!J.finalReq) J.finalReq = e.day;
@@ -605,6 +640,7 @@ function regFold_(events, today, names, sellers) {
       holds.push('Waiting for the final payment' + (J.held.amount ? ': ' + fmt_(J.held.amount) + ' Birr still owed' : '') +
                  (J.held.expect ? ', expected ' + J.held.expect : '') + ' (Selam, ' + pushDay_(J.held.day) + ')');
     }
+    if (J.matDelay && (J.receivedLast && J.receivedLast > J.matDelay.day)) J.matDelay = null;
     if (J.matDelay && !J.made) holds.push('Material late: ' + J.matDelay.what + ' (Getachew, ' + pushDay_(J.matDelay.day) + ')');
     /* both come from Getachew's late-delivery list, so a material that is
        holding up production is said once, as "late", not twice */
@@ -632,7 +668,7 @@ function regFold_(events, today, names, sellers) {
     var moneyKnown = !!(J.signed || J.advDay);
     if (!J.signed) notes.push('No contract in the reports — signed before 6 October, or the code is written differently');
     if (!moneyKnown) notes.push('Its payments before 6 October are not in the reports, so they are not checked');
-    if (J.signed && !J.advIn && regWorkingDays_(J.signed, today) > REG_ADVANCE_DAYS_) {
+    if (J.signed && !J.advDay && regWorkingDays_(J.signed, today) > REG_ADVANCE_DAYS_) {
       p.push({ code: 'no-advance', text: 'Signed ' + pushDay_(J.signed) + '; Selam has recorded no advance' });
     }
     var cleared = [J.finalDay, J.paidFull].filter(Boolean).sort()[0];
@@ -657,6 +693,7 @@ function regFold_(events, today, names, sellers) {
       p.push({ code: 'followup-late', text: 'Installed ' + pushDay_(installed) + '; no 48-hour follow-up call recorded' });
     }
     if (J.bomMismatch) p.push({ code: 'bom', text: 'Material received that does not match the BOM: ' + J.bomMismatch.what + ' (Yordanos, ' + pushDay_(J.bomMismatch.day) + ')' });
+    if (J.bomUnchecked) notes.push('Material received without checking it against the BOM: ' + J.bomUnchecked.what + ' (Yordanos, ' + pushDay_(J.bomUnchecked.day) + ')');
     if (J.unhappy) p.push({ code: 'unhappy', text: 'Customer not happy at the follow-up call (' + pushDay_(J.unhappy) + ')' });
     if (J.delivered && J.cleared === false) p.push({ code: 'not-cleared', text: 'Delivered ' + pushDay_(J.delivered) + ' without Selam’s clearance' });
     if (J.delivered && J.cleared == null) notes.push('Delivered ' + pushDay_(J.delivered) + '; whether Selam cleared it was not written');
@@ -677,7 +714,12 @@ function regFold_(events, today, names, sellers) {
     }
     if (J.matDelay && !J.made) p.push({ code: 'material', text: 'Material late, holding up production: ' + J.matDelay.what + ' (' + pushDay_(J.matDelay.day) + ')' });
     if (J.jobFile === 'no') p.push({ code: 'no-job-file', text: 'Advance in, but no Job File opened' });
-    var openC = J.complaints.filter(function (c) { return !/^(closed|resolved)$/.test(c.state); });
+    /* nothing else closes a complaint (the bug hunt, 15 Oct 2026): the
+       customer's acceptance, or a happy follow-up call, after it does */
+    var happyAfter = function (c) {
+      return (J.accepted && J.accepted > c.last) || (J.followup && J.followup > c.last && !(J.unhappy && J.unhappy >= J.followup));
+    };
+    var openC = J.complaints.filter(function (c) { return !/^(closed|resolved)$/.test(c.state) && !happyAfter(c); });
     if (openC.length) p.push({ code: 'complaint', text: openC.length + ' complaint' + (openC.length > 1 ? 's' : '') + ' open: ' + openC[openC.length - 1].what });
     /* one KK code, two customers — Ephrata gives the codes by hand */
     var groups = regGroups_(Object.keys(J.names || {}));
@@ -1000,7 +1042,7 @@ function registerUpdate_(fresh) {
    finished on site is told from one still on installation.
    V5, 11 Oct 2026 — a code is its number only: "KK180 be material emete"
    joins KK-180 instead of standing as a job of its own. */
-var REGISTER_BACKFILL_KEY_ = 'REGISTER_BACKFILLED_V5';
+var REGISTER_BACKFILL_KEY_ = 'REGISTER_BACKFILLED_V6';   /* V6: the bug hunt's register fixes, 15 Oct 2026 */
 function registerBackfill_() {
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty(REGISTER_BACKFILL_KEY_)) return false;

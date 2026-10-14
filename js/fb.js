@@ -123,7 +123,27 @@
     },
 
     signOut: function () {
-      return ready.then(function () { if (auth) return F.signOut(auth); });
+      return ready.then(function () {
+        if (!auth) return;
+        /* this phone's notifications go with the person signing out: the
+           next person to sign in here got them too (the bug hunt, 15 Oct 2026) */
+        return pushForget().then(function () { return F.signOut(auth); });
+      });
+    },
+
+    /* Reports or photos written on this phone that the server has not got
+       yet: signing out keeps them in this person's queue on this phone, to go
+       only when they sign in here again (the bug hunt, 15 Oct 2026) */
+    unsent: function () {
+      return ready.then(function () {
+        if (!db || !user) return 0;
+        var n = 0, done = false;
+        try { n = (JSON.parse(localStorage.getItem('klever.pending') || '[]') || []).length; } catch (e) {}
+        return Promise.race([
+          F.waitForPendingWrites(db).then(function () { done = true; }),
+          new Promise(function (r) { setTimeout(r, 2500); })
+        ]).then(function () { return done ? 0 : Math.max(n, 1); });
+      })['catch'](function () { return 0; });
     },
 
     /* a fresh sign-in token, for the Sheet's script to check who is posting */
@@ -328,7 +348,12 @@
       if (!db || !user) return Promise.reject(new Error('not signed in'));
       var me = idOf(user), ref = F.doc(db, 'attend', day + '_' + me);
       var x = { why: why, note: String(note || '').slice(0, 300), whyAt: F.serverTimestamp() };
-      return exists ? F.updateDoc(ref, x) : F.setDoc(ref, Object.assign({ person: me, day: day }, x));
+      /* someone who checks in at the factory gate: the reason is the
+         factory's, so Amaha's gate card reads it (bug hunt, 15 Oct 2026) */
+      var P = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.id === me; })[0];
+      var first = { person: me, day: day };
+      if (P && P.gate && !P.scan) first.place = 'factory';
+      return exists ? F.updateDoc(ref, x) : F.setDoc(ref, Object.assign(first, x));
     },
     /* THE FACTORY GATE (gate.html, js/gate.js, apps-script/Gate.js) */
     /* the faces the gate knows: cb([{person, name, descr, photo, n}]), or
@@ -534,6 +559,16 @@
   };
 
   var PUSH_KEY = 'klever.push';          /* this phone's address id, once saved */
+  /* at sign-out: this person's address for this phone is removed; offline,
+     the removal waits in the cache and sign-out does not wait for it (the
+     server keeps the newest owner of an address, Push.js) */
+  function pushForget() {
+    var saved = null;
+    try { saved = localStorage.getItem(PUSH_KEY); localStorage.removeItem(PUSH_KEY); } catch (e) {}
+    if (!saved || !db || !user || saved.indexOf(idOf(user) + '_') !== 0) return Promise.resolve();
+    var gone = F.deleteDoc(F.doc(db, 'pushTokens', saved))['catch'](function () {});
+    return Promise.race([gone, new Promise(function (r) { setTimeout(r, 2500); })]);
+  }
   function pushSupported() {
     return 'serviceWorker' in navigator && typeof window.PushManager !== 'undefined' &&
            typeof window.Notification !== 'undefined';
@@ -567,7 +602,10 @@
   /* a phone that already allowed them keeps its address current, quietly */
   ready.then(function () {
     try {
-      if (user && pushSupported() && Notification.permission === 'granted' && localStorage.getItem(PUSH_KEY)) {
+      /* only the person who turned them on here: another person signed in
+         on the same phone was signed up without a tap (bug hunt, 15 Oct 2026) */
+      if (user && pushSupported() && Notification.permission === 'granted' &&
+          String(localStorage.getItem(PUSH_KEY) || '').indexOf(idOf(user) + '_') === 0) {
         window.FB.pushEnable(true)['catch'](function () {});
       }
     } catch (e) {}

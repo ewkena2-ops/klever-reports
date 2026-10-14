@@ -221,10 +221,19 @@ var CFO_ASK_ =
   'a past payment not shown paid is for Selam to confirm with the bank. Quote the figures as given.';
 
 function cfoRead_(facts, P) {
-  if (!facts.spending_reported) {
+  /* the weekly finance report is made from Selam's dailies (11 Oct 2026),
+     which record only some spending lines: the rest of the week — money in,
+     the bank, food, supplier credit, the loans — is still read. The fixed
+     words are for a week with nothing at all, and blame no one (the bug
+     hunt, 15 Oct 2026). */
+  var known = facts.spending_reported || facts.money_in !== null || facts.bank !== null ||
+    (facts.lines || []).some(function (l) { return l.birr !== null; }) ||
+    (facts.food && facts.food.birr_this_week !== null) ||
+    (facts.supplier_credit && facts.supplier_credit.reported) || !!facts.bank_loans;
+  if (!known) {
     /* nothing to read, so no model is paid to say so */
-    return 'Selam did not report the week’s spending, so there is nothing to say yet about where ' +
-           'the money went. It goes in “7 · Money spent this week” of her Saturday Weekly Finance Report.';
+    return 'No money figures were recorded this week — no spending, money in or bank balance — ' +
+           'so there is nothing to read yet.';
   }
   if (!brain_().key) return '(No model key set — GEMINI_KEY. The figures are still complete.)';
   var prompt = [
@@ -236,6 +245,9 @@ function cfoRead_(facts, P) {
     'Write plainly: no bold headline labels, no adjectives doing the work of evidence.',
     '',
     'YOUR TASK: ' + CFO_ASK_,
+    facts.spending_reported ? '' : 'The week’s total spending is not known: spending_partial says which lines are ' +
+      'recorded day by day. Say so once, plainly and without blaming anyone, read those lines as they are, and ' +
+      'leave out the spending total and money in minus out. Read the rest as usual.',
     '',
     '--- ' + P.start + ' to ' + P.end + ' ---',
     JSON.stringify(facts, null, 1)

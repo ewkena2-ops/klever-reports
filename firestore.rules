@@ -275,6 +275,14 @@ service cloud.firestore {
                     && request.resource.data.report.matches('^' + request.resource.data.person + '-[a-z0-9-]+$')
                     && request.resource.data.keys().hasOnly(
                          ['person','report','by','late','due','values','flags','text','lang','at','to'])
+                    /* the gate tablet files nothing, and a filing is bounded:
+                       one could stop every close that reads reports (the bug
+                       hunt, 15 Oct 2026) */
+                    && !isGate()
+                    && (!('values' in request.resource.data)
+                        || (request.resource.data.values is map && request.resource.data.values.size() <= 600))
+                    && (!('flags' in request.resource.data)
+                        || (request.resource.data.flags is list && request.resource.data.flags.size() <= 200))
                     && (!('text' in request.resource.data)
                         || (request.resource.data.text is string && request.resource.data.text.size() <= 60000))
                     && (!('to' in request.resource.data)
@@ -681,7 +689,11 @@ service cloud.firestore {
                         && request.resource.data.whyBy == me()
                         && attendWhy(request.resource.data))
                     || (signedIn()
-                        && request.resource.data.keys().hasOnly(['person', 'day', 'why', 'note', 'whyAt'])
+                        && request.resource.data.keys().hasOnly(['person', 'day', 'place', 'why', 'note', 'whyAt'])
+                        /* a gate head's own reason is marked the factory's, so
+                           Amaha's gate card can read it (bug hunt, 15 Oct 2026) */
+                        && (!('place' in request.resource.data)
+                            || (request.resource.data.place == 'factory' && gateFolk(me())))
                         && request.resource.data.person == me()
                         && id == request.resource.data.day + '_' + me()
                         && request.resource.data.day is string
@@ -742,7 +754,10 @@ service cloud.firestore {
        the Chairman or Amaha, for the people at the gate, as themselves. */
     match /faces/{person} {
       allow get, list: if isChairman() || isLedger() || isGate() || isAmaha();
-      allow create, update: if (isChairman() || isAmaha())
+      /* Amaha's own face only by the Chairman: whoever sets a face
+         controls that person's check-in, and Amaha may not check his own
+         scans (bug hunt, 15 Oct 2026) */
+      allow create, update: if (isChairman() || (isAmaha() && person != 'amaha'))
                             && gateFolk(person)
                             && request.resource.data.keys().hasOnly(['person', 'name', 'descr', 'photo', 'n', 'by', 'at'])
                             && request.resource.data.person == person
@@ -756,7 +771,7 @@ service cloud.firestore {
                             && request.resource.data.photo.size() <= 60000
                             && request.resource.data.by == me()
                             && request.resource.data.at == request.time;
-      allow delete: if isChairman() || isAmaha();
+      allow delete: if isChairman() || (isAmaha() && person != 'amaha');
     }
     /* the picture taken at each gate scan — written by the script */
     match /gatephoto/{id} {

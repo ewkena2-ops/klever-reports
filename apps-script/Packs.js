@@ -233,7 +233,7 @@ function packData_(start, end) {
        week's money. And a day past the end, because a month's own reports
        are due on the 1st of the next one. */
     filings: filedBetween_(addDays_(start, -8), addDays_(end, 2)),
-    waivers: tryQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start],
+    waivers: fsQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start],
                                    ['day', 'LESS_THAN', after]], 'day'),
     analysis: tryQuery_('analysis', [['day', 'GREATER_THAN_OR_EQUAL', start],
                                      ['day', 'LESS_THAN', after]], 'day'),
@@ -447,6 +447,8 @@ function instructionsIn_(P) {
   var endT = dayStart_(addDays_(P.end, 1)).getTime(), startT = dayStart_(P.start).getTime();
   P.instructions.forEach(function (i) {
     var who = P.names[i.to] || i.to;
+    /* his instructions: the script's alerts and reminders are not (bug hunt, 15 Oct 2026) */
+    if (i.by === 'alert' || i.by === 'reminder') return;
     if (i.at && i.at.getTime() >= startT && i.at.getTime() < endT) issued++;
     if (i.status === 'done' && i.doneAt && i.doneAt.getTime() >= startT && i.doneAt.getTime() < endT) {
       closed++;
@@ -642,7 +644,7 @@ function refreshPay_(month) {
   try { monthDoc = fsQuery_('months', [['month', 'EQUAL', month]], null)[0] || null; }
   catch (e) { monthDoc = null; }
   var pay = payOf_(ledgersBetween_(start, next), monthDoc,
-                   tryQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start],
+                   fsQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start],
                                          ['day', 'LESS_THAN', next]], 'day'), names);
   writePayTab_(month, pay);
   return pay;

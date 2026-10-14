@@ -108,9 +108,11 @@ function got_(filed, reportId) {
    they were called, are reported by the person who took them; Ephrata used
    to re-type the total and the two disagreed. null when not one of them has
    filed it — nobody said zero, so no agent is told zero. */
+/* the last filing of each report — a correction stands in for the first,
+   it is not added to it (the bug hunt, 15 Oct 2026) */
 function salesSum_(d, field) {
   var any = false, total = 0;
-  ((d && d.filed) || []).forEach(function (f) {
+  latestFiled_(d || {}).forEach(function (f) {
     if (!/-sales-daily$/.test(String(f.report || ''))) return;
     var v = a_(f.fields || {}, field);
     if (v !== null) { any = true; total += v; }
@@ -119,7 +121,7 @@ function salesSum_(d, field) {
 }
 function salesPair_(d, field) {
   var any = false, done = 0, of = 0, bad = 0;
-  ((d && d.filed) || []).forEach(function (f) {
+  latestFiled_(d || {}).forEach(function (f) {
     if (!/-sales-daily$/.test(String(f.report || ''))) return;
     var p = pair_(f.fields || {}, field);
     if (!p || p.done === null || p.of === null) return;
@@ -137,10 +139,13 @@ function salesPair_(d, field) {
 function salesSeries_(d, field) {
   var out = [];
   for (var i = 6; i >= 0; i--) {
-    var day = addDays_(d.day, -i), t = null;
+    var day = addDays_(d.day, -i), t = null, last = {};
     (d.recent || []).forEach(function (f) {
       if (!/-sales-daily$/.test(String(f.report || '')) || f.day !== day) return;
-      var x = a_(f.fields || {}, field);
+      last[f.report] = f;
+    });
+    Object.keys(last).forEach(function (r) {
+      var x = a_(last[r].fields || {}, field);
       if (x !== null) t = (t === null ? 0 : t) + x;
     });
     out.push(t);
@@ -820,7 +825,7 @@ var AGENTS = [
       material_over_bom_pct: a_(amaha, 'w_var'),
       sheets_used: a_(amaha, 'b_sheets'),
       m2_per_sheet: a_(amaha, 'b_yield'),
-      m2_per_sheet_target: 2.2,
+      m2_per_sheet_target: 2.4,          /* the form's b_yield target since 9 Oct 2026 */
       edge_banding_m: a_(amaha, 'b_edge'),
       edge_reruns: a_(amaha, 'b_redo'),
       stopped_for_missing_board: ay_(amaha, 'b_short'),
@@ -835,7 +840,7 @@ var AGENTS = [
     };
   },
   ask:'Did the factory make its 40 m², and if not, what actually stopped it. '+
-      'Yield below 2.2 m² a sheet means the cutting plan is wasting board — say so if it is. '+
+      'Yield below 2.4 m² a sheet means the cutting plan is wasting board — say so if it is. '+
       'If one stage is holding work up, name it and say whether the queue behind it is growing. '+
       'If today is more than 15% below the average of the days before it, say so first — '+
       'that is the drop the Chairman wants to hear about the same day.' },
@@ -1202,13 +1207,13 @@ var AGENTS = [
       open_jobs: rows_(v.w_jobs),
       new_orders_to_klever: yes_(v.k_new) ? rows_(v.k_new_list) : [],
       waiting_on_klever: v.k_waiting || '',
-      problem_with_klever_work: ay_(v, 'k_quality') ? (v.k_quality_what || 'yes') : null,
+      problem_with_klever_work: ay_(v, 'k_quality') === null ? null : ay_(v, 'k_quality') ? (v.k_quality_what || 'yes') : 'no',
       money_in: a_(v, 'm_in'),
       money_out: a_(v, 'm_out'),
       paid_to_klever: a_(v, 'm_klever'),
       money_in_last_7_days: series_(d, 'frewoyni-daily', 'm_in'),
       problem: v.p_problem || '',
-      decision_needed_from_the_chairman: yes_(v.p_chair) ? (v.p_chair_what || 'yes') : null,
+      decision_needed_from_the_chairman: ay_(v, 'p_chair') === null ? null : yes_(v.p_chair) ? (v.p_chair_what || 'yes') : 'no',
       plan_for_tomorrow: v.t_plan || '',
       klever_rules_for_rovestone: 'Rovestone pays Klever 50% before production and 50% on delivery; every ' +
         'Rovestone order needs the Chairman’s approval; Rovestone work comes after fully paid external jobs.'
@@ -1238,7 +1243,7 @@ var AGENTS = [
         to_or_from_klever: a_(v, 'm_klever'),
         money_in_last_7_days: series_(d, pid + '-daily', 'm_in'),
         problem: v.p_problem || '',
-        decision_needed_from_the_chairman: yes_(v.p_chair) ? (v.p_chair_what || 'yes') : null,
+        decision_needed_from_the_chairman: ay_(v, 'p_chair') === null ? null : yes_(v.p_chair) ? (v.p_chair_what || 'yes') : 'no',
         plan_for_tomorrow: v.t_plan || ''
       };
     }
@@ -1732,9 +1737,11 @@ function instructionsOn_(day, names) {
   var all;
   try { all = fsQuery_('instructions', [], null); }
   catch (e) { return { overdue: [], closed_today: [], note: 'instructions could not be read' }; }
-  var overdue = [], closed = [];
+  var overdue = [], closed = [], auto = 0;
   all.forEach(function (i) {
     var who = (names && names[i.to]) || i.to;
+    /* the script's own alerts and reminders are not his instructions (the bug hunt, 15 Oct 2026) */
+    if (i.by === 'alert' || i.by === 'reminder') { if (i.status === 'open') auto++; return; }
     if (i.status === 'open' && i.due <= day) {
       overdue.push({ who: who, what: i.text, due: i.due,
                      days_over: Math.round((dayStart_(day) - dayStart_(i.due)) / 86400000) });
@@ -1745,7 +1752,7 @@ function instructionsOn_(day, names) {
     }
   });
   overdue.sort(function (a, b) { return b.days_over - a.days_over; });
-  return { overdue: overdue, closed_today: closed };
+  return { overdue: overdue, closed_today: closed, automatic_alerts_still_open: auto };
 }
 
 /* Claude or Gemini — whichever the Chairman chose; see Brain.js */
@@ -1761,10 +1768,24 @@ function askAll_(d) {
     });
   }
 
+  /* each agent's figures worked out once, and alone: one that throws is
+     said so, and the rest still read (the bug hunt, 15 Oct 2026 — one bad
+     facts function took every morning reading down, and each was worked
+     out twice, its Firestore reads with it) */
+  var facts = first.map(function (a) {
+    try { return { ok: true, f: a.facts(d) }; }
+    catch (e) { Logger.log('facts %s: %s', a.id, e.message); return { ok: false, err: e.message }; }
+  });
+  var asked = first.filter(function (a, i) { return facts[i].ok; });
   /* fourteen at once. One after another would sit near the six-minute limit. */
-  var texts = aiAskAll_(first.map(function (a) { return promptFor_(a, a.facts(d), d); }));
+  var texts = aiAskAll_(asked.map(function (a) { return promptFor_(a, facts[first.indexOf(a)].f, d); }));
   first.forEach(function (a, i) {
-    out.push({ id:a.id, en:a.en, am:a.am, facts:a.facts(d), text:texts[i] });
+    if (!facts[i].ok) {
+      out.push({ id:a.id, en:a.en, am:a.am, facts:{ error: facts[i].err },
+                 text:'(The figures for this reading could not be worked out: ' + facts[i].err + ')' });
+      return;
+    }
+    out.push({ id:a.id, en:a.en, am:a.am, facts:facts[i].f, text:texts[asked.indexOf(a)] });
   });
 
   /* the decision agent reads the day; the brief reads everything, so they run
@@ -1922,7 +1943,7 @@ function mailAnalysis_(results, d) {
 
     '<table width="100%" cellpadding="0" cellspacing="6" style="margin:0 -6px 18px;' +
       'font-family:monospace"><tr>' +
-      tile_('FILED', d.filed.length + ' / ' + d.ledger.length) +
+      tile_('FILED', d.ledger.filter(function (l) { return l.status !== 'MISSING'; }).length + ' / ' + d.ledger.length) +
       tile_(d.provisional ? 'NOT IN YET' : 'NOT FILED', String(missing)) +
       tile_(d.provisional ? 'OWED SO FAR' : 'OWED', fmt_(owed) + ' Birr') +
     '</tr></table>';
@@ -2334,9 +2355,12 @@ function watch_(waitMs) {
         muteHttpExceptions: true
       });
       Logger.log('Run requested from the Chairman’s page — running now.');
-      /* this reading covers everything filed so far; the new-report check
-         need not run the same day again straight after it */
+      /* the reports not yet handled get their register lines, money check
+         and alerts first — skipped here, they were never done (the bug
+         hunt, 15 Oct 2026); this reading then covers everything filed */
+      runIfNew_({ noRead: true });
       markSeen_(new Date());
+      PropertiesService.getScriptProperties().deleteProperty('READ_PENDING');
       ran_('reading', function () { runAgents(); return { note: 'asked for from his page' }; });
       return;
     }
@@ -2372,15 +2396,26 @@ function watch_(waitMs) {
 function markSeen_(when) {
   PropertiesService.getScriptProperties().setProperty('AUTO_SEEN', when.toISOString());
 }
-function runIfNew_() {
+/* The new-report steps take every report since the last look — also one
+   filed in the minute before midnight, which the first look after midnight
+   used to skip (from the start of today), losing its register lines, money
+   check and alerts (the bug hunt, 15 Oct 2026). Never more than 36 hours
+   back. The reading itself runs at most every 30 minutes (READ_PENDING):
+   a full reading for every report could use up the 90 minutes a day of
+   trigger time at full filing. */
+var QUIET_READ_EVERY_MS_ = 30 * 60 * 1000;
+function runIfNew_(opt) {
+  opt = opt || {};
   var today = todayAddis_();
+  var props = PropertiesService.getScriptProperties();
   var from = dayStart_(today);
   var seen = prop_('AUTO_SEEN', '');
-  if (seen && new Date(seen).getTime() > from.getTime()) from = new Date(seen);
+  var floor = new Date(new Date().getTime() - 36 * 3600 * 1000);
+  if (seen && new Date(seen).getTime() > floor.getTime()) from = new Date(seen);
   var fresh;
   try { fresh = fsQuery_('reports', [['at', 'GREATER_THAN', from]], 'at'); }
   catch (e) { Logger.log('new-report check failed: %s', e.message); return false; }
-  if (!fresh.length) return false;
+  if (!fresh.length) return opt.noRead ? false : readIfDue_();
   markSeen_(fresh[fresh.length - 1].at);
   /* the alerts that cannot wait for the morning: a lead not called, a
      delivery rejected, a new complaint (Owners.js) */
@@ -2398,10 +2433,25 @@ function runIfNew_() {
   try { moneyAfter_(fresh); } catch (e) { Logger.log('money: %s', e.message); }
   /* a plan, a contract, a material cost or a day's m² in: the money on each job again (JobMoney.js) */
   try { jobMoneyAfter_(fresh); } catch (e) { Logger.log('job money: %s', e.message); }
-  Logger.log('%s new report(s) since %s — reading today again.', fresh.length, from.toISOString());
+  if (opt.noRead) return true;
+  Logger.log('%s new report(s) since %s.', fresh.length, from.toISOString());
+  if (fresh.some(function (f) { return dayOf_(f.at) === today; })) props.setProperty('READ_PENDING', String(fresh.length));
+  readIfDue_();
+  return true;
+}
+/* today read again, when reports came and the last reading is half an hour old */
+function readIfDue_() {
+  var props = PropertiesService.getScriptProperties();
+  var pending = props.getProperty('READ_PENDING');
+  if (!pending) return false;
+  var last = Number(props.getProperty('QUIET_READ_AT') || 0), now = new Date().getTime();
+  if (now - last < QUIET_READ_EVERY_MS_) return false;
+  props.deleteProperty('READ_PENDING');
+  props.setProperty('QUIET_READ_AT', String(now));
+  Logger.log('reading today again (%s new report(s))', pending);
   ran_('reading', function () {
     runAgents({ quiet: true });
-    return { note: fresh.length + ' new report' + (fresh.length === 1 ? '' : 's') };
+    return { note: pending + ' new report' + (pending === '1' ? '' : 's') };
   });
   return true;
 }

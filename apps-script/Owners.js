@@ -144,11 +144,21 @@ function realtimeAlerts_(fresh, schedule) {
       }
       /* 23 · Store receipt: a delivery rejected, production stopped, a material about to run out */
       if (rep === 'yordanos-daily') {
-        var rej = rows_(v.rec_list).filter(function (r) { return r && ay_(r, 'ok') === false; });
+        /* rejected or short is the "taken in, or rejected?" column (take: in /
+           part / out); "ok" says whether it was checked against the BOM — read
+           as a rejection, an unchecked delivery was called rejected and a real
+           rejection sent nothing (the bug hunt, 15 Oct 2026) */
+        var named = function (r) { return String(r.item || 'an item').trim() + (r.sup ? ' from ' + String(r.sup).trim() : '') + (r.code ? ' (' + opsCode_(r.code) + ')' : '') + (r.why ? ' — ' + String(r.why).trim() : ''); };
+        var rej = rows_(v.rec_list).filter(function (r) { return r && (r.take === 'out' || r.take === 'part'); });
         if (rej.length) {
-          sent += alertMany_(base + '-rej', ['getachew', 'liu'], 'Rejected at the store on ' + dayLabel_(day) + ': ' +
-                             rej.map(function (r) { return String(r.item || 'an item').trim() + (r.sup ? ' from ' + String(r.sup).trim() : '') + (r.code ? ' (' + opsCode_(r.code) + ')' : ''); }).join('; ') +
+          sent += alertMany_(base + '-rej', ['getachew', 'liu'], 'Rejected or short at the store on ' + dayLabel_(day) + ': ' +
+                             rej.map(function (r) { return (r.take === 'part' ? 'part rejected: ' : '') + named(r); }).join('; ') +
                              '. Arrange the replacement and close this with the new delivery date.', day);
+        }
+        var off = rows_(v.rec_list).filter(function (r) { return r && r.ok === 'diff' && r.take !== 'out'; });
+        if (off.length) {
+          sent += alertMany_(base + '-bom', ['getachew', 'liu'], 'Received at the store on ' + dayLabel_(day) + ' but not matching the BOM: ' +
+                             off.map(named).join('; ') + '. Put it right and close this with what was done.', day);
         }
         if (ay_(v, 'sh_stopped') === true) {
           sent += alertMany_(base + '-stop', ['liu', 'getachew'], 'Production stopped on ' + dayLabel_(day) + ' because something ran out (Yordanos). Say what, and when it arrives.', day);
@@ -163,10 +173,13 @@ function realtimeAlerts_(fresh, schedule) {
       }
       /* 26 · Complaint router: each new complaint to whoever answers for it,
          and to Ephrata and Selam, who look after customers */
-      var complaint = function (key, text, routeWords) {
+      var complaint = function (key, text, routeWords, daily) {
         var to = routeTo_(routeWords);
-        /* by its words: the same complaint in tomorrow's report is not a new one */
-        var id = 'al-cp-' + ownHash_(who + '|' + String(text).toLowerCase().replace(/\s+/g, ' ').trim());
+        /* by its words: the same complaint in tomorrow's report is not a new
+           one — but a count of complaints that came in today (Elyas's) is
+           tapped reasons, the same words for a different customer: its id
+           carries the day (the bug hunt, 15 Oct 2026) */
+        var id = 'al-cp-' + ownHash_(who + '|' + (daily ? day + '|' : '') + String(text).toLowerCase().replace(/\s+/g, ' ').trim());
         sent += alertMany_(id, [to, 'ephrata', 'betty'].filter(function (x) { return x !== who; }),
                            'Customer complaint (' + from + ', ' + dayLabel_(day) + '): ' + text + ' Deal with it and close this with what was done.', day);
       };
@@ -177,7 +190,7 @@ function realtimeAlerts_(fresh, schedule) {
                     (r.to ? '; passed to ' + String(r.to).trim() : '') + '.', (r.to || '') + ' ' + (r.issue || ''));
         });
       }
-      if (rep === 'elyas-daily' && a_(v, 'ac_complaints') > 0) complaint('s', String(v.ac_complaints_what || a_(v, 'ac_complaints') + ' complaint(s) at the site').trim() + '.', 'site');
+      if (rep === 'elyas-daily' && a_(v, 'ac_complaints') > 0) complaint('s', String(v.ac_complaints_what || a_(v, 'ac_complaints') + ' complaint(s) at the site').trim() + '.', 'site', true);
       if (/-design-daily$/.test(rep)) {
         rows_(v.cp_list).forEach(function (r, i) {
           if (r && (r.cust || r.what)) complaint('d' + i, String(r.cust || '').trim() + ' — ' + String(r.what || 'not described').trim() + '.', 'design');

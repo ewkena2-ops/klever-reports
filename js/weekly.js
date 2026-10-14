@@ -323,7 +323,7 @@
       return lines.join('\n');
     }
     if (k.weekPicks != null) {
-      var answered = false, got = [];
+      var answered = false, got = [], dropped = false;
       this.days(k).forEach(function (d) {
         var w = d.values[k.weekPicks];
         if (!has(w)) return;
@@ -331,10 +331,16 @@
         String(w).split(',').forEach(function (c) {
           c = c.trim();
           var to = k.map ? k.map[c] : c;
-          [].concat(to == null ? [] : to).forEach(function (x) { if (x && x !== 'none' && got.indexOf(x) < 0) got.push(x); });
+          var put = [].concat(to == null ? [] : to).filter(function (x) { return x && x !== 'none'; });
+          if (!put.length && c && c !== 'none') dropped = true;
+          put.forEach(function (x) { if (got.indexOf(x) < 0) got.push(x); });
         });
       });
       if (!answered) return '';
+      /* the dailies said something happened that this weekly has no answer
+         for: left blank, not "Nothing — a normal week" (the bug hunt, 15 Oct
+         2026) */
+      if (!got.length && dropped) return '';
       return got.length ? got.join(',') : 'none';
     }
     if (k.weekByDay != null) {

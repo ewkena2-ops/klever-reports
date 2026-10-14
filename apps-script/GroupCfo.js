@@ -67,7 +67,8 @@ function groupCfo_(d) {
     bank_total: bank,
     by_bank: banks,
     the_four_banks_add_up_to: partsSum,
-    banks_differ_from_total_by: partsSum !== null && bank !== null ? partsSum - bank : null,
+    /* to the Birr: 0.1 + 0.2 is not 0.3 in a computer (the bug hunt, 15 Oct 2026) */
+    banks_differ_from_total_by: partsSum !== null && bank !== null && Math.abs(partsSum - bank) >= 1 ? Math.round(partsSum - bank) : (partsSum !== null && bank !== null ? 0 : null),
     reserve_floor: GC_FLOOR_,
     above_the_floor_by: bank !== null ? bank - GC_FLOOR_ : null,
     last_bank_balance_reported: last,

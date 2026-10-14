@@ -316,7 +316,9 @@ const RULES = [
     src:'Selam’s letter — “Payment not reserved before installation –500 Birr”',
     note:'betty-daily.asm_unreserved flags it, but an unreserved job stays flagged day after day; charge once per job.' },
 
-  { id:'betty-asm-late-release', who:['betty'], kind:'penalty', birr:300, per:'day', how:'auto',
+  /* per job: each late payment carries its own 300 × days; per day, the second
+     late payment of a day was dropped (the bug hunt, 15 Oct 2026) */
+  { id:'betty-asm-late-release', who:['betty'], kind:'penalty', birr:300, per:'job', how:'auto',
     en:'Assembler paid more than 3 working days after acceptance',
     am:'ደንበኛው ከተቀበለ ከ3 የሥራ ቀናት በኋላ ገጣጣሚ ተከፍሏል',
     src:'Selam’s letter — “Payment not released within 3 working days after customer acceptance –300 Birr per day late”',
@@ -457,7 +459,7 @@ const RULES = [
     en:'Purchase request without a job code',
     am:'የሥራ ኮድ የሌለው የግዥ ጥያቄ',
     src:'Getachew’s letter — “Missing job code on a request –200 Birr”',
-    test:{ at:'day', rows:{ of:'getachew-daily.pr_list', where:['code', '==', ''] } } },
+    test:{ at:'day', rows:{ of:'getachew-daily.pr_list', where:{ blank:'code' } } } },
 
   { id:'getachew-late-request', who:['getachew'], kind:'penalty', birr:300, per:'event', how:'recorded',
     en:'Late purchase request',
@@ -1522,8 +1524,8 @@ const RULES = [
     en:'Job completed with no rework and no QC failure',
     am:'ያለ እንደገና መሥራትና ያለ የጥራት ቁጥጥር ውድቀት የተጠናቀቀ ሥራ',
     src:'Amaha’s letter — “Job completion bonus 1,000 Birr per project completed All conditions must be met Zero rework Zero QC failure Zero production-related customer complaint”',
-    note:'The third condition — no production-related customer complaint — is in no form: cancel the line for any job that later draws one.',
-    test:{ at:'week', on:'amaha-weekly', rows:{ of:'amaha-weekly.j_done_list', where:{ all:[['rework', '==', 'no'], ['qcfail', '==', 'no']] } } } },
+    note:'No rework and no QC failure are read from the jobs register (Wude’s own reports: passed QC, never failed, nothing sent back) — the weekly list has no such columns, so it could never be paid (bug hunt, 15 Oct 2026). The third condition — no production-related customer complaint — is in no form: cancel the line for any job that later draws one.',
+    test:{ at:'week', on:'amaha-weekly', rows:{ of:'amaha-weekly.j_done_list', where:{ qc:'code', is:'clean' } } } },
 
   { id:'amaha-material-savings', who:['amaha'], kind:'bonus', birr:null, per:'month', how:'auto',
     en:'Share of monthly material savings against the BOM (10%–25%)',

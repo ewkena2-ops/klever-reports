@@ -547,7 +547,13 @@ function chronicFacts_(P) {
   rdRows_(pulse, 'pl_list').forEach(function (x) { if (x.r.cust && x.r.state !== 'closed') add(cust, x.r.cust, x.r.cust, x.day); });
   var roster = ((P.schedule && P.schedule.people) || []).filter(function (p) { return p.roleEn === 'Production Worker'; });
   var abs = {};
-  rdRows_(ad, 'mp_absent_list').forEach(function (x) { if (x.r.name) { var n = hrWho_(x.r.name, roster); add(abs, n, n, x.day); } });
+  rdRows_(ad, 'mp_absent_list').forEach(function (x) {
+    if (!x.r.name) return;
+    var n = hrWho_(x.r.name, roster);
+    /* "Someone else" is not one worker absent again and again (bug hunt, 15 Oct 2026) */
+    if (n === 'Someone else') n = 'Someone else (' + (String(x.r.why || '').trim().slice(0, 40) || 'not named') + ')';
+    add(abs, n, n, x.day);
+  });
   /* the same report late or missing in three of the last four weeks, from the ledger */
   var people = {};
   tryQuery_('ledger', [['day', 'GREATER_THAN_OR_EQUAL', four], ['day', 'LESS_THAN_OR_EQUAL', to]], 'day').forEach(function (doc) {
@@ -615,8 +621,18 @@ function vendorsFacts_(P) {
   var c = function (sup) { var k = creditName_(sup); return k ? (card[k] = card[k] || { supplier: String(sup).trim(), orders: 0, value: 0, late: 0, rejected: 0, price_rises_over_10pct: 0 }) : null; };
   rdRows_(gd, 'ord_list').forEach(function (x) { var e = c(x.r.sup); if (e) { e.orders++; e.value += n_(x.r.amount); } });
   rdRows_(gd, 'sup_delay_list').forEach(function (x) { var e = c(x.r.sup); if (e) e.late++; });
-  rdRows_(gd, 'del_rej_list').forEach(function (x) { var e = c(x.r.sup); if (e) e.rejected++; });
-  rdRows_(yd, 'rec_list').forEach(function (x) { if (ay_(x.r, 'ok') === false) { var e = c(x.r.sup); if (e) e.rejected++; } });
+  /* a rejection is the store's "rejected" (take 'out'), not a delivery it
+     did not check; one Getachew also logged that day is not counted twice
+     (the bug hunt, 15 Oct 2026) */
+  var logged = {};
+  rdRows_(gd, 'del_rej_list').forEach(function (x) {
+    var e = c(x.r.sup); if (e) e.rejected++;
+    logged[creditName_(x.r.sup) + '|' + x.day] = true;
+  });
+  rdRows_(yd, 'rec_list').forEach(function (x) {
+    if (x.r.take !== 'out' || logged[creditName_(x.r.sup) + '|' + x.day]) return;
+    var e = c(x.r.sup); if (e) e.rejected++;
+  });
   rdRows_(gd, 'p_rows').forEach(function (x) { if (a_(x.r, 'pchg') > 10) { var e = c(x.r.psup); if (e) e.price_rises_over_10pct++; } });
   return {
     weeks: '8 weeks to ' + dayLabel_(to),

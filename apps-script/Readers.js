@@ -364,6 +364,14 @@ function forecastFacts_(P) {
   var end = P.end, back = addDays_(end, -27);
   var sel = rdBy_('betty', back, end), eph = rdBy_('ephrata', back, end), ama = rdBy_('amaha', back, end);
   var fd = sel['betty-daily'] || {}, fw = sel['betty-weekly'] || {};
+  /* the weeks a person's reports cover in the four: from the first one to
+     the end — reporting began 6 Oct, so dividing by 4 made two weeks of
+     payments look like half as much a week (the bug hunt, 15 Oct 2026) */
+  var weeksIn = function (byDay) {
+    var ks = Object.keys(byDay).filter(function (d) { return d >= back && d <= end; }).sort();
+    if (!ks.length) return null;
+    return Math.min(4, Math.max(1, (hrDaysBetween_(ks[0], end) + 1) / 7));
+  };
   /* the bank now: the last evening balance in the four weeks */
   var bankDay = Object.keys(fd).filter(function (d) { return a_(fd[d], 'bank_total') !== null; }).sort().pop() || null;
   var bank = bankDay ? a_(fd[bankDay], 'bank_total') : null;
@@ -390,7 +398,8 @@ function forecastFacts_(P) {
   var outFrom = outs.length ? 'Selam’s weekly spending, ' + outs.length + ' weeks' : null;
   if (outWeek === null) {
     var pv = rdSum_(fd, 'pay_value', back, end);
-    if (pv !== null) { outWeek = Math.round(pv / 4); outFrom = 'payments Selam approved over 4 weeks (her weekly spending was not reported)'; }
+    var pw = weeksIn(fd);
+    if (pv !== null && pw) { outWeek = Math.round(pv / pw); outFrom = 'payments Selam approved over ' + (Math.round(pw * 10) / 10) + ' weeks (her weekly spending was not reported)'; }
   }
   var net = inWeek !== null && outWeek !== null ? inWeek - outWeek : null;
   /* the bank loans (Loans.js): a payment every quarter is not in a weekly
@@ -449,7 +458,8 @@ function forecastFacts_(P) {
   var ed = eph['ephrata-daily'] || {};
   var contracted = rdSum_(ed, 'contract_value', back, end);
   var daysRep = Object.keys(ed).length;
-  var perWeek = contracted !== null && daysRep ? Math.round(contracted / 4) : null;
+  var cw = weeksIn(ed);
+  var perWeek = contracted !== null && daysRep && cw ? Math.round(contracted / cw) : null;
   var pipe = { High: 0, Medium: 0, Low: 0 }, weighted = 0, nPipe = 0;
   rows_(proj && proj.proj_contracts).forEach(function (r) {
     var v = n_(r.val), c = String(r.conf || '').toLowerCase();
@@ -459,7 +469,7 @@ function forecastFacts_(P) {
     if (FC_LABELS_[c]) pipe[FC_LABELS_[c]] += v;
     weighted += v * (FC_WEIGHTS_[c] || 0);
   });
-  var sales = { contracts_last_4_weeks: contracted, a_week_at_that_rate: perWeek,
+  var sales = { contracts_last_4_weeks: contracted, weeks_reported: cw === null ? null : Math.round(cw * 10) / 10, a_week_at_that_rate: perWeek,
                 in_30_days: perWeek === null ? null : Math.round(perWeek * 30 / 7),
                 in_60_days: perWeek === null ? null : Math.round(perWeek * 60 / 7),
                 in_90_days: perWeek === null ? null : Math.round(perWeek * 90 / 7),

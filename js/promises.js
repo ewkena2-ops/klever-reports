@@ -27,10 +27,21 @@
   function codesIn(v, isCodeCol, isList) {
     var s = String(v == null ? '' : v), out = [], m, re = /[kK]\W{0,3}[kK]\W{0,3}0*(\d{2,3})(?!\d)/g;
     while ((m = re.exec(s))) out.push(Number(m[1]));
-    /* a promise list names the first job and runs on: "K.k=165,155," */
+    /* a promise list names the first job and runs on: "K.k=165,155," —
+       only numbers that run on from a code through , ; / & + or "and";
+       any free-standing number used to count, so "20 sheets", "10 am" and
+       "250,000 Birr" became jobs KK-020, KK-010, KK-250, KK-000 (the bug
+       hunt, 15 Oct 2026) */
     if (out.length && isList) {
-      var rest = /(?:^|[\s,;/&+]|and)(\d{2,3})(?=$|[\s,;/&+.])/g, t = s.replace(re, ' ');
-      while ((m = rest.exec(t))) if (out.indexOf(Number(m[1])) < 0) out.push(Number(m[1]));
+      var re2 = /[kK]\W{0,3}[kK]\W{0,3}0*(\d{2,3})(?!\d)/g, run = /^\s*(?:[,;\/&+]|and|እና)\s*0*(\d{2,3})(?!\d)(?!,\d{3}(?!\d))/i, mt;
+      while ((mt = re2.exec(s))) {
+        var tail = s.slice(re2.lastIndex), r;
+        while ((r = run.exec(tail))) {
+          var n = Number(r[1]);
+          if (n > 0 && out.indexOf(n) < 0) out.push(n);
+          tail = tail.slice(r[0].length);
+        }
+      }
     }
     /* a bare number counts only in a job column, and only as two or three
        digits: "0332" is a lead number, not a job */
@@ -47,12 +58,19 @@
      each with the question it was found under */
   function scan(f, reportsById) {
     var rep = reportsById[f.report], v = f.values || {}, promised = {}, worked = {};
+    /* a list the form fills itself with earlier jobs (carry, 14 Oct 2026)
+       is in every filing whatever the answer: it proves nothing was done
+       (the bug hunt, 15 Oct 2026 — Getachew's and Wude's promises were always
+       "kept") */
+    var carried = {};
+    if (rep) rep.sections.forEach(function (s) { s.fields.forEach(function (x) { if (x.carry) carried[x.id] = true; }); });
     function label(id) {
       var q = null;
       if (rep) rep.sections.forEach(function (s) { s.fields.forEach(function (x) { if (x.id === id) q = x; }); });
       return q ? { en: q.en, am: q.am } : { en: id, am: id };
     }
     Object.keys(v).forEach(function (id) {
+      if (carried[id]) return;
       var val = v[id], into = PROMISE[id] ? promised : (LATER.test(id) ? null : worked);
       if (!into) return;
       var found = [];
@@ -134,11 +152,13 @@
   /* Mahelet's 15-day plan against what the factory reported making.
      → [{day, planned: [codes], m2: planned m², rows: [{code, state:'made'|'not'|'nofile'|'due', m2}], extra: [{code, m2}]}] */
   function planCheck(filings, today) {
-    var plan = null;
-    filings.forEach(function (f) {
-      if (f.report === 'liu-plan' && (!plan || f.at > plan.at)) plan = f;
-    });
-    if (!plan || !plan.values || !plan.values.plan_start) return [];
+    /* every plan of the window, oldest first: a newer one takes the days it
+       covers, the older ones keep theirs — only the newest was read, so
+       filing next week's plan wiped Saturday's check (the bug hunt, 15 Oct
+       2026) */
+    var plans = filings.filter(function (f) { return f.report === 'liu-plan' && f.values && f.values.plan_start; })
+      .sort(function (a, b) { return a.at - b.at; });
+    if (!plans.length) return [];
     var made = {};
     filings.forEach(function (f) {
       if (f.report !== 'amaha-daily') return;
@@ -153,7 +173,9 @@
       });
       made[day] = { at: f.at, jobs: jobs };
     });
-    var out = [], day = plan.values.plan_start;
+    var byDay = {};
+    plans.forEach(function (plan) {
+    var day = plan.values.plan_start;
     if (new Date(day + 'T12:00:00Z').getUTCDay() === 0) day = addDays(day, 1);
     /* since 11 Oct the plan is written job by job (plan_week: k1/m1, k2/n2,
        k3/n3 a day); a plan filed before that has only the day's job list */
@@ -177,15 +199,19 @@
         var n = w.code;
         if (d >= today) return { code: n, plan: w.plan, state: 'due' };
         if (!m) return { code: n, plan: w.plan, state: 'nofile' };
-        return m.jobs[n] != null ? { code: n, plan: w.plan, state: 'made', m2: Math.round(m.jobs[n] * 10) / 10 } : { code: n, plan: w.plan, state: 'not' };
+        if (m.jobs[n] == null) return { code: n, plan: w.plan, state: 'not' };
+        var got = Math.round(m.jobs[n] * 10) / 10;
+        /* listed with 0 m², or less than planned, is not "made" (bug hunt, 15 Oct 2026) */
+        return { code: n, plan: w.plan, state: got === 0 || (w.plan != null && got < w.plan) ? 'short' : 'made', m2: got };
       });
       var extra = [];
       if (m) Object.keys(m.jobs).forEach(function (n) {
         if (codes.indexOf(Number(n)) < 0) extra.push({ code: Number(n), m2: Math.round(m.jobs[n] * 10) / 10 });
       });
-      out.push({ day: d, planned: codes, m2: row && row.m2 ? String(row.m2) : '', rows: rows, extra: extra });
+      byDay[d] = { day: d, planned: codes, m2: row && row.m2 ? String(row.m2) : '', rows: rows, extra: extra };
     });
-    return out;
+    });
+    return Object.keys(byDay).sort().map(function (d) { return byDay[d]; });
   }
 
   var api = { promises: promises, planCheck: planCheck, codesIn: codesIn, kk: kk, nextWorkDay: nextWorkDay };

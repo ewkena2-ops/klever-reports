@@ -32,7 +32,8 @@ import {
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   collection, doc, setDoc, addDoc, query, orderBy, limit, startAfter,
-  onSnapshot, getDocs, serverTimestamp, terminate, clearIndexedDbPersistence
+  onSnapshot, getDocs, serverTimestamp, terminate, clearIndexedDbPersistence,
+  deleteDoc, waitForPendingWrites
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js?v=906c7b6e';
 
@@ -304,7 +305,10 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
   function askSignOut() {
     if (leaving) return;
     if (document.querySelector('.chat-sheet')) { closeSheet(); return; }
-    var n = Math.max(inFlight, threadWaiting);
+    /* and the reports this phone filed that the server has not seen yet */
+    var reportsWaiting = 0;
+    try { reportsWaiting = (JSON.parse(localStorage.getItem('klever.pending') || '[]') || []).length; } catch (e) {}
+    var n = Math.max(inFlight, threadWaiting) + reportsWaiting;
     var sheet = el('div', 'chat-sheet');
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-label', t('signOut'));
@@ -341,7 +345,23 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
       try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
       location.reload();
     }
-    signOut(auth).then(function () {
+    /* writes the server has not got (a report, a site photo, a message)
+       are kept in this person's queue — clearing the cache threw them away
+       (the bug hunt, 15 Oct 2026). And this phone's notifications go with
+       the person. */
+    var waiting = true;
+    var settle = Promise.race([
+      waitForPendingWrites(db).then(function () { waiting = false; }),
+      new Promise(function (r) { setTimeout(r, 2500); })
+    ])['catch'](function () {});
+    var forget = settle.then(function () {
+      var saved = null;
+      try { saved = localStorage.getItem('klever.push'); localStorage.removeItem('klever.push'); } catch (e) {}
+      if (!saved || !me || saved.indexOf(me + '_') !== 0) return;
+      return Promise.race([deleteDoc(doc(db, 'pushTokens', saved)), new Promise(function (r) { setTimeout(r, 2500); })]);
+    })['catch'](function () {});
+    forget.then(function () { return signOut(auth); }).then(function () {
+      if (waiting) return;
       return terminate(db).then(function () { return clearIndexedDbPersistence(db); });
     })['catch'](function () {
       /* the cache cannot be cleared while another tab of this site still

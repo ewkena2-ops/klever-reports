@@ -48,7 +48,19 @@ function fcmSend_(message, validateOnly) {
 
 /* Every phone a person turned notifications on for. */
 function pushTokensOf_(person) {
-  return tryQuery_('pushTokens', [['person', 'EQUAL', person]], null);
+  return tryQuery_('pushTokens', [['person', 'EQUAL', person]], null).filter(function (p) {
+    /* the same phone saved since by someone else who signed in on it is
+       theirs now: the old owner's copy is removed, not sent to (the bug
+       hunt, 15 Oct 2026) */
+    if (!p.t) return false;
+    var mine = p.at ? new Date(p.at).getTime() : 0;
+    var later = tryQuery_('pushTokens', [['t', 'EQUAL', p.t]], null).filter(function (q) {
+      return q.person !== person && q.at && new Date(q.at).getTime() > mine;
+    });
+    if (!later.length) return true;
+    try { fsDelete_('pushTokens/' + p._id); } catch (e) {}
+    return false;
+  });
 }
 
 /* Remove a phone's address that no longer works. */
@@ -106,7 +118,8 @@ function notifyInstruction_(id) {
   if (cache.get('push:' + id)) return false;           /* being sent right now */
   cache.put('push:' + id, '1', 600);
   var r = pushTo_(ins.to, ins.by === 'reminder' ? 'Klever · Reminder · ማስታወሻ'   /* Credit.js */
-                                               : 'Klever · Instruction from the Chairman · የሊቀመንበሩ መመሪያ',
+                       : ins.by === 'alert' ? 'Klever · Alert from your AI · ከAIዎ የመጣ ማንቂያ'   /* Owners.js, Vision.js */
+                                            : 'Klever · Instruction from the Chairman · የሊቀመንበሩ መመሪያ',
                   String(ins.text || '') + (ins.due ? ' — by ' + pushDay_(ins.due) : ''), 'ins-' + id);
   fsPut_('pushlog/' + id, { ins: id, to: ins.to, at: new Date(), phones: r.phones, sent: r.sent,
                             failed: r.failed, error: r.error });

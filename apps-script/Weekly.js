@@ -22,7 +22,8 @@
    it — and once more at 8 PM for any daily corrected since. A weekly report
    counts for the week it is filed in, which closes at 9 PM on Sunday: made
    after that it would count for the next week, so nothing is made from
-   8:50 PM. A person who filed the weekly report by hand that week keeps
+   8:50 PM. The 8 PM pass files a weekly again only when what it reads has
+   changed (a daily corrected, a collections fix). A person who filed the weekly report by hand that week keeps
    theirs. A person with no daily report that week gets none — a summary of
    nothing would read as a report filed.                                    */
 
@@ -79,16 +80,17 @@ function buildWeeklies_(sunday, opts) {
       });
       if (mine.some(function (f) { return f.by !== 'auto'; })) { out.own.push(rep.id); return; }
       var b = W.build(rep, { reports: lib.REPORTS, people: lib.PEOPLE, filings: plain, sunday: sunday });
-      if (!b.dailies && !b.others) { out.empty.push(rep.id); return; }
-      /* made already, and nothing it reads came in since: not again */
-      var lastAuto = mine.reduce(function (a, f) { return Math.max(a, f.at.getTime()); }, 0);
-      if (lastAuto) {
-        var reads = W.sourcesOf(rep, lib.REPORTS);
-        var newer = plain.some(function (f) {
-          return f.at > lastAuto && f.at < wk.to && reads.indexOf(f.report) >= 0;
-        });
-        if (!newer) { out.unchanged.push(rep.id); return; }
-      }
+      /* the person's own dailies, as the header says: a weekly made only from
+         someone else's reports was filed in the name of a person who sent
+         nothing (the bug hunt, 15 Oct 2026); nor one with no answers at all */
+      if (!b.dailies || !Object.keys(b.values || {}).length) { out.empty.push(rep.id); return; }
+      /* made already: again only if what the week reads has changed — a
+         daily corrected since, or a collections fix of Ephrata's (/fixes,
+         patched into the day it corrects, Money.js). The old test (a filing
+         after the last build and before Sunday) could never be true, so a
+         Sunday fix never reached the weekly her commission is judged on. */
+      var lastF = mine.slice().sort(function (x, y) { return x.at - y.at; }).pop();
+      if (lastF && weeklySame_(lastF.fields || {}, b.values || {})) { out.unchanged.push(rep.id); return; }
       fileBuilt_(rep, b, person, lib);
       out.made.push(rep.id);
       made.push({ rep: rep, b: b, person: person });
@@ -104,6 +106,19 @@ function buildWeeklies_(sunday, opts) {
 }
 
 /* One weekly report into the two places a phone puts one: the filing (with who it is for) and the Sheet */
+/* two sets of answers the same, whatever order their keys came in */
+function weeklySame_(a, b) {
+  var norm = function (v) {
+    if (Object.prototype.toString.call(v) === '[object Array]') return v.map(norm);
+    if (v && typeof v === 'object' && !(v instanceof Date)) {
+      var o = {};
+      Object.keys(v).sort().forEach(function (k) { if (v[k] !== '' && v[k] != null) o[k] = norm(v[k]); });
+      return o;
+    }
+    return v == null ? '' : String(v);
+  };
+  return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
+}
 function fileBuilt_(rep, b, person, lib) {
   var text = b.text.substring(0, 60000);
   /* who it is for, besides the Chairman: they read it on their home page.

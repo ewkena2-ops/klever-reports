@@ -525,15 +525,9 @@ function fsDoc_(doc) {
 /* One structured query. `where` is a list of [field, op, value] and they
    are ANDed; ops are Firestore's own (GREATER_THAN_OR_EQUAL, LESS_THAN,
    EQUAL...). */
-function fsQuery_(collection, where, orderBy) {
-  var filters = (where || []).map(function (w) {
-    return { fieldFilter: { field: { fieldPath: w[0] }, op: w[1], value: fsEncode_(w[2]) } };
-  });
-  var q = { from: [{ collectionId: collection }] };
-  if (filters.length === 1) q.where = filters[0];
-  if (filters.length > 1) q.where = { compositeFilter: { op: 'AND', filters: filters } };
-  if (orderBy) q.orderBy = [{ field: { fieldPath: orderBy }, direction: 'ASCENDING' }];
-
+var FS_PAGE_ = 300;            /* filings a page */
+var FS_DOC_MAX_ = 300000;      /* a filing larger than this (as JSON) is set aside and logged */
+function fsRun_(collection, q) {
   var res = UrlFetchApp.fetch(fsBase_() + '/documents:runQuery', {
     method: 'post', contentType: 'application/json',
     headers: { Authorization: 'Bearer ' + fsToken_() },
@@ -544,10 +538,67 @@ function fsQuery_(collection, where, orderBy) {
     throw new Error('Could not read ' + collection + ' (HTTP ' + res.getResponseCode() +
                     '): ' + res.getContentText().substring(0, 300));
   }
-  var out = [];
-  JSON.parse(res.getContentText()).forEach(function (row) {
-    if (row.document) out.push(fsDoc_(row.document));   /* an empty result carries one blank entry */
+  return JSON.parse(res.getContentText());
+}
+function fsQuery_(collection, where, orderBy) {
+  var filters = (where || []).map(function (w) {
+    return { fieldFilter: { field: { fieldPath: w[0] }, op: w[1], value: fsEncode_(w[2]) } };
   });
+  var q = { from: [{ collectionId: collection }] };
+  if (filters.length === 1) q.where = filters[0];
+  if (filters.length > 1) q.where = { compositeFilter: { op: 'AND', filters: filters } };
+  if (orderBy) q.orderBy = [{ field: { fieldPath: orderBy }, direction: 'ASCENDING' }];
+
+  var out = [];
+  if (!orderBy) {
+    fsRun_(collection, q).forEach(function (row) {
+      if (row.document) out.push(fsDoc_(row.document));   /* an empty result carries one blank entry */
+    });
+  } else {
+    /* In pages, in order: one read of a month of reports could pass what
+       one fetch can carry, and a single oversized filing is set aside and
+       logged rather than stopping every close (the bug hunt, 15 Oct 2026). */
+    q.orderBy.push({ field: { fieldPath: '__name__' }, direction: 'ASCENDING' });
+    var size = FS_PAGE_, after = null, seen = {};
+    for (var guard = 0; guard < 400; guard++) {
+      var qq = JSON.parse(JSON.stringify(q));
+      qq.limit = size;
+      if (after) qq.startAt = { values: after, before: false };
+      var rows;
+      try { rows = fsRun_(collection, qq); }
+      catch (e) {
+        if (/HTTP 4\d\d/.test(e.message)) throw e;      /* a wrong query, not a big one */
+        if (size > 1) { size = Math.max(1, Math.floor(size / 10)); continue; }
+        /* the next one alone is too big to fetch: its place, and past it */
+        qq.select = { fields: [{ fieldPath: orderBy }] };
+        var key = fsRun_(collection, qq).filter(function (r) { return r.document; })[0];
+        if (!key) break;
+        Logger.log('fsQuery_: %s could not be read (too big), set aside', key.document.name);
+        after = [key.document.fields[orderBy], { referenceValue: key.document.name }];
+        continue;
+      }
+      var docs = rows.filter(function (r) { return r.document; });
+      docs.forEach(function (r) {
+        var nm = r.document.name;
+        if (seen[nm]) return;
+        seen[nm] = 1;
+        var bytes = JSON.stringify(r.document).length;
+        if (bytes > FS_DOC_MAX_) {
+          var f = r.document.fields || {};
+          Logger.log('fsQuery_: %s set aside, %s KB (person %s, report %s)', nm, Math.round(bytes / 1024),
+                     f.person && f.person.stringValue, f.report && f.report.stringValue);
+          return;
+        }
+        out.push(fsDoc_(r.document));
+      });
+      /* a last, short page; or a reader that does not page (gives all at once) */
+      if (docs.length < size || docs.length > size) break;
+      var last = docs[docs.length - 1].document;
+      if (!last.fields || !last.fields[orderBy]) break;
+      after = [last.fields[orderBy], { referenceValue: last.name }];
+      size = FS_PAGE_;
+    }
+  }
   /* Ephrata's collections as she fixed them, wherever her reports are read (Money.js) */
   if (collection === 'reports' && typeof moneyPatch_ === 'function') moneyPatch_(out);
   return out;
@@ -801,7 +852,11 @@ function closeDay_(day, opts) {
   /* closing a week, the week before it in full — "missed twice in a row" */
   var back = isWeek ? -13 : -7;
   var before = ledgersBetween_(addDays_(day, back), day);
-  var waivers = tryQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', addDays_(day, back)],
+  /* the cancellations are read with fsQuery_, which throws: a read that
+     failed was taken as "nothing cancelled" and cancelled fines came back
+     in the ledger and the pay (the bug hunt, 15 Oct 2026) — now the run
+     fails, is said in the run log, and is done again */
+  var waivers = fsQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', addDays_(day, back)],
                                       ['day', 'LESS_THAN', day]], 'day');
   /* A weekly report already settled on its own day — by the code before
      this rule, for a week that straddled the change — is not charged again. */

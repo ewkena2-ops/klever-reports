@@ -177,6 +177,17 @@ function sdMarketing_(hist, from, to) {
    the first few for each person. Rank: a quote about to lapse, a signing
    expected this week, one expected and missed, a lead past the 48-hour
    visit, a lapsed quote, a quiet lead. */
+/* the team member a lead's owner names, by full or first name; anyone else is the lead's */
+function sdOwner_(owner, team, lead) {
+  var t = String(owner || '').trim().toLowerCase();
+  if (!t) return lead;
+  var hit = team.filter(function (n) {
+    var l = String(n).toLowerCase();
+    return l === t || l.split(' ')[0] === t.split(' ')[0];
+  });
+  return hit.length === 1 ? hit[0] : lead;
+}
+
 function sdPipeline_(today, names) {
   var rows = [];
   try { rows = (fsGet_('register/leads') || {}).rows || []; } catch (e) { rows = []; }
@@ -184,6 +195,7 @@ function sdPipeline_(today, names) {
   var at = {}, counts = { expiring: 0, lapsed: 0, expectedN: 0, expectedBirr: 0, missed: 0, quiet: 0, visit: 0 };
   var acts = {};
   var lead = names[SD_LEAD_] || SD_LEAD_;
+  var team = SD_TEAM_.map(function (m) { return names[m.id] || m.id; });
   open.forEach(function (L) {
     at[L.stageName] = (at[L.stageName] || 0) + 1;
     var items = [];
@@ -215,17 +227,21 @@ function sdPipeline_(today, names) {
     var first = L.first || (L.last && L.last.day) || '';
     if (L.stageName === 'lead' && first && hrDaysBetween_(first, today) >= SD_VISIT_HOURS_DAYS_) {
       counts.visit++;
-      items.push({ rank: 4, sort: -hrDaysBetween_(first, today), do: 'book the pre-measurement visit — lead since ' +
+      /* the freshest first: months-old bot leads filled every list and
+         this week's never came up (the bug hunt, 15 Oct 2026) */
+      items.push({ rank: 4, sort: hrDaysBetween_(first, today), do: 'book the pre-measurement visit — lead since ' +
                    dayLabel_(first) + ', past the 48-hour rule' });
     }
     var quiet = L.last && L.last.day ? hrDaysBetween_(L.last.day, today) : 0;
     if (quiet >= REG_QUIET_DAYS_) {
       counts.quiet++;
-      items.push({ rank: 6, sort: -quiet, do: 'call or close — nothing done for ' + quiet + ' days' });
+      items.push({ rank: 6, sort: quiet, do: 'call or close — nothing done for ' + quiet + ' days' });
     }
     if (!items.length) return;
     items.sort(function (a, b) { return a.rank - b.rank || a.sort - b.sort; });
-    var who = L.sales || lead;
+    /* an owner who is not one of the team (the bot's names) is Ephrata's,
+       as unassigned leads are — their actions were dropped */
+    var who = sdOwner_(L.sales, team, lead);
     (acts[who] = acts[who] || []).push({ rank: items[0].rank, sort: items[0].sort, customer: L.name,
       code: L.code || '', stage: L.stageName, quote_birr: L.quote == null ? null : L.quote,
       next_step_written: L.next || '', do: items[0].do });

@@ -100,16 +100,21 @@ function doPost(e) {
     return ContentService.createTextOutput(waPost_(row));
   }
   if (!tokenShape_(row.idToken)) return ContentService.createTextOutput('refused');
-  if (flooded_()) return ContentService.createTextOutput('busy');
+  /* A token Google has already vouched for goes straight through: only
+     the unknown ones count toward a flood — a stranger's junk answered
+     "busy" to every member of staff (the bug hunt, 15 Oct 2026). */
   var poster = knownToken_(row.idToken);
   if (!poster) {
+    if (flooded_()) return ContentService.createTextOutput('busy');
     /* A token can be forged in shape, so lookups are counted: past 500
        refused ones in a day, an unknown token is turned away without a call
-       to Google. Tokens Google has vouched for are remembered until they
-       expire, so the staff keep working through a flood. */
-    if (badTokensToday_() >= 500) return ContentService.createTextOutput('busy');
+       to Google — unless it is a new token of an account Google vouched for
+       before (Firebase gives each phone a new one every hour, so the whole
+       staff was locked out within the hour). A forger does not know their
+       account ids. */
+    if (badTokensToday_() >= 500 && !knownSub_(row.idToken)) return ContentService.createTextOutput('busy');
     poster = posterOf_(row.idToken);
-    if (poster) rememberToken_(row.idToken, poster);
+    if (poster) { rememberToken_(row.idToken, poster); rememberSub_(row.idToken, poster); }
     else countBadToken_();
   }
   delete row.idToken;
@@ -166,6 +171,8 @@ function doPost(e) {
   row.byName = poster === 'chairman' ? 'Chairman' : nameOf(poster);
   row.at = new Date().toISOString();
   var st = standingNow_(sched, rep);
+  var firstOnTime = correctionOf_(rep, st);
+  if (firstOnTime) st = { late: false, day: st.day, text: 'Correction — first sent on time at ' + firstOnTime };
   row.late = st.late;
   row.statusText = st.text;
 
@@ -175,7 +182,14 @@ function doPost(e) {
      append a row to the penalty ledger or to a month's deductions just by
      calling their "report" that. */
   if (RESERVED_TABS_.test(tab)) return ContentService.createTextOutput('refused');
-  var ss = appendReportRow_(row);
+  var ss;
+  try { ss = appendReportRow_(row); }
+  catch (err) {
+    /* not filed: the key is let go, so the phone's next try is filed (the
+       bug hunt, 15 Oct 2026 — the phone now reads this reply) */
+    if (row.k) { try { cache.remove ? cache.remove('row:' + row.k) : cache.put('row:' + row.k, '', 1); } catch (e) {} }
+    throw err;
+  }
   notify_(row, ss.getUrl());
   /* and the agents read the day again, about a minute from now (Agents.js) */
   readSoon_();
@@ -280,6 +294,26 @@ function rememberToken_(t, who) {
     if (secs > 30) CacheService.getScriptCache().put(tokenKey_(t), who, Math.min(secs, 21600));
   } catch (e) {}
 }
+/* the account ids Google has vouched for, with whose they are: a new token
+   of one of them still gets its lookup through a flood of strangers */
+function subsKnown_() {
+  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('TOKEN_SUBS') || '{}') || {}; } catch (e) { return {}; }
+}
+function knownSub_(t) {
+  var p = jwtPart_(String(t).split('.')[1]) || {};
+  var who = String(p.email || '').toLowerCase().split('@')[0];
+  return !!p.sub && !!who && subsKnown_()[p.sub] === who;
+}
+function rememberSub_(t, who) {
+  try {
+    var p = jwtPart_(String(t).split('.')[1]) || {};
+    if (!p.sub || String(p.email || '').toLowerCase().split('@')[0] !== who) return;
+    var m = subsKnown_();
+    if (m[p.sub] === who) return;
+    m[p.sub] = who;
+    PropertiesService.getScriptProperties().setProperty('TOKEN_SUBS', JSON.stringify(m));
+  } catch (e) {}
+}
 function badTokensToday_() {
   try { return Number(CacheService.getScriptCache().get('badtok:' + todayAddis_()) || 0); } catch (e) { return 0; }
 }
@@ -331,8 +365,8 @@ function standingNow_(sched, rep) {
   if (rep.cadence === 'weekly' && weekOf_(new Date(), rep.id) >= WEEK_FROM_) {
     var d = dueInWeek_(rep, weekOf_(new Date(), rep.id));
     var label = Utilities.formatDate(new Date(d + 'T12:00:00' + ADDIS_), tz_(), 'EEE d MMM');
-    if (now > deadline_(rep, d).getTime()) return { late: true, text: d === today ? 'LATE' : 'LATE, for ' + label };
-    return { late: false, text: d === today ? 'On time' : 'Early, for ' + label };
+    if (now > deadline_(rep, d).getTime()) return { late: true, day: d, text: d === today ? 'LATE' : 'LATE, for ' + label };
+    return { late: false, day: d, text: d === today ? 'On time' : 'Early, for ' + label };
   }
   var back = rep.cadence === 'daily' ? 0 : 7;
   for (var k = 0; k <= back; k++) {
@@ -340,11 +374,34 @@ function standingNow_(sched, rep) {
     if (dueOn_(sched, d).indexOf(rep) === -1) continue;
     if (k === 0) {
       var late = now > deadline_(rep, d).getTime();
-      return { late: late, text: late ? 'LATE' : 'On time' };
+      return { late: late, day: d, text: late ? 'LATE' : 'On time' };
     }
-    return { late: false, text: 'Early, for ' + Utilities.formatDate(new Date(d + 'T12:00:00' + ADDIS_), tz_(), 'EEE d MMM') };
+    return { late: false, day: d, text: 'Early, for ' + Utilities.formatDate(new Date(d + 'T12:00:00' + ADDIS_), tz_(), 'EEE d MMM') };
+  }
+  /* a monthly report sent after its due day: the ledger counts it as
+     missing, so it must not read "Not due today" (the bug hunt, 15 Oct 2026) */
+  if (rep.cadence === 'monthly') {
+    for (var b = 1; b <= 10; b++) {
+      var past = addDays_(today, -b);
+      if (dueOn_(sched, past).indexOf(rep) === -1) continue;
+      return { late: true, day: past, text: 'Too late, after its due day ' +
+               Utilities.formatDate(new Date(past + 'T12:00:00' + ADDIS_), tz_(), 'EEE d MMM') + ' — counts as missing' };
+    }
   }
   return { late: false, text: 'Not due today' };
+}
+/* A correction: the same report, same period, already sent on time — the
+   first filing decides on time (Agent.js), so the Sheet and his email say
+   so instead of LATE (the bug hunt, 15 Oct 2026) */
+function correctionOf_(rep, st) {
+  if (!st.late || !st.day || /counts as missing/.test(st.text)) return null;
+  try {
+    var dl = deadline_(rep, st.day).getTime();
+    var since = dayStart_(addDays_(st.day, rep.cadence === 'daily' ? 0 : -7));
+    var first = fsQuery_('reports', [['person', 'EQUAL', rep.person], ['at', 'GREATER_THAN_OR_EQUAL', since]], 'at')
+      .filter(function (f) { return f.report === rep.id && f.at && f.at.getTime() <= dl; })[0];
+    return first ? Utilities.formatDate(first.at, tz_(), 'h:mm a') : null;
+  } catch (e) { return null; }
 }
 
 /* The Chairman should not have to open a spreadsheet to find out a report

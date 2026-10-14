@@ -94,11 +94,17 @@ function waChairman_(row) {
   var reply, ok = true;
   try {
     var pending = waPendingGet_(slot);
-    if (pending && WA_YES_.test(text)) reply = waExecute_(pending.actions, slot);
-    else if (pending && WA_NO_.test(text)) { waPendingClear_(slot); reply = WA_CANCELLED_; }
-    else if (/^\s*(brief|the brief|ብሪፍ|ማጠቃለያ)\s*[.!?]?\s*$/i.test(text)) reply = waLastBrief_();
-    else if (waLooksLikeQuestion_(text)) reply = waAnswer_(text, row.history, row.customers, day, !chair);
-    else reply = waDecideOrAnswer_(text, row.history, row.customers, day, chair ? null : ['book'], slot);
+    if (pending && waIsYes_(text)) reply = waExecute_(pending.actions, slot);
+    else if (pending && waIsNo_(text)) { waPendingClear_(slot); reply = WA_CANCELLED_; }
+    else {
+      /* a YES counts only as the very next message after the read-back: an
+         "ok" meaning thanks, later, did a proposal he had moved on from (the
+         bug hunt, 15 Oct 2026) */
+      if (pending) waPendingClear_(slot);
+      if (/^\s*(brief|the brief|ብሪፍ|ማጠቃለያ)\s*[.!?]?\s*$/i.test(text)) reply = waLastBrief_();
+      else if (waLooksLikeQuestion_(text)) reply = waAnswer_(text, row.history, row.customers, day, !chair);
+      else reply = waDecideOrAnswer_(text, row.history, row.customers, day, chair ? null : ['book'], slot);
+    }
   } catch (e) {
     Logger.log('wa chairman: %s', e.message);
     ok = false;
@@ -152,13 +158,44 @@ function waAnswer_(text, history, customers, day, askOnly) {
 var WA_PENDING_MS_ = 15 * 60 * 1000;
 var WA_YES_ = /^\s*(yes|y|yes please|yes do it|ok|okay|confirm|confirmed|do it|go ahead|አዎ|አዎን|እሺ)\s*[.!]*\s*$/i;
 var WA_NO_ = /^\s*(no|n|cancel|stop|don'?t|do not|አይ|አይደለም|ተው)\s*[.!]*\s*$/i;
+/* "Yes, please", "yes go ahead", "Ok do it", "👍", "አዎ እሺ": made only of
+   these words, with at least one that says yes (the bug hunt, 15 Oct 2026) */
+var WA_YES_WORDS_ = ['yes', 'y', 'ok', 'okay', 'confirm', 'confirmed', 'sure', 'proceed', 'do', 'it', 'go', 'ahead',
+                     'please', 'pls', 'thanks', 'thank', 'you', 'አዎ', 'አዎን', 'እሺ', 'yes!'];
+var WA_YES_CORE_ = ['yes', 'y', 'ok', 'okay', 'confirm', 'confirmed', 'sure', 'proceed', 'do', 'go', 'አዎ', 'አዎን', 'እሺ'];
+var WA_NO_WORDS_ = ['no', 'n', 'cancel', 'stop', 'dont', 'don’t', 'do', 'not', 'please', 'thanks', 'it', 'አይ', 'አይደለም', 'ተው', 'አትሥራ', 'አትስራ'];
+var WA_NO_CORE_ = ['no', 'n', 'cancel', 'stop', 'dont', 'don’t', 'not', 'አይ', 'አይደለም', 'ተው', 'አትሥራ', 'አትስራ'];
+function waWords_(text) {
+  return String(text || '').toLowerCase()
+    .replace(/👍|✅|✔️?/g, ' yes ').replace(/👎|❌|✖️?/g, ' no ')
+    .replace(/don't/g, 'dont')
+    .replace(/[.,!?;:"“”()\[\]\u1361-\u1368]/g, ' ')
+    .replace(/[\u{1F000}-\u{1FAFF}\u2600-\u27BF\uFE0F]/gu, ' ')
+    .trim().split(/\s+/).filter(Boolean);
+}
+function waIsYes_(text) {
+  if (WA_YES_.test(text)) return true;
+  var w = waWords_(text);
+  return w.length > 0 && w.length <= 6 && w.every(function (x) { return WA_YES_WORDS_.indexOf(x) >= 0; }) &&
+         w.some(function (x) { return WA_YES_CORE_.indexOf(x) >= 0; }) && w.indexOf('not') < 0;
+}
+function waIsNo_(text) {
+  if (WA_NO_.test(text)) return true;
+  var w = waWords_(text);
+  return w.length > 0 && w.length <= 6 && w.every(function (x) { return WA_NO_WORDS_.indexOf(x) >= 0; }) &&
+         w.some(function (x) { return WA_NO_CORE_.indexOf(x) >= 0; });
+}
 var WA_CANCELLED_ = 'Cancelled. Nothing was done.\nተሰርዟል። ምንም አልተደረገም።';
 /* the standing rooms he may post in from WhatsApp — never a private line */
 var WA_ROOMS_ = ['all', 'leads', 'production', 'site', 'commercial', 'finance', 'groupfinance', 'customers'];
 
+/* The waiting decision is kept in the script's cache (100 KB a value; a
+   Script Property holds 9 KB, and a busy day's cancelled fines did not fit —
+   the bug hunt, 15 Oct 2026). It lives 15 minutes, as the read-back says. */
 function waPendingGet_(slot) {
   slot = slot || 'WA_PENDING';
-  var raw = PropertiesService.getScriptProperties().getProperty(slot);
+  var raw = null;
+  try { raw = CacheService.getScriptCache().get(slot); } catch (e) { raw = null; }
   if (!raw) return null;
   var p = null;
   try { p = JSON.parse(raw); } catch (e) { p = null; }
@@ -166,10 +203,14 @@ function waPendingGet_(slot) {
   return p;
 }
 function waPendingSet_(actions, slot) {
-  PropertiesService.getScriptProperties().setProperty(slot || 'WA_PENDING',
-    JSON.stringify({ at: new Date().getTime(), actions: actions }));
+  CacheService.getScriptCache().put(slot || 'WA_PENDING',
+    JSON.stringify({ at: new Date().getTime(), actions: actions }), Math.round(WA_PENDING_MS_ / 1000));
 }
-function waPendingClear_(slot) { PropertiesService.getScriptProperties().setProperty(slot || 'WA_PENDING', ''); }
+function waPendingClear_(slot) {
+  var c = CacheService.getScriptCache();
+  try { if (c.remove) c.remove(slot || 'WA_PENDING'); else c.put(slot || 'WA_PENDING', '', 1); }
+  catch (e) { c.put(slot || 'WA_PENDING', '', 1); }
+}
 
 /* Plainly a question: answered straight away, no decision step. "Can you
    tell Getachew…?" is an order dressed as a question, so it is not one. */
@@ -242,7 +283,14 @@ function waDecideOrAnswer_(text, history, customers, day, onlyKinds, slot) {
            '\n\nSay it again with the name and the date, or use your page.';
   }
   waPendingSet_(checked.ok, slot);
-  return 'I will do this:\n' + checked.ok.map(function (a, i) { return (i + 1) + '. ' + a.say; }).join('\n') +
+  /* a long list is read back in short: the first 12 and what the rest come to */
+  var shown = checked.ok.slice(0, 12), more = checked.ok.slice(12);
+  var moreLine = '';
+  if (more.length) {
+    var birr = more.reduce(function (s, a) { return s + (a.kind === 'waiver' ? Number(a.amount) || 0 : 0); }, 0);
+    moreLine = '\n…and ' + more.length + ' more' + (birr ? ' (' + fmt_(birr) + ' Birr of fines and bonuses cancelled)' : '') + '.';
+  }
+  return 'I will do this:\n' + shown.map(function (a, i) { return (i + 1) + '. ' + a.say; }).join('\n') + moreLine +
          (checked.bad.length ? '\n\nNot included:\n' + checked.bad.map(function (b) { return '• ' + b; }).join('\n') : '') +
          '\n\nReply YES to do it, or NO to cancel (I wait 15 minutes).\nለማድረግ YES ይመልሱ፤ ለመሰረዝ NO።';
 }
@@ -337,7 +385,7 @@ function waCheck_(actions, W) {
       if (reason.length < 3) reason = 'Cancelled by the Chairman on WhatsApp';
       var hit = W.lines.filter(function (l) {
         return l.day === a.day && (a.person === 'all' || l.person === a.person) && (a.report === 'all' || !a.report || l.report === a.report);
-      }).slice(0, 30);
+      });                            /* every one: 30 were kept and the rest dropped unsaid (bug hunt, 15 Oct 2026) */
       if (!hit.length && isDay(a.day) && a.day < W.day.slice(0, 8) + '01' && Number(W.day.slice(8)) >= PR_FINAL_DAY_) {
         return bad.push('Last month’s pay was made final on the 5th, so a line from ' + dayName_(a.day) + ' can no longer be cancelled — it has been paid as it stood.');
       }
@@ -592,10 +640,16 @@ function waPhotoWatch_() {
         /* the agent will never take this one (too big, not a picture): pass it */
         last = m.at; out.skipped++;
         Logger.log('wa photo %s refused: %s', m._id, body ? JSON.stringify(body) : code);
+      } else if (code === 0 || code >= 500) {
+        /* the agent down or failing: an outage, not this photo — kept, and
+           not counted against it (bug hunt, 15 Oct 2026: every photo of an
+           outage was passed after three looks and lost) */
+        out.failed++; stop = true;
+        Logger.log('wa photo %s: agent unavailable (HTTP %s), kept', m._id, code);
       } else {
-        /* the agent unreachable, or Meta refused the upload: the next watch
-           tries again from here — three times, then this one is passed so it
-           cannot hold back every photo after it */
+        /* Meta refused the upload: the next watch tries again from here —
+           three times, then this one is passed so it cannot hold back every
+           photo after it */
         var cache = CacheService.getScriptCache(), fk = 'waph-fail:' + m._id;
         var tries = Number(cache.get(fk) || 0) + 1;
         cache.put(fk, String(tries), 21600);
@@ -608,7 +662,10 @@ function waPhotoWatch_() {
        unless photos were left for the next watch: then the last one handed over */
     var newest = msgs.length ? msgs[msgs.length - 1].at : null;
     var mark = (stop || all.length > photos.length) ? last : (newest || last);
-    if (mark) props.setProperty(key, new Date(mark).toISOString());
+    /* a millisecond past it: Firestore keeps microseconds, so "after
+       12:00:00.123" still found the photo of 12:00:00.123456 and sent it again
+       every ten minutes (bug hunt, 15 Oct 2026) */
+    if (mark) props.setProperty(key, new Date(new Date(mark).getTime() + 1).toISOString());
   });
   return out;
 }

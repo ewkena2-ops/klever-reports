@@ -88,12 +88,25 @@ function pmMade_(byReport, day) {
    (8 hours a machine, less the hours down), performance against 40 m², and
    quality from Wude's pass rate (Amaha's checkpoints when Wude did not
    inspect). Null when a part is not reported. */
+/* the day's "what held the factory up" in words; '' when nothing did (bug hunt, 15 Oct 2026) */
+function pmBlock_(schedule, amaha) {
+  var c = String(amaha.w_block == null ? '' : amaha.w_block).trim();
+  if (!c || c === 'none') return '';
+  var L = {};
+  try { L = choiceLabels_(schedule, 'amaha-daily', 'w_block'); } catch (e) { L = {}; }
+  return (L[c] || c) + (blank_(amaha.w_block__other) ? '' : ': ' + String(amaha.w_block__other).trim());
+}
+
+var PM_MACHINES_ = 5;         /* width and length cutters, edge bander, hinge driller, compressor */
 function pmOee_(amaha, wude, made) {
+  /* Amaha lists only the machines that stopped: the floor is all five, and
+     a day with none listed ran fully — one stoppage read as 0% and a normal
+     day as not reported (the bug hunt, 15 Oct 2026) */
   var rows = rows_(amaha.m_rows).filter(function (r) { return r && r.name; });
   var avail = null;
-  if (rows.length) {
-    var planned = rows.length * 8, down = rows.reduce(function (a, r) { return a + Math.min(8, n_(r.down)); }, 0);
-    avail = (planned - down) / planned;
+  if (amaha && Object.keys(amaha).length) {
+    var planned = PM_MACHINES_ * 8, down = rows.reduce(function (a, r) { return a + Math.min(8, n_(r.down)); }, 0);
+    avail = Math.max(0, planned - down) / planned;
   }
   var perf = made === null ? null : Math.min(1, made / PM_DAY_M2_);
   var it = a_(wude, 'i_total'), ip = a_(wude, 'i_pass'), qual = null;
@@ -106,7 +119,7 @@ function pmOee_(amaha, wude, made) {
   var pct = function (x) { return x === null ? null : Math.round(x * 1000) / 10; };
   return { availability_pct: pct(avail), performance_pct: pct(perf), quality_pct: pct(qual),
            oee_pct: avail !== null && perf !== null && qual !== null ? pct(avail * perf * qual) : null,
-           method: 'availability: 8 hours a machine less hours down (Amaha); performance: made against 40 m²; quality: Wude’s pass rate' };
+           method: 'availability: 8 hours on each of the 5 machines less the hours down Amaha listed; performance: made against 40 m²; quality: Wude’s pass rate' };
 }
 
 function plantManager_(d) {
@@ -269,7 +282,7 @@ function plantManager_(d) {
       planned_m2: pY ? pY.planned_m2 : null,
       short_of_plan_m2: pY && pY.planned_m2 !== null && made !== null && made < pY.planned_m2 ? pY.planned_m2 - made : 0,
       waste_pct: a_(amaha, 'w_pct'), waste_limit_pct: 20,
-      hours_lost: a_(amaha, 'w_lost'), what_held_it_up: String(amaha.w_block || '').trim(),
+      hours_lost: a_(amaha, 'w_lost'), what_held_it_up: pmBlock_(d.schedule, amaha),
       produced_without_the_four_confirmations: ay_(amaha, 'u_any'),
       oee: pmOee_(amaha, wude, made)
     },

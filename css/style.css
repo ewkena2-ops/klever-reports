@@ -808,7 +808,7 @@ fieldset legend .lgc.full::before{content:'✓ '}
 .paform{display:grid;gap:8px;margin-top:8px}
 .paform[hidden]{display:none}
 .pafield{display:grid;gap:4px;font-size:13px;color:var(--mut)}
-.pafield select,.pafield input{width:100%;box-sizing:border-box;font:inherit;font-size:15px;color:var(--ink);background:var(--card-2,var(--card));border:1px solid var(--line-2);border-radius:10px;padding:9px 10px}
+.pafield select,.pafield input{width:100%;box-sizing:border-box;font:inherit;font-size:16px;color:var(--ink);background:var(--card-2,var(--card));border:1px solid var(--line-2);border-radius:10px;padding:9px 10px}
 .paadd{justify-self:start;margin-top:8px}
 .paadd[hidden]{display:none}
 .prday{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r);padding:10px 12px;display:grid;gap:6px}
@@ -829,8 +829,8 @@ fieldset legend .lgc.full::before{content:'✓ '}
 .prwhat{color:var(--ink-2);min-width:0;overflow-wrap:anywhere}
 
 /* buttons that fill a word box: its usual answers, or recent codes */
-.chips.mini{gap:5px}
-.chips.mini .chip{min-height:34px;padding:5px 11px;font-size:13.5px}
+.chips.mini{gap:7px}
+.chips.mini .chip{min-height:40px;padding:5px 11px;font-size:13.5px}
 .chips.cellpicks{margin-top:6px}
 .chips.cellpicks .chip{border-style:dashed}
 /* the box "Other" opens: what it is, in a few words */
@@ -838,7 +838,7 @@ fieldset legend .lgc.full::before{content:'✓ '}
 
 /* a yes/no inside a list row: the same control, smaller, its own words */
 .seg.mini{padding:3px;gap:3px;border-radius:11px}
-.seg.mini button{min-height:36px;font-size:13.5px;padding:4px 8px;line-height:1.2}
+.seg.mini button{min-height:40px;font-size:13.5px;padding:4px 8px;line-height:1.2}
 
 /* tap, don't type (11 Oct 2026): the usual answers as buttons — "what
    happened today" (t:'multi'), the reason under a "why" (picks), a choice */
@@ -1085,7 +1085,7 @@ body[data-page="chairman"] .codenote{font-size:12.5px;color:var(--dim);text-alig
 .chord-row{display:flex;flex-direction:column;gap:8px;padding:11px 0 12px;border-top:1px solid var(--line)}
 .chord-top{display:flex;gap:8px;align-items:center}
 .chord-top select{flex:1;min-width:0;min-height:40px}
-.chord-row textarea{width:100%;box-sizing:border-box;font-size:14.5px;line-height:1.45}
+.chord-row textarea{width:100%;box-sizing:border-box;font-size:16px;line-height:1.45}
 .chord .chinsf input{flex:1;min-width:0;max-width:100%}
 .chord-why{font-size:12px;color:var(--mut);line-height:1.4;overflow-wrap:anywhere}
 .chord-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
@@ -1142,7 +1142,7 @@ body[data-page="chairman"] .codenote{font-size:12.5px;color:var(--dim);text-alig
 .chinsn{font-size:13px;color:var(--mut);margin:0 0 10px;line-height:1.45;padding:8px 11px;border-radius:var(--r-s);background:rgba(255,255,255,.035)}
 .chinsrow.done .chinst{color:var(--mut)}
 .chinsrow.done .chinsh .chrt{color:var(--teal-hi)}
-.chinsrow .chmini,.chchg .chmini{min-height:34px;padding:0 12px;font-size:12.5px}
+.chinsrow .chmini,.chchg .chmini{min-height:40px;padding:0 12px;font-size:12.5px}
 .chchg.off{opacity:.75}
 .chchg.off .chinsh .chrt{text-decoration:line-through;color:var(--dim)}
 .chcancel{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
@@ -1673,7 +1673,8 @@ body[data-page="agents"] .wrap.signing,body[data-page="universe"] .wrap.signing{
 .sentmark{font-size:12px;font-weight:600;color:var(--teal-hi)}
 .fstat.none .fsp{color:var(--mut)}
 .sentnote{margin-top:10px}
-button.count{font:inherit;background:none;border:0;padding:0;color:inherit;text-align:left;cursor:default}
+button.count{font:inherit;background:none;border:0;padding:0;color:inherit;text-align:left;cursor:default;
+  min-height:44px;display:inline-flex;align-items:center}
 button.count.findable{cursor:pointer}
 .bar .btn.ghost{background:transparent;border:1px solid var(--line-2);color:var(--ink-2)}
 .seg:focus,.ratio:focus{outline:2px solid var(--teal-hi);outline-offset:3px;border-radius:10px}
@@ -1846,7 +1847,7 @@ svg.sky .node text{font-size:11px}
   font-size:13px;font-weight:600;color:var(--mut);font-variant-numeric:tabular-nums;line-height:1.2}
 .regtabs button[aria-selected="true"]{background:var(--teal-hi);color:var(--teal-ink)}
 .regtabs button.hasbad:not([aria-selected="true"]){color:var(--coral)}
-.regsearch{width:100%;box-sizing:border-box;min-height:44px;margin:0 0 12px;padding:0 14px;font-size:15px;
+.regsearch{width:100%;box-sizing:border-box;min-height:44px;margin:0 0 12px;padding:0 14px;font-size:16px;
   background:var(--field);color:var(--ink);border:1px solid var(--line-2);border-radius:12px}
 .reglist{display:flex;flex-direction:column;gap:10px}
 .regcard{display:block;width:100%;box-sizing:border-box;text-align:left;font:inherit;color:inherit;
@@ -2179,3 +2180,10 @@ body.gatepage{padding:0;overflow-x:hidden}
 .atdl .atask{grid-column:1/-1}
 .gtpics{display:flex;gap:6px;flex:none}
 @media (max-width:480px){.gtcheck{flex-wrap:wrap}.gtcheck>div:last-child{flex:1 1 220px}}
+/* a reader's long figure wraps rather than being cut (bug hunt, 15 Oct 2026) */
+.chtile.long .chtv{white-space:normal;overflow-wrap:anywhere;font-size:16px;line-height:1.25}
+.chinsauto{margin-top:10px}
+.chinsauto>summary{cursor:pointer;color:var(--mut);font-size:13px;padding:6px 0}
+.prchip.short{color:var(--gold);border-color:var(--gold);background:var(--gold-bg)}
+/* the gate's password: hidden as typed, never offered for saving (bug hunt, 15 Oct 2026) */
+.gtsecret{-webkit-text-security:disc;text-security:disc}

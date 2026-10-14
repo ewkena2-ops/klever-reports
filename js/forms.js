@@ -631,6 +631,8 @@ const REPORTS = [
           {id:'value', en:'Contract value', am:'የውል ዋጋ', t:'money'},
           {id:'adv', en:'Advance paid', am:'የተከፈለ ቅድመ ክፍያ', t:'money'},
           {id:'margin', en:'Margin per m²', am:'ህዳግ በካሬ ሜትር', t:'money'},
+          /* read by ephrata-below-margin through the weekly (bug hunt, 15 Oct 2026: never asked, so never judged) */
+          {id:'ok', en:'Below 6,000 Birr/m²: did the Chairman approve the price?', am:'ከ6,000 ብር በካሬ ሜትር በታች ከሆነ፦ ሊቀመንበሩ ዋጋውን አጽድቀዋል?', t:'yesno', yes:{en:'Approved', am:'ፈቅደዋል'}, no:{en:'Not approved', am:'አልፈቀዱም'}},
           {id:'sp', en:'Salesperson', am:'ሻጭ', t:'text', picks:[{ en:'Tsega', am:'ፀጋ' }, { en:'Biruktayet', am:'ብሩክታይት' }, { en:'Ephrata', am:'ኤፍራታ' }]}
         ]},
       {id:'contracts', en:'How many contracts were signed today?', am:'ዛሬ ስንት ውል ተፈረመ?', t:'num',
@@ -3595,8 +3597,9 @@ const REPORTS = [
           { en:'Seble did not pass it on',            am:'ሰብለ አላስተላለፈችም' },
           { en:'Forgot',                              am:'ተረስቷል' }
         ], show:{f:'cx_sameday', when:'no'}},
-      {id:'cx_repeat', en:'How many customers complained more than once?', am:'ስንት ደንበኞች ከአንድ ጊዜ በላይ አማረሩ?', t:'num', zero:1,
-        show:{f:'cx_events', when:'has', v:'repeat'}},
+      /* no daily report says this, so the built weekly leaves it blank —
+         it was filed as 0 every week (the bug hunt, 15 Oct 2026) */
+      {id:'cx_repeat', en:'How many customers complained more than once?', am:'ስንት ደንበኞች ከአንድ ጊዜ በላይ አማረሩ?', t:'num'},
       {id:'cx_repeat_who', en:'Why did the first fix not hold? (Write who, and about what each time, in the box.)', am:'የመጀመሪያው መፍትሔ ለምን አልጸናም? (እነማን እንደሆኑና በየጊዜው ስለምን እንደሆነ በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
           { en:'The same problem came back',          am:'ያው ችግር ተመልሶ መጣ' },
@@ -5375,7 +5378,9 @@ const REPORTS = [
           {v:'Other',         en:'Other',         am:'ሌላ'}
         ]},
         {id:'run',  en:'Running again', am:'እንደገና እየሠራ ነው', t:'yesno', yes:{en:'Running again', am:'እንደገና እየሠራ ነው'}, no:{en:'Still stopped', am:'አሁንም ቆሟል'}},
-        {id:'down', en:'Hours stopped', am:'የቆመበት ሰዓት', t:'num'},
+        /* read by amaha-breakdown-unreported through the weekly (bug hunt, 15 Oct 2026: never asked, so never judged) */
+        {id:'told', en:'Told Mahelet within 30 minutes?', am:'በ30 ደቂቃ ውስጥ ለማህሌት ተነግሯል?', t:'yesno', yes:{en:'Told in time', am:'በሰዓቱ ተነግሯል'}, no:{en:'Not within 30 minutes', am:'በ30 ደቂቃ ውስጥ አልተነገረም'}},
+        {id:'down', en:'Hours stopped', am:'ለስንት ሰዓት ቆመ', t:'num'},
         {id:'cause',en:'Cause', am:'ምክንያት', t:'text', picks:COL_MACHINE}
       ]},
       {id:'m_breaks', en:'How many machines stopped today?', am:'ዛሬ ስንት ማሽኖች ቆሙ?', t:'num',
@@ -5738,8 +5743,9 @@ const REPORTS = [
       /* who was late or away more than once is in no single daily answer —
          it takes the names across the week — so it is still asked, but only
          after a tap, and a normal week files 0 */
-      {id:'a_late', en:'How many workers came late more than once this week?', am:'በዚህ ሳምንት ከአንድ ጊዜ በላይ የዘገዩ ስንት ሠራተኞች ናቸው?', t:'num', zero:1,
-        show:{f:'wk_events', when:'has', v:'late_rep'}},
+      /* no daily report says this, so the built weekly leaves it blank —
+         it was filed as 0 every week (the bug hunt, 15 Oct 2026) */
+      {id:'a_late', en:'How many workers came late more than once this week?', am:'በዚህ ሳምንት ከአንድ ጊዜ በላይ የዘገዩ ስንት ሠራተኞች ናቸው?', t:'num'},
       {id:'a_late_who', en:'What was done? (Write the names and how many times in the box.)', am:'ምን እርምጃ ተወሰደ? (ስማቸውንና ስንት ጊዜ እንደሆነ በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
           { en:'Warned',                     am:'ማስጠንቀቂያ ተሰጠ' },
@@ -5748,8 +5754,7 @@ const REPORTS = [
           { en:'They had a good reason',     am:'በቂ ምክንያት ነበራቸው' },
           { en:'Nothing done yet',           am:'ገና ምንም አልተደረገም' }
         ], show:{f:'a_late', when:'pos'}},
-      {id:'a_absent', en:'How many workers were absent more than once this week?', am:'በዚህ ሳምንት ከአንድ ጊዜ በላይ የቀሩ ስንት ሠራተኞች ናቸው?', t:'num', zero:1,
-        show:{f:'wk_events', when:'has', v:'absent_rep'}},
+      {id:'a_absent', en:'How many workers were absent more than once this week?', am:'በዚህ ሳምንት ከአንድ ጊዜ በላይ የቀሩ ስንት ሠራተኞች ናቸው?', t:'num'},
       {id:'a_absent_who', en:'Was Mahelet told? (Write the names and how many days in the box.)', am:'ለማህሌት ተነግሯል? (ስማቸውንና ስንት ቀን እንደሆነ በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
           { en:'Mahelet was told',           am:'ለማህሌት ተነግሯል' },
@@ -6853,7 +6858,9 @@ const REPORTS = [
            rows as called made a blank cell a fine: 10 Oct charged Elyas 600
            Birr for three cells he had left empty. Blank is not "no" anywhere
            else in this system, and it is not here. */
-        auto:{a:{rows:'j_rows', when:{col:'called', is:'yes'}}, b:{rows:'j_rows', when:[{col:'state', in:['done', 'wip', '']}, {col:'called', in:['yes', 'no']}]}}},
+        /* both sides only the sites worked today: an idle row marked Called
+           hid a visit that was not (the bug hunt, 15 Oct 2026) */
+        auto:{a:{rows:'j_rows', when:[{col:'state', in:['done', 'wip', '']}, {col:'called', is:'yes'}]}, b:{rows:'j_rows', when:[{col:'state', in:['done', 'wip', '']}, {col:'called', in:['yes', 'no']}]}}},
       {id:'ac_called_why', en:'Which customers were not called before you arrived, and why? (Write the customer in the box.)', am:'ከመድረስዎ በፊት ያልተደወለላቸው የትኞቹ ደንበኞች ናቸው? ለምን? (ደንበኛውን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
           { en:"The customer's phone was off",     am:'የደንበኛው ስልክ ዝግ ነበር' },
@@ -8199,7 +8206,7 @@ const SALES_DAILY = {
       /* this one stays typed on purpose: it is the figure the bank confirms,
          and checking it against the bank is the point of asking */
       {id:'k_week', en:'How much have you collected this week so far, bank-confirmed?', am:'በዚህ ሳምንት እስካሁን በባንክ የተረጋገጠ ስንት ብር ተሰበሰበ?', t:'money',
-        tgt:{op:'gte', v:2000000, en:'Your weekly target is 2,000,000 Birr collected',
+        tgt:{op:'gte', v:2000000, from:4, en:'Your weekly target is 2,000,000 Birr collected',
              am:'የሳምንቱ ዒላማዎ 2,000,000 ብር የተሰበሰበ ገንዘብ ነው'}},
       {id:'k_week_gap', en:'Who will close the gap to 2,000,000 Birr this week? (Write the customers and how much in the box.)', am:'በዚህ ሳምንት እስከ 2,000,000 ብር ያለውን ክፍተት ማን ይሞላል? (ደንበኞቹንና መጠኑን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
@@ -8660,7 +8667,7 @@ const DESIGN_DAILY = {
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'green', en:'Selam’s green light first', am:'ከሰላም ፈቃድ ቀድሞ ነበር', t:'yesno', yes:{en:'Green light came first', am:'የሰላም ፈቃድ ቀድሞ ነበር'}, no:{en:'Measured without it', am:'ፈቃድ ሳይኖር ተለካ'}},
+          {id:'green', en:'Selam’s green light first', am:'የሰላም ፈቃድ ቀድሞ ነበር?', t:'yesno', yes:{en:'Green light came first', am:'የሰላም ፈቃድ ቀድሞ ነበር'}, no:{en:'Measured without it', am:'ፈቃድ ሳይኖር ተለካ'}},
           {id:'ontime', en:'Within 24 hours of the advance?', am:'ከቅድመ ክፍያ በ24 ሰዓት ውስጥ?', t:'yesno', yes:{en:'Within 24 hours', am:'በ24 ሰዓት ውስጥ'}, no:{en:'Later', am:'ዘግይቷል'}},
           {id:'amend', en:'Did it change the price?', am:'ዋጋውን ቀይሯል?', t:'yesno', yes:{en:'The price changed', am:'ዋጋው ተቀይሯል'}, no:{en:'Same price', am:'ዋጋው አልተቀየረም'}},
           {id:'vid', en:'Video (5–8 min)', am:'ቪዲዮ (5–8 ደቂቃ)', t:'choice', opts:[
@@ -8685,6 +8692,7 @@ const DESIGN_DAILY = {
           { en:'No transport',                         am:'ትራንስፖርት አልነበረም' }
         ], show:{f:'m_fin_ontime', when:'short'}},
       {id:'m_fin_amend', en:'Did any final measurement change the price?', am:'የመጨረሻ ልኬት ዋጋውን የቀየረበት ሥራ አለ?', t:'yesno',
+        yes:{en:'A price changed', am:'ዋጋው የተቀየረበት አለ'}, no:{en:'No price changed', am:'የለም'},
         auto:{any:'m_fin_list.amend'}},
       {id:'m_fin_amend_what', en:'The price changed. Who was told? (Write the customer and how much in the box.)', am:'ዋጋው ተቀይሯል። ለማን ተነገረ? (ደንበኛውንና መጠኑን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
@@ -8844,6 +8852,7 @@ const DESIGN_DAILY = {
           { en:'Will post it tomorrow',                am:'ነገ ይላካል' }
         ], show:{f:'ms_photo', when:'short'}},
       {id:'ms_codes', en:'Are the board and PVC edge codes confirmed in every Job File?', am:'የቦርድና የPVC ጠርዝ ኮዶች በእያንዳንዱ የሥራ ፋይል ተረጋግጠዋል?', t:'yesno',
+        yes:{en:'All confirmed', am:'ሁሉም ተረጋግጠዋል'}, no:{en:'Some are not', am:'ያልተረጋገጠ አለ'},
         auto:{all:'ms_list.codes'}},
       {id:'ms_codes_why', en:'Some Job Files are missing codes. When will they be confirmed? (Write the job in the box.)', am:'አንዳንድ የሥራ ፋይሎች ኮድ ጎድሏቸዋል። መቼ ይረጋገጣሉ? (ሥራውን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[

@@ -140,6 +140,9 @@ function hrTally_(days, field, roster, flag) {
     rows_(x.v[field]).forEach(function (r) {
       var who = hrWho_(r && r.name, roster);
       if (!who) return;
+      /* the pick-list's "Someone else" names the person in the reason:
+         different people were added up as one (the bug hunt, 15 Oct 2026) */
+      if (who === 'Someone else') who = 'Someone else (' + (String((r && r.why) || '').trim().slice(0, 40) || 'not named') + ')';
       var k = who.toLowerCase();
       var e = by[k] || (by[k] = { name: who, times: 0, days: [] });
       e.times++;

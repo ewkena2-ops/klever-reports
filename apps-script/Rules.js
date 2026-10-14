@@ -472,6 +472,11 @@ function unjudgedSaid_(got, schedule) {
        above it opens it; empty, it was most likely never shown — Mahelet
        issuing nothing from the store is not a blank about approvals */
     var def = u.ref && fieldDef_(schedule, u.ref.report, u.ref.field);
+    /* a weekly made from the dailies is filled by nobody: a blank there is
+       not a person leaving the question that fines them empty (the bug hunt,
+       15 Oct 2026 — about 13 such notes a Sunday, read as staff skipping) */
+    var rep = u.ref && reportOf_(schedule, u.ref.report);
+    if (rep && rep.built) return;
     var blank = rule && rule.kind === 'penalty' && / — not answered$/.test(u.why || '') && !(def && def.show);
     if (!u.bad && !blank) return;
     got.errors.push((u.bad ? 'Not judged — ' : 'Left blank, so not judged — ') + (rule ? rule.en : u.rule) +
@@ -527,7 +532,7 @@ function closeMonth_(month, opts) {
   }
   /* a line the Chairman cancelled did not happen, for the rules that count */
   ctx.cancelled = {};
-  tryQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start], ['day', 'LESS_THAN', next]], 'day')
+  fsQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start], ['day', 'LESS_THAN', next]], 'day')
     .forEach(function (w) { ctx.cancelled[w.day + '|' + w.report] = w; });
   var got = runTests_('month', ctx, end, schedule);
   var doc = {
@@ -815,7 +820,13 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
          not there that day (the absent list): they neither pay nor share. */
       var team = members.slice();
       if (spec.exclude) {
-        var gone = rowsOf_(J, spec.exclude.of) || [];
+        var gone = rowsOf_(J, spec.exclude.of);
+        /* who was away comes from that day's report: without it, everyone
+           was charged as present (the bug hunt, 15 Oct 2026) — not judged */
+        if (gone === null) {
+          unjudged.push({ rule: rule.id, person: p, why: (J.missing || 'the report naming who was away is not in') + ': who was present is not known' });
+          return;
+        }
         gone.forEach(function (row) {
           var m = ctx.match(row.r[spec.exclude.col], spec.exclude.group);
           if (m && m.matched) team = team.filter(function (x) { return x !== m.person; });
@@ -824,7 +835,8 @@ function judge_(rule, which, ctx, schedule, unjudged, missed) {
       if (!team.length) return;
       if (spec.share) {
         var whole = base.amount != null ? base.amount : (rule.birr || 0) * (base.count || 1);
-        var each = Math.round(whole / team.length);
+        /* shares never add up to more than the letter's figure (rounded each, they did) */
+        var each = Math.floor(whole / team.length);
         if (each <= 0) return;
         team.forEach(function (m) {
           hits.push(Object.assign({}, base, { person: m, amount: each,
@@ -1186,7 +1198,9 @@ function rulesQcOf_(text) {
     try { var d = fsGet_('register/jobs'); rows = (d && d.rows) || []; } catch (e) { rows = []; }
     rows.forEach(function (j) {
       if (!j || !j.job) return;
-      RULES_QC_[j.job] = { passed: !!(j.steps && j.steps.qc), known: !!(j.qcPassed || j.qcFailed || (j.steps && j.steps.qc)) };
+      RULES_QC_[j.job] = { passed: !!(j.steps && j.steps.qc), known: !!(j.qcPassed || j.qcFailed || (j.steps && j.steps.qc)),
+                           /* passed, never failed, nothing sent back for rework (Amaha's job bonus) */
+                           clean: !!(j.steps && j.steps.qc) && !j.qcFailed && !((j.defects || []).length) };
     });
   }
   var k = regJob_(text);
@@ -1198,8 +1212,12 @@ function rowCond_(row, c) {
   if (Object.prototype.toString.call(c) === '[object Array]') return cmp_(row[c[0]], c[1], c[2]) === true;
   if (c && c.qc) {
     var q = rulesQcOf_(row[c.qc]);
-    return c.is === 'known' ? !!(q && q.known) : !!(q && q.passed);
+    return c.is === 'known' ? !!(q && q.known) : c.is === 'clean' ? !!(q && q.clean) : !!(q && q.passed);
   }
+  /* {blank:'col'}: nothing in that box — a comparison with '' never matched,
+     a blank being "not judged" (the bug hunt, 15 Oct 2026: Getachew's
+     "request without a job code" could never charge) */
+  if (c && c.blank) return !(row[c.blank] != null && String(row[c.blank]).trim() !== '');
   if (c.all) return c.all.every(function (x) { return rowCond_(row, x); });
   if (c.any) return c.any.some(function (x) { return rowCond_(row, x); });
   if (c.not) return !rowCond_(row, c.not);

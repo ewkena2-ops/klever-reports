@@ -35,7 +35,7 @@ var ADVISE_RULES_ = [
   'No production before the final payment is recorded (Mahelet’s and Selam’s letters).',
   'Margin floor: 6,000 Birr per m²; a quotation below it needs approval.',
   'Factory target: 40 m² a working day, 240 a week (Monday to Saturday); waste at most 20%.',
-  'Quotations are valid 7 days; a new lead gets its pre-measurement visit within 48 hours.',
+  'Quotations are valid ' + SD_QUOTE_DAYS_ + ' days; a new lead gets its pre-measurement visit within 48 hours.',
   'Ephrata’s weekly collection floor is 4,000,000 Birr; her commission starts at 3,000,000 (her letter); each salesperson’s target is 2,000,000.',
   'Fines from the terms letters come off pay; as we read Ethiopian labour law, a deduction may not pass a third of the wage.'
 ];

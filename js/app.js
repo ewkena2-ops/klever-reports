@@ -383,8 +383,20 @@
           return;
         }
         clearTimeout(disarm);
-        try { localStorage.removeItem('klever.lastUser'); } catch (e) {}
-        AUTH.signOut().then(function () { location.href = 'index.html'; });
+        /* a report or photo not yet on the server stays in this person's
+           queue on this phone: say so before signing out (the bug hunt,
+           15 Oct 2026) */
+        var check = window.FB && window.FB.unsent ? window.FB.unsent() : Promise.resolve(0);
+        check.then(function (n) {
+          if (n && !window.confirm(t('signOutUnsent').replace('{n}', n))) {
+            armed = false;
+            out.classList.remove('armed');
+            out.querySelector('.sotext').textContent = t('signOut');
+            return;
+          }
+          try { localStorage.removeItem('klever.lastUser'); } catch (e) {}
+          AUTH.signOut().then(function () { location.href = 'index.html'; });
+        });
       };
       inner.appendChild(out);
     }
@@ -1189,6 +1201,8 @@
     var rows = doc.rows || [];
     var missing = rows.filter(function (r) { return r.noWage; }).map(function (r) { return r.name; });
     if (missing.length) wrap.appendChild(el('p', 'pywarn', tfill_('pyNoWage', { names: missing.join(', ') })));
+    var guessed = rows.filter(function (r) { return r.startGuessed; }).map(function (r) { return r.name; });
+    if (guessed.length) wrap.appendChild(el('p', 'pywarn', tfill_('pyStartGuess', { names: guessed.join(', ') })));
     if (doc.status === 'sofar') wrap.appendChild(el('p', 'codenote', t('pyNotFinal')));
     wrap.appendChild(el('p', 'codenote', t('pyHow')));
 
@@ -1319,9 +1333,9 @@
       var c = function (col) { return col + n; };
       if (r.noWage) {
         cells.push([{ v: i + 1 }, { v: r.name }, { v: r.account || '', s: 1 }, { v: r.days }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' },
-                    { v: '' }, { v: '' }, { v: r.bonuses || 0 }, { v: r.absentDays || 0 }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' },
+                    { v: '' }, { v: '' }, { v: '' }, { v: r.absentDays || 0 }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' },
                     { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: 0 }, { v: '' }, { v: '' }, { v: r.carryOut || 0 },
-                    { v: 'No salary on record — not paid; penalty carried' }]);
+                    { v: 'No salary on record — not paid; penalty carried' + (r.bonuses ? '; bonuses ' + r.bonuses + ' Birr kept for next month' : '') }]);
         return;
       }
       var g = r.gross, ot = r.ot || {};
@@ -1462,10 +1476,15 @@
   /* Selam's card: the month the Chairman approved, newest first. The rules
      give it to her alone, so nobody else even asks. */
   var stopPy = null;
+  var pyKept = null;
+  /* built once for the page's life: rebuilt every minute, its open rows
+     closed and its "new" marks went (the bug hunt, 15 Oct 2026) */
   function payrollCard() {
+    if (pyKept && pyKept.who === AUTH.who()) return pyKept;
     if (stopPy) { try { stopPy(); } catch (e) {} stopPy = null; }
     var wrap = el('div', 'pycard');
     if (!window.FB || !window.FB.live() || AUTH.isChairman() || AUTH.who() !== 'betty' || !window.FB.watchPayrollToPay) return wrap;
+    pyKept = wrap; wrap.who = AUTH.who();
     stopPy = window.FB.watchPayrollToPay(function (docs) {
       wrap.innerHTML = '';
       if (!docs.length) return;
@@ -2061,10 +2080,15 @@
      The people a report is addressed to read it here; what came since their
      last visit is marked. The Chairman reads every report on his own page. */
   var stopTo = null;
+  var toKept = null;
+  /* built once for the page's life: rebuilt every minute, its open rows
+     closed and its "new" marks went (the bug hunt, 15 Oct 2026) */
   function reportsToMeCard() {
+    if (toKept && toKept.who === AUTH.who()) return toKept;
     if (stopTo) { try { stopTo(); } catch (e) {} stopTo = null; }
     var wrap = el('div', 'rdwrap tome');
     if (!window.FB || !window.FB.live() || AUTH.isChairman() || !window.FB.watchReportsToMe) return wrap;
+    toKept = wrap; wrap.who = AUTH.who();
     var key = 'klever.toSeen.' + AUTH.who(), seen = 0;
     try { seen = Number(localStorage.getItem(key)) || 0; } catch (e) { seen = 0; }
     stopTo = window.FB.watchReportsToMe(function (all) {
@@ -2091,10 +2115,15 @@
   }
 
   var stopRd = null;
+  var rdKept = null;
+  /* built once for the page's life: rebuilt every minute, its open rows
+     closed and its "new" marks went (the bug hunt, 15 Oct 2026) */
   function readingsCard() {
+    if (rdKept && rdKept.who === AUTH.who()) return rdKept;
     if (stopRd) { try { stopRd(); } catch (e) {} stopRd = null; }
     var wrap = el('div', 'rdwrap');
     if (!window.FB || !window.FB.live() || AUTH.isChairman() || !window.FB.watchMyReadings) return wrap;
+    rdKept = wrap; wrap.who = AUTH.who();
     stopRd = window.FB.watchMyReadings(function (all) {
       wrap.innerHTML = '';
       if (!all.length) return;
@@ -2571,6 +2600,15 @@
 
     buildBar();
     refresh();
+    /* opened on what was already sent: "Sent ✓" until something changes —
+       an enabled "Send the correction" with nothing changed filed it twice
+       (the bug hunt, 15 Oct 2026) */
+    if (sentCopy && sentCopy.values && JSON.stringify(values) === JSON.stringify(sentCopy.values)) {
+      lastSent = JSON.stringify(values);
+      sentThisVisit = true;
+      var sb = document.getElementById('send');
+      if (sb) { sb.textContent = t('sentDone'); sb.disabled = true; }
+    }
     /* a weekly or monthly report adds up its own week: fetch it, then the
        figures fill themselves in */
     loadWeekValues();
@@ -2638,6 +2676,11 @@
     var box = document.getElementById('fstat');
     if (!box || !report) return;
     var pd = periodNow(report);
+    /* the form was opened for another day (left open overnight): a fresh
+       one for this day — it offered "Send the correction" with yesterday's
+       answers, filed as today's (the bug hunt, 15 Oct 2026). The answers
+       typed are kept as that day's draft. */
+    if (draftKey && !sending && draftKey !== 'klever.draft.' + report.id + '.' + (pd.day || stamp())) { location.reload(); return; }
     box.className = 'fstat' + (pd.state === 'late' ? ' late' : (pd.state === 'none' ? ' none' : ''));
     box.innerHTML = '';
     box.appendChild(el('span', 'fsp', statusWord(pd)));
@@ -2646,8 +2689,10 @@
     if (note) {
       var fr = pd.day ? filingFor(report, pd.day) : null;
       note.hidden = !fr;
+      /* sent from this phone, its note says it may be corrected; "sending
+         again files it twice" is for a phone that did not send it */
       if (fr) note.textContent = (fr.pending ? t('waitingToSend') : t('sentAt') + ' ' + clockOf(fr.at)) +
-        ' · ' + t('sentAgainWarn');
+        (sentBefore ? '' : ' · ' + t('sentAgainWarn'));
     }
   }
 
@@ -3700,6 +3745,10 @@
      its job code on it. `bump(+1)` counts it the moment it is queued — on a
      site with no signal it goes later by itself, and the report sent
      meanwhile should say so — and `bump(-1)` takes it back if refused. */
+  /* photos written and not yet on the server: a report sent meanwhile goes
+     after them on a slow line, and its time is when it arrives (bug hunt,
+     15 Oct 2026) — the Send says so */
+  var photosUp = 0;
   function sendPhotos(chan, files, code, words, strip, bump) {
     var chain = Promise.resolve();
     files.forEach(function (file) {
@@ -3722,6 +3771,8 @@
                + (words ? ' — ' + words : '') + ' · ' + L(report);
       var p;
       try { p = window.FB.postPhoto(chan, img, text, lang); } catch (e) { p = Promise.reject(e); }
+      photosUp++;
+      p.then(function () { photosUp--; }, function () { photosUp--; });
       bump(1);
       /* not returned: the next photo starts shrinking now, rather than
          waiting all afternoon for a server this one cannot reach */
@@ -3947,7 +3998,7 @@
         var firstOdd = document.querySelector('.isodd');
         if (!missingNow && firstOdd) firstOdd.scrollIntoView({ block: 'center', behavior: 'smooth' });
         clearTimeout(sendDisarm);
-        sendDisarm = setTimeout(function () { sendArmed = false; if (!sending) send.textContent = t('send'); }, 6000);
+        sendDisarm = setTimeout(function () { sendArmed = false; if (!sending) send.textContent = t(sentBefore ? 'sendCorrection' : 'send'); }, 6000);
         return;
       }
       clearTimeout(sendDisarm);
@@ -3956,6 +4007,12 @@
       send.disabled = true;
       send.textContent = t('sending');
       var txt = buildMessage(), pd = periodNow(report), late = pd.state === 'late';
+      if (photosUp > 0) toast(tfill_('photosStillUp', { n: photosUp }));
+      /* a correction: the first one, sent on time, decides (Agent.js) — it
+         was filed and emailed as LATE (the bug hunt, 15 Oct 2026) */
+      var first = pd.day ? filingFor(report, pd.day) : null;
+      if (late && first && !first.pending && first.at <= pd.deadline) late = false;
+      if (draftKey !== 'klever.draft.' + report.id + '.' + (pd.day || stamp())) { sending = false; location.reload(); return; }
       var person = personById(report.person);
 
       /* Two homes, on purpose. The Sheet is the Chairman's window on the day
@@ -4036,7 +4093,7 @@
         drawStatus();
         sending = false;
         send.disabled = false;
-        send.textContent = t('send');
+        send.textContent = t(sentBefore ? 'sendCorrection' : 'send');
         toast((e && e.code === 'permission-denied') ? t('sendRefused') : t('sendFailed'));
       });
     };
@@ -4690,7 +4747,10 @@
     (list || []).forEach(function (d) {
       if (d.report !== report.id) return;
       (Array.isArray((d.values || {})[f.id]) ? d.values[f.id] : []).forEach(function (r) {
-        if (r && (!col || has(r[col]))) jobCodes(r[first], true).forEach(function (k) { done[k] = 1; });
+        /* the script takes a figure of 1,000 Birr or more (JobMoney.js
+           JM_MIN_BIRR_) and asks again for less; the form had hidden it for
+           30 days (the bug hunt, 15 Oct 2026) */
+        if (r && (!col || (has(r[col]) && !(num(r[col]) < 1000)))) jobCodes(r[first], true).forEach(function (k) { done[k] = 1; });
       });
     });
     var open = [];

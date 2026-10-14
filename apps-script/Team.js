@@ -31,6 +31,7 @@ var TEAM_MAX_TASKS_ = 20;
 var TEAM_FROM_HOUR_ = 7;
 var TEAM_UNTIL_HOUR_ = 12;
 var TEAM_TRIES_ = 3;
+var TEAM_WAIT_HOUR_ = 9;      /* yesterday's close may come from the 07:30 net: waited for until 9 */
 
 function teamOrderId_(day) { return 'ai-' + day; }
 
@@ -45,6 +46,13 @@ function teamPlanIfDue_() {
   var cache = CacheService.getScriptCache();
   if (cache.get('team-done:' + today)) return false;
   if (fsGet_('orders/' + teamOrderId_(today))) { cache.put('team-done:' + today, '1', 21600); return false; }
+  /* the list reads yesterday's ledger and reading: until 9, wait for them —
+     the 07:30 net closes a day the morning run missed, and the list was
+     drafted at 7 from an unclosed day (the bug hunt, 15 Oct 2026) */
+  if (hour < TEAM_WAIT_HOUR_) {
+    var y = lastWorkingDay_(today);
+    if (!fsGet_('ledger/' + y) || !fsGet_('analysis/' + y)) return false;
+  }
   var tries = Number(cache.get('team-try:' + today) || 0);
   if (tries >= TEAM_TRIES_) return false;
   cache.put('team-try:' + today, String(tries + 1), 21600);

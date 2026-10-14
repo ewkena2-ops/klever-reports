@@ -72,12 +72,17 @@ function legalStaffTab_(schedule) {
   var h2 = sh.getRange(1, 7, 1, 2).getValues()[0] || [];
   if (blank_(h2[0]) || blank_(h2[1])) sh.getRange(1, 7, 1, 2).setValues([['Started on (yyyy-mm-dd)', 'Left on (yyyy-mm-dd)']]);
   /* and two on 14 Oct 2026, for the payroll (Payroll.js) */
+  /* the bank account column is text: typed as a number, Sheets drops the
+     leading zeros (0087… became 87…) (the bug hunt, 15 Oct 2026) */
+  try { sh.getRange('I:I').setNumberFormat('@'); } catch (e) {}
   var h3 = sh.getRange(1, 9, 1, 2).getValues()[0] || [];
   if (blank_(h3[0]) || blank_(h3[1])) sh.getRange(1, 9, 1, 2).setValues([['Bank account', 'Pension (yes / no)']]);
   var byId = legalStaffRead_(sh);
   staff.forEach(function (p) {
     if (byId[p.id]) return;
-    sh.appendRow([p.id, cell_(p.en), cell_(p.roleEn), '', '', p.noLetter ? 'no terms letter yet' : '', p.from || '', '']);
+    /* "Started on" is left for the hiring day: the site's `from` is the day
+       reports start counting (the bug hunt, 15 Oct 2026) */
+    sh.appendRow([p.id, cell_(p.en), cell_(p.roleEn), '', '', (p.noLetter ? 'no terms letter yet; ' : '') + (p.from ? 'reports from ' + p.from + ' — enter the hiring day in Started on' : ''), '', '']);
     byId[p.id] = { wage: null, signedOn: null };
   });
   return { byId: byId, created: created };
@@ -202,7 +207,13 @@ function legalFacts_(P, kind) {
   }));
 
   /* injuries reported in the period, from Amaha's daily report */
-  var safety = daysOf_(P, 'amaha-daily').filter(function (x) { return ay_(x.v, 'mp_safety') === true; })
+  /* from the start of the period, not only the week (the bug hunt, 15 Oct 2026) */
+  var amahaDays = daysOf_(P, 'amaha-daily');
+  try {
+    var md = rdBy_('amaha', from, to)['amaha-daily'] || {};
+    amahaDays = Object.keys(md).sort().map(function (d) { return { day: d, v: md[d] }; });
+  } catch (e) {}
+  var safety = amahaDays.filter(function (x) { return ay_(x.v, 'mp_safety') === true; })
     .map(function (x) { return dayLabel_(x.day) + ': ' + String(x.v.mp_safety_what || 'not described').trim(); });
 
   var decisions = (typeof DECISIONS !== 'undefined' ? DECISIONS : []).filter(function (d) {

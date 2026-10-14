@@ -177,6 +177,10 @@ import {
     var d = dow(day);
     if (d === 0) return [];
     return REPORTS.filter(function (r) {
+      /* not before its own start, nor its person's (Agent.js dueOn_, owedOn_) */
+      if (r.from && day < r.from) return false;
+      var who = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.id === r.person; })[0];
+      if (who && who.from && day < who.from) return false;
       if (r.cadence === 'daily') return !(r.skipDays && r.skipDays.indexOf(d) !== -1);
       /* made from the daily reports on Sunday (built:1): owed by nobody */
       if (r.built) return false;
@@ -530,16 +534,30 @@ import {
      out is js/promises.js; this only reads the reports and draws. */
   function watchPromises(into) {
     if (!window.KleverPromises) { into.innerHTML = ''; into.appendChild(el('p', 'codenote', t('chLoadFailed'))); return; }
-    var q = query(collection(db, 'reports'), where('at', '>=', dayStart(addDays(DAY, -21))), orderBy('at', 'asc'));
-    onSnapshot(q, function (snap) {
-      var filings = [];
+    /* the last nine days of every report (seven working days and their
+       next ones), and Mahelet's plans over three weeks — it read every
+       report of 21 days on each open, 2 to 4 MB (the bug hunt, 15 Oct 2026) */
+    var recent = null, plans = null;
+    var take = function (snap) {
+      var out = [];
       snap.forEach(function (d) {
         var x = d.data({ serverTimestamps: 'estimate' });
         if (!x.at || !x.at.toDate) return;
-        filings.push({ person: x.person, report: x.report, at: x.at.toDate().getTime(), values: x.values || {} });
+        out.push({ id: d.id, person: x.person, report: x.report, at: x.at.toDate().getTime(), values: x.values || {} });
       });
-      drawPromises(into, filings);
-    }, failInto(into));
+      return out;
+    };
+    var both = function () {
+      if (!recent || !plans) return;
+      var seen = {}, all = [];
+      recent.concat(plans).forEach(function (f) { if (!seen[f.id]) { seen[f.id] = 1; all.push(f); } });
+      all.sort(function (a, b) { return a.at - b.at; });
+      drawPromises(into, all);
+    };
+    onSnapshot(query(collection(db, 'reports'), where('at', '>=', dayStart(addDays(DAY, -9))), orderBy('at', 'asc')),
+      function (snap) { recent = take(snap); both(); }, failInto(into));
+    onSnapshot(query(collection(db, 'reports'), where('person', '==', 'liu'), where('at', '>=', dayStart(addDays(DAY, -21))), orderBy('at', 'asc')),
+      function (snap) { plans = take(snap); both(); }, failInto(into));
   }
   function drawPromises(into, filings) {
     var KP = window.KleverPromises, P = KP.promises(filings, REPORTS, DAY), plan = KP.planCheck(filings, DAY);
@@ -581,7 +599,7 @@ import {
         d.plan.rows.forEach(function (r) {
           /* "KK-155 20 → ✓ 22 m²": planned against made, where the plan gave the job its own m² */
           var txt = KP.kk(r.code) + ' ' + (r.plan != null ? r.plan + ' → ' : '') +
-            (r.state === 'made' ? '✓ ' + r.m2 + ' m²' : r.state === 'not' ? '✗' : r.state === 'nofile' ? '— ' + t('prNoAmaha') : '…');
+            (r.state === 'made' ? '✓ ' + r.m2 + ' m²' : r.state === 'short' ? '! ' + r.m2 + (r.plan != null ? ' / ' + r.plan : '') + ' m²' : r.state === 'not' ? '✗' : r.state === 'nofile' ? '— ' + t('prNoAmaha') : '…');
           pl.appendChild(el('span', 'prchip ' + r.state, txt));
         });
         if (d.plan.extra.length) {
@@ -593,7 +611,7 @@ import {
       d.prom.sort(function (a, b) { return a.person < b.person ? -1 : a.person > b.person ? 1 : a.code - b.code; }).forEach(function (p) {
         var row = el('div', 'prrow ' + p.state);
         row.appendChild(el('span', 'prmark', MARK[p.state]));
-        row.appendChild(el('span', 'prwho', String(nameOf(p.person)).split(' ')[0]));
+        row.appendChild(el('span', 'prwho', shortNames()[p.person] || String(nameOf(p.person)).split(' ')[0]));
         row.appendChild(el('span', 'prcode', KP.kk(p.code)));
         var what = t('prState_' + p.state);
         if (p.state === 'done') {
@@ -2044,6 +2062,7 @@ import {
         }
         var v = values[f.id];
         used[f.id] = true;
+        used[f.id + '__other'] = true;
         /* a yes/no the form read off the "what happened" list: the list
            above already says it */
         if (f.quiet) return;
@@ -2052,7 +2071,9 @@ import {
           var rows = rowsOf(v).map(function (r, i) {
             if (!r || typeof r !== 'object') return blank(r) ? null : String(r);
             var bits = cols.filter(function (c) { return !blank(r[c.id]); }).map(function (c) {
-              return c.t === 'choice' ? optLabel(c, r[c.id]) : (c.t === 'money' || c.t === 'yesno') ? show(c, r[c.id]) : String(r[c.id]);
+              var said = c.t === 'choice' ? optLabel(c, r[c.id]) : (c.t === 'money' || c.t === 'yesno') ? show(c, r[c.id]) : String(r[c.id]);
+              /* "Other", and the words typed for it (<col>__other, 12 Oct 2026) — the bug hunt, 15 Oct */
+              return blank(r[c.id + '__other']) ? said : said + ': ' + String(r[c.id + '__other']).trim();
             });
             if (!bits.length) return null;
             /* a grid's rows have names of their own (the days of a plan) */
@@ -2111,7 +2132,9 @@ import {
     });
     var due = el('input');
     due.type = 'date';
-    due.value = addDays(DAY, 2);
+    var d2 = addDays(DAY, 2);
+    if (dow(d2) === 0) d2 = addDays(d2, 1);         /* never the day off (Orders.js does the same) */
+    due.value = d2;
     var give = el('button', 'seed', t('chInsGive'));
     give.type = 'button';
 
@@ -2180,7 +2203,20 @@ import {
       open.sort(function (a, b) { return a.due < b.due ? -1 : (a.due > b.due ? 1 : 0); });
       done.sort(function (a, b) { return ms(b.doneAt) - ms(a.doneAt); });
       gone.sort(function (a, b) { return ms(b.closedAt) - ms(a.closedAt); });
-      open.concat(done, gone).forEach(function (i) { list.appendChild(insRow(i)); });
+      /* his own first; the script's alerts and reminders folded below them —
+         they sat above his, in red, as if he had given them (the bug hunt,
+         15 Oct 2026); alerts older than two weeks are left out */
+      var auto = function (i) { return i.by === 'alert' || i.by === 'reminder'; };
+      var his = open.filter(function (i) { return !auto(i); });
+      var theirs = open.filter(function (i) { return auto(i) && (i.by !== 'alert' || !i.due || daysFrom(i.due, DAY) <= 14); });
+      his.concat(done.filter(function (i) { return !auto(i); }), gone.filter(function (i) { return !auto(i); }))
+        .forEach(function (i) { list.appendChild(insRow(i)); });
+      if (theirs.length) {
+        var fold = el('details', 'chinsauto');
+        fold.appendChild(el('summary', null, tfill('chInsAutoTitle', { n: theirs.length })));
+        theirs.forEach(function (i) { fold.appendChild(insRow(i)); });
+        list.appendChild(fold);
+      }
     }
     function listen(key, q, status) {
       onSnapshot(q, function (qs) {
@@ -2203,9 +2239,9 @@ import {
   function insRow(i) {
     var row = el('div', 'chinsrow ' + i.status);
     var head = el('div', 'chinsh');
-    head.appendChild(el('span', 'chrw', nameOf(i.to) + (i.by === 'reminder' ? ' · ' + t('chInsReminder') : '')));
+    head.appendChild(el('span', 'chrw', nameOf(i.to) + (i.by === 'reminder' ? ' · ' + t('chInsReminder') : i.by === 'alert' ? ' · ' + t('chInsAlert') : '')));
     var over = daysFrom(i.due, DAY);
-    var late = i.status === 'open' && over > 0;
+    var late = i.status === 'open' && over > 0 && i.by !== 'alert' && i.by !== 'reminder';
     var state;
     if (i.status === 'done') {
       state = t('chInsDone') + ' ' + (i.doneAt && i.doneAt.toDate ? addisYmd(i.doneAt.toDate()) : '');
@@ -2913,7 +2949,12 @@ import {
       if (first) sum.appendChild(el('span', 'chrd-v', L(first) + ' ' + first.v));
       card.appendChild(sum);
       var tiles = el('div', 'chtiles');
-      (r.tiles || []).forEach(function (x) { tiles.appendChild(tile(L(x), x.v).box); });
+      (r.tiles || []).forEach(function (x) {
+        /* the whole figure: long ones wrap instead of "12,345,6…" (the bug hunt, 15 Oct 2026) */
+        var tl = tile(L(x), x.v, String(x.v));
+        if (String(x.v).length > 8) tl.box.classList.add('long');
+        tiles.appendChild(tl.box);
+      });
       card.appendChild(tiles);
       if (r.heat && r.heat.length === 25) {
         var g = el('div', 'chheat');

@@ -156,20 +156,25 @@ function prBuild_(o) {
   (o.staff || []).forEach(function (s) {
     var days = prDaysIn_(o.month, s.started, s.left);
     var carryIn = prR2_((o.carry && o.carry[s.id]) || 0);
-    if (days <= 0 && !carryIn) return;
+    /* bonuses earned while no salary was on record, kept for the month
+       there is one — the fines waited, the bonuses were dropped (the bug
+       hunt, 15 Oct 2026) */
+    var bonusIn = prR2_((o.carryBonus && o.carryBonus[s.id]) || 0);
+    if (days <= 0 && !carryIn && !bonusIn) return;
     var p = payBy[s.id] || {};
-    var bonuses = prR2_((p.bonuses || 0) - (p.bonusesCancelled || 0));
+    var bonuses = prR2_((p.bonuses || 0) - (p.bonusesCancelled || 0) + bonusIn);
     var fines = prR2_((p.reportFines || 0) + (p.otherFines || 0) - (p.finesCancelled || 0));
     var absentOn = ((o.absent && o.absent[s.id]) || []).filter(function (d) {
       return (!s.started || d >= s.started) && (!s.left || d <= s.left);
     }).sort();
-    var r = { id: s.id, name: s.name, role: s.role || '', noLetter: !!s.noLetter, payOnly: !!s.payOnly,
+    var r = { id: s.id, name: s.name, role: s.role || '', noLetter: !!s.noLetter, payOnly: !!s.payOnly, startGuessed: !!s.startGuessed,
               account: s.account || '', pension: s.pension !== false, days: days,
               absentDays: absentOn.length, absentOn: absentOn, fines: fines, carryIn: carryIn };
     if (!(s.wage > 0)) {
       /* nothing to pay from, so nothing taken: the fines wait */
       r.noWage = true; r.gross = null; r.bonuses = bonuses; r.penalty = 0; r.net = null;
       r.carryOut = prR2_(carryIn + fines);
+      r.bonusCarryOut = bonuses;
       tot.noWage++;
     } else {
       r.gross = s.wage;
@@ -204,6 +209,8 @@ function prStaff_(schedule) {
     var w = byId[p.id] || {};
     return { id: p.id, name: p.en, role: p.roleEn || '', wage: w.wage || null,
              started: w.started || (isDay_(p.from) ? p.from : null), left: w.left || null,
+             /* no hiring day in the Sheet: the day reports start counting is used, and said (bug hunt, 15 Oct 2026) */
+             startGuessed: !w.started && isDay_(p.from) && p.from.slice(0, 7) >= PR_FIRST_,
              noLetter: !!(p.noLetter || noOwn[p.id]), account: w.account || '', pension: w.pension !== false };
   });
   Object.keys(byId).forEach(function (id) {
@@ -223,24 +230,28 @@ function prAddsOf_(month) {
 }
 
 /* Build one month, and write it unless `dry`. mode 'sofar' or 'final'. */
-function payrollRun_(month, mode, dry) {
+function payrollRun_(month, mode, dry, opt) {
+  opt = opt || {};
   var start = month + '-01', end = monthEnd_(start), next = addDays_(end, 1);
   var schedule = loadSchedule_();
   var names = {};
   (schedule.people || []).forEach(function (p) { names[p.id] = p.en; });
   var ledgers = ledgersBetween_(start, next);
   var monthDoc = tryQuery_('months', [['month', 'EQUAL', month]], null)[0] || null;
-  var waivers = tryQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start], ['day', 'LESS_THAN', next]], 'day');
-  var carry = {}, prevM = prPrevMonth_(month), prev = null;
+  var waivers = fsQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start], ['day', 'LESS_THAN', next]], 'day');
+  var carry = {}, carryBonus = {}, prevM = prPrevMonth_(month), prev = null;
   if (month > PR_FIRST_) {
     try { prev = fsGet_('payroll/' + prevM); } catch (e) { prev = null; }
-    ((prev && prev.rows) || []).forEach(function (r) { if (r.carryOut > 0) carry[r.id] = r.carryOut; });
+    ((prev && prev.rows) || []).forEach(function (r) {
+      if (r.carryOut > 0) carry[r.id] = r.carryOut;
+      if (r.bonusCarryOut > 0) carryBonus[r.id] = r.bonusCarryOut;
+    });
   }
   var staff = prStaff_(schedule);
   var b = prBuild_({
     month: month, staff: staff,
     pay: payOf_(ledgers, monthDoc, waivers, names),
-    absent: prAbsentDays_(ledgers, waivers), carry: carry, adds: prAddsOf_(month)
+    absent: prAbsentDays_(ledgers, waivers), carry: carry, carryBonus: carryBonus, adds: prAddsOf_(month)
   });
   var days = ledgers.map(function (l) { return l.day; }).sort();
   var doc = {
@@ -252,7 +263,7 @@ function payrollRun_(month, mode, dry) {
   fsPut_('payroll/' + month, doc);
   if (mode === 'final') {
     try { prSheet_(doc); } catch (e) { Logger.log('payroll tab: %s', e.message); }
-    try {
+    if (!opt.quiet) try {
       pushTo_('chairman', 'Payroll ' + prMonthName_(month) + ' — ready to approve',
               doc.totals.people + ' people · ' + fmt_(Math.round(doc.totals.net)) + ' Birr net to pay' +
               ' (tax ' + fmt_(Math.round(doc.totals.tax)) + ', pension ' + fmt_(Math.round(doc.totals.pension7 + doc.totals.pension11)) + ')' +
@@ -329,7 +340,16 @@ function payrollWatch_() {
   if (prevM >= PR_FIRST_) {
     var doc = null;
     try { doc = fsGet_('payroll/' + prevM); } catch (e) { doc = null; }
-    if (!doc || doc.status === 'sofar') {
+    if (doc && doc.status === 'ready') {
+      /* final, not yet approved: a wage, an account or a start date he
+         puts right in the Sheet tab reaches it — built again, quietly, when
+         the figures differ (the bug hunt, 15 Oct 2026: a final month could
+         never be corrected before approval). Approved, it is never touched. */
+      var again = payrollRun_(prevM, 'final', true);
+      if (JSON.stringify([again.rows, again.totals]) !== JSON.stringify([doc.rows, doc.totals])) {
+        payrollRun_(prevM, 'final', false, { quiet: true });
+      }
+    } else if (!doc || doc.status === 'sofar') {
       var closed = tryQuery_('months', [['month', 'EQUAL', prevM]], null).length > 0;
       if (Number(today.slice(8)) >= PR_FINAL_DAY_ && closed) {
         /* what Selam entered is shut before it is read */

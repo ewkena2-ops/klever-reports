@@ -774,13 +774,15 @@ import {
     det.appendChild(el('summary', null, tfill('atMonthEth', { month: window.KLEVER && window.KLEVER.ethMonthName ? window.KLEVER.ethMonthName(DAY) : '', day: prettyDay(since) })));
     people.forEach(function (p) {
       var on = 0, late = 0, none = 0, lines = [];
+      var dayName = window.KLEVER && window.KLEVER.ethDayLabel ? window.KLEVER.ethDayLabel : prettyDay;
       days.forEach(function (day) {
         if (p.from && day < p.from) return;
         var x = (by[day] || {})[p.id] || {};
-        if (x.scanAt && !x.late) { on++; return; }
+        /* every day, with the time they checked in (the user, 14 Oct 2026) */
+        if (x.scanAt && !x.late) { on++; lines.push(dayName(day) + ': ✓ ' + x.hm); return; }
         if (day === DAY && !x.scanAt && !x.why) return;          /* today is not over */
         if (x.scanAt) late++; else none++;
-        lines.push(prettyDay(day) + ': ' + (x.scanAt ? tfill('atLateShort', { at: x.hm, m: atDur(x.minsLate) }) : t('atNoScanShort')) +
+        lines.push(dayName(day) + ': ' + (x.scanAt ? tfill('atLateShort', { at: x.hm, m: atDur(x.minsLate) }) : t('atNoScanShort')) +
                    ' — ' + (x.why ? atWhyText(x.why, x.note) : t('atNoReason')));
       });
       var row = el('details', 'atperson');

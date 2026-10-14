@@ -1572,44 +1572,48 @@
   }
   /* The month so far: on time / late / missed, and each day with its reason.
      A day before the first counted one shows only if scanned, as a test. */
+  /* The month so far, every day one by one with the time they checked in
+     (the user, 14 Oct 2026: "instead of like this, each day one by one with
+     the time they logged in"): oldest first, Sundays shown as off, the
+     reason under a late or missed day; the counts in one line. A day before
+     the first counted one shows only if scanned, as a test. */
   function atMonth(p, by, today, nowMin, from) {
     var start = ethMonthStart(today);
     if (p.from && p.from > start) start = p.from;
-    var n = { on: 0, late: 0, missed: 0 }, lines = [];
+    var n = { on: 0, late: 0, missed: 0 }, rows = [];
     for (var d = start; d <= today; d = addDays(d, 1)) {
-      if (dowOf(d) === 0) continue;
       var x = by[d], test = d < from;
       if (test && !(x && x.scanAt)) continue;
-      var st, cls;
-      if (x && x.scanAt && !x.late) { st = '✓ ' + x.hm; cls = 'good'; if (!test) n.on++; }
-      else if (x && x.scanAt) { st = tfill_('atLateShortMine', { at: x.hm, m: atDur(x.minsLate) }); cls = 'late'; if (!test) n.late++; }
-      else if (d === today) { if (nowMin <= AT_LATE && !(x && x.why)) continue; st = t('atNotYet'); cls = 'none'; }
-      else { st = t('atMissed'); cls = 'missed'; n.missed++; }
-      if (x && x.why) st += ' · ' + atWhyText(x.why, x.note);
-      else if (!test && (cls === 'late' || cls === 'missed')) st += ' · ' + t('atNoReasonYet');
-      if (test) st += ' · ' + t('atTest');
-      lines.unshift({ day: d, text: st, cls: cls });
+      var st, cls, why = '';
+      if (dowOf(d) === 0) { st = t('atSundayOff'); cls = 'off'; }
+      else if (x && x.scanAt && !x.late) { st = '✓ ' + x.hm; cls = 'good'; if (!test) n.on++; }
+      else if (x && x.scanAt) { st = '! ' + tfill_('atLateShortMine', { at: x.hm, m: atDur(x.minsLate) }); cls = 'late'; if (!test) n.late++; }
+      else if (d === today) {
+        if (nowMin <= AT_LATE && !(x && x.why)) { st = t('atNotYetToday'); cls = 'none'; }
+        else { st = t('atNotYet'); cls = 'none'; }
+      }
+      else { st = '✕ ' + t('atMissed'); cls = 'missed'; n.missed++; }
+      if (x && x.why) why = atWhyText(x.why, x.note);
+      else if (!test && (cls === 'late' || cls === 'missed')) why = t('atNoReasonYet');
+      if (test) why = (why ? why + ' · ' : '') + t('atTest');
+      rows.push({ day: d, text: st, why: why, cls: cls, today: d === today });
     }
     var box = el('div', 'ins atmine');
     box.appendChild(el('div', 'inst', tfill_('atMineTitle', { month: ethMonthName(today) })));
-    var tiles = el('div', 'attiles');
-    [['on', 'atMineOn', 'good'], ['late', 'atMineLate', 'late'], ['missed', 'atMineMissed', 'missed']].forEach(function (k) {
-      var tl = el('div', 'attile ' + k[2]);
-      tl.appendChild(el('div', 'attn', String(n[k[0]])));
-      tl.appendChild(el('div', 'attl', t(k[1])));
-      tiles.appendChild(tl);
+    box.appendChild(el('div', 'atcountline', tfill_('atCountLine', { on: n.on, late: n.late, missed: n.missed })));
+    if (!rows.length) { box.appendChild(el('div', 'atsub', t('atMineNone'))); return box; }
+    var list = el('div', 'atdays');
+    rows.forEach(function (l) {
+      var r = el('div', 'atdl ' + l.cls + (l.today ? ' today' : ''));
+      var left = el('div', 'atdd');
+      left.appendChild(el('span', null, ethDayLabel(l.day)));
+      if (l.today) left.appendChild(el('span', 'attoday', t('atToday')));
+      r.appendChild(left);
+      r.appendChild(el('div', 'atds', l.text));
+      if (l.why) r.appendChild(el('div', 'atdw', l.why));
+      list.appendChild(r);
     });
-    box.appendChild(tiles);
-    if (!lines.length) { box.appendChild(el('div', 'atsub', t('atMineNone'))); return box; }
-    var det = el('details', 'atdays');
-    det.appendChild(el('summary', null, t('atMineDays')));
-    lines.forEach(function (l) {
-      var r = el('div', 'atdl ' + l.cls);
-      r.appendChild(el('span', 'atdd', ethDayLabel(l.day)));
-      r.appendChild(el('span', 'atds', l.text));
-      det.appendChild(r);
-    });
-    box.appendChild(det);
+    box.appendChild(list);
     return box;
   }
   function atDay(day, x, isToday, nowMin, noAsk) {

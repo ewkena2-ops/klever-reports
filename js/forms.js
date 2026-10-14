@@ -3,6 +3,9 @@
 
    field keys:  id  en  am  t(type)  i(indent)  tgt(target check)  opt(not required)
                 must(cannot be sent empty — on a question, or on a list's column: every row)
+                carry(a list whose rows are the job codes of this person's earlier
+                      reports still open — {from:['list.col'|'question'], close:{col, in:[…]}, days};
+                      or the jobs the script asks this person about — {ask:'<kind>', close:{col}})
    types:       num money pct text area ratio yesno choice
    target:      {op:'gte'|'lte', v:<number>, en:'', am:''}            */
 
@@ -488,6 +491,20 @@ const REPORTS = [
        wa_complaints) and the morning agents read (visits_late, quotes_late,
        visits_booked, inq) file 0 on a day they were not tapped (zero:1).
        wa_stage is still asked: it carries the 300 Birr fine. */
+    /* THE MONEY ON EACH JOB (the Chairman, 14 Oct 2026): a job on Mahelet's
+       15-day plan, or made this week, whose contract total no report has
+       given is asked of her here, once — six at a time, soonest first. The
+       list is the script's (apps-script/JobMoney.js, /jobask/ephrata); a
+       job leaves it when she has given its total. The Chairman's page sets
+       it against the material and the installers: the net on the job. */
+    { en:'Contract totals for jobs on the plan', am:'በዕቅዱ ላይ ያሉ ሥራዎች የውል ዋጋ', fields:[
+      {id:'ct_jobs', en:'What is the contract total of each of these jobs?', am:'የእያንዳንዱ ሥራ የውል ጠቅላላ ዋጋ ስንት ነው?', t:'table',
+        carry:{ask:'contract', close:{col:'value'}},
+        cols:[
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'value', en:'Contract total, in Birr (all of it, as signed)', am:'የውሉ ጠቅላላ ዋጋ በብር (እንደተፈረመው፣ ሙሉው)', t:'money', must:1}
+        ]}
+    ]},
     { en:'Today', am:'ዛሬ', fields:[
       {id:'e_events', en:'What happened today?', am:'ዛሬ ምን ምን ሆነ?', t:'multi',
         none:{ en:'None of these today', am:'ዛሬ ከነዚህ ምንም የለም' },
@@ -1561,6 +1578,52 @@ const REPORTS = [
        questions asked, right under the list. Every answer key is the one it
        always was; the yes/no answers the rulebook reads are worked out from
        the list ({picked:…}, quiet:1). */
+    /* THE JOBS HE NAMED BEFORE (the Chairman, 14 Oct 2026: "ask him, did he
+       finish purchasing the previous jobs he mentioned?"). Every job code in
+       his earlier reports — a request, an order, a late delivery, a
+       rejection, what he said he would buy tomorrow — comes back here as a
+       row of its own, already written, and he taps where its buying stands.
+       A job leaves the list once he says everything is bought (or that the
+       job is on hold); written again in a later report, it comes back. The
+       section is not on the screen when nothing is waiting. */
+    { en:'Jobs from your earlier reports', am:'ባለፉት ሪፖርቶችዎ የጠቀሷቸው ሥራዎች', fields:[
+      {id:'fu_jobs', en:'Have you finished buying for each job you named before?', am:'ከዚህ በፊት ለጠቀሷቸው ሥራዎች ግዥውን ጨርሰዋል?', t:'table',
+        carry:{from:['pr_list.code', 'ord_list.code', 'sup_delay_list.code', 'del_rej_list.code', 'tomorrow', 'mat_plan.code'],
+               close:{col:'buy', in:['done', 'hold']}, days:30},
+        cols:[
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'buy', en:'Finished buying?', am:'ግዥው ተጠናቋል?', t:'choice', must:1, opts:[
+            {v:'done',  en:'Yes — everything is bought',            am:'አዎ — ሁሉም ተገዝቷል'},
+            {v:'part',  en:'Part bought — the rest still to buy',    am:'ከፊሉ ተገዝቷል — ቀሪው ገና አልተገዛም'},
+            {v:'selam', en:'Waiting for Selam — approval or money', am:'ሰላምን እየጠበቅሁ ነው — ማጽደቅ ወይም ገንዘብ'},
+            {v:'sup',   en:'Ordered — waiting for the supplier',     am:'ታዝዟል — አቅራቢውን እየጠበቅሁ ነው'},
+            {v:'hold',  en:'Nothing to buy now — the job is on hold', am:'አሁን የሚገዛ የለም — ሥራው ቆሟል'}
+          ]},
+          {id:'left', en:'What is still to buy?', am:'ገና ያልተገዛው ምንድነው?', t:'choice', opts:MATERIAL_OPTS,
+            ifCol:'buy', ifNot:['done', 'hold']},
+          {id:'when', en:'When will it all be bought?', am:'ሁሉም መቼ ይገዛል?', t:'date',
+            ifCol:'buy', ifNot:['done', 'hold']},
+          /* what the job's material came to, once it is all bought: the
+             Chairman's net on the job (apps-script/JobMoney.js) */
+          {id:'cost', en:'What did all its material cost, in Birr?', am:'የሥራው ዕቃ በሙሉ ስንት ብር ወጣ?', t:'money', must:1,
+            ifCol:'buy', ifIn:['done']}
+        ]}
+    ]},
+    /* THE MONEY ON EACH JOB (the Chairman, 14 Oct 2026: "we have to know how
+       much Getachew is going to buy for that job, all of it"). A job on
+       Mahelet's 15-day plan, or made this week, with no material figure yet
+       is asked here, once — six at a time, soonest first, from the script's
+       list (apps-script/JobMoney.js, /jobask/getachew). From the next day it
+       is on his "Jobs from your earlier reports" list, until everything is
+       bought and he says what it all cost. */
+    { en:'Material cost for jobs on the plan', am:'በዕቅዱ ላይ ላሉ ሥራዎች የዕቃ ወጪ', fields:[
+      {id:'mat_plan', en:'How much will all the material for each of these jobs cost?', am:'የእያንዳንዱ ሥራ ዕቃ በሙሉ ስንት ብር ያወጣል?', t:'table',
+        carry:{ask:'material', close:{col:'amount'}},
+        cols:[
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'amount', en:'All its material, in Birr (your best figure)', am:'የሥራው ዕቃ በሙሉ በብር (የሚጠብቁት ዋጋ)', t:'money', must:1}
+        ]}
+    ]},
     { en:'Purchase requests', am:'የግዥ ጥያቄዎች', fields:[
       /* Four counts and a two-box question stood around this list —
          prepared, sent to Selam, approved, returned, and how many carried
@@ -1574,7 +1637,10 @@ const REPORTS = [
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'item', en:'Materials', am:'ዕቃዎች', t:'choice', opts:MATERIAL_OPTS},
           {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
-          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
+          /* "Amount" was read two ways: 104,403.48 one day, 20 (sheets) the
+             next (12–13 Oct 2026). How many, then the Birr. */
+          {id:'qty', en:'How many (sheets, pieces)', am:'ብዛት (ሉህ፣ ቁራጭ)', t:'num'},
+          {id:'amount', en:'Cost in Birr', am:'ዋጋ በብር', t:'money'},
           {id:'quotes', en:'Quotes attached', am:'የተያዙ ፕሮፎርማዎች', t:'num'},
           {id:'state', en:'Where it stands', am:'የደረሰበት', t:'choice', opts:[
             {v:'app',  en:'Selam approved it',    am:'ሰላም አጽድቃዋለች'},
@@ -1623,7 +1689,8 @@ const REPORTS = [
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           {id:'item', en:'Material', am:'ዕቃ', t:'choice', opts:MATERIAL_OPTS},
           {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
-          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
+          {id:'qty', en:'How many (sheets, pieces)', am:'ብዛት (ሉህ፣ ቁራጭ)', t:'num'},
+          {id:'amount', en:'Cost in Birr', am:'ዋጋ በብር', t:'money'},
           {id:'paid', en:'Cheque given, or on credit?', am:'ቼክ ተሰጥቷል ወይስ በዱቤ?', t:'choice', opts:[
             {v:'cheque', en:'Cheque given', am:'ቼክ ተሰጥቷል'},
             {v:'credit', en:'On credit — no cheque yet', am:'በዱቤ — ቼክ ገና አልተሰጠም'}]},

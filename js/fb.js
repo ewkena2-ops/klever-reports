@@ -281,6 +281,17 @@
       return function () { a(); b(); };
       });
     },
+    /* The jobs the script asks me about (apps-script/JobMoney.js — the
+       money on each job, 14 Oct 2026): {to, kind, items:[{code, cust, m2}]},
+       or null when there is nothing. */
+    myJobAsk: function () {
+      return ready.then(function () {
+        if (!db || !user) return null;
+        return F.getDoc(F.doc(db, 'jobask', idOf(user))).then(function (d) {
+          return d.exists() ? d.data() : null;
+        })['catch'](function () { return null; });
+      });
+    },
     /* My answer for one day: what was really collected, payment by
        payment, and the day's list as it now stands. Filed, never changed. */
     fileMoneyFix: function (fix) {

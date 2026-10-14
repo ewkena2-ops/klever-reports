@@ -1494,6 +1494,7 @@
     draftKey = 'klever.draft.' + report.id + '.' + (pd0.day || stamp());
     var restoredFrom = null;
     try { values = JSON.parse(store.get(draftKey) || 'null'); } catch (e) { values = null; }
+    bareCarry(values);
     /* an empty draft (the form was only opened) does not hide a real one */
     if (!values || typeof values !== 'object' || !hasContent(values)) {
       values = {};
@@ -1588,6 +1589,7 @@
     loadWeekValues();
     loadSoFar();
     loadRecent();
+    loadCarry();
     /* the status line keeps time while the form is open */
     renderForm.tick = setInterval(drawStatus, 30000);
   }
@@ -1683,6 +1685,7 @@
         var day = k.slice(prefix.length);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < addDays(stamp(), -7)) continue;
         var v = JSON.parse(localStorage.getItem(k) || 'null');
+        bareCarry(v, reportById(reportId));
         if (v && hasContent(v) && (!best || day > best.day)) best = { day: day, values: v };
       }
     } catch (e) { /* a blocked store just means no draft */ }
@@ -1717,6 +1720,11 @@
     var data = values[f.id];
 
     function rowLabel(i) {
+      if (f.carry) {
+        var code = String((data[i] || {})[f.cols[0].id] || ''), info = CARRY_INFO[code] || {};
+        var more = [info.cust, info.m2 ? info.m2 + ' m²' : ''].filter(function (x) { return x; });
+        return code + (more.length ? ' · ' + more.join(' · ') : '');
+      }
       return f.t === 'grid' ? gridRowLabel(f, i) : String(i + 1);
     }
 
@@ -1732,8 +1740,10 @@
            are on screen (Yordanos counts two materials, not twelve) */
         if (f.rowsOn) { card.setAttribute('data-gridrow', String(i)); card.hidden = !gridRowOn(f, i); }
         var head = el('div', 'reprowhead');
-        head.appendChild(el('span', 'idx', rowLabel(i)));
-        if (f.t === 'table') {
+        head.appendChild(el('span', 'idx' + (f.carry ? ' carried' : ''), rowLabel(i)));
+        /* a row brought from an earlier report is the job itself: it is
+           answered, not taken away, and its code is its heading */
+        if (f.t === 'table' && !f.carry) {
           var rm = el('button', 'rm', '\u00d7');
           rm.type = 'button';
           rm.title = t('removeRow');
@@ -1752,7 +1762,8 @@
         }
         card.appendChild(head);
 
-        f.cols.forEach(function (c) {
+        f.cols.forEach(function (c, ci) {
+          if (f.carry && ci === 0) return;
           /* words go under their label at full width; numbers and pick-lists
              stay beside it */
           /* a pick-list whose choices are long ("On credit — no cheque yet")
@@ -1977,7 +1988,7 @@
              changes */
           if (c.ifCol) {
             var syncIf = function () {
-              var on = has(rowData[c.ifCol]) && (c.ifNot || []).indexOf(rowData[c.ifCol]) === -1;
+              var on = colOn(c, rowData);
               cell.hidden = !on;
               if (!on && has(rowData[c.id])) { delete rowData[c.id]; inp.value = ''; }
             };
@@ -1989,7 +2000,7 @@
         body.appendChild(card);
       });
 
-      if (f.t === 'table') {
+      if (f.t === 'table' && !f.carry) {
         var add = el('button', 'addrow', '+ ' + (lang === 'am' ? f.addAm : f.addEn));
         add.type = 'button';
         add.onclick = function () {
@@ -2010,7 +2021,7 @@
       wrap.sumUp = function () { tot.textContent = totalLine(f); };
     }
 
-    if (f.t === 'table' && !data.length) data.push({});
+    if (f.t === 'table' && !f.carry && !data.length) data.push({});
     draw();
     wrap.redraw = draw;
     return wrap;
@@ -3127,7 +3138,7 @@
         (f.cols || []).forEach(function (c) {
           if (!c.must) return;
           (values[f.id] || []).forEach(function (row, i) {
-            if (row && rowHasData(row, f.cols) && !has(row[c.id])) {
+            if (row && rowHasData(row, f.cols) && colOn(c, row) && !has(row[c.id])) {
               cells.push({ f: f, c: c, row: row, id: 'c_' + f.id + '_' + i + '_' + c.id, n: i + 1 });
             }
           });
@@ -3152,6 +3163,8 @@
      heading, and an empty heading is a question people go looking for. */
   function drawsSomething(f) {
     if (!shown(f) || f.quiet) return false;
+    /* jobs carried from earlier reports: nothing waiting, nothing to ask */
+    if (f.carry) return Array.isArray(values[f.id]) && values[f.id].length > 0;
     if (autoInLine(f)) {
       var tf = fieldById(autoTable(f));
       return !!tf && shown(tf);
@@ -3230,6 +3243,15 @@
       if (allNil) delete keep[f.id];
     });
     return keep;
+  }
+
+  /* a list box asked only once another in the row is answered (ifCol) —
+     and not with one of `ifNot`, or only with one of `ifIn` ("What did it
+     all cost?" once "everything is bought" is tapped) */
+  function colOn(c, row) {
+    if (!c.ifCol) return true;
+    var v = row && row[c.ifCol];
+    return has(v) && (c.ifNot || []).indexOf(v) === -1 && (!c.ifIn || c.ifIn.indexOf(v) !== -1);
   }
 
   function rowHasData(row, cols) {
@@ -3531,6 +3553,138 @@
     })['catch'](function () {});
   }
 
+  /* JOBS CARRIED FROM EARLIER REPORTS (carry — the Chairman, 14 Oct 2026:
+     "ask him, did he finish purchasing the previous jobs he mentioned?").
+     Every job code this person wrote in the lists `carry.from` names, in
+     their own reports of the last `days`, comes back as a row of the list,
+     its code already in the first column, until a report answers it with
+     one of `close.in` ("Yes — everything is bought"). A job named again
+     after that comes back. Filings of the day being reported are not read:
+     what is named today is asked tomorrow. */
+  /* the job codes in an answer, however typed: "k.k =165", "Kk 160", "kkkk 160",
+     "K.K.165, k.k 155", "RBT 3375"; in a job-code column a bare number is a
+     KK job ("167") and any other code keeps its letters ("SD-12"). The same
+     job written two ways is one row (KK-081 and kk81). */
+  function jobCodes(v, inCol) {
+    var s = String(v == null ? '' : v), out = [];
+    function put(c) { if (c && out.indexOf(c) === -1) out.push(c); }
+    var re = /(^|[^a-z0-9])(k(?:\W{0,3}k)+|rbt)\W{0,3}0*(\d{1,5})(?!\d)/gi, m;
+    while ((m = re.exec(s))) {
+      var pre = /^k/i.test(m[2]) ? 'KK' : 'RBT';
+      put(pre + '-' + Number(m[3]));
+      /* a list runs on after its first code: "K.k=165,155" */
+      if (pre !== 'KK') continue;
+      var tail = s.slice(re.lastIndex), run = /^\s*(?:[,;\/&+]|and|እና)\s*0*(\d{2,3})(?!\d)/i, n;
+      while ((n = run.exec(tail))) {
+        put('KK-' + Number(n[1]));
+        tail = tail.slice(n[0].length);
+        re.lastIndex = s.length - tail.length;
+      }
+    }
+    if (out.length || !inCol) return out;
+    var t = s.toUpperCase().replace(/[–—]/g, '-').replace(/[^A-Z0-9-]/g, '');
+    if (/^\d{1,3}$/.test(t)) return ['KK-' + Number(t)];
+    var c = /^([A-Z]+)-?0*(\d+(?:-\d+)*)/.exec(t);
+    return c ? [c[1] + '-' + c[2]] : [];
+  }
+  /* a carried row with nothing answered in it yet is only the list itself:
+     a draft holding no more than that is no draft */
+  function bareCarry(v, rep) {
+    rep = rep || report;
+    if (!v || typeof v !== 'object' || !rep) return;
+    rep.sections.forEach(function (s) {
+      s.fields.forEach(function (f) {
+        if (f.carry && Array.isArray(v[f.id])) v[f.id] = v[f.id].filter(function (r) { return carryAnswered(f, r); });
+      });
+    });
+  }
+  function carryAnswered(f, r) {
+    return !!r && f.cols.some(function (c, i) { return i > 0 && has(r[c.id]); });
+  }
+  /* the codes still open, oldest named first */
+  function carryOpen(f, filings, day) {
+    var c = f.carry, close = c.close || {}, open = [], first = f.cols[0].id;
+    (filings || []).filter(function (d) {
+      return d.report === report.id && ymdOf(addis(d.at)) < day;
+    }).sort(function (a, b) { return a.at - b.at; }).forEach(function (d) {
+      var v = d.values || {}, named = [], shut = [];
+      (c.from || []).forEach(function (src) {
+        var p = String(src).split('.'), x = v[p[0]];
+        if (!p[1]) { named = named.concat(jobCodes(x, false)); return; }
+        if (Array.isArray(x)) x.forEach(function (r) { if (r) named = named.concat(jobCodes(r[p[1]], true)); });
+      });
+      /* its own rows: answered "not yet" keeps a job open, closed shuts it */
+      (Array.isArray(v[f.id]) ? v[f.id] : []).forEach(function (r) {
+        if (!r) return;
+        var ks = jobCodes(r[first], true);
+        if ((close.in || []).indexOf(r[close.col]) !== -1) shut = shut.concat(ks); else named = named.concat(ks);
+      });
+      named.forEach(function (k) { if (open.indexOf(k) === -1) open.push(k); });
+      open = open.filter(function (k) { return shut.indexOf(k) === -1; });
+    });
+    return open;
+  }
+  /* the open codes into the list: rows already answered stay; a row only
+     carried, whose job is no longer open, goes */
+  function mergeCarry(f, open) {
+    var first = f.cols[0].id;
+    if (!Array.isArray(values[f.id])) values[f.id] = [];
+    var data = values[f.id];
+    for (var i = data.length - 1; i >= 0; i--) {
+      var r = data[i];
+      if (!r || !has(r[first])) { data.splice(i, 1); continue; }
+      if (!carryAnswered(f, r) && open.indexOf(jobCodes(r[first], true)[0]) === -1) data.splice(i, 1);
+    }
+    open.forEach(function (k) {
+      var there = data.some(function (r) { return jobCodes(r[first], true).indexOf(k) !== -1; });
+      if (!there) { var row = {}; row[first] = k; data.push(row); }
+    });
+  }
+  /* read again each time the form is drawn: the draft it was drawn from
+     holds only the rows already answered (bareCarry) */
+  function loadCarry() {
+    if (!report) return;
+    var cs = allFields().filter(function (f) { return f.carry; });
+    if (!cs.length) return;
+    if (!window.FB || !FB.ownReports || !AUTH.who()) return;
+    var days = Math.max.apply(null, cs.map(function (f) { return f.carry.days || 30; }));
+    var day = periodNow(report).day || stamp(), was = report.id;
+    var asked = cs.some(function (f) { return f.carry.ask; }) && FB.myJobAsk ? FB.myJobAsk()['catch'](function () { return null; }) : Promise.resolve(null);
+    Promise.all([FB.ownReports(report.person, new Date(Date.now() - days * 864e5)), asked]).then(function (got) {
+      if (!report || report.id !== was) return;
+      var list = got[0] || [], ask = got[1];
+      cs.forEach(function (f) {
+        mergeCarry(f, f.carry.ask ? askOpen(f, ask, list) : carryOpen(f, list, day));
+        var w = document.getElementById('w_' + f.id);
+        if (w && w.redraw) w.redraw();
+      });
+      refresh();
+    })['catch'](function () {});
+  }
+  /* THE SCRIPT'S QUESTIONS (carry.ask — the money on each job, 14 Oct 2026):
+     the jobs apps-script/JobMoney.js asks this person about (/jobask/{me}),
+     less any this person has already answered in a report — the script may
+     not have read that one yet */
+  var CARRY_INFO = {};
+  function askOpen(f, ask, list) {
+    if (!ask || ask.kind !== f.carry.ask || !Array.isArray(ask.items)) return [];
+    var first = f.cols[0].id, col = (f.carry.close || {}).col, done = {};
+    (list || []).forEach(function (d) {
+      if (d.report !== report.id) return;
+      (Array.isArray((d.values || {})[f.id]) ? d.values[f.id] : []).forEach(function (r) {
+        if (r && (!col || has(r[col]))) jobCodes(r[first], true).forEach(function (k) { done[k] = 1; });
+      });
+    });
+    var open = [];
+    ask.items.forEach(function (it) {
+      var k = jobCodes(it && it.code, true)[0];
+      if (!k || done[k] || open.indexOf(k) !== -1) return;
+      CARRY_INFO[k] = { cust: it.cust ? String(it.cust).trim() : '', m2: it.m2 ? Math.round(Number(it.m2) * 10) / 10 : null };
+      open.push(k);
+    });
+    return open;
+  }
+
   /* This week's own daily reports, which the weekly report no longer asks
      anyone to add up by hand. They are this person's own filings, so the
      server hands them over (firestore.rules: your own reports); until they
@@ -3722,7 +3876,9 @@
      two-box one with only one box counted: the other box is a question, and
      it is asked once the counted one has its figure. */
   function toAnswer(f) {
-    if (f.opt) return false;
+    /* a carried list is answered row by row (its `must` column), and on a
+       day with nothing carried there is nothing to answer */
+    if (f.opt || f.carry) return false;
     if (!f.auto) return true;
     if (f.t !== 'ratio' || (f.auto.a && f.auto.b)) return false;
     return has(values[f.id + '__' + (f.auto.a ? 'a' : 'b')]);
@@ -4279,6 +4435,8 @@
     /* what Send would file, and what it would call unanswered */
     answers: function () { computeAutos(); return answers(); },
     unanswered: function () { return unanswered(); },
+    /* the job codes an answer names (carry) */
+    jobCodes: function (v, inCol) { return jobCodes(v, inCol); },
     /* the same answers the forms use, for the pages that draw the company:
        who a report goes to, and what is owed today */
     recipientsOf: recipientsOf,

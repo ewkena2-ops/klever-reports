@@ -586,6 +586,21 @@ service cloud.firestore {
      *  really done, or cancel one that no longer matters. Nobody else
      *  sees it, and nobody can delete it — an instruction nobody can
      *  quietly remove is the point of writing it down.                   */
+    /* THE MONEY ON EACH JOB (14 Oct 2026, apps-script/JobMoney.js): the jobs
+     *  the script asks Ephrata (contract totals) and Getachew (material
+     *  cost) about — one document each, read by its person; and the table
+     *  on the Chairman's page. Answers come in their daily reports. */
+    match /jobask/{person} {
+      allow get, list: if isChairman() || isLedger()
+                       || (signedIn() && resource.data.to == me());
+      allow create, update: if isLedger();
+      allow delete: if false;
+    }
+    match /jobmoney/{id} {
+      allow get, list: if isChairman() || isLedger();
+      allow create, update: if isLedger();
+      allow delete: if false;
+    }
     /* ---------------------------------------------------------------- *
      *  Collections that do not match (apps-script/Money.js)              *
      * ---------------------------------------------------------------- *

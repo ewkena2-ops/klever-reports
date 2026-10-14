@@ -351,6 +351,12 @@ import {
     proms.appendChild(el('p', 'codenote', t('chLoading')));
     root.appendChild(proms);
 
+    /* --- the net on each job: contract, materials, installers (apps-script/JobMoney.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('jmTitle')));
+    var jobm = el('div', 'chjm');
+    jobm.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(jobm);
+
     /* --- what the agents made of it --- */
     root.appendChild(el('p', 'eyebrow', t('chAnalysis')));
     var runBtn = el('button', 'seed', t('chRunNow'));
@@ -491,6 +497,7 @@ import {
     watchReports(raw, tFiled, tMissing);
     watchCharts(charts);
     watchPromises(proms);
+    watchJobMoney(jobm);
     watchHealth(sys, sysAlarm);
   }
 
@@ -576,6 +583,50 @@ import {
         box.appendChild(row);
       });
       into.appendChild(box);
+    });
+  }
+
+  /* THE NET ON EACH JOB (the Chairman, 14 Oct 2026: "the total contract,
+     what Getachew buys for it, the m² we pay the installers 780 — so it
+     shows the net on that job"). Worked out by the script
+     (apps-script/JobMoney.js → /jobmoney/summary); drawn here, lowest net
+     first, and what each job is still waiting for. */
+  function watchJobMoney(into) {
+    onSnapshot(doc(db, 'jobmoney', 'summary'), function (d) {
+      drawJobMoney(into, d.exists() ? d.data() : null);
+    }, failInto(into));
+  }
+  function drawJobMoney(into, sum) {
+    into.innerHTML = '';
+    var rows = (sum && sum.rows) || [];
+    if (!rows.length) { into.appendChild(el('p', 'codenote', t('jmNone'))); return; }
+    var rate = (sum && sum.rate) || 780;
+    into.appendChild(el('p', 'codenote', t('jmNote').replace('{rate}', birr(rate))));
+    var full = rows.filter(function (r) { return r.net != null; });
+    if (full.length) {
+      var tn = 0, tc = 0;
+      full.forEach(function (r) { tn += r.net; tc += r.contract; });
+      into.appendChild(el('p', 'jmtotal', t('jmTotal').replace('{n}', full.length).replace('{net}', birr(tn))
+        .replace('{ct}', birr(tc)).replace('{pct}', tc ? String(Math.round(tn / tc * 1000) / 10) : '—')));
+    }
+    rows.forEach(function (r) {
+      var card = el('div', 'jmrow' + (r.net == null ? ' wait' : r.net < 0 ? ' bad' : ''));
+      var head = el('div', 'jmhead');
+      head.appendChild(el('span', 'jmcode', r.code + (r.cust ? ' · ' + r.cust : '')));
+      head.appendChild(el('span', 'jmnet', r.net == null ? '—'
+        : t('jmNet') + ' ' + birr(r.net) + (r.netPct != null ? ' (' + r.netPct + '%)' : '')));
+      card.appendChild(head);
+      var parts = [];
+      if (r.contract != null) parts.push(t('jmContract') + ' ' + birr(r.contract));
+      if (r.material != null) parts.push(t('jmMaterials') + ' ' + birr(r.material) + ' (' + (r.materialFrom === 'bought' ? t('jmBought') : t('jmPlanned')) + ')');
+      if (r.installers != null) {
+        var m2t = (r.m2Made && r.m2Left) ? t('jmMadeLeft').replace('{made}', r.m2Made).replace('{left}', r.m2Left) + ' = ' + r.m2 : String(r.m2);
+        parts.push(t('jmInstallers') + ' ' + m2t + ' m² × ' + birr(rate) + ' = ' + birr(r.installers));
+      }
+      if (parts.length) card.appendChild(el('div', 'jmparts', parts.join(' · ')));
+      var w = (r.waitFor || []).map(function (k) { return t(k === 'contract' ? 'jmWaitContract' : k === 'material' ? 'jmWaitMaterial' : 'jmWaitM2'); });
+      if (w.length) card.appendChild(el('div', 'jmwait', t('jmWait') + ': ' + w.join(' · ')));
+      into.appendChild(card);
     });
   }
 

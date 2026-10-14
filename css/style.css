@@ -705,6 +705,17 @@ fieldset legend .lgc.full::before{content:'✓ '}
 .prtally{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 4px}
 .prtl{font-size:13px;padding:3px 9px;border-radius:999px;background:var(--teal-bg);color:var(--teal-hi);border:1px solid var(--teal-line)}
 .prtl.bad{background:var(--coral-bg);color:var(--coral);border-color:var(--coral-line)}
+/* the net on each job (chairman.js drawJobMoney) */
+.chjm{display:grid;gap:8px}
+.jmtotal{font-size:13.5px;color:var(--ink);margin:0 0 2px}
+.jmrow{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r);padding:10px 12px;display:grid;gap:4px}
+.jmhead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;align-items:baseline}
+.jmcode{font-weight:700;color:var(--ink)}
+.jmnet{font-weight:700;color:var(--teal-hi);font-variant-numeric:tabular-nums}
+.jmrow.bad .jmnet{color:var(--coral)}
+.jmrow.wait .jmnet{color:var(--dim)}
+.jmparts{font-size:13px;color:var(--ink-2,var(--ink));font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.jmwait{font-size:12.5px;color:var(--coral)}
 .prday{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r);padding:10px 12px;display:grid;gap:6px}
 .prhead{font-weight:700;font-size:14px}
 .prplan{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
@@ -791,6 +802,8 @@ fieldset legend .lgc.full::before{content:'✓ '}
 .reprow{background:var(--card-2);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px 6px}
 .reprowhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
 .reprowhead .idx{color:var(--teal-hi)}
+/* a job carried from an earlier report: its code is the row's heading (carry) */
+.reprowhead .idx.carried{font-size:15px;letter-spacing:.02em;text-transform:none;color:var(--ink);padding:6px 0 2px}
 .reprowhead .rm{
   min-width:44px;height:44px;display:flex;align-items:center;justify-content:center;
   border:0;border-radius:var(--r-xs);background:transparent;color:var(--dim);cursor:pointer;font-size:20px;

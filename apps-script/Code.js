@@ -114,6 +114,11 @@ function doPost(e) {
   }
   delete row.idToken;
   if (!poster || poster === 'ledger') return ContentService.createTextOutput('refused');
+  /* an office check-in, passed on by the WhatsApp agent with the address it
+     came from (Attend.js) */
+  if (row.kind === 'attend') {
+    return ContentService.createTextOutput(attendPost_(row, poster));
+  }
   /* a question from the Chairman's page (Ask.js) — his, and nobody else's */
   if (row.kind === 'ask') {
     return ContentService.createTextOutput(poster === 'chairman' ? askPost_(row.k) : 'refused');

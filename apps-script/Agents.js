@@ -778,6 +778,8 @@ var AGENTS = [
       factory_late: a_(amaha, 'mp_late'),
       factory_attendance_pct: pctOf_(present, assigned),
       factory_behaviour_issues: a_(amaha, 'mp_behave'),
+      /* the office staff's check-in at the door (Attend.js) */
+      office_checkins: (function () { try { return attendFacts_(d.day).today; } catch (e) { return null; } })(),
       site_assemblers_present: a_(elyas, 'a_present'),
       site_assemblers_late: a_(elyas, 'a_late'),
       site_left_early: a_(elyas, 'a_early'),

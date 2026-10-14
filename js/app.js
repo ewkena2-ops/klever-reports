@@ -1445,6 +1445,170 @@
     return wrap;
   }
 
+  /* ---------------- office check-in at the door ----------------
+
+     The user, 14 Oct 2026: office staff scan a QR code at the office door
+     when they arrive, on Klever's WiFi only (apps-script/Attend.js). The QR
+     opens this site with ?scan=office; the phone is signed in already, so
+     the scan goes — with the person's sign-in — to the WhatsApp agent, the
+     one server that sees which internet the phone came from; it passes the
+     scan to the script, which says yes or no. Late after 8:00 AM. No scan,
+     or late: this card asks why; nothing is taken from pay. */
+  var ATTEND_URL = 'https://whatsapp-agent-production-bcc8.up.railway.app/attend';
+  var AT_LATE = 8 * 60;
+  var AT_WHY_NOSCAN = ['visit', 'sick', 'leave', 'forgot', 'holiday', 'other'];
+  var AT_WHY_LATE = ['transport', 'visit', 'leave', 'other'];
+  var atScanDone = false;
+
+  function atScanAsked() {
+    return /^(office|1)$/.test(new URLSearchParams(location.search).get('scan') || '');
+  }
+  /* the result of a scan, at the top of the page; the address bar loses
+     ?scan= so a reload does not scan again */
+  function atScanCard() {
+    var box = el('div');
+    if (!atScanAsked() || atScanDone || !window.FB || !window.FB.live()) return box;
+    atScanDone = true;
+    box.className = 'ins atscan';
+    try {
+      var q = new URLSearchParams(location.search);
+      q.delete('scan');
+      history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash);
+    } catch (e) {}
+    box.appendChild(el('div', 'inst', t('atChecking')));
+    function show(kind, text, sub) {
+      box.innerHTML = '';
+      box.className = 'ins atscan ' + kind;
+      box.appendChild(el('div', 'atbig', text));
+      if (sub) box.appendChild(el('div', 'atsub', sub));
+    }
+    window.FB.token().then(function (tok) {
+      if (!tok) throw { why: 'signin' };
+      return fetch(ATTEND_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                 body: JSON.stringify({ idToken: tok }) });
+    }).then(function (r) {
+      return r.json()['catch'](function () { return { ok: false, why: 'unavailable' }; });
+    }).then(function (a) {
+      if (a.ok && a.chairman) return show('good', t('atChairOk'), tfill_('atAddr', { ip: a.ip || '—' }));
+      if (a.ok && a.already) return show(a.late ? 'late' : 'good', tfill_('atAlready', { at: a.at }));
+      if (a.ok) {
+        return a.late ? show('late', tfill_('atLate', { at: a.at, m: a.minsLate }), t('atLateWhy'))
+                      : show('good', tfill_('atOnTime', { at: a.at }));
+      }
+      var w = a.why || 'unavailable';
+      var msg = { 'not-wifi': 'atNotWifi', 'no-wifi-set': 'atNoWifiSet', sunday: 'atSunday', 'not-office': 'atNotOffice',
+                  signin: 'atSignIn' }[w] || 'atFailed';
+      show('bad', t(msg), a.ip ? tfill_('atAddr', { ip: a.ip }) : '');
+    }, function (e) {
+      show('bad', t(e && e.why === 'signin' ? 'atSignIn' : 'atFailed'));
+    });
+    return box;
+  }
+
+  /* the person's own days: today, and the working days of the week before
+     that have no scan and no reason yet */
+  var stopAt = null;
+  function attendCard(p) {
+    if (stopAt) { try { stopAt(); } catch (e) {} stopAt = null; }
+    var wrap = el('div', 'atcard');
+    if (!p || !p.scan || AUTH.isChairman() || !window.FB || !window.FB.live() || !window.FB.watchMyAttend) return wrap;
+    var from = typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-15';
+    stopAt = window.FB.watchMyAttend(addDays(stamp(), -7), function (docs) {
+      var by = {};
+      docs.forEach(function (d) { by[d.day] = d; });
+      wrap.innerHTML = '';
+      var today = stamp();
+      var a = addis(), nowMin = a.getUTCHours() * 60 + a.getUTCMinutes();
+      var rows = [];
+      for (var i = 7; i >= 1; i--) {
+        var d = addDays(today, -i);
+        if (d < from || (p.from && d < p.from) || dowOf(d) === 0) continue;
+        var x = by[d];
+        if (x && (x.why || (x.scanAt && !x.late))) continue;
+        rows.push(atDay(d, x, false));
+      }
+      if (today >= from && dowOf(today) !== 0 && (!p.from || today >= p.from)) rows.push(atDay(today, by[today], true, nowMin));
+      if (!rows.length) return;
+      wrap.appendChild(el('h2', 'eyebrow', t('atTitle')));
+      rows.forEach(function (r) { wrap.appendChild(r); });
+    });
+    return wrap;
+  }
+  function atDay(day, x, isToday, nowMin) {
+    var box = el('div', 'ins at');
+    var label = isToday ? t('atToday') : dayLabel(day);
+    if (x && x.scanAt && !x.late) {
+      box.className = 'ins at good';
+      box.appendChild(el('div', 'inst', label + ' · ' + tfill_('atOnTime', { at: x.hm })));
+      return box;
+    }
+    if (x && x.scanAt && x.late) {
+      box.className = 'ins at late';
+      box.appendChild(el('div', 'inst', label + ' · ' + tfill_('atLate', { at: x.hm, m: x.minsLate })));
+      if (x.why) box.appendChild(el('div', 'atsub', t('atWhyIs') + ' ' + atWhyText(x.why, x.note)));
+      else box.appendChild(atAsk(day, true, x));
+      return box;
+    }
+    if (isToday && nowMin <= AT_LATE && !(x && x.why)) {
+      box.appendChild(el('div', 'inst', label + ' · ' + t('atScanHow')));
+      return box;
+    }
+    box.className = 'ins at missing';
+    box.appendChild(el('div', 'inst', label + ' · ' + t('atNoScan')));
+    if (x && x.why) box.appendChild(el('div', 'atsub', t('atWhyIs') + ' ' + atWhyText(x.why, x.note)));
+    else {
+      if (isToday) box.appendChild(el('div', 'atsub', t('atScanOrSay')));
+      box.appendChild(atAsk(day, false, x));
+    }
+    return box;
+  }
+  function atWhyText(why, note) {
+    return t('atWhy_' + why) + (note ? ' — ' + note : '');
+  }
+  /* the reasons, a tap each; a few words for "Other" */
+  function atAsk(day, late, x) {
+    var f = el('div', 'atask');
+    var picks = el('div', 'atpicks');
+    var chosen = null;
+    var note = el('input', 'mfbox atnote');
+    note.type = 'text';
+    note.maxLength = 300;
+    note.placeholder = t('atNote');
+    note.setAttribute('aria-label', t('atNote'));
+    var go = el('button', 'pushbtn insgo', t('atSend'));
+    go.type = 'button';
+    go.disabled = true;
+    function check() { go.disabled = !chosen || (chosen === 'other' && !note.value.trim()); }
+    (late ? AT_WHY_LATE : AT_WHY_NOSCAN).forEach(function (w) {
+      var b = el('button', 'mfpick', t('atWhy_' + w));
+      b.type = 'button';
+      b.onclick = function () {
+        chosen = w;
+        Array.prototype.forEach.call(picks.children, function (c) { c.classList.toggle('on', c === b); });
+        check();
+      };
+      picks.appendChild(b);
+    });
+    note.oninput = check;
+    go.onclick = function () {
+      if (go.disabled) return;
+      go.disabled = true;
+      window.FB.saveAttendWhy(day, chosen, note.value.trim(), !!x).then(function () {
+        toast(t('atThanks'));
+      }, function () {
+        go.disabled = false;
+        toast(t('atSendFailed'));
+      });
+    };
+    f.appendChild(el('div', 'atq', t(late ? 'atWhyLate' : 'atWhyNoScan')));
+    f.appendChild(picks);
+    f.appendChild(note);
+    var bar = el('div', 'insbox');
+    bar.appendChild(go);
+    f.appendChild(bar);
+    return f;
+  }
+
   /* What only Selam knows, for the payroll: overtime hours, loans, salary
      advances, cost sharing, court deductions (the user, 14 Oct 2026: "on
      Selam's page, by the 5th"). One card for each month still open — this
@@ -1773,6 +1937,8 @@
     }
     document.title = t('siteTitle');
     root.innerHTML = '';
+    /* the Chairman scanning the door's QR: is this phone on Klever's WiFi? */
+    root.appendChild(atScanCard());
     var st = standing(null);
     root.appendChild(el('h1', 'vh', t('siteTitle')));
     root.appendChild(deck(null, st));
@@ -1869,7 +2035,9 @@
     }
 
     var st = standing(p.id);
+    root.appendChild(atScanCard());
     root.appendChild(deck(p, st));
+    root.appendChild(attendCard(p));
     root.appendChild(moneyFixCard());
     root.appendChild(payrollCard());
     root.appendChild(payAddCard());

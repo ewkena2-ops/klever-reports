@@ -295,6 +295,25 @@
       }, function () { cb([]); });
       });
     },
+    /* My check-ins at the office door from a day on (apps-script/Attend.js):
+       cb(docs). The scans are the script's; my reasons are mine. */
+    watchMyAttend: function (fromDay, cb) {
+      return later(function () {
+      if (!user) return null;
+      return F.onSnapshot(F.query(F.collection(db, 'attend'), F.where('person', '==', idOf(user))), function (snap) {
+        var out = [];
+        snap.forEach(function (d) { var x = d.data({ serverTimestamps: 'estimate' }); x.id = d.id; if (x.day >= fromDay) out.push(x); });
+        cb(out);
+      }, function () { cb([]); });
+      });
+    },
+    /* Why I did not scan, or came late, for one day */
+    saveAttendWhy: function (day, why, note, exists) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      var me = idOf(user), ref = F.doc(db, 'attend', day + '_' + me);
+      var x = { why: why, note: String(note || '').slice(0, 300), whyAt: F.serverTimestamp() };
+      return exists ? F.updateDoc(ref, x) : F.setDoc(ref, Object.assign({ person: me, day: day }, x));
+    },
     /* The payroll months still open for what only Selam knows — overtime,
        loans, advances, cost sharing, court (apps-script/Payroll.js):
        cb(docs). Refused for anyone else by the rules: []. */

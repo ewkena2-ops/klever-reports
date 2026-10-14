@@ -510,6 +510,34 @@ input.mustgap,textarea.mustgap,select.mustgap{
 .mfpick:hover{border-color:var(--teal-line)}
 .mfpick:active{background:var(--teal-bg)}
 .mfbox{flex:1 1 140px;min-width:0;min-height:42px;font-family:var(--mono)}
+/* office check-in at the door (app.js atScanCard / attendCard, Attend.js) */
+.atscan.good::before,.ins.at.good::before{background:var(--teal-hi)}
+.atscan.late::before,.ins.at.late::before{background:var(--gold)}
+.atscan.bad::before,.ins.at.missing::before{background:var(--coral)}
+.atbig{font-family:var(--serif);font-size:20px;line-height:1.35;color:var(--ink)}
+.atscan.good .atbig{color:var(--teal-hi)}
+.atscan.bad .atbig{color:var(--coral)}
+.atsub{font-size:13.5px;color:var(--ink-2);margin-top:6px;line-height:1.45;overflow-wrap:anywhere}
+.atcard{display:block}
+.atask{margin-top:10px;display:grid;gap:8px}
+.atq{font-weight:700;font-size:14px;color:var(--ink)}
+.atpicks{display:flex;flex-wrap:wrap;gap:6px}
+.atpicks .mfpick.on{background:var(--teal-bg);border-color:var(--teal-hi);color:var(--ink)}
+.atnote{width:100%;box-sizing:border-box;font-family:var(--sans)}
+.chattend{display:grid;gap:8px}
+.atwifi{display:grid;gap:8px}
+.atwifi .mfpick{justify-self:start}
+.atfail{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line-2);border-radius:var(--r);padding:10px 12px}
+.atfailtxt{flex:1 1 220px;min-width:0;font-size:13px;color:var(--ink);overflow-wrap:anywhere}
+.atfail .pushbtn,.atwifi .pushbtn{margin:0}
+.atthis.armed,.atwifi .mfpick.armed{outline:2px solid var(--coral);outline-offset:2px}
+.atcounts{font-size:13.5px;color:var(--mut);margin:0}
+.atrow .chfv.at{white-space:normal;text-align:right;overflow-wrap:anywhere}
+.atrow .chfv.at.good{color:var(--teal-hi)}
+.atrow .chfv.at.late{color:var(--gold)}
+.atrow .chfv.at.none{color:var(--coral)}
+.atperson>summary{cursor:pointer;padding:6px 0;color:var(--ink);font-size:13.5px}
+.atline{font-size:12.5px;color:var(--mut);padding:2px 0 2px 12px;overflow-wrap:anywhere}
 .insgo:disabled{opacity:.45;cursor:default}
 .ins.mf.done::before{background:var(--teal-hi)}
 .ins.mf.done .inst{font-family:var(--sans);font-size:15px;color:var(--teal-hi)}

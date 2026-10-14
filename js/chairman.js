@@ -435,6 +435,12 @@ import {
     var pyBox = el('div', 'chpy');
     pyBox.appendChild(el('p', 'codenote', t('chLoading')));
     root.appendChild(pyBox);
+
+    /* --- office staff checking in at the door, on Klever's WiFi (apps-script/Attend.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('atChTitle')));
+    var atBox = el('div', 'chattend');
+    atBox.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(atBox);
     var record = el('div', 'chrecord');
     root.appendChild(record);
 
@@ -497,6 +503,7 @@ import {
     watchInstructions(ins);
     watchCharges({ fines: charges, bonus: bonusBox, pay: payBox }, tOwed, tBonus);
     watchPayroll(pyBox);
+    watchAttend(atBox);
     watchStanding(standing);
     watchEvents(record);
     watchWeek(week, cfo, hr, legal, opsBox, specialists);
@@ -636,6 +643,156 @@ import {
       if (w.length) card.appendChild(el('div', 'jmwait', t('jmWait') + ': ' + w.join(' · ')));
       into.appendChild(card);
     });
+  }
+
+  /* OFFICE CHECK-IN (the user, 14 Oct 2026: "a QR code; when they scan it
+     they are marked as attended, but they have to use Klever's WiFi").
+     The scans are written by the script (apps-script/Attend.js); the reasons
+     by the people. Here: today, this month, and the office WiFi — the
+     address set, and the scans that came from another one, with one tap to
+     say "that is our WiFi" (the first morning sets it up this way). */
+  function watchAttend(into) {
+    var from = typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-15';
+    var monthStart = DAY.slice(0, 8) + '01';
+    var since = monthStart < from ? from : monthStart;
+    var st = { docs: null, fails: null, wifi: undefined };
+    function draw() { if (st.docs && st.fails && st.wifi !== undefined) drawAttend(into, st, since); }
+    onSnapshot(query(collection(db, 'attend'), where('day', '>=', since)), function (snap) {
+      st.docs = [];
+      snap.forEach(function (d) { st.docs.push(d.data({ serverTimestamps: 'estimate' })); });
+      draw();
+    }, failInto(into));
+    onSnapshot(query(collection(db, 'attendfail'), where('day', '>=', addDays(DAY, -6))), function (snap) {
+      st.fails = [];
+      snap.forEach(function (d) { st.fails.push(d.data({ serverTimestamps: 'estimate' })); });
+      draw();
+    }, failInto(into));
+    onSnapshot(doc(db, 'attendwifi', 'office'), function (d) {
+      st.wifi = d.exists() ? d.data({ serverTimestamps: 'estimate' }) : null;
+      draw();
+    }, failInto(into));
+  }
+  function atWho(id) {
+    var p = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (x) { return x.id === id; })[0];
+    return id === 'chairman' ? t('atYou') : p ? L(p) : id;
+  }
+  function atWhyText(why, note) { return (t('atWhy_' + why) || why) + (note ? ' — ' + note : ''); }
+  function drawAttend(into, st, since) {
+    into.innerHTML = '';
+    var people = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.scan && !p.company; });
+    var by = {};
+    st.docs.forEach(function (d) { (by[d.day] = by[d.day] || {})[d.person] = d; });
+    var from = typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-15';
+
+    /* the WiFi */
+    var ips = (st.wifi && st.wifi.ips) || [];
+    var wifi = el('div', 'atwifi');
+    wifi.appendChild(el('p', ips.length ? 'codenote' : 'pywarn', ips.length ? tfill('atWifiIs', { ip: ips.join(', ') }) : t('atWifiNone')));
+    ips.forEach(function (ip) {
+      var rm = el('button', 'mfpick', tfill('atWifiRemove', { ip: ip }));
+      rm.type = 'button';
+      twoTaps(rm, function () { return atSetWifi(ips.filter(function (x) { return x !== ip; })); });
+      wifi.appendChild(rm);
+    });
+    var tried = {};
+    st.fails.forEach(function (f) {
+      if (!f.ip || ips.indexOf(f.ip) !== -1) return;
+      (tried[f.ip] = tried[f.ip] || []).push(f);
+    });
+    Object.keys(tried).sort(function (a, b) { return tried[b].length - tried[a].length; }).forEach(function (ip) {
+      var row = el('div', 'atfail');
+      var who = tried[ip].sort(function (a, b) { return a.day < b.day ? 1 : -1; })
+        .map(function (f) { return atWho(f.person) + ' ' + (f.day === DAY ? f.hm : prettyDay(f.day) + ' ' + f.hm); });
+      row.appendChild(el('div', 'atfailtxt', tfill('atTried', { ip: ip, n: tried[ip].length, who: who.join(', ') })));
+      var ok = el('button', 'pushbtn atthis', t('atThisWifi'));
+      ok.type = 'button';
+      twoTaps(ok, function () { return atSetWifi([ip].concat(ips).slice(0, 4)); });
+      row.appendChild(ok);
+      wifi.appendChild(row);
+    });
+    into.appendChild(wifi);
+
+    if (DAY < from) {
+      /* before the first counted day: the scans so far, as a test — nobody is asked why */
+      into.appendChild(el('p', 'codenote', tfill('atStarts', { day: prettyDay(from) })));
+      people.forEach(function (p) {
+        var x = (by[DAY] || {})[p.id];
+        if (!x || !x.scanAt) return;
+        var r = el('div', 'chf atrow');
+        r.appendChild(el('span', 'chfk', L(p)));
+        r.appendChild(el('span', 'chfv at ' + (x.late ? 'late' : 'good'), x.late ? tfill('atLateShort', { at: x.hm, m: x.minsLate }) : '✓ ' + x.hm));
+        into.appendChild(r);
+      });
+      return;
+    }
+
+    /* today */
+    var sunday = new Date(DAY + 'T12:00:00Z').getUTCDay() === 0;
+    into.appendChild(el('p', 'skysub', t('atTodayHead') + ' · ' + prettyDay(DAY)));
+    if (sunday) into.appendChild(el('p', 'codenote', t('atSundayNote')));
+    else {
+      var counts = { on: 0, late: 0, none: 0 }, list = el('div', 'atlist');
+      people.filter(function (p) { return !p.from || p.from <= DAY; }).forEach(function (p) {
+        var d = (by[DAY] || {})[p.id] || {};
+        var r = el('div', 'chf atrow');
+        r.appendChild(el('span', 'chfk', L(p)));
+        var s, cls;
+        if (d.scanAt && !d.late) { s = '✓ ' + d.hm; cls = 'good'; counts.on++; }
+        else if (d.scanAt) { s = tfill('atLateShort', { at: d.hm, m: d.minsLate }); cls = 'late'; counts.late++; }
+        else { s = t('atNoScanShort'); cls = 'none'; counts.none++; }
+        if (d.why) s += ' · ' + atWhyText(d.why, d.note);
+        r.appendChild(el('span', 'chfv at ' + cls, s));
+        list.appendChild(r);
+      });
+      into.appendChild(el('p', 'atcounts', tfill('atCounts', { on: counts.on, late: counts.late, none: counts.none })));
+      into.appendChild(list);
+    }
+
+    /* this month */
+    var days = [];
+    for (var d = since; d <= DAY; d = addDays(d, 1)) if (new Date(d + 'T12:00:00Z').getUTCDay() !== 0) days.push(d);
+    if (!days.length) return;
+    var det = el('details', 'chmonth atmonth');
+    det.appendChild(el('summary', null, tfill('atMonth', { day: prettyDay(since) })));
+    people.forEach(function (p) {
+      var on = 0, late = 0, none = 0, lines = [];
+      days.forEach(function (day) {
+        if (p.from && day < p.from) return;
+        var x = (by[day] || {})[p.id] || {};
+        if (x.scanAt && !x.late) { on++; return; }
+        if (day === DAY && !x.scanAt && !x.why) return;          /* today is not over */
+        if (x.scanAt) late++; else none++;
+        lines.push(prettyDay(day) + ': ' + (x.scanAt ? tfill('atLateShort', { at: x.hm, m: x.minsLate }) : t('atNoScanShort')) +
+                   ' — ' + (x.why ? atWhyText(x.why, x.note) : t('atNoReason')));
+      });
+      var row = el('details', 'atperson');
+      row.appendChild(el('summary', null, L(p) + ' · ' + tfill('atCounts', { on: on, late: late, none: none })));
+      lines.forEach(function (l) { row.appendChild(el('div', 'atline', l)); });
+      det.appendChild(row);
+    });
+    into.appendChild(det);
+  }
+  function atSetWifi(ips) {
+    return setDoc(doc(db, 'attendwifi', 'office'), { ips: ips, setAt: serverTimestamp(), setBy: 'chairman' });
+  }
+  /* a tap asks again; the second does it */
+  function twoTaps(b, act) {
+    var label = b.textContent, armed = 0;
+    b.onclick = function () {
+      if (b.disabled) return;
+      if (!armed) {
+        armed = setTimeout(function () { armed = 0; b.textContent = label; b.classList.remove('armed'); }, 5000);
+        b.textContent = t('atSure');
+        b.classList.add('armed');
+        return;
+      }
+      clearTimeout(armed); armed = 0;
+      b.disabled = true;
+      Promise.resolve().then(act).then(null, function (e) {
+        b.disabled = false; b.textContent = label; b.classList.remove('armed');
+        alert(t('atSetFailed') + ' ' + ((e && e.message) || e));
+      });
+    };
   }
 
   /* THE PAYROLL (the user, 14 Oct 2026: "since we have every payment, can

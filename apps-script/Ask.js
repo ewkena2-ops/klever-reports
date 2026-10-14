@@ -378,6 +378,7 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
     cfo_last_week: cfo,
     hr_last_week: hr,
     legal_check_last_week: legal,
+    payroll: askPayroll_(),
     operations_last_week: opsW,
     specialists_last_week: spec,
     last_week_summary: lastWeek ? { week_ending: lastWeek.end, text: lastWeek.text } : null,
@@ -388,6 +389,12 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
     recent_daily_briefs: briefsIn_(P).slice(-3),
     chairman_instructions_past_their_date: instructionsIn_(P).still_open_past_their_date
   };
+}
+
+/* last month's payroll and this month's so far (Payroll.js) */
+function askPayroll_() {
+  try { return typeof prAskFacts_ === 'function' ? prAskFacts_() : null; }
+  catch (e) { Logger.log('ask payroll: %s', e.message); return null; }
 }
 
 function askPrompt_(q, ctx) {

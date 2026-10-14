@@ -602,6 +602,48 @@ service cloud.firestore {
       allow delete: if false;
     }
     /* ---------------------------------------------------------------- *
+     *  The payroll (apps-script/Payroll.js)                              *
+     * ---------------------------------------------------------------- *
+     *  The user, 14 Oct 2026: the HR agent does the payroll; the
+     *  Chairman approves it; then Selam (betty) is given it to pay. One
+     *  document a month, written by the script. He may only approve a
+     *  month that is final, as himself, at the server's time — nothing
+     *  else in it changes. Selam reads a month once it is approved. */
+    match /payroll/{month} {
+      allow get, list: if isChairman() || isLedger()
+                       || (signedIn() && me() == 'betty' && resource.data.status == 'approved');
+      allow create: if isLedger();
+      allow update: if isLedger()
+                    || (isChairman()
+                        && resource.data.status == 'ready'
+                        && request.resource.data.status == 'approved'
+                        && request.resource.data.approvedBy == 'chairman'
+                        && request.resource.data.approvedAt == request.time
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['status', 'approvedBy', 'approvedAt']));
+      allow delete: if false;
+    }
+    /* What only Selam knows for a month's payroll — overtime hours, loans,
+       salary advances, cost sharing, court deductions (the user, 14 Oct
+       2026: "on Selam's page, by the 5th"). The script makes the month's
+       document, with the people she may name, and shuts it (open false)
+       before it reads it for the final payroll; until then she — or the
+       Chairman — changes only its items, as themselves, at the server's
+       time. */
+    match /payadd/{month} {
+      allow get, list: if isChairman() || isLedger() || (signedIn() && me() == 'betty');
+      allow create: if isLedger();
+      allow update: if isLedger()
+                    || ((isChairman() || (signedIn() && me() == 'betty'))
+                        && resource.data.open == true
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items', 'by', 'at'])
+                        && request.resource.data.items is map
+                        && request.resource.data.items.size() <= 80
+                        && request.resource.data.by == me()
+                        && request.resource.data.at == request.time);
+      allow delete: if false;
+    }
+    /* ---------------------------------------------------------------- *
      *  Collections that do not match (apps-script/Money.js)              *
      * ---------------------------------------------------------------- *
      *  The Chairman, 13 Oct 2026: when Ephrata's collections and the

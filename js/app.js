@@ -1123,6 +1123,472 @@
   function tfill_(k, o) { return t(k).replace(/\{(\w+)\}/g, function (m, n) { return o[n] != null ? o[n] : m; }); }
   function personName_(id) { var p = PEOPLE.filter(function (x) { return x.id === id; })[0]; return p ? L(p).split(' ')[0] : id; }
 
+  /* ---------------- the payroll ----------------
+
+     The user, 14 Oct 2026: the HR agent does the payroll; the Chairman
+     approves it; then Selam is given it to pay (apps-script/Payroll.js) —
+     made the way Klever's own payroll sheet makes it: gross, overtime,
+     transport, tax, pension, the deductions, net. One view for both pages:
+     his, with Approve; hers, once approved, with the Excel she pays from.
+     Every figure is the script's — only the words are made here. */
+  function birr2(n) {
+    return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function monthLabel_(ym) {
+    return (lang === 'am' ? MONTHS_AM : MONTHS_EN)[Number(ym.slice(5, 7)) - 1] + ' ' + ym.slice(0, 4);
+  }
+  function payrollView(doc, opts) {
+    opts = opts || {};
+    var wrap = el('div', 'pywrap');
+    var tt = doc.totals || {};
+    var head = el('div', 'pyhead');
+    head.appendChild(el('span', 'pymonth', monthLabel_(doc.month)));
+    var st;
+    if (doc.status === 'approved') {
+      var at = doc.approvedAt && doc.approvedAt.toDate ? doc.approvedAt.toDate() : null;
+      st = t('pyApproved') + (at ? ' · ' + dayLabel(addis(at.getTime()).toISOString().slice(0, 10)) : '');
+    } else if (doc.status === 'ready') st = t(opts.approve ? 'pyReady' : 'pyReadyStaff');
+    else st = tfill_('pySoFar', { day: doc.upTo ? dayLabel(doc.upTo) : '—' });
+    head.appendChild(el('span', 'pystate ' + (doc.status || ''), st));
+    wrap.appendChild(head);
+    wrap.appendChild(el('p', 'pytotal', tfill_('pyPaidTo', { n: tt.people || 0, pay: birr2(tt.net) })));
+    wrap.appendChild(el('p', 'pyparts', tfill_('pyParts', {
+      gross: birr2(tt.grossPay), tax: birr2(tt.tax), p7: birr2(tt.pension7), pen: birr2(tt.penalty) })));
+    wrap.appendChild(el('p', 'pyparts', tfill_('pyCost11', { p11: birr2(tt.pension11), cost: birr2(tt.cost11) })));
+    if (tt.carryOut > 0) wrap.appendChild(el('p', 'pyparts', tfill_('pyCarry', { v: birr2(tt.carryOut) })));
+    var rows = doc.rows || [];
+    var missing = rows.filter(function (r) { return r.noWage; }).map(function (r) { return r.name; });
+    if (missing.length) wrap.appendChild(el('p', 'pywarn', tfill_('pyNoWage', { names: missing.join(', ') })));
+    if (doc.status === 'sofar') wrap.appendChild(el('p', 'codenote', t('pyNotFinal')));
+    wrap.appendChild(el('p', 'codenote', t('pyHow')));
+
+    var acts = el('div', 'pyacts');
+    if (opts.approve && doc.status === 'ready') {
+      /* two taps: a month's pay is not approved by a brush of the thumb */
+      var ok = el('button', 'pushbtn pyapprove');
+      ok.type = 'button';
+      var label = function () { ok.textContent = tfill_('pyApprove', { pay: birr2(tt.net), n: tt.people || 0 }); ok.classList.remove('armed'); };
+      label();
+      var armed = 0;
+      ok.onclick = function () {
+        if (ok.disabled) return;
+        if (!armed) {
+          armed = setTimeout(function () { armed = 0; label(); }, 5000);
+          ok.textContent = t('pyApproveSure');
+          ok.classList.add('armed');
+          return;
+        }
+        clearTimeout(armed); armed = 0;
+        ok.disabled = true;
+        ok.classList.remove('armed');
+        ok.textContent = t('pyApproving');
+        Promise.resolve().then(function () { return opts.approve(doc.month); }).then(null, function (e) {
+          ok.disabled = false;
+          label();
+          toast(tfill_('pyApproveFail', { e: (e && e.message) || String(e) }));
+        });
+      };
+      acts.appendChild(ok);
+    }
+    var xl = el('button', 'pushbtn pyxl', t('pyExcel'));
+    xl.type = 'button';
+    xl.onclick = function () { payrollExcel(doc); };
+    acts.appendChild(xl);
+    wrap.appendChild(acts);
+
+    rows.forEach(function (r) {
+      var det = el('details', 'pyrow' + (r.noWage ? ' nowage' : r.carryOut > 0 ? ' over' : ''));
+      var sum = el('summary');
+      sum.appendChild(el('span', 'pyname', r.name));
+      sum.appendChild(el('span', 'pypay', r.noWage ? t('pyNoWageRow') : birr2(r.net)));
+      det.appendChild(sum);
+      function line(k, v, cls) {
+        var d = el('div', 'pyline' + (cls ? ' ' + cls : ''));
+        d.appendChild(el('span', 'pyk', k));
+        d.appendChild(el('span', 'pyv', v));
+        det.appendChild(d);
+      }
+      var role = [r.role, r.payOnly ? t('pyPayOnly') : '', r.noLetter ? t('pyNoLetter') : '',
+                  r.account ? t('pyAccount') + ' ' + r.account : t('pyNoAccount')].filter(Boolean).join(' · ');
+      det.appendChild(el('div', 'pyrole', role));
+      if (!r.noWage) {
+        line(t('pyBasic'), birr2(r.gross) + (r.days < 30 ? ' → ' + tfill_('pyDaysOf', { d: r.days }) + ' = ' + birr2(r.basic) : ''));
+        if (r.overtime) {
+          var hrs = [['ot15', '×1.5'], ['ot175', '×1.75'], ['ot2', '×2'], ['ot25', '×2.5']].filter(function (k) { return r.ot && r.ot[k[0]]; })
+            .map(function (k) { return tfill_('pyHours', { h: r.ot[k[0]] }) + ' ' + k[1]; }).join(', ');
+          line(t('pyOvertime'), hrs + ' = +' + birr2(r.overtime), 'plus');
+        }
+        line(t('pyTransport'), '+' + birr2(r.transport));
+      }
+      if (r.bonuses) line(t('pyBonuses'), '+' + birr2(r.bonuses), 'plus');
+      if (!r.noWage) line(t('pyGrossPay'), birr2(r.grossPay), 'sub');
+      if (r.absentDays) {
+        line(t('pyAbsent'), (r.absentDays === 1 ? t('pyDay1') : tfill_('pyDays', { n: r.absentDays })) +
+          ' (' + (r.absentOn || []).map(dayLabel).join(', ') + ')' + (r.noWage ? '' : ' −' + birr2(r.absentAmount)), 'minus');
+      }
+      if (!r.noWage) {
+        line(t('pyTax'), '−' + birr2(r.tax), 'minus');
+        if (r.pension7) line(t('pyPension7'), '−' + birr2(r.pension7), 'minus');
+        [['cost', 'pyCostShare'], ['loan', 'pyLoan'], ['advance', 'pyAdvance'], ['court', 'pyCourt']].forEach(function (k) {
+          if (r[k[0]]) line(t(k[1]), '−' + birr2(r[k[0]]), 'minus');
+        });
+      }
+      if (r.fines) line(t('pyFines'), birr2(r.fines));
+      if (r.carryIn) line(t('pyCarryIn'), birr2(r.carryIn));
+      if (!r.noWage && (r.fines || r.carryIn)) {
+        line(t('pyTaken'), '−' + birr2(r.penalty) + (r.carryOut > 0 ? ' ' + tfill_('pyCap', { v: birr2(r.cap) }) : ''), 'minus');
+      }
+      if (r.carryOut > 0) line(t('pyCarryOut'), birr2(r.carryOut), 'carry');
+      if (!r.noWage) {
+        line(t('pyPay'), birr2(r.net), 'total');
+        if (r.pension11) line(t('pyKlever11'), birr2(r.pension11), 'note');
+      }
+      wrap.appendChild(det);
+    });
+    return wrap;
+  }
+
+  /* The month as an Excel file, made on the phone, in the columns of
+     Klever's own payroll sheet — with its formulas, so a figure changed by
+     hand works itself through — and the bank transfer list. SheetJS,
+     fetched only when asked for; a CSV of the same lines if it cannot be. */
+  var XLSX_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.mini.min.js';
+  var xlsxLoading = null;
+  function loadXlsx() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (!xlsxLoading) {
+      xlsxLoading = new Promise(function (ok, bad) {
+        var s = document.createElement('script');
+        s.src = XLSX_SRC;
+        s.async = true;
+        s.onload = function () { if (window.XLSX) ok(window.XLSX); else { xlsxLoading = null; bad(new Error('no XLSX')); } };
+        s.onerror = function () { xlsxLoading = null; bad(new Error('could not load')); };
+        document.head.appendChild(s);
+      });
+    }
+    return xlsxLoading;
+  }
+  var PY_HEAD = ['S.N', 'NAME', 'Account No.', 'DAYS', 'BASIC SALARY', 'OT hours ×1.5', 'OT hours ×1.75', 'OT hours ×2',
+                 'OT hours ×2.5', 'OVERTIME AMOUNT', 'Transport Allow.', 'Bonuses & commissions', 'ABSENCE DAYS', 'GROSS SALARY',
+                 'ABSENCE AMOUNT', 'GROSS SALARY TAXABLE', 'INCOME TAX', 'Pension 7%', 'Pension 11% (Klever)', 'COST SHARING',
+                 'LOAN', 'SALARY ADVANCE', 'COURT DED / FAMILY ALLOTMENT', 'PENALTY', 'TOTAL DEDUCTIONS', 'NET PAY',
+                 'Penalty carried to next month', 'Notes'];
+  var PY_MONEY_COLS = [4, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];
+  /* the sheet's own lines: { v, f } a cell; the first three rows a title */
+  function payrollSheet(doc) {
+    var T0 = 5;                                       /* the first person's row, 0-based (Excel row 6) */
+    var cells = [];
+    var title = ['Klever Addis Trade PLC', 'PERMANENT EMPLOYEES PAYROLL SUMMARY',
+                 'FOR THE MONTH OF ' + MONTHS_EN[Number(doc.month.slice(5, 7)) - 1].toUpperCase() + ' ' + doc.month.slice(0, 4) + ' G.C'];
+    title.forEach(function (x) { cells.push([{ v: x }]); });
+    cells.push(PY_HEAD.map(function (h) { return { v: h }; }));
+    cells.push([]);
+    var rows = doc.rows || [];
+    rows.forEach(function (r, i) {
+      var n = T0 + i + 1;                             /* Excel row number */
+      var c = function (col) { return col + n; };
+      if (r.noWage) {
+        cells.push([{ v: i + 1 }, { v: r.name }, { v: r.account || '', s: 1 }, { v: r.days }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' },
+                    { v: '' }, { v: '' }, { v: r.bonuses || 0 }, { v: r.absentDays || 0 }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' },
+                    { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: 0 }, { v: '' }, { v: '' }, { v: r.carryOut || 0 },
+                    { v: 'No salary on record — not paid; penalty carried' }]);
+        return;
+      }
+      var g = r.gross, ot = r.ot || {};
+      var p = r.pension !== false;
+      cells.push([
+        { v: i + 1 }, { v: r.name }, { v: r.account || '', s: 1 }, { v: r.days },
+        { v: r.basic, f: g + '/30*' + c('D') },
+        { v: ot.ot15 || 0 }, { v: ot.ot175 || 0 }, { v: ot.ot2 || 0 }, { v: ot.ot25 || 0 },
+        { v: r.overtime, f: 'ROUND((' + c('F') + '*1.5+' + c('G') + '*1.75+' + c('H') + '*2+' + c('I') + '*2.5)*' + g + '/208,2)' },
+        { v: r.transport, f: '600/30*' + c('D') },
+        { v: r.bonuses || 0 },
+        { v: r.absentDays || 0 },
+        { v: r.grossPay, f: c('E') + '+' + c('J') + '+' + c('K') + '+' + c('L') },
+        { v: r.absentAmount, f: 'ROUND(MIN(' + c('E') + ',' + g + '/30*' + c('M') + '),2)' },
+        { v: r.taxable, f: c('N') + '-' + c('K') + '-' + c('O') },
+        { v: r.tax, f: 'ROUND(IF(' + c('P') + '<=2000,0,IF(' + c('P') + '<=4000,' + c('P') + '*0.15-300,IF(' + c('P') + '<=7000,' + c('P') +
+                       '*0.2-500,IF(' + c('P') + '<=10000,' + c('P') + '*0.25-850,IF(' + c('P') + '<=14000,' + c('P') + '*0.3-1350,' + c('P') +
+                       '*0.35-2050))))),2)' },
+        p ? { v: r.pension7, f: 'ROUND(' + c('E') + '*0.07,2)' } : { v: 0 },
+        p ? { v: r.pension11, f: 'ROUND(' + c('E') + '*0.11,2)' } : { v: 0 },
+        { v: r.cost || 0 }, { v: r.loan || 0 }, { v: r.advance || 0 }, { v: r.court || 0 }, { v: r.penalty || 0 },
+        { v: r.deductions, f: c('Q') + '+' + c('R') + '+' + c('T') + '+' + c('U') + '+' + c('V') + '+' + c('W') + '+' + c('X') },
+        { v: r.net, f: c('N') + '-' + c('Y') + '-' + c('O') },
+        { v: r.carryOut || 0 },
+        { v: r.carryOut ? 'Penalty over a third of the basic earned: the rest comes off next month' : '' }
+      ]);
+    });
+    var first = T0 + 1, last = T0 + rows.length, tot = last + 1;
+    var tt = doc.totals || {};
+    var sumOf = function (col, v) { return { v: v || 0, f: 'SUM(' + col + first + ':' + col + last + ')' }; };
+    var tline = [{ v: '' }, { v: 'Total, ' + (tt.people || 0) + ' people paid' }, { v: '' }, { v: '' }];
+    'EFGHIJKLMNOPQRSTUVWXYZA'.split('').slice(0, 22).forEach(function (col) { tline.push(null); });
+    var TCOL = { E: tt.basic, J: tt.overtime, K: tt.transport, L: tt.bonuses, N: tt.grossPay, O: tt.absentAmount, P: tt.taxable,
+                 Q: tt.tax, R: tt.pension7, S: tt.pension11, T: tt.cost, U: tt.loan, V: tt.advance, W: tt.court, X: tt.penalty,
+                 Y: tt.deductions, Z: tt.net, AA: tt.carryOut };
+    var COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB'];
+    tline = COLS.map(function (col, i) {
+      if (i < 4) return tline[i];
+      return TCOL[col] != null ? sumOf(col, TCOL[col]) : { v: '' };
+    });
+    cells.push(tline);
+    /* the entry the accountant makes of it: what it cost, and where it went */
+    var T = function (col) { return col + tot; };
+    cells.push([]);
+    cells.push([{ v: '' }, { v: 'Wages expense (basic less absence)' }, { v: '' }, { v: '' }, { v: prR2(tt.basic - tt.absentAmount), f: T('E') + '-' + T('O') }]);
+    cells.push([{ v: '' }, { v: 'Overtime' }, { v: '' }, { v: '' }, { v: tt.overtime || 0, f: T('J') }]);
+    cells.push([{ v: '' }, { v: 'Transport allowance' }, { v: '' }, { v: '' }, { v: tt.transport || 0, f: T('K') }]);
+    cells.push([{ v: '' }, { v: 'Bonuses and commissions' }, { v: '' }, { v: '' }, { v: tt.bonuses || 0, f: T('L') }]);
+    cells.push([{ v: '' }, { v: 'Pension 11% (Klever)' }, { v: '' }, { v: '' }, { v: tt.pension11 || 0, f: T('S') }]);
+    var dr = tot + 2;
+    cells.push([{ v: '' }, { v: 'Total cost' }, { v: '' }, { v: '' }, { v: tt.cost11 || 0, f: 'SUM(E' + dr + ':E' + (dr + 4) + ')' }]);
+    cells.push([{ v: '' }, { v: 'Cash (net pay)' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: tt.net || 0, f: T('Z') }]);
+    cells.push([{ v: '' }, { v: 'Income tax payable' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: tt.tax || 0, f: T('Q') }]);
+    cells.push([{ v: '' }, { v: 'Pension payable (7% + 11%)' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' },
+                { v: prR2((tt.pension7 || 0) + (tt.pension11 || 0)), f: T('R') + '+' + T('S') }]);
+    cells.push([{ v: '' }, { v: 'Loans and salary advances repaid' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' },
+                { v: prR2((tt.loan || 0) + (tt.advance || 0)), f: T('U') + '+' + T('V') }]);
+    cells.push([{ v: '' }, { v: 'Cost sharing and court deductions' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' },
+                { v: prR2((tt.cost || 0) + (tt.court || 0)), f: T('T') + '+' + T('W') }]);
+    cells.push([{ v: '' }, { v: 'Penalties (other income)' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: tt.penalty || 0, f: T('X') }]);
+    var cr = dr + 6;
+    cells.push([{ v: '' }, { v: 'Total' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' },
+                { v: tt.cost11 || 0, f: 'SUM(I' + cr + ':I' + (cr + 5) + ')' }]);
+    cells.push([]);
+    var appr = doc.status === 'approved' && doc.approvedAt && doc.approvedAt.toDate
+      ? 'Approved by the Chairman on ' + addis(doc.approvedAt.toDate().getTime()).toISOString().slice(0, 10) : 'Approved by ______________________';
+    cells.push([{ v: '' }, { v: 'Prepared by ______________________' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' },
+                { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: appr }]);
+    return { cells: cells, first: first, last: last, total: tot };
+  }
+  function prR2(x) { return Math.round((x || 0) * 100) / 100; }
+  /* the bank transfer list, as the sheet's CBE / ACOUNT tabs */
+  function transferSheet(doc, layout) {
+    var cells = [[{ v: 'KLEVER ADDIS TRADE PLC' }], [{ v: 'PERMANENT EMPLOYEES PAYROLL SUMMARY — BANK TRANSFER' }],
+                 [{ v: 'FOR THE MONTH OF ' + MONTHS_EN[Number(doc.month.slice(5, 7)) - 1].toUpperCase() + ' ' + doc.month.slice(0, 4) }],
+                 [{ v: 'SN' }, { v: 'NAME' }, { v: 'ACCOUNT NUMBER' }, { v: 'NET PAY' }]];
+    var n = 0, total = 0;
+    (doc.rows || []).forEach(function (r, i) {
+      if (r.noWage || !(r.net > 0)) return;
+      n++;
+      total += r.net;
+      cells.push([{ v: n }, { v: r.name }, { v: r.account || 'no account on record', s: 1 },
+                  { v: r.net, f: "'Payroll " + doc.month + "'!Z" + (layout.first + i) }]);
+    });
+    cells.push([{ v: '' }, { v: 'Total' }, { v: '' }, { v: prR2(total), f: 'SUM(D5:D' + (4 + n) + ')' }]);
+    cells.push([]);
+    cells.push([{ v: '' }, { v: 'Prepared by ________' }, { v: '' }, { v: 'Approved by ________' }]);
+    return cells;
+  }
+  function toSheet(X, cells, money, widths) {
+    var ws = {}, maxC = 0;
+    cells.forEach(function (row, r) {
+      (row || []).forEach(function (x, c) {
+        if (!x || (x.v === '' && !x.f)) return;
+        var cell = typeof x.v === 'number' ? { t: 'n', v: x.v } : { t: 's', v: String(x.v) };
+        if (x.f) cell.f = x.f;
+        if (cell.t === 'n' && money(c, r)) cell.z = '#,##0.00';
+        ws[X.utils.encode_cell({ r: r, c: c })] = cell;
+        if (c > maxC) maxC = c;
+      });
+    });
+    ws['!ref'] = X.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: cells.length - 1, c: maxC } });
+    ws['!cols'] = widths;
+    return ws;
+  }
+  function payrollExcel(doc) {
+    var name = 'Klever payroll ' + doc.month + (doc.status === 'sofar' ? ' (so far)' : '');
+    var layout = payrollSheet(doc);
+    return loadXlsx().then(function (X) {
+      var wb = X.utils.book_new();
+      var ws = toSheet(X, layout.cells, function (c, r) { return r >= 5 && (PY_MONEY_COLS.indexOf(c) !== -1 || c === 8); },
+        PY_HEAD.map(function (h, i) { return { wch: i === 1 ? 24 : i === 2 ? 16 : i === 27 ? 50 : i < 1 ? 5 : 13 }; }));
+      ws['!merges'] = [0, 1, 2].map(function (r) { return { s: { r: r, c: 0 }, e: { r: r, c: 13 } }; });
+      X.utils.book_append_sheet(wb, ws, 'Payroll ' + doc.month);
+      var tr = toSheet(X, transferSheet(doc, layout), function (c, r) { return c === 3 && r >= 4; },
+        [{ wch: 5 }, { wch: 28 }, { wch: 18 }, { wch: 15 }]);
+      X.utils.book_append_sheet(wb, tr, 'Bank transfer');
+      X.writeFile(wb, name + '.xlsx');
+      return 'xlsx';
+    }, function () {
+      var csv = layout.cells.map(function (row) {
+        return (row || []).map(function (x) {
+          var s = String(x && x.v != null ? x.v : '');
+          return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }).join(',');
+      }).join('\r\n');
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+      a.download = name + '.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      return 'csv';
+    });
+  }
+
+  /* Selam's card: the month the Chairman approved, newest first. The rules
+     give it to her alone, so nobody else even asks. */
+  var stopPy = null;
+  function payrollCard() {
+    if (stopPy) { try { stopPy(); } catch (e) {} stopPy = null; }
+    var wrap = el('div', 'pycard');
+    if (!window.FB || !window.FB.live() || AUTH.isChairman() || AUTH.who() !== 'betty' || !window.FB.watchPayrollToPay) return wrap;
+    stopPy = window.FB.watchPayrollToPay(function (docs) {
+      wrap.innerHTML = '';
+      if (!docs.length) return;
+      wrap.appendChild(el('h2', 'eyebrow', t('pyToPay')));
+      wrap.appendChild(payrollView(docs[0], {}));
+    });
+    return wrap;
+  }
+
+  /* What only Selam knows, for the payroll: overtime hours, loans, salary
+     advances, cost sharing, court deductions (the user, 14 Oct 2026: "on
+     Selam's page, by the 5th"). One card for each month still open — this
+     one, and last month until the 5th. She lists only the people who have
+     any; the script reads them into the payroll (/payadd/{month}). */
+  var PA_FIELDS = [['ot15', 'paOt15'], ['ot175', 'paOt175'], ['ot2', 'paOt2'], ['ot25', 'paOt25'],
+                   ['loan', 'paLoan'], ['advance', 'paAdvance'], ['cost', 'paCost'], ['court', 'paCourt']];
+  var stopPa = null;
+  function payAddCard() {
+    if (stopPa) { try { stopPa(); } catch (e) {} stopPa = null; }
+    var wrap = el('div', 'pacard');
+    if (!window.FB || !window.FB.live() || AUTH.isChairman() || AUTH.who() !== 'betty' || !window.FB.watchPayAdd) return wrap;
+    stopPa = window.FB.watchPayAdd(function (docs) {
+      wrap.innerHTML = '';
+      docs.slice().sort(function (a, b) { return a.month < b.month ? -1 : 1; }).forEach(function (d) {
+        wrap.appendChild(payAddMonth(d));
+      });
+    });
+    return wrap;
+  }
+  function payAddSummary(x) {
+    var parts = [];
+    var hrs = [['ot15', '×1.5'], ['ot175', '×1.75'], ['ot2', '×2'], ['ot25', '×2.5']].filter(function (k) { return x[k[0]]; })
+      .map(function (k) { return tfill_('pyHours', { h: x[k[0]] }) + ' ' + k[1]; });
+    if (hrs.length) parts.push(t('pyOvertime') + ' ' + hrs.join(', '));
+    [['loan', 'pyLoan'], ['advance', 'pyAdvance'], ['cost', 'pyCostShare'], ['court', 'pyCourt']].forEach(function (k) {
+      if (x[k[0]]) parts.push(t(k[1]) + ' ' + birr2(x[k[0]]));
+    });
+    return parts.join(' · ');
+  }
+  function payAddMonth(d) {
+    var box = el('div', 'ins pa');
+    var y = Number(d.month.slice(0, 4)), m = Number(d.month.slice(5, 7));
+    var by = (m === 12 ? (y + 1) + '-01' : y + '-' + ('0' + (m + 1)).slice(-2)) + '-05';
+    box.appendChild(el('div', 'inst', tfill_('paTitle', { month: monthLabel_(d.month) }) + ' · ' + tfill_('paBy', { day: dayLabel(by) })));
+    box.appendChild(el('div', 'pahow', t('paHow')));
+    var people = d.people || [];
+    var nameOf = function (id) { var p = people.filter(function (x) { return x.id === id; })[0]; return p ? p.name : id; };
+    var items = {};
+    Object.keys(d.items || {}).forEach(function (id) { items[id] = Object.assign({}, d.items[id]); });
+    var list = el('div', 'palist');
+    box.appendChild(list);
+    var form = el('div', 'paform');
+    form.hidden = true;
+    box.appendChild(form);
+    var addBtn = el('button', 'pushbtn paadd', t('paAdd'));
+    addBtn.type = 'button';
+    box.appendChild(addBtn);
+
+    function save(next) {
+      return window.FB.savePayAdd(d.month, next).then(function () { toast(t('paSaved')); }, function (e) {
+        toast(tfill_('paFailed', { e: (e && e.message) || String(e) }));
+        throw e;
+      });
+    }
+    function draw() {
+      list.innerHTML = '';
+      var ids = Object.keys(items).filter(function (id) { return payAddSummary(items[id]); });
+      if (!ids.length) list.appendChild(el('div', 'codenote', t('paNone')));
+      ids.sort(function (a, b) { return nameOf(a) < nameOf(b) ? -1 : 1; }).forEach(function (id) {
+        var row = el('div', 'paline');
+        var txt = el('div', 'patext');
+        txt.appendChild(el('div', 'paname', nameOf(id)));
+        txt.appendChild(el('div', 'pawhat', payAddSummary(items[id])));
+        row.appendChild(txt);
+        var ed = el('button', 'mfpick', t('paEdit'));
+        ed.type = 'button';
+        ed.onclick = function () { open(id); };
+        row.appendChild(ed);
+        var rm = el('button', 'mfpick', t('paRemove'));
+        rm.type = 'button';
+        rm.onclick = function () {
+          var next = Object.assign({}, items);
+          delete next[id];
+          rm.disabled = true;
+          save(next).then(function () { items = next; draw(); }, function () { rm.disabled = false; });
+        };
+        row.appendChild(rm);
+        list.appendChild(row);
+      });
+    }
+    function open(id) {
+      form.innerHTML = '';
+      form.hidden = false;
+      addBtn.hidden = true;
+      var who = el('select', 'pawho');
+      who.setAttribute('aria-label', t('paWho'));
+      var o0 = el('option', null, t('paPick'));
+      o0.value = '';
+      who.appendChild(o0);
+      people.slice().sort(function (a, b) { return a.name < b.name ? -1 : 1; }).forEach(function (p) {
+        if (p.id !== id && items[p.id] && payAddSummary(items[p.id])) return;
+        var o = el('option', null, p.name);
+        o.value = p.id;
+        who.appendChild(o);
+      });
+      if (id) who.value = id;
+      who.disabled = !!id;
+      var lw = el('label', 'pafield');
+      lw.appendChild(el('span', null, t('paWho')));
+      lw.appendChild(who);
+      form.appendChild(lw);
+      var boxes = {};
+      var cur = (id && items[id]) || {};
+      PA_FIELDS.forEach(function (f) {
+        var lab = el('label', 'pafield');
+        lab.appendChild(el('span', null, t(f[1])));
+        var b = el('input', 'mfbox');
+        b.type = 'text';
+        b.inputMode = 'decimal';
+        b.id = 'pa_' + d.month + '_' + f[0];
+        b.value = cur[f[0]] ? String(cur[f[0]]) : '';
+        lab.appendChild(b);
+        form.appendChild(lab);
+        boxes[f[0]] = b;
+      });
+      var go = el('button', 'pushbtn insgo', t('paSave'));
+      go.type = 'button';
+      var no = el('button', 'mfpick', t('paCancel'));
+      no.type = 'button';
+      no.onclick = function () { form.hidden = true; form.innerHTML = ''; addBtn.hidden = false; };
+      go.onclick = function () {
+        var pid = who.value;
+        if (!pid) { who.focus(); return; }
+        var x = {};
+        PA_FIELDS.forEach(function (f) {
+          var v = num_(boxes[f[0]].value);
+          if (!isNaN(v) && v > 0) x[f[0]] = Math.round(v * 100) / 100;
+        });
+        var next = Object.assign({}, items);
+        if (Object.keys(x).length) next[pid] = x; else delete next[pid];
+        go.disabled = true;
+        save(next).then(function () { items = next; no.onclick(); draw(); }, function () { go.disabled = false; });
+      };
+      var bar = el('div', 'insbox');
+      bar.appendChild(go);
+      bar.appendChild(no);
+      form.appendChild(bar);
+    }
+    addBtn.onclick = function () { open(null); };
+    draw();
+    return box;
+  }
+
   /* The readings of the agents this person owns (apps-script/Owners.js):
      the morning's and the week's, newest first, each folded to its title. */
   /* The reports sent to me (13 Oct 2026: reports are not posted in chat).
@@ -1405,6 +1871,8 @@
     var st = standing(p.id);
     root.appendChild(deck(p, st));
     root.appendChild(moneyFixCard());
+    root.appendChild(payrollCard());
+    root.appendChild(payAddCard());
     root.appendChild(instructionsCard());
     root.appendChild(reportsToMeCard());
     root.appendChild(readingsCard());
@@ -4461,6 +4929,9 @@
     dressDate: dressDate,
     /* notifications on this phone, for his page too */
     pushCard: pushCard,
+    /* the payroll, as Selam sees it, with Approve on his page (Payroll.js) */
+    payrollView: payrollView,
+    payrollExcel: payrollExcel,
     /* Addis time, and the ledger's rule for what is owed when */
     today: stamp,
     dayStart: dayStartMs,

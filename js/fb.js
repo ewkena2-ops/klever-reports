@@ -281,6 +281,38 @@
       return function () { a(); b(); };
       });
     },
+    /* The months' payroll the Chairman approved, for Selam to pay
+       (apps-script/Payroll.js): cb(docs), newest month first. Anyone else
+       is refused by the rules and gets []. */
+    watchPayrollToPay: function (cb) {
+      return later(function () {
+      if (!user) return null;
+      return F.onSnapshot(F.query(F.collection(db, 'payroll'), F.where('status', '==', 'approved')), function (snap) {
+        var out = [];
+        snap.forEach(function (d) { var x = d.data({ serverTimestamps: 'estimate' }); x.id = d.id; out.push(x); });
+        out.sort(function (a, b) { return a.month < b.month ? 1 : -1; });
+        cb(out);
+      }, function () { cb([]); });
+      });
+    },
+    /* The payroll months still open for what only Selam knows — overtime,
+       loans, advances, cost sharing, court (apps-script/Payroll.js):
+       cb(docs). Refused for anyone else by the rules: []. */
+    watchPayAdd: function (cb) {
+      return later(function () {
+      if (!user) return null;
+      return F.onSnapshot(F.query(F.collection(db, 'payadd'), F.where('open', '==', true)), function (snap) {
+        var out = [];
+        snap.forEach(function (d) { var x = d.data({ serverTimestamps: 'estimate' }); x.id = d.id; out.push(x); });
+        cb(out);
+      }, function () { cb([]); });
+      });
+    },
+    /* Her list for one month, whole: { personId: {ot15, …, court} } */
+    savePayAdd: function (month, items) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      return F.updateDoc(F.doc(db, 'payadd', month), { items: items, by: idOf(user), at: F.serverTimestamp() });
+    },
     /* The jobs the script asks me about (apps-script/JobMoney.js — the
        money on each job, 14 Oct 2026): {to, kind, items:[{code, cust, m2}]},
        or null when there is nothing. */

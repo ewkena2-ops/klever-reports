@@ -428,6 +428,13 @@ import {
     root.appendChild(standing);
     var payBox = el('div', 'chpaybox');
     root.appendChild(payBox);
+
+    /* --- the payroll the HR agent makes from those lines and the salaries;
+       his to approve, then Selam's to pay (apps-script/Payroll.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('pyTitle')));
+    var pyBox = el('div', 'chpy');
+    pyBox.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(pyBox);
     var record = el('div', 'chrecord');
     root.appendChild(record);
 
@@ -489,6 +496,7 @@ import {
     watchOrders(orders);
     watchInstructions(ins);
     watchCharges({ fines: charges, bonus: bonusBox, pay: payBox }, tOwed, tBonus);
+    watchPayroll(pyBox);
     watchStanding(standing);
     watchEvents(record);
     watchWeek(week, cfo, hr, legal, opsBox, specialists);
@@ -628,6 +636,33 @@ import {
       if (w.length) card.appendChild(el('div', 'jmwait', t('jmWait') + ': ' + w.join(' · ')));
       into.appendChild(card);
     });
+  }
+
+  /* THE PAYROLL (the user, 14 Oct 2026: "since we have every payment, can
+     the HR agent do the payroll here"). Made by the script
+     (apps-script/Payroll.js → /payroll/{yyyy-mm}); drawn by app.js's
+     payrollView, the one Selam sees. The last two months: a month waiting
+     for his approval on top, then this month so far. Approving is his
+     alone, and only of a final month (firestore.rules). */
+  function watchPayroll(into) {
+    onSnapshot(query(collection(db, 'payroll'), orderBy('month', 'desc'), limit(2)), function (snap) {
+      var docs = [];
+      snap.forEach(function (d) { var x = d.data({ serverTimestamps: 'estimate' }); x.id = d.id; docs.push(x); });
+      drawPayroll(into, docs);
+    }, failInto(into));
+  }
+  function drawPayroll(into, docs) {
+    into.innerHTML = '';
+    if (!docs.length || !window.KLEVER || !window.KLEVER.payrollView) { into.appendChild(el('p', 'codenote', t('pyNone'))); return; }
+    docs.sort(function (a, b) {
+      return (a.status === 'ready' ? 0 : 1) - (b.status === 'ready' ? 0 : 1) || (a.month < b.month ? 1 : -1);
+    });
+    docs.forEach(function (d) {
+      into.appendChild(window.KLEVER.payrollView(d, { approve: approvePayroll }));
+    });
+  }
+  function approvePayroll(month) {
+    return updateDoc(doc(db, 'payroll', month), { status: 'approved', approvedBy: 'chairman', approvedAt: serverTimestamp() });
   }
 
   function tile(label, value, full) {

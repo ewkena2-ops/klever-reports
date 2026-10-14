@@ -2293,6 +2293,9 @@ function watch_(waitMs) {
     try { moneyWatch_(); } catch (e) { Logger.log('money watch: %s', e.message); }
     /* the money on each job: once an hour, so a new day moves the plan on (JobMoney.js) */
     try { jobMoneyWatch_(); } catch (e) { Logger.log('job money watch: %s', e.message); }
+    /* the payroll: this month so far, last month final from the 6th, and
+       Selam told of a month the Chairman approved (Payroll.js) */
+    try { payrollWatch_(); } catch (e) { Logger.log('payroll watch: %s', e.message); }
     /* Sunday: the weekly reports, made from the dailies, if the morning did
        not make them; again at 8 PM for a daily corrected since (Weekly.js) */
     try { weeklyIfDue_('watch:'); } catch (e) { Logger.log('weekly reports: %s', e.message); }

@@ -63,7 +63,7 @@ function legalStaffTab_(schedule) {
   var created = false;
   if (!sh) {
     sh = ss.insertSheet(LEGAL_TAB_);
-    sh.getRange(1, 1, 1, 6).setValues([['Id (do not change)', 'Name', 'Role', 'Monthly wage, gross (Birr)',
+    sh.getRange(1, 1, 1, 6).setValues([['Id (do not change)', 'Name', 'Role', 'Monthly basic salary, gross (Birr)',
                                         'Terms letter signed on (yyyy-mm-dd)', 'Notes']]);
     sh.setFrozenRows(1);
     created = true;
@@ -71,21 +71,38 @@ function legalStaffTab_(schedule) {
   /* two columns added on 8 Oct 2026, for turnover (Registers.js) */
   var h2 = sh.getRange(1, 7, 1, 2).getValues()[0] || [];
   if (blank_(h2[0]) || blank_(h2[1])) sh.getRange(1, 7, 1, 2).setValues([['Started on (yyyy-mm-dd)', 'Left on (yyyy-mm-dd)']]);
-  var last = sh.getLastRow();
-  var rows = last > 1 ? sh.getRange(2, 1, last - 1, 8).getValues() : [];
-  var byId = {};
-  rows.forEach(function (r) {
-    var id = String(r[0] || '').trim();
-    if (!id) return;
-    var wage = blank_(r[3]) ? null : n_(r[3]);
-    byId[id] = { wage: wage > 0 ? wage : null, signedOn: legalDay_(r[4]), started: legalDay_(r[6]), left: legalDay_(r[7]) };
-  });
+  /* and two on 14 Oct 2026, for the payroll (Payroll.js) */
+  var h3 = sh.getRange(1, 9, 1, 2).getValues()[0] || [];
+  if (blank_(h3[0]) || blank_(h3[1])) sh.getRange(1, 9, 1, 2).setValues([['Bank account', 'Pension (yes / no)']]);
+  var byId = legalStaffRead_(sh);
   staff.forEach(function (p) {
     if (byId[p.id]) return;
     sh.appendRow([p.id, cell_(p.en), cell_(p.roleEn), '', '', p.noLetter ? 'no terms letter yet' : '', p.from || '', '']);
     byId[p.id] = { wage: null, signedOn: null };
   });
   return { byId: byId, created: created };
+}
+
+/* What the tab says, read only — { id: {name, role, wage, signedOn, started,
+   left, account, pension} }. The wage is the monthly basic salary, GROSS,
+   as on Klever's payroll sheet (14 Oct 2026). The payroll (Payroll.js)
+   reads it every hour this way and never writes; it also pays the rows
+   typed for people who are not on the site (the Chairman's own, …). */
+function legalStaffRead_(sh) {
+  var byId = {};
+  if (!sh) return byId;
+  var last = sh.getLastRow();
+  var rows = last > 1 ? sh.getRange(2, 1, last - 1, 10).getValues() : [];
+  rows.forEach(function (r) {
+    var id = String(r[0] || '').trim();
+    if (!id) return;
+    var wage = blank_(r[3]) ? null : n_(r[3]);
+    byId[id] = { name: String(r[1] || '').trim(), role: String(r[2] || '').trim(),
+                 wage: wage > 0 ? wage : null, signedOn: legalDay_(r[4]), started: legalDay_(r[6]), left: legalDay_(r[7]),
+                 account: String(r[8] == null ? '' : r[8]).trim(),
+                 pension: !/^(no|n|false|0|አይ|የለም)$/i.test(String(r[9] == null ? '' : r[9]).trim()) };
+  });
+  return byId;
 }
 
 /* the fines a person was charged before the day their letter was signed —

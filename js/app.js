@@ -1527,14 +1527,18 @@
         if (x && (x.why || (x.scanAt && !x.late))) continue;
         rows.push(atDay(d, x, false));
       }
-      if (today >= from && dowOf(today) !== 0 && (!p.from || today >= p.from)) rows.push(atDay(today, by[today], true, nowMin));
+      if (dowOf(today) !== 0 && (!p.from || today >= p.from)) {
+        /* before the first counted day, a test scan still shows — and nothing is asked */
+        if (today >= from) rows.push(atDay(today, by[today], true, nowMin));
+        else if (by[today] && by[today].scanAt) rows.push(atDay(today, by[today], true, nowMin, true));
+      }
       if (!rows.length) return;
       wrap.appendChild(el('h2', 'eyebrow', t('atTitle')));
       rows.forEach(function (r) { wrap.appendChild(r); });
     });
     return wrap;
   }
-  function atDay(day, x, isToday, nowMin) {
+  function atDay(day, x, isToday, nowMin, noAsk) {
     var box = el('div', 'ins at');
     var label = isToday ? t('atToday') : dayLabel(day);
     if (x && x.scanAt && !x.late) {
@@ -1546,7 +1550,7 @@
       box.className = 'ins at late';
       box.appendChild(el('div', 'inst', label + ' · ' + tfill_('atLate', { at: x.hm, m: x.minsLate })));
       if (x.why) box.appendChild(el('div', 'atsub', t('atWhyIs') + ' ' + atWhyText(x.why, x.note)));
-      else box.appendChild(atAsk(day, true, x));
+      else if (!noAsk) box.appendChild(atAsk(day, true, x));
       return box;
     }
     if (isToday && nowMin <= AT_LATE && !(x && x.why)) {

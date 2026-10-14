@@ -4452,9 +4452,10 @@ const REPORTS = [
         {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
         {id:'m2',   en:'m²', am:'ካሬ ሜትር', t:'num'},
         {id:'start',en:'Planned start', am:'የሚጀመርበት', t:'date'},
-        {id:'done', en:'Planned completion', am:'የሚጠናቀቅበት', t:'date'},
-        {id:'qc',   en:'QC date', am:'የጥራት ፍተሻ ቀን', t:'date'},
-        {id:'del',  en:'Delivery date', am:'የማድረሻ ቀን', t:'date'}
+        {id:'done', en:'Planned completion', am:'የሚጠናቀቅበት', t:'date'}
+        /* "QC date" and "Delivery date" taken off (the Chairman, 14 Oct 2026:
+           "we don't need this"); never filled. Register.js, Ops.js and
+           Plant.js read qc/del only when there is one. */
       ]},
       {id:'plan_rove', en:'Are there any Rovestone or other internal jobs in this plan?', am:'በዚህ ዕቅድ ውስጥ የሮቭስቶን ወይም ሌላ የውስጥ ሥራ አለ?', t:'yesno', yes:{en:'Some jobs are internal', am:'የውስጥ ሥራ አለ'}, no:{en:'All are customer jobs', am:'ሁሉም የደንበኛ ሥራ ነው'}},
       {id:'plan_rove_what', en:'Has the Chairman approved each one? (Write the jobs and m² in the box. Internal work queues behind fully paid external jobs.)', am:'እያንዳንዳቸውን ሊቀመንበሩ አጽድቀዋል? (ሥራዎቹንና ካሬ ሜትሩን በሳጥኑ ይጻፉ። የውስጥ ሥራ ሙሉ ከተከፈለባቸው የውጭ ሥራዎች በኋላ ነው።)', t:'area',

@@ -410,6 +410,8 @@
      1 Meskerem 2019 = 11 September 2026 — checked against Enkutatash. */
   var ETH_MONTHS = ['መስከረም','ጥቅምት','ኅዳር','ታኅሣሥ','ጥር','የካቲት','መጋቢት',
                     'ሚያዝያ','ግንቦት','ሰኔ','ሐምሌ','ነሐሴ','ጳጉሜን'];
+  var ETH_MONTHS_EN = ['Meskerem','Tikimt','Hidar','Tahsas','Tir','Yekatit','Megabit','Miyazya','Ginbot',
+                       'Sene','Hamle','Nehase','Pagume'];
   var DAYS_EN = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var DAYS_AM = ['እሁድ','ሰኞ','ማክሰኞ','ረቡዕ','ሐሙስ','ዓርብ','ቅዳሜ'];
   var MONTHS_EN = ['January','February','March','April','May','June','July',
@@ -429,6 +431,25 @@
       m: Math.floor(n / 30) + 1,
       d: (n % 30) + 1
     };
+  }
+
+  /* The Ethiopian month a yyyy-mm-dd falls in, and where it began — the
+     month people count their days by (office check-in, 14 Oct 2026). */
+  function ethOf(ymd) {
+    var p = String(ymd).split('-');
+    return toEthiopian(new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])));
+  }
+  function ethMonthStart(ymd) { return addDays(ymd, -(ethOf(ymd).d - 1)); }
+  function ethMonthName(ymd) {
+    var e = ethOf(ymd);
+    return (lang === 'am' ? ETH_MONTHS : ETH_MONTHS_EN)[e.m - 1] + ' ' + e.y;
+  }
+  /* "ሐሙስ ጥቅምት 5" · "Thu 5 Tikimt (15 Oct)" */
+  function ethDayLabel(ymd) {
+    var e = ethOf(ymd), dw = dowOf(ymd);
+    if (lang === 'am') return DAYS_AM[dw] + ' ' + ETH_MONTHS[e.m - 1] + ' ' + e.d;
+    var g = new Date(ymd + 'T12:00:00Z');
+    return DAYS_EN[dw].slice(0, 3) + ' ' + e.d + ' ' + ETH_MONTHS_EN[e.m - 1] + ' (' + g.getUTCDate() + ' ' + monShort(g.getUTCMonth()) + ')';
   }
 
   /* A date nobody can read two ways: "Wed 9 Sep 2026", in the reader's
@@ -1514,14 +1535,17 @@
   }
 
   /* the person's own days: today, and the working days of the week before
-     that have no scan and no reason yet */
+     that have no scan and no reason yet; then their Ethiopian month (the
+     user, 14 Oct 2026: "the person who scans sees his month — missed, late
+     or on time") */
   var stopAt = null;
   function attendCard(p) {
     if (stopAt) { try { stopAt(); } catch (e) {} stopAt = null; }
     var wrap = el('div', 'atcard');
     if (!p || !p.scan || AUTH.isChairman() || !window.FB || !window.FB.live() || !window.FB.watchMyAttend) return wrap;
     var from = typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-15';
-    stopAt = window.FB.watchMyAttend(addDays(stamp(), -7), function (docs) {
+    var mstart = ethMonthStart(stamp()), back = addDays(stamp(), -7);
+    stopAt = window.FB.watchMyAttend(mstart < back ? mstart : back, function (docs) {
       var by = {};
       docs.forEach(function (d) { by[d.day] = d; });
       wrap.innerHTML = '';
@@ -1540,11 +1564,53 @@
         if (today >= from) rows.push(atDay(today, by[today], true, nowMin));
         else if (by[today] && by[today].scanAt) rows.push(atDay(today, by[today], true, nowMin));
       }
-      if (!rows.length) return;
       wrap.appendChild(el('h2', 'eyebrow', t('atTitle')));
       rows.forEach(function (r) { wrap.appendChild(r); });
+      wrap.appendChild(atMonth(p, by, today, nowMin, from));
     });
     return wrap;
+  }
+  /* The month so far: on time / late / missed, and each day with its reason.
+     A day before the first counted one shows only if scanned, as a test. */
+  function atMonth(p, by, today, nowMin, from) {
+    var start = ethMonthStart(today);
+    if (p.from && p.from > start) start = p.from;
+    var n = { on: 0, late: 0, missed: 0 }, lines = [];
+    for (var d = start; d <= today; d = addDays(d, 1)) {
+      if (dowOf(d) === 0) continue;
+      var x = by[d], test = d < from;
+      if (test && !(x && x.scanAt)) continue;
+      var st, cls;
+      if (x && x.scanAt && !x.late) { st = '✓ ' + x.hm; cls = 'good'; if (!test) n.on++; }
+      else if (x && x.scanAt) { st = tfill_('atLateShortMine', { at: x.hm, m: atDur(x.minsLate) }); cls = 'late'; if (!test) n.late++; }
+      else if (d === today) { if (nowMin <= AT_LATE && !(x && x.why)) continue; st = t('atNotYet'); cls = 'none'; }
+      else { st = t('atMissed'); cls = 'missed'; n.missed++; }
+      if (x && x.why) st += ' · ' + atWhyText(x.why, x.note);
+      else if (!test && (cls === 'late' || cls === 'missed')) st += ' · ' + t('atNoReasonYet');
+      if (test) st += ' · ' + t('atTest');
+      lines.unshift({ day: d, text: st, cls: cls });
+    }
+    var box = el('div', 'ins atmine');
+    box.appendChild(el('div', 'inst', tfill_('atMineTitle', { month: ethMonthName(today) })));
+    var tiles = el('div', 'attiles');
+    [['on', 'atMineOn', 'good'], ['late', 'atMineLate', 'late'], ['missed', 'atMineMissed', 'missed']].forEach(function (k) {
+      var tl = el('div', 'attile ' + k[2]);
+      tl.appendChild(el('div', 'attn', String(n[k[0]])));
+      tl.appendChild(el('div', 'attl', t(k[1])));
+      tiles.appendChild(tl);
+    });
+    box.appendChild(tiles);
+    if (!lines.length) { box.appendChild(el('div', 'atsub', t('atMineNone'))); return box; }
+    var det = el('details', 'atdays');
+    det.appendChild(el('summary', null, t('atMineDays')));
+    lines.forEach(function (l) {
+      var r = el('div', 'atdl ' + l.cls);
+      r.appendChild(el('span', 'atdd', ethDayLabel(l.day)));
+      r.appendChild(el('span', 'atds', l.text));
+      det.appendChild(r);
+    });
+    box.appendChild(det);
+    return box;
   }
   function atDay(day, x, isToday, nowMin, noAsk) {
     var box = el('div', 'ins at');
@@ -5106,6 +5172,10 @@
     signIn: function () { var r = document.getElementById('app'); if (r) renderSignIn(r); },
     /* the same clear dates, for the Chairman's page */
     prettyDate: prettyDate,
+    /* the Ethiopian month (office check-in counts by it) */
+    ethMonthStart: ethMonthStart,
+    ethMonthName: ethMonthName,
+    ethDayLabel: ethDayLabel,
     dressDate: dressDate,
     /* notifications on this phone, for his page too */
     pushCard: pushCard,

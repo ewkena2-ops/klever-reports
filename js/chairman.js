@@ -653,7 +653,8 @@ import {
      say "that is our WiFi" (the first morning sets it up this way). */
   function watchAttend(into) {
     var from = typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-15';
-    var monthStart = DAY.slice(0, 8) + '01';
+    /* the Ethiopian month, as each person sees theirs (app.js) */
+    var monthStart = window.KLEVER && window.KLEVER.ethMonthStart ? window.KLEVER.ethMonthStart(DAY) : DAY.slice(0, 8) + '01';
     var since = monthStart < from ? from : monthStart;
     var st = { docs: null, fails: null, wifi: undefined };
     function draw() { if (st.docs && st.fails && st.wifi !== undefined) drawAttend(into, st, since); }
@@ -760,7 +761,7 @@ import {
     for (var d = since; d <= DAY; d = addDays(d, 1)) if (new Date(d + 'T12:00:00Z').getUTCDay() !== 0) days.push(d);
     if (!days.length) return;
     var det = el('details', 'chmonth atmonth');
-    det.appendChild(el('summary', null, tfill('atMonth', { day: prettyDay(since) })));
+    det.appendChild(el('summary', null, tfill('atMonthEth', { month: window.KLEVER && window.KLEVER.ethMonthName ? window.KLEVER.ethMonthName(DAY) : '', day: prettyDay(since) })));
     people.forEach(function (p) {
       var on = 0, late = 0, none = 0, lines = [];
       days.forEach(function (day) {

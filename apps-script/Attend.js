@@ -127,11 +127,25 @@ function attendDay_(schedule, day, docs) {
   });
 }
 
+/* The Ethiopian date of a yyyy-mm-dd — the month the office counts its
+   days by (js/app.js toEthiopian, the same arithmetic) */
+var AT_ETH_MONTHS_ = ['Meskerem', 'Tikimt', 'Hidar', 'Tahsas', 'Tir', 'Yekatit', 'Megabit', 'Miyazya', 'Ginbot',
+                      'Sene', 'Hamle', 'Nehase', 'Pagume'];
+function atEth_(ymd) {
+  var y = Number(ymd.slice(0, 4)), m = Number(ymd.slice(5, 7)), day = Number(ymd.slice(8, 10));
+  var a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
+  var jdn = day + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+  var k = jdn - 1723856, r = k % 1461, n = (r % 365) + 365 * Math.floor(r / 1460);
+  return { y: 4 * Math.floor(k / 1461) + Math.floor(r / 365) - Math.floor(r / 1460), m: Math.floor(n / 30) + 1, d: (n % 30) + 1 };
+}
+
 /* For the morning reading and for Ask: the day, and the month so far */
 function attendFacts_(day) {
   var schedule = loadSchedule_();
   if (dow_(day) === 0) return { day: day, note: 'Sunday — no check-in' };
-  var monthStart = day.slice(0, 8) + '01';
+  /* the Ethiopian month, as each person and the Chairman see it */
+  var eth = atEth_(day);
+  var monthStart = addDays_(day, -(eth.d - 1));
   if (monthStart < AT_FROM_) monthStart = AT_FROM_;
   if (day < AT_FROM_) return { day: day, note: 'Office check-in starts ' + AT_FROM_ };
   var docs = tryQuery_('attend', [['day', 'GREATER_THAN_OR_EQUAL', monthStart], ['day', 'LESS_THAN_OR_EQUAL', day]], 'day');
@@ -152,6 +166,7 @@ function attendFacts_(day) {
     how: 'Office staff scan the QR at the office door on Klever WiFi when they arrive; late after 8:00 AM. ' +
          'No money is taken for it; a person who did not scan or was late says why on their page.',
     day: day, today: attendDay_(schedule, day, docs),
+    month: AT_ETH_MONTHS_[eth.m - 1] + ' ' + eth.y + ' (Ethiopian calendar), counted from ' + monthStart,
     month_so_far: Object.keys(month).map(function (k) { return month[k]; })
   };
 }

@@ -1458,18 +1458,19 @@
   var AT_LATE = 8 * 60;
   var AT_WHY_NOSCAN = ['visit', 'sick', 'leave', 'forgot', 'holiday', 'other'];
   var AT_WHY_LATE = ['transport', 'visit', 'leave', 'other'];
-  var atScanDone = false;
+  var atScanBox = null;
 
   function atScanAsked() {
     return /^(office|1)$/.test(new URLSearchParams(location.search).get('scan') || '');
   }
   /* the result of a scan, at the top of the page; the address bar loses
-     ?scan= so a reload does not scan again */
+     ?scan= so a reload does not scan again. The page redraws itself as the
+     person's reports come in, so the same box is handed back each time —
+     a new one would drop the answer on the floor. */
   function atScanCard() {
-    var box = el('div');
-    if (!atScanAsked() || atScanDone || !window.FB || !window.FB.live()) return box;
-    atScanDone = true;
-    box.className = 'ins atscan';
+    if (atScanBox) return atScanBox;
+    if (!atScanAsked() || !window.FB || !window.FB.live()) return el('div');
+    var box = atScanBox = el('div', 'ins atscan');
     try {
       var q = new URLSearchParams(location.search);
       q.delete('scan');

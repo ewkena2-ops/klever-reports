@@ -530,6 +530,7 @@ input.mustgap,textarea.mustgap,select.mustgap{
 .atfail{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line-2);border-radius:var(--r);padding:10px 12px}
 .atfailtxt{flex:1 1 220px;min-width:0;font-size:13px;color:var(--ink);overflow-wrap:anywhere}
 .atfail .pushbtn,.atwifi .pushbtn{margin:0}
+.atfailhow{flex:1 1 100%;font-size:12.5px;color:var(--mut);line-height:1.45}
 .atthis.armed,.atwifi .mfpick.armed{outline:2px solid var(--coral);outline-offset:2px}
 .atcounts{font-size:13.5px;color:var(--mut);margin:0}
 .atrow .chfv.at{white-space:normal;text-align:right;overflow-wrap:anywhere}

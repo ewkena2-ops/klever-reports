@@ -694,18 +694,18 @@ import {
     var from = typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-15';
 
     /* the WiFi */
-    var ips = (st.wifi && st.wifi.ips) || [];
+    var ips = (st.wifi && st.wifi.ips) || [], ignored = (st.wifi && st.wifi.ignored) || [];
     var wifi = el('div', 'atwifi');
     wifi.appendChild(el('p', ips.length ? 'codenote' : 'pywarn', ips.length ? tfill('atWifiIs', { ip: ips.join(', ') }) : t('atWifiNone')));
     ips.forEach(function (ip) {
       var rm = el('button', 'mfpick', tfill('atWifiRemove', { ip: ip }));
       rm.type = 'button';
-      twoTaps(rm, function () { return atSetWifi(ips.filter(function (x) { return x !== ip; })); });
+      twoTaps(rm, function () { return atSetWifi(ips.filter(function (x) { return x !== ip; }), ignored); });
       wifi.appendChild(rm);
     });
     var tried = {};
     st.fails.forEach(function (f) {
-      if (!f.ip || ips.indexOf(f.ip) !== -1) return;
+      if (!f.ip || ips.indexOf(f.ip) !== -1 || ignored.indexOf(f.ip) !== -1) return;
       (tried[f.ip] = tried[f.ip] || []).push(f);
     });
     Object.keys(tried).sort(function (a, b) { return tried[b].length - tried[a].length; }).forEach(function (ip) {
@@ -713,10 +713,19 @@ import {
       var who = tried[ip].sort(function (a, b) { return a.day < b.day ? 1 : -1; })
         .map(function (f) { return atWho(f.person) + ' ' + (f.day === DAY ? f.hm : prettyDay(f.day) + ' ' + f.hm); });
       row.appendChild(el('div', 'atfailtxt', tfill('atTried', { ip: ip, n: tried[ip].length, who: who.join(', ') })));
+      row.appendChild(el('div', 'atfailhow', t(ips.length ? 'atTriedHow' : 'atTriedFirst')));
       var ok = el('button', 'pushbtn atthis', t('atThisWifi'));
       ok.type = 'button';
-      twoTaps(ok, function () { return atSetWifi([ip].concat(ips).slice(0, 4)); });
+      twoTaps(ok, function () { return atSetWifi([ip].concat(ips).slice(0, 4), ignored.filter(function (x) { return x !== ip; })); });
       row.appendChild(ok);
+      /* a phone on mobile data or at home: not ours, and out of the way */
+      var no = el('button', 'mfpick atnotours', t('atNotOurs'));
+      no.type = 'button';
+      no.onclick = function () {
+        no.disabled = true;
+        atSetWifi(ips, [ip].concat(ignored).slice(0, 100)).then(null, function () { no.disabled = false; });
+      };
+      row.appendChild(no);
       wifi.appendChild(row);
     });
     into.appendChild(wifi);
@@ -781,8 +790,8 @@ import {
     });
     into.appendChild(det);
   }
-  function atSetWifi(ips) {
-    return setDoc(doc(db, 'attendwifi', 'office'), { ips: ips, setAt: serverTimestamp(), setBy: 'chairman' });
+  function atSetWifi(ips, ignored) {
+    return setDoc(doc(db, 'attendwifi', 'office'), { ips: ips, ignored: ignored || [], setAt: serverTimestamp(), setBy: 'chairman' });
   }
   /* a tap asks again; the second does it */
   function twoTaps(b, act) {

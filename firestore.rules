@@ -661,14 +661,17 @@ service cloud.firestore {
       allow create, update: if isLedger();
       allow delete: if false;
     }
-    /* the office WiFi's address, set by the Chairman */
+    /* the office WiFi's address, set by the Chairman — and the addresses he
+       said are not ours (a phone on mobile data, at home), kept out of his way */
     match /attendwifi/{place} {
       allow get, list: if isChairman() || isLedger();
       allow create, update: if isLedger()
                             || (isChairman()
-                                && request.resource.data.keys().hasOnly(['ips', 'setAt', 'setBy'])
+                                && request.resource.data.keys().hasOnly(['ips', 'ignored', 'setAt', 'setBy'])
                                 && request.resource.data.ips is list
                                 && request.resource.data.ips.size() <= 4
+                                && (!('ignored' in request.resource.data)
+                                    || (request.resource.data.ignored is list && request.resource.data.ignored.size() <= 100))
                                 && request.resource.data.setBy == 'chairman'
                                 && request.resource.data.setAt == request.time);
       allow delete: if false;

@@ -658,7 +658,8 @@ import {
     var since = monthStart < from ? from : monthStart;
     var st = { docs: null, fails: null, wifi: undefined };
     function draw() { if (st.docs && st.fails && st.wifi !== undefined) drawAttend(into, st, since); }
-    onSnapshot(query(collection(db, 'attend'), where('day', '>=', since)), function (snap) {
+    /* before the first counted day, today's test scans too */
+    onSnapshot(query(collection(db, 'attend'), where('day', '>=', since > DAY ? DAY : since)), function (snap) {
       st.docs = [];
       snap.forEach(function (d) { st.docs.push(d.data({ serverTimestamps: 'estimate' })); });
       draw();

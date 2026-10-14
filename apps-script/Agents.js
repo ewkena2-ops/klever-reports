@@ -782,7 +782,7 @@ var AGENTS = [
       office_checkins: (function () { try { return attendFacts_(d.day).today; } catch (e) { return null; } })(),
       /* everyone at the factory, by face at the gate's tablet (Gate.js) —
          set beside Amaha's own counts above */
-      factory_gate_checkins: (function () { try { var g = gateFacts_(d.day); return g.today || g.note; } catch (e) { return null; } })(),
+      factory_gate_checkins: (function () { try { var g = factoryGateFacts_(d.day); return g.today || g.note; } catch (e) { return null; } })(),
       site_assemblers_present: a_(elyas, 'a_present'),
       site_assemblers_late: a_(elyas, 'a_late'),
       site_left_early: a_(elyas, 'a_early'),

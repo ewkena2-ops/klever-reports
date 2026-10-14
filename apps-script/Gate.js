@@ -136,7 +136,7 @@ function gatePost_(row, poster) {
 
 /* For the morning reading and for Ask: the gate today, and the Ethiopian
    month so far — the same shape as the office's (Attend.js attendFacts_) */
-function gateFacts_(day) {
+function factoryGateFacts_(day) {
   var from = gtFrom_();
   if (!from) return { day: day, note: 'The factory gate tablet is not counted yet (the Chairman starts it on his page)' };
   if (day < from) return { day: day, note: 'The factory gate is counted from ' + from };

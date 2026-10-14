@@ -395,7 +395,7 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
 
 /* the office staff's check-in, today and the month so far (Attend.js) */
 function askGate_(day) {
-  try { return typeof gateFacts_ === 'function' ? gateFacts_(day) : null; }
+  try { return typeof factoryGateFacts_ === 'function' ? factoryGateFacts_(day) : null; }
   catch (e) { Logger.log('ask gate: %s', e.message); return null; }
 }
 function askAttend_(day) {

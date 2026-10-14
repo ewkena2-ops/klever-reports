@@ -1460,6 +1460,13 @@
   var AT_WHY_LATE = ['transport', 'visit', 'leave', 'other'];
   var atScanBox = null;
 
+  /* "14 min", "8 h 23 min" */
+  function atDur(m) {
+    m = Math.max(0, Math.round(m || 0));
+    var h = Math.floor(m / 60), r = m % 60;
+    if (lang === 'am') return (h ? h + ' ሰዓት' + (r ? ' ' : '') : '') + (r || !h ? r + ' ደቂቃ' : '');
+    return (h ? h + ' h' + (r ? ' ' : '') : '') + (r || !h ? r + ' min' : '');
+  }
   function atScanAsked() {
     return /^(office|1)$/.test(new URLSearchParams(location.search).get('scan') || '');
   }
@@ -1493,7 +1500,7 @@
       if (a.ok && a.chairman) return show('good', t('atChairOk'), tfill_('atAddr', { ip: a.ip || '—' }));
       if (a.ok && a.already) return show(a.late ? 'late' : 'good', tfill_('atAlready', { at: a.at }));
       if (a.ok) {
-        return a.late ? show('late', tfill_('atLate', { at: a.at, m: a.minsLate }), t('atLateWhy'))
+        return a.late ? show('late', tfill_('atLate', { at: a.at, m: atDur(a.minsLate) }), t('atLateWhy'))
                       : show('good', tfill_('atOnTime', { at: a.at }));
       }
       var w = a.why || 'unavailable';
@@ -1531,7 +1538,7 @@
       if (dowOf(today) !== 0 && (!p.from || today >= p.from)) {
         /* before the first counted day, a test scan still shows — and nothing is asked */
         if (today >= from) rows.push(atDay(today, by[today], true, nowMin));
-        else if (by[today] && by[today].scanAt) rows.push(atDay(today, by[today], true, nowMin, true));
+        else if (by[today] && by[today].scanAt) rows.push(atDay(today, by[today], true, nowMin));
       }
       if (!rows.length) return;
       wrap.appendChild(el('h2', 'eyebrow', t('atTitle')));
@@ -1549,7 +1556,7 @@
     }
     if (x && x.scanAt && x.late) {
       box.className = 'ins at late';
-      box.appendChild(el('div', 'inst', label + ' · ' + tfill_('atLate', { at: x.hm, m: x.minsLate })));
+      box.appendChild(el('div', 'inst', label + ' · ' + tfill_('atLate', { at: x.hm, m: atDur(x.minsLate) })));
       if (x.why) box.appendChild(el('div', 'atsub', t('atWhyIs') + ' ' + atWhyText(x.why, x.note)));
       else if (!noAsk) box.appendChild(atAsk(day, true, x));
       return box;

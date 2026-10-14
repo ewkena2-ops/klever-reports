@@ -672,6 +672,13 @@ import {
       draw();
     }, failInto(into));
   }
+  /* "14 min", "8 h 23 min" */
+  function atDur(m) {
+    m = Math.max(0, Math.round(m || 0));
+    var h = Math.floor(m / 60), r = m % 60;
+    if (lang === 'am') return (h ? h + ' ሰዓት' + (r ? ' ' : '') : '') + (r || !h ? r + ' ደቂቃ' : '');
+    return (h ? h + ' h' + (r ? ' ' : '') : '') + (r || !h ? r + ' min' : '');
+  }
   function atWho(id) {
     var p = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (x) { return x.id === id; })[0];
     return id === 'chairman' ? t('atYou') : p ? L(p) : id;
@@ -720,7 +727,7 @@ import {
         if (!x || !x.scanAt) return;
         var r = el('div', 'chf atrow');
         r.appendChild(el('span', 'chfk', L(p)));
-        r.appendChild(el('span', 'chfv at ' + (x.late ? 'late' : 'good'), x.late ? tfill('atLateShort', { at: x.hm, m: x.minsLate }) : '✓ ' + x.hm));
+        r.appendChild(el('span', 'chfv at ' + (x.late ? 'late' : 'good'), x.late ? tfill('atLateShort', { at: x.hm, m: atDur(x.minsLate) }) : '✓ ' + x.hm));
         into.appendChild(r);
       });
       return;
@@ -738,7 +745,7 @@ import {
         r.appendChild(el('span', 'chfk', L(p)));
         var s, cls;
         if (d.scanAt && !d.late) { s = '✓ ' + d.hm; cls = 'good'; counts.on++; }
-        else if (d.scanAt) { s = tfill('atLateShort', { at: d.hm, m: d.minsLate }); cls = 'late'; counts.late++; }
+        else if (d.scanAt) { s = tfill('atLateShort', { at: d.hm, m: atDur(d.minsLate) }); cls = 'late'; counts.late++; }
         else { s = t('atNoScanShort'); cls = 'none'; counts.none++; }
         if (d.why) s += ' · ' + atWhyText(d.why, d.note);
         r.appendChild(el('span', 'chfv at ' + cls, s));
@@ -762,7 +769,7 @@ import {
         if (x.scanAt && !x.late) { on++; return; }
         if (day === DAY && !x.scanAt && !x.why) return;          /* today is not over */
         if (x.scanAt) late++; else none++;
-        lines.push(prettyDay(day) + ': ' + (x.scanAt ? tfill('atLateShort', { at: x.hm, m: x.minsLate }) : t('atNoScanShort')) +
+        lines.push(prettyDay(day) + ': ' + (x.scanAt ? tfill('atLateShort', { at: x.hm, m: atDur(x.minsLate) }) : t('atNoScanShort')) +
                    ' — ' + (x.why ? atWhyText(x.why, x.note) : t('atNoReason')));
       });
       var row = el('details', 'atperson');

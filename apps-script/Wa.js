@@ -201,6 +201,12 @@ function waDecisionWorld_(day) {
     return r.how === 'recorded' && r.per !== 'birr' && (r.birr != null || r.kind === 'consequence');
   });
   var from = addDays_(day, -14);
+  /* last month's pay is final at the end of the 5th (Payroll.js
+     PR_FINAL_DAY_, the Chairman's page PAY_FINAL_DAY): from the 6th its
+     lines are not offered — a cancel then was written and reported as done,
+     and the money still came off (the bug hunt, 15 Oct 2026) */
+  var monthStart = day.slice(0, 8) + '01';
+  if (Number(day.slice(8)) >= PR_FINAL_DAY_ && from < monthStart) from = monthStart;
   var cancelled = {};
   tryQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', from]], null)
     .forEach(function (w) { cancelled[w.day + '|' + w.report] = true; });
@@ -332,6 +338,9 @@ function waCheck_(actions, W) {
       var hit = W.lines.filter(function (l) {
         return l.day === a.day && (a.person === 'all' || l.person === a.person) && (a.report === 'all' || !a.report || l.report === a.report);
       }).slice(0, 30);
+      if (!hit.length && isDay(a.day) && a.day < W.day.slice(0, 8) + '01' && Number(W.day.slice(8)) >= PR_FINAL_DAY_) {
+        return bad.push('Last month’s pay was made final on the 5th, so a line from ' + dayName_(a.day) + ' can no longer be cancelled — it has been paid as it stood.');
+      }
       if (!hit.length) return bad.push('No charged line matches ' + [a.person, a.report, a.day].filter(Boolean).join(', ') + '.');
       hit.forEach(function (l) {
         ok.push({ kind: 'waiver', day: l.day, report: l.report, person: l.person, amount: l.amount, reason: reason,
@@ -509,7 +518,7 @@ function waSendBrief_(results, d) {
     var cfg = waConfig_();
     if (!cfg.url || !cfg.secret) return;
     var b = (results || []).filter(function (r) { return r.id === 'brief'; })[0];
-    if (!b || !b.text) return;
+    if (!b || !b.text || aiFailed_(b.text)) return;
     var res = UrlFetchApp.fetch(cfg.url + '/internal/brief', {
       method: 'post', contentType: 'application/json', muteHttpExceptions: true,
       headers: { 'X-Klever-Secret': cfg.secret },

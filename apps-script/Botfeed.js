@@ -187,17 +187,27 @@ function botSeedEvents_(extra) {
 }
 
 /* Read the bot and keep its lines; the register is built again by the caller. */
+/* a short fingerprint of the bot's events, to know whether anything changed */
+function botHash_(s) {
+  var h = 5381;
+  for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return s.length + ':' + h.toString(36);
+}
 function botFeedRefresh_() {
   var feed = botFeedFetch_();
   var got = botEvents_(feed);
+  var props = PropertiesService.getScriptProperties();
+  var hash = botHash_(JSON.stringify(got.events));
+  if (props.getProperty('BOTFEED_HASH') === hash) return { same: true, counts: got.counts };
   fsPut_('regEvents/bot_feed', { report: 'bot', day: todayAddis_(), at: new Date(), person: 'bot',
                                  events: got.events, counts: got.counts, feedAt: String(feed.at || '') });
+  props.setProperty('BOTFEED_HASH', hash);
   /* the Chairman's word, once */
   var seedId = 'regEvents/seed_chairman_' + BOT_SEED_DAY_;
   var had = null;
   try { had = fsGet_(seedId); } catch (e) { had = null; }
   if (!had) fsPut_(seedId, { report: 'chairman', day: BOT_SEED_DAY_, at: new Date(), person: 'chairman', events: botSeedEvents_() });
-  return got.counts;
+  return { same: false, counts: got.counts };
 }
 
 /* From the watch and the morning: once an hour, then the register again.
@@ -212,8 +222,17 @@ function botFeedIfDue_(from) {
   if (props.getProperty('BOTFEED_TRY') === hour) return null;
   props.setProperty('BOTFEED_TRY', hour);
   var c = botFeedRefresh_();
+  /* the register is read whole each time it is built — every lead and job
+     event since reporting began, a collection that only grows: built every
+     hour for nothing new, the script alone would have used up the free
+     plan's 50,000 Firestore reads a day by mid-November (the bug hunt, 15
+     Oct 2026). Built when the bot brought something new, and once a day so
+     the ages move on; a filed report rebuilds it anyway (Register.js). */
+  if (!(c && c.same) || props.getProperty('BOTFEED_BUILT') !== today) {
+    registerBuild_(today, false);
+    props.setProperty('BOTFEED_BUILT', today);
+  }
   props.setProperty('BOTFEED_DAY', today);
-  registerBuild_(today, false);
   Logger.log('bot feed (%s): %s', from || '', JSON.stringify(c));
-  return c;
+  return c.counts;
 }

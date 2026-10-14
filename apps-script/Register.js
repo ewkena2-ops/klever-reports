@@ -388,6 +388,8 @@ function regFold_(events, today, names, sellers) {
     if (!e.job || e.k === 'lead' || e.k === 'visit' || e.k === 'quote' || e.k === 'expected') return;
     var J = jobs[e.job] || (jobs[e.job] = { job: e.job, cust: '', first: e.day, last: e.day, value: null,
                                             signed: '', advIn: 0, finalIn: 0, complaints: [], delays: [],
+                                            /* the same money, as the bot verified it and as Selam's reports listed it */
+                                            pay: { advbot: 0, advrep: 0, finbot: 0, finrep: 0 },
                                             defects: [], said: [], seen: {} });
     J.last = e.day;
     J.seen[e.k] = true;
@@ -403,13 +405,19 @@ function regFold_(events, today, names, sellers) {
         if (e.adv != null) J.advSaid = e.adv;
         if (e.who) J.sales = e.who;
         break;
+      /* A payment reaches the register twice — verified in the bot (Botfeed.js)
+         and listed in Selam's daily — so each side is added up apart and the
+         larger stands: added together, a 600,000 Birr job read 1,200,000
+         received (the bug hunt, 15 Oct 2026). */
       case 'advance':
-        J.advIn += e.amount || 0;
+        J.pay[e.src === 'bot' ? 'advbot' : 'advrep'] += e.amount || 0;
+        J.advIn = Math.max(J.pay.advbot, J.pay.advrep);
         if (!J.advDay) J.advDay = e.day;
         if (e.ok) J.jobFile = e.ok;
         break;
       case 'final':
-        J.finalIn += e.amount || 0;
+        J.pay[e.src === 'bot' ? 'finbot' : 'finrep'] += e.amount || 0;
+        J.finalIn = Math.max(J.pay.finbot, J.pay.finrep);
         if (!J.finalDay) J.finalDay = e.day;
         break;
       case 'paidfull':

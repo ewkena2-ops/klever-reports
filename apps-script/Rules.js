@@ -1172,8 +1172,34 @@ function cond_(J, c) {
   throw new Error('cannot judge ' + JSON.stringify(c));
 }
 
+/* {qc:'code', is:'passed'|'known'}: whether the job in that column had
+   passed QC — or has any QC record at all — as the jobs register reads it
+   from Wude's own reports (Register.js). The weekly complaint list is built
+   from Selam's, which cannot say; asking her to was the column nobody
+   filled, and Wude's QC fine never charged while her bonus always paid
+   (the bug hunt, 15 Oct 2026). */
+var RULES_QC_ = null;
+function rulesQcOf_(text) {
+  if (!RULES_QC_) {
+    RULES_QC_ = {};
+    var rows = [];
+    try { var d = fsGet_('register/jobs'); rows = (d && d.rows) || []; } catch (e) { rows = []; }
+    rows.forEach(function (j) {
+      if (!j || !j.job) return;
+      RULES_QC_[j.job] = { passed: !!(j.steps && j.steps.qc), known: !!(j.qcPassed || j.qcFailed || (j.steps && j.steps.qc)) };
+    });
+  }
+  var k = regJob_(text);
+  /* a bare number in a job column is a KK job, as the register reads it */
+  if (/^\d{1,3}$/.test(k)) k = 'KK-' + Number(k);
+  return k ? RULES_QC_[k] || null : null;
+}
 function rowCond_(row, c) {
   if (Object.prototype.toString.call(c) === '[object Array]') return cmp_(row[c[0]], c[1], c[2]) === true;
+  if (c && c.qc) {
+    var q = rulesQcOf_(row[c.qc]);
+    return c.is === 'known' ? !!(q && q.known) : !!(q && q.passed);
+  }
   if (c.all) return c.all.every(function (x) { return rowCond_(row, x); });
   if (c.any) return c.any.some(function (x) { return rowCond_(row, x); });
   if (c.not) return !rowCond_(row, c.not);
@@ -1184,7 +1210,20 @@ function rowCond_(row, c) {
 function filedEveryDue_(ctx, schedule, reportId) {
   var rep = reportOf_(schedule, reportId);
   if (!rep) return false;
-  if (rep.cadence !== 'daily') return true;
+  if (rep.cadence !== 'daily') {
+    /* a weekly made from the dailies (built, 11 Oct 2026) is filed even when
+       one daily came in, its counts worked out as nought: a month is only
+       complete when the dailies it is made from were filed every day they
+       were due (the bug hunt, 15 Oct 2026 — "zero complaints" bonuses were
+       paid on a month of one daily). The person's own dailies, as js/weekly.js
+       reads them; a daily that carries no fine (a check) is not asked. */
+    if (rep.built) {
+      return (schedule.reports || []).filter(function (r) {
+        return r.person === rep.person && r.cadence === 'daily' && !r.noFine && !r.company;
+      }).every(function (r) { return filedEveryDue_(ctx, schedule, r.id); });
+    }
+    return true;
+  }
   var have = {};
   ctx.series(reportId).forEach(function (s) { have[s.day] = true; });
   var start = prop_('LEDGER_START', '');

@@ -1885,8 +1885,8 @@ const RULES = [
     en:'No customer complaint related to QC in the month',
     am:'በወሩ ከጥራት ቁጥጥር ጋር የተያያዘ የደንበኛ ቅሬታ የለም',
     src:'Wude’s letter — “No Complaint 1,000 Birr Zero customer complaints related to QC”',
-    note:'A complaint counts as QC-related when the job had passed QC; a weekly summary she never filed hides its complaints, so check the month’s weekly reports are all in.',
-    test:{ at:'month', needFiled:['wude-daily'], when:[{ rows:'wude-weekly.c_recv_list', where:['passed', '==', 'yes'] }, '==', 0] } },
+    note:'A quality complaint counts against the bonus when the jobs register shows the job had passed QC — or has no QC record to say it had not (bug hunt, 15 Oct 2026: the column this read was never filled, so the bonus was always paid).',
+    test:{ at:'month', needFiled:['wude-daily'], when:[{ rows:'wude-weekly.c_recv_list', where:{ any:[{ qc:'code', is:'passed' }, { not:{ qc:'code', is:'known' } }] } }, '==', 0] } },
 
   { id:'wude-bonus-rework-reduction', who:['wude'], kind:'bonus', birr:1000, per:'month', how:'auto',
     en:'Rework rate below 2% for the month',
@@ -1926,8 +1926,8 @@ const RULES = [
     en:'Customer complaint related to QC',
     am:'ከጥራት ቁጥጥር ጋር የተያያዘ የደንበኛ ቅሬታ',
     src:'Wude’s letter — “Customer complaint related to QC –1,000 Birr per complaint”',
-    note:'A complaint counts as QC-related when the job had passed QC; the same complaint may also fine Amaha.',
-    test:{ at:'week', on:'wude-weekly', rows:{ of:'wude-weekly.c_recv_list', where:['passed', '==', 'yes'] } } },
+    note:'A complaint counts as QC-related when the jobs register shows the job had passed QC (Wude’s own reports); the same complaint may also fine Amaha.',
+    test:{ at:'week', on:'wude-weekly', rows:{ of:'wude-weekly.c_recv_list', where:{ qc:'code', is:'passed' } } } },
 
   { id:'wude-rejection-undocumented', who:['wude'], kind:'penalty', birr:200, per:'event', how:'auto',
     en:'Rejection not documented',

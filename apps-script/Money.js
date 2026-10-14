@@ -116,17 +116,47 @@ function moneyFixes_() {
   MONEY_FIXES_ = by;
   return by;
 }
-function moneyFresh_() { MONEY_FIXES_ = null; }
+function moneyFresh_() { MONEY_FIXES_ = null; MONEY_BASE_ = {}; }
+/* her list as it stood when she was asked to correct it (/moneyfix/{day}.baseList) */
+var MONEY_BASE_ = {};
+function moneyBase_(day) {
+  if (!(day in MONEY_BASE_)) {
+    var d = null;
+    try { d = fsGet_('moneyfix/' + day); } catch (e) { d = null; }
+    MONEY_BASE_[day] = (d && d.baseList) || [];
+  }
+  return MONEY_BASE_[day];
+}
 
 /* Called by fsQuery_ on every read of /reports: an Ephrata daily report
-   filed before her fix of that day reads as the fix says the day stood. */
+   filed before her fix of that day reads as the fix says the day stood —
+   and so does one filed after it that only repeats the list as it was:
+   reopened the same day, her phone shows the copy she first sent, without
+   the fix, and sending it again (to add something else) dropped the fixed
+   payments (the bug hunt, 15 Oct 2026: 533,551 Birr out of her week). A
+   later filing that names a payment the fix does not is her own new word,
+   and stands. */
+function moneyRepeats_(filed, fixList, baseList) {
+  var fixRows = moneyRows_(fixList).concat(moneyRows_(baseList || [])), used = {};
+  return moneyRows_(filed).every(function (r) {
+    for (var i = 0; i < fixRows.length; i++) {
+      var x = fixRows[i];
+      if (used[i] || Math.round(x.v) !== Math.round(r.v)) continue;
+      if (r.code && x.code && r.code !== x.code) continue;
+      used[i] = true;
+      return true;
+    }
+    return false;
+  });
+}
 function moneyPatch_(docs) {
   var mine = docs.filter(function (d) { return d.report === MONEY_REPORT_ && d.at && d.at.getTime; });
   if (!mine.length) return docs;
   var fx = moneyFixes_();
   mine.forEach(function (d) {
     var f = fx[dayOf_(d.at)];
-    if (!f || !(d.at.getTime() < f.at.getTime())) return;
+    if (!f) return;
+    if (!(d.at.getTime() < f.at.getTime()) && !moneyRepeats_((d.values || {}).collected_list, f.list, moneyBase_(dayOf_(d.at)))) return;
     var v = {};
     Object.keys(d.values || {}).forEach(function (k) { v[k] = d.values[k]; });
     v.collected_before = v.collected_today == null ? '' : String(v.collected_today);
@@ -218,7 +248,21 @@ function moneyWatch_() {
       if (dow_(d) !== 0 && (!start || d >= start)) days[d] = 1;
     }
   }
-  tryQuery_('moneyfix', [['status', 'EQUAL', 'open']], null).forEach(function (m) { if (m.day) days[m.day] = 1; });
+  /* an open day is looked at again once an hour — or at once when she has
+     sent a fix since; every ten minutes it re-read the whole day each time
+     (the bug hunt, 15 Oct 2026: Firestore's daily reads). A new report is
+     checked as it comes in (runIfNew_). */
+  var lastLook = Number(props.getProperty('MONEY_LOOK') || 0), now = new Date().getTime();
+  var hourly = now - lastLook >= 3600 * 1000;
+  var fixedSince = {};
+  if (!hourly) {
+    tryQuery_('fixes', [['at', 'GREATER_THAN', new Date(lastLook)]], null)
+      .forEach(function (f) { if (f.day) fixedSince[f.day] = 1; });
+  }
+  tryQuery_('moneyfix', [['status', 'EQUAL', 'open']], null).forEach(function (m) {
+    if (m.day && (hourly || fixedSince[m.day])) days[m.day] = 1;
+  });
+  if (hourly) props.setProperty('MONEY_LOOK', String(now));
   var keys = Object.keys(days);
   if (keys.length) {
     moneyFresh_();

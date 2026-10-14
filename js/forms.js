@@ -2082,7 +2082,9 @@ const REPORTS = [
         auto:{rows:'rec_list', when:{col:'grn', is:'yes'}}, sumEn:'notes signed', sumAm:'ወረቀቶች ተፈርመዋል'},
       /* "how many" of what? They are deliveries (the Chairman, 9 Oct 2026) */
       {id:'rec_checked', en:'How many of those deliveries were checked against the Job File / BOM? (checked / delivered)', am:'ከነዚህ ጭነቶች ስንቱ ከጆብ ፋይሉ ወይም ከዕቃ ዝርዝሩ ጋር ተረጋገጡ? (የተረጋገጡ / የደረሱ)', t:'ratio',
-        auto:{a:{rows:'rec_list', when:{col:'ok', not:'no'}}, b:{rows:'rec_list'}},
+        /* only rows whose box was answered count (the bug hunt, 15 Oct 2026 — as
+           for Elyas's ac_called on 11 Oct: a box left untapped was fined as a "no") */
+        auto:{a:{rows:'rec_list', when:{col:'ok', in:['yes', 'diff']}}, b:{rows:'rec_list', when:{col:'ok', in:['yes', 'diff', 'no']}}},
         sumEn:'checked against the BOM', sumAm:'ከዕቃ ዝርዝሩ ጋር ተረጋግጠዋል'},
       {id:'rec_bom_off', en:'How many did not match the BOM?', am:'ከዕቃ ዝርዝሩ ጋር ያልተስማሙ ስንት ናቸው?', t:'num',
         auto:{rows:'rec_list', when:{col:'ok', is:'diff'}}, sumEn:'did not match', sumAm:'አልተስማሙም'},
@@ -4402,8 +4404,8 @@ const REPORTS = [
   en:'15-Day Production Plan', am:'የ15 ቀን የምርት ዕቅድ',
   toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
   dueEn:'Saturday 3:00 PM', dueAm:'ቅዳሜ ከቀኑ 9፡00 (3:00 PM)',
-  penEn:'Late –5,000 Birr · Incomplete –2,000 Birr · Two weeks without a plan –10,000 Birr',
-  penAm:'ዘግይቶ –5,000 ብር · ያልተሟላ –2,000 ብር · ሁለት ሳምንት ካልቀረበ –10,000 ብር',
+  penEn:'Late or not sent –5,000 Birr · Incomplete –2,000 Birr · Two weeks without a plan –10,000 Birr',
+  penAm:'ዘግይቶ ወይም ሳይላክ –5,000 ብር · ያልተሟላ –2,000 ብር · ሁለት ሳምንት ካልቀረበ –10,000 ብር',
   sections:[
     /* REWORDED 11 Oct 2026 (the Chairman: "they are struggling so much with
        the questions"). Mahelet's first plan (10 Oct) left the internal-jobs
@@ -6503,16 +6505,16 @@ const REPORTS = [
     ]},
     { en:'Customer complaints', am:'የደንበኛ ቅሬታዎች', fields:[
       {id:'c_recv_any', en:'Did any customer complaint about quality come in this week?', am:'በዚህ ሳምንት ስለጥራት የደረሰ የደንበኛ ቅሬታ አለ?', t:'yesno', auto:{all:'c_recv_list.what'}, quiet:1,},
-      /* the rulebook fines and pays on the "passed by QC" column of these
-         rows (wude-complaint-qc, wude-bonus-no-complaint); the register reads
+      /* the rulebook fines and pays on these rows, asking the jobs register
+         whether each job had passed QC (wude-complaint-qc,
+         wude-bonus-no-complaint; Rules.js rulesQcOf_); the register reads
          them too */
       {id:'c_recv_list', en:'List each complaint', am:'እያንዳንዱን ቅሬታ ይዘርዝሩ', t:'table', auto:{weekRows:'pl_list', from:'betty-pulse', when:{col:'issue', in:['Quality', 'ጥራት']}, map:{job:'code', issue:'what'}}, addEn:'Add a complaint', addAm:'ቅሬታ ጨምር',
 
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'what', en:'Complaint', am:'ቅሬታ', t:'text', picks:COL_COMPLAINT},
-          {id:'passed', en:'Passed by QC?', am:'በጥራት ቁጥጥር አልፎ ነበር?', t:'yesno', yes:{en:'It had passed QC', am:'ፍተሻ አልፎ ነበር'}, no:{en:'It had not', am:'ፍተሻ አላለፈም ነበር'}}
+          {id:'what', en:'Complaint', am:'ቅሬታ', t:'text', picks:COL_COMPLAINT}
         ]},
       {id:'c_recv', en:'How many customer complaints this week were about quality?', am:'በዚህ ሳምንት ስንት የደንበኛ ቅሬታዎች ከጥራት ጋር የተያያዙ ነበሩ?', t:'num',
         auto:{rows:'c_recv_list'}, sumEn:'complaints', sumAm:'ቅሬታዎች',
@@ -8050,8 +8052,23 @@ const SALES_DAILY = {
             {v:'agent',  en:'Through an agent',         am:'በኤጀንት'},
             {v:'other',  en:'Anywhere else',            am:'ከሌላ ቦታ'}
           ]},
-          {id:'called', en:'Called within 24 hours?', am:'በ24 ሰዓት ውስጥ ተደውሏል?', t:'yesno', yes:{en:'Called in time', am:'በሰዓቱ ተደውሏል'}, no:{en:'Late, or not yet', am:'ዘግይቷል ወይም ገና አልተደወለም'}},
+          /* "not yet" is not "late" (the bug hunt, 15 Oct 2026): a lead that came in
+             this afternoon still has its 24 hours. It is asked again in the next
+             report (l_wait below), and judged there. */
+          {id:'called', en:'Called within 24 hours?', am:'በ24 ሰዓት ውስጥ ተደውሏል?', t:'choice', opts:[
+            {v:'yes',  en:'Called in time',                       am:'በሰዓቱ ተደውሏል'},
+            {v:'wait', en:'Not yet — the 24 hours are not up',    am:'ገና — 24 ሰዓቱ ገና አላለፈም'},
+            {v:'no',   en:'Not within 24 hours',                  am:'በ24 ሰዓት ውስጥ አልተደወለም'}
+          ]},
           {id:'next', en:'Next step', am:'ቀጣይ እርምጃ', t:'text', picks:COL_NEXT}
+        ]},
+      /* the leads an earlier report said were not called yet, back until
+         answered — a lead from Saturday afternoon is asked on Monday */
+      {id:'l_wait', en:'Leads from your earlier reports not called yet: were they called within 24 hours?', am:'ቀደም ባሉ ሪፖርቶችዎ ገና ያልተደወለላቸው ደንበኞች፦ በ24 ሰዓት ውስጥ ተደወለላቸው?', t:'table',
+        carry:{from:[{f:'l_list', col:'cust', when:{col:'called', is:'wait'}}], close:{col:'called', in:['yes', 'no']}, days:4, text:1, hideEmpty:1},
+        cols:[
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'called', en:'Called within 24 hours?', am:'በ24 ሰዓት ውስጥ ተደውሏል?', t:'yesno', must:1, yes:{en:'Called in time', am:'በሰዓቱ ተደውሏል'}, no:{en:'Not within 24 hours', am:'በ24 ሰዓት ውስጥ አልተደወለም'}}
         ]},
       {id:'l_total', en:'How many new leads did you receive today?', am:'ዛሬ ስንት አዲስ ደንበኞች መጡ?', t:'num',
         auto:{rows:'l_list'}, sumEn:'new leads', sumAm:'አዲስ ደንበኞች'},
@@ -8068,7 +8085,10 @@ const SALES_DAILY = {
     ]},
     { en:'Lead response', am:'የምላሽ ፍጥነት', fields:[
       {id:'r_1hr', en:'New leads today: how many did you call within 24 hours? (called within 24 hours / all new leads today)', am:'ዛሬ አዲስ የመጡ ደንበኞች፦ ስንቱን በ24 ሰዓት ውስጥ ደወሉላቸው? (በ24 ሰዓት ውስጥ የተደወለላቸው / ዛሬ የመጡ አዲስ ደንበኞች በሙሉ)', t:'ratio', whole:'l_total',
-        auto:{a:{rows:'l_list', when:{col:'called', is:'yes'}}, b:{rows:'l_list'}},
+        /* today's leads answered yes or no, and the earlier ones answered today;
+           a lead "not yet" inside its 24 hours is in neither (bug hunt, 15 Oct) */
+        auto:{a:{plus:[{rows:'l_list', when:{col:'called', is:'yes'}}, {rows:'l_wait', when:{col:'called', is:'yes'}}]},
+              b:{plus:[{rows:'l_list', when:{col:'called', in:['yes', 'no']}}, {rows:'l_wait', when:{col:'called', in:['yes', 'no']}}]}},
         tgt:{op:'gte', v:100, en:'Stage 1 of your commission — –200 Birr per missed lead',
              am:'የኮሚሽንዎ 1ኛ ደረጃ — ላመለጠ እያንዳንዱ –200 ብር'}},
       {id:'r_1hr_why', en:'Some leads were not called within 24 hours. Why? (Write who in the box.)', am:'አንዳንዶቹ በ24 ሰዓት ውስጥ አልተደወለላቸውም። ለምን? (ማን እንደሆነ በሳጥኑ ይጻፉ።)', t:'area',
@@ -8622,7 +8642,9 @@ const DESIGN_DAILY = {
       {id:'m_pre', en:'How many pre-measurements did you do today?', am:'ዛሬ ስንት ቅድመ ልኬቶችን አደረጉ?', t:'num',
         auto:{rows:'m_pre_list'}, sumEn:'pre-measurements', sumAm:'ቅድመ ልኬቶች'},
       {id:'m_pre_ontime', en:'How many were within 48 hours of the lead? (on time / done)', am:'ስንቱ ደንበኛው ከመጣ በ48 ሰዓት ውስጥ ተደረጉ? (በሰዓቱ / የተደረጉ)', t:'ratio',
-        auto:{a:{rows:'m_pre_list', when:{col:'ontime', is:'yes'}}, b:{rows:'m_pre_list'}},
+        /* only rows whose box was answered count (the bug hunt, 15 Oct 2026 — as
+           for Elyas's ac_called on 11 Oct: a box left untapped was fined as a "no") */
+        auto:{a:{rows:'m_pre_list', when:{col:'ontime', is:'yes'}}, b:{rows:'m_pre_list', when:{col:'ontime', in:['yes', 'no']}}},
         tgt:{op:'gte', v:100, en:'Late is –300 Birr and loses stage 1', am:'ዘግይቶ –300 ብር እና 1ኛ ደረጃን ያሳጣል'}},
       {id:'m_pre_ontime_why', en:'Some were later than 48 hours. Why? (Write the customer and how late in the box.)', am:'አንዳንዶቹ ከ48 ሰዓት በላይ ዘገዩ። ለምን? (ደንበኛውንና በምን ያህል እንደዘገየ በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
@@ -8650,7 +8672,9 @@ const DESIGN_DAILY = {
       {id:'m_fin', en:'How many final measurements did you do today?', am:'ዛሬ ስንት የመጨረሻ ልኬቶችን አደረጉ?', t:'num',
         auto:{rows:'m_fin_list'}, sumEn:'final measurements', sumAm:'የመጨረሻ ልኬቶች'},
       {id:'m_fin_ontime', en:'How many were within 24 hours of the advance? (on time / done)', am:'ስንቱ ከቅድመ ክፍያ በ24 ሰዓት ውስጥ ተደረጉ? (በሰዓቱ / የተደረጉ)', t:'ratio',
-        auto:{a:{rows:'m_fin_list', when:{col:'ontime', is:'yes'}}, b:{rows:'m_fin_list'}},
+        /* only rows whose box was answered count (the bug hunt, 15 Oct 2026 — as
+           for Elyas's ac_called on 11 Oct: a box left untapped was fined as a "no") */
+        auto:{a:{rows:'m_fin_list', when:{col:'ontime', is:'yes'}}, b:{rows:'m_fin_list', when:{col:'ontime', in:['yes', 'no']}}},
         tgt:{op:'gte', v:100, en:'Late is –300 Birr and loses stage 4', am:'ዘግይቶ –300 ብር እና 4ኛ ደረጃን ያሳጣል'}},
       {id:'m_fin_ontime_why', en:'Some were later than 24 hours. Why? (Write the customer in the box.)', am:'አንዳንዶቹ ከ24 ሰዓት በላይ ዘገዩ። ለምን? (ደንበኛውን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
@@ -8675,7 +8699,9 @@ const DESIGN_DAILY = {
        is the consent, the design discussions, and the reasons */
     { en:'Videos', am:'ቪዲዮዎች', fields:[
       {id:'v_pre_rec', en:'How many pre-measurement videos (3–5 min) were recorded? (recorded / visits)', am:'ስንት የቅድመ ልኬት ቪዲዮዎች (3–5 ደቂቃ) ተቀረጹ? (የተቀረጹ / ጉብኝቶች)', t:'ratio',
-        auto:{a:{rows:'m_pre_list', when:{col:'vid', in:['up','rec']}}, b:{rows:'m_pre_list'}},
+        /* only rows whose box was answered count (the bug hunt, 15 Oct 2026 — as
+           for Elyas's ac_called on 11 Oct: a box left untapped was fined as a "no") */
+        auto:{a:{rows:'m_pre_list', when:{col:'vid', in:['up','rec']}}, b:{rows:'m_pre_list', when:{col:'vid', in:['up', 'rec', 'no']}}},
         tgt:{op:'gte', v:100, en:'A missing video is –500 Birr and loses 0.2%',
              am:'ያልተቀረጸ ቪዲዮ –500 ብር እና 0.2% ያሳጣል'}},
       {id:'v_pre_rec_why', en:'Some visits have no video. Why? (Write the customer in the box.)', am:'አንዳንድ ጉብኝቶች ቪዲዮ የላቸውም። ለምን? (ደንበኛውን በሳጥኑ ይጻፉ።)', t:'area',
@@ -8687,7 +8713,9 @@ const DESIGN_DAILY = {
           { en:'Someone else did the visit',           am:'ጉብኝቱን ሌላ ሰው አደረገው' }
         ], show:{f:'v_pre_rec', when:'short'}},
       {id:'v_fin_rec', en:'How many final measurement videos (5–8 min) were recorded? (recorded / measurements)', am:'ስንት የመጨረሻ ልኬት ቪዲዮዎች (5–8 ደቂቃ) ተቀረጹ? (የተቀረጹ / ልኬቶች)', t:'ratio',
-        auto:{a:{rows:'m_fin_list', when:{col:'vid', in:['up','rec']}}, b:{rows:'m_fin_list'}},
+        /* only rows whose box was answered count (the bug hunt, 15 Oct 2026 — as
+           for Elyas's ac_called on 11 Oct: a box left untapped was fined as a "no") */
+        auto:{a:{rows:'m_fin_list', when:{col:'vid', in:['up','rec']}}, b:{rows:'m_fin_list', when:{col:'vid', in:['up', 'rec', 'no']}}},
         tgt:{op:'gte', v:100, en:'A missing video is –500 Birr and loses 0.3%',
              am:'ያልተቀረጸ ቪዲዮ –500 ብር እና 0.3% ያሳጣል'}},
       {id:'v_fin_rec_why', en:'Some measurements have no video. Why? (Write the customer in the box.)', am:'አንዳንድ ልኬቶች ቪዲዮ የላቸውም። ለምን? (ደንበኛውን በሳጥኑ ይጻፉ።)', t:'area',
@@ -8746,8 +8774,10 @@ const DESIGN_DAILY = {
       {id:'d_approved', en:'How many written customer approvals did you receive today?', am:'ዛሬ ስንት የጽሑፍ የደንበኛ ማጽደቆች ደረሱዎት?', t:'num',
         auto:{rows:'d_list', when:{col:'appr', is:'yes'}}, sumEn:'approvals in writing', sumAm:'የጽሑፍ ማጽደቆች'},
       {id:'d_pre_ontime', en:'How many were within 24 hours of the measurement? (on time / delivered)', am:'ስንቱ ከልኬት በ24 ሰዓት ውስጥ ቀረቡ? (በሰዓቱ / የቀረቡ)', t:'ratio',
+        /* only rows whose box was answered count (the bug hunt, 15 Oct 2026 — as
+           for Elyas's ac_called on 11 Oct: a box left untapped was fined as a "no") */
         auto:{a:{rows:'d_list', when:[{col:'kind', is:'pre'}, {col:'ontime', is:'yes'}]},
-              b:{rows:'d_list', when:{col:'kind', is:'pre'}}},
+              b:{rows:'d_list', when:[{col:'kind', is:'pre'}, {col:'ontime', in:['yes', 'no']}]}},
         tgt:{op:'gte', v:100, en:'Late is –300 Birr', am:'ዘግይቶ –300 ብር'}},
       {id:'d_pre_ontime_why', en:'Some were later than 24 hours. Why? (Write the customer in the box.)', am:'አንዳንዶቹ ከ24 ሰዓት በላይ ዘገዩ። ለምን? (ደንበኛውን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[

@@ -573,7 +573,13 @@ function askPack_(ask, facts, P) {
     '--- ' + P.start + ' to ' + P.end + ' ---',
     JSON.stringify(facts, null, 1)
   ].join('\n');
-  return aiAsk_(prompt, 2000);
+  /* asked twice; a reply that still is not a reading is not saved as the
+     week's summary — the pack is not made, and the next run asks again
+     (a saved pack is never made again) */
+  var text = aiAsk_(prompt, 2000);
+  if (aiFailed_(text)) { Utilities.sleep(8000); text = aiAsk_(prompt, 2000); }
+  if (aiFailed_(text)) throw new Error('the model did not answer ' + text);
+  return text;
 }
 
 /* ------------------------------------------------------------------ *

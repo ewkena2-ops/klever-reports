@@ -95,6 +95,15 @@ function aiRequest_(prompt, maxTokens) {
 }
 
 /* The text of one reply, whichever provider wrote it. */
+/* A reply that is not a reading: the model did not answer (quota, a 503),
+   its answer could not be read, or there is no key. Such a text is never
+   published as if it were the reading — not to the owners' pages, not to
+   the Chairman's WhatsApp, not as the week's summary (the bug hunt, 15 Oct
+   2026: a 429 at 06:44 overwrote 22 good readings with "(no answer — HTTP
+   429)" and sent it to his phone). */
+function aiFailed_(t) {
+  return /^\((no answer|could not read|No model key|The written reading did not come)/.test(String(t == null ? '' : t).trim());
+}
 function aiRead_(res) {
   if (brain_().provider !== 'claude') return readReply_(res);
   if (!res || res.getResponseCode() !== 200) {

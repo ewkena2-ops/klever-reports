@@ -293,9 +293,12 @@ function jobMoneyAfter_(fresh) {
 }
 
 /* From the watch: once an hour, so a new day moves the plan on */
+/* Once a day, so a new day moves the plan on; a report it reads runs it as
+   it comes in. It read 60 days of every report each hour, for nothing new
+   most hours (the bug hunt, 15 Oct 2026: Firestore's daily reads). */
 function jobMoneyWatch_() {
   var last = Number(PropertiesService.getScriptProperties().getProperty(JM_RUN_KEY_) || 0);
-  if (Date.now() - last < 3600 * 1000) return;
+  if (last && Utilities.formatDate(new Date(last), tz_(), 'yyyy-MM-dd') === todayAddis_()) return;
   jobMoneyRun_();
 }
 

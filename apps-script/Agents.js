@@ -1775,13 +1775,15 @@ function askAll_(d) {
                text:aiAsk_(promptFor_(decide, decide.facts(d), d)), decision:true });
   }
 
-  /* the brief reads everything above it */
+  /* the brief reads everything above it — the readings that came, not the errors */
   var brief = AGENTS.filter(function (a) { return a.id === 'brief'; })[0];
   if (brief) {
-    var digest = out.map(function (r) { return '## ' + r.en + '\n' + r.text; }).join('\n\n');
+    var digest = out.filter(function (r) { return !aiFailed_(r.text); })
+      .map(function (r) { return '## ' + r.en + '\n' + r.text; }).join('\n\n');
     out.push({ id:brief.id, en:brief.en, am:brief.am, facts:{}, last:true,
                text:aiAsk_(promptFor_(brief, brief.facts(d), d) + '\n\n' + digest, 2000) });
   }
+  out.forEach(function (r) { r.failed = aiFailed_(r.text); });
   return out;
 }
 
@@ -2106,6 +2108,20 @@ function checkKeys() {
    near this collection, because it names people and what they owe. */
 function publishAnalysis_(results, d) {
   try {
+    /* a reading that did not come keeps the one this day already had, or
+       says plainly that it did not come — never the error as the reading */
+    var before = {};
+    if (results.some(function (r) { return aiFailed_(r.text); })) {
+      try {
+        var prev = fsGet_('analysis/' + d.day);
+        ((prev && prev.findings) || []).forEach(function (f) { if (f && f.id && !aiFailed_(f.text)) before[f.id] = f.text; });
+      } catch (e) { before = {}; }
+    }
+    var textOf = function (r) {
+      /* no key at all is said as it is: nothing will come until one is set */
+      if (!aiFailed_(r.text) || /^\(No model key/.test(String(r.text))) return String(r.text || '');
+      return before[r.id] || 'The model did not answer this time (' + String(r.text).replace(/^\(|\)$/g, '') + '). The figures were still worked out; it is asked again at the next run.';
+    };
     fsPut_('analysis/' + d.day, {
       day: d.day,
       dayLabel: d.dayLabel,
@@ -2118,7 +2134,7 @@ function publishAnalysis_(results, d) {
       model: brain_().label,
       modelNote: brain_().note,
       findings: results.map(function (r) {
-        return { id: r.id, en: r.en, am: r.am, text: String(r.text || ''),
+        return { id: r.id, en: r.en, am: r.am, text: textOf(r),
                  kind: r.id === 'brief' ? 'brief' : (r.decision ? 'decision' : 'finding') };
       })
     });

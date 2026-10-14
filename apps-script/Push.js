@@ -92,8 +92,13 @@ function pushDay_(day) {
 }
 
 /* One instruction to its person's phones, once. True if this run sent it. */
+/* An alert's id is up to 120 characters ('al-<report>-<day>-<kind>-<person>',
+   Owners.js alertOnce_): held to 40, Getachew's, Biruktayet's and Ephrata's
+   copies never rang (the bug hunt, 15 Oct 2026). The characters allowed
+   still keep a path out. */
+var PUSH_ID_RE_ = /^[A-Za-z0-9_-]{6,120}$/;
 function notifyInstruction_(id) {
-  if (!/^[A-Za-z0-9_-]{6,40}$/.test(String(id || ''))) return false;
+  if (!PUSH_ID_RE_.test(String(id || ''))) return false;
   if (fsGet_('pushlog/' + id)) return false;
   var ins = fsGet_('instructions/' + id);
   if (!ins || ins.status !== 'open' || !ins.to) return false;
@@ -109,9 +114,11 @@ function notifyInstruction_(id) {
 }
 
 /* From doPost: the instructions his page just gave, by id. */
+/* The AI's morning list sends up to 20 at once (Team.js TEAM_MAX_TASKS_):
+   only the first 6 used to ring (the bug hunt, 15 Oct 2026). */
 function notifyPost_(ids) {
-  var list = String(ids || '').split(',').slice(0, 6);
-  if (!list.length || !list.every(function (x) { return /^[A-Za-z0-9_-]{6,40}$/.test(x); })) return 'refused';
+  var list = String(ids || '').split(',').slice(0, 20);
+  if (!list.length || !list.every(function (x) { return PUSH_ID_RE_.test(x); })) return 'refused';
   var n = 0;
   list.forEach(function (id) {
     try { if (notifyInstruction_(id)) n++; } catch (e) { Logger.log('notify %s: %s', id, e.message); }
@@ -124,11 +131,15 @@ function notifyPost_(ids) {
 function notifyWaiting_() {
   try {
     var since = new Date(new Date().getTime() - PUSH_WATCH_BACK_MS_);
+    /* up to ten sent a run — counted among those not sent yet, not the
+       first ten of the hour: a batch with one time stamp kept handing back
+       the same ten, and the rest never rang */
+    var sent = 0;
     tryQuery_('instructions', [['at', 'GREATER_THAN_OR_EQUAL', since]], 'at')
       .filter(function (i) { return i.status === 'open'; })
-      .slice(0, 10)
       .forEach(function (i) {
-        try { notifyInstruction_(i._id); } catch (e) { Logger.log('notify %s: %s', i._id, e.message); }
+        if (sent >= 10) return;
+        try { if (notifyInstruction_(i._id)) sent++; } catch (e) { Logger.log('notify %s: %s', i._id, e.message); }
       });
   } catch (e) {
     Logger.log('notifyWaiting: %s', e.message);

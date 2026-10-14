@@ -52,7 +52,7 @@ function ownersOf_(id, kind) {
 function deliverReadings_(items, day, kind) {
   var per = {}, n = 0;
   (items || []).forEach(function (it) {
-    if (!it || !it.text || /^\((No model key|The written reading did not come)/.test(it.text)) return;
+    if (!it || !it.text || aiFailed_(it.text)) return;
     ownersOf_(it.id, kind).forEach(function (to) {
       try {
         fsPut_('readings/' + to + '_' + kind + '_' + it.id, {

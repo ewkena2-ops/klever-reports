@@ -210,7 +210,11 @@ function plantManager_(d) {
       else if (date === today || date === tomorrow) due.push({ job: job, customer: cust, to_be: g[2], on: dayLabel_(date), step_now: stepNow, owner: g[3] });
     });
     var start = String(q.start || '').trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(start) && start <= tomorrow && !st.production && !st.final && !st.made) {
+    /* "not started yet" is Amaha's first production line (prodFirst), not the
+       register's production step — that step is set by the plan itself, so
+       every planned job looked started and Selam was never asked (the bug
+       hunt, 15 Oct 2026) */
+    if (/^\d{4}-\d{2}-\d{2}$/.test(start) && start <= tomorrow && !(j && j.prodFirst) && !st.final && !st.made) {
       noFinal.push({ job: job, customer: cust, planned_start: dayLabel_(start), step_now: stepNow });
     }
   });

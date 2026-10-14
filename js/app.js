@@ -1015,11 +1015,16 @@
      came from him — until the person it is for says it is done. The morning
      brief tells him about any that pass their date first. */
   var stopIns = null;
+  var insKept = null;
   function instructionsCard() {
+    if (insKept && insKept.who === AUTH.who()) return insKept;
     if (stopIns) { try { stopIns(); } catch (e) {} stopIns = null; }
     var wrap = el('div', 'inswrap');
     if (!window.FB || !window.FB.live() || AUTH.isChairman()) return wrap;
-    stopIns = window.FB.watchMyInstructions(function (all) {
+    insKept = wrap;
+    wrap.who = AUTH.who();
+    stopIns = window.FB.watchMyInstructions(function onIns(all) {
+      if (typingIn(wrap, function () { onIns(all); })) return;
       wrap.innerHTML = '';
       var open = all.filter(function (i) { return i.status === 'open'; })
                     .sort(function (a, b) { return a.due < b.due ? -1 : (a.due > b.due ? 1 : 0); });
@@ -1044,13 +1049,17 @@
      else: each payment, both figures, a tap for either and a box for the
      real one. It goes when every box is filled; what she sends becomes the
      day's figure everywhere it is read. Her report itself stays as filed. */
-  var stopMf = null;
+  var stopMf = null, mfKept = null;
   function moneyFixCard() {
+    if (mfKept && mfKept.who === AUTH.who()) return mfKept;
     if (stopMf) { try { stopMf(); } catch (e) {} stopMf = null; }
     var wrap = el('div', 'inswrap mfwrap');
     if (!window.FB || !window.FB.live() || AUTH.isChairman() || !window.FB.watchMyMoneyFix) return wrap;
+    mfKept = wrap;
+    wrap.who = AUTH.who();
     var sentNow = {};
-    stopMf = window.FB.watchMyMoneyFix(function (docs, mine) {
+    stopMf = window.FB.watchMyMoneyFix(function onMf(docs, mine) {
+      if (typingIn(wrap, function () { onMf(docs, mine); })) return;
       wrap.innerHTML = '';
       /* what she has already answered, by day */
       var answered = {};
@@ -1551,10 +1560,14 @@
     var g = atKind === 'gt' && T[lang]['gt' + k.slice(2)];
     return g || t(k);
   }
+  var atKept = null;
   function attendCard(p) {
+    if (atKept && p && atKept.key === p.id + '|' + stamp()) return atKept;
     if (stopAt) { try { stopAt(); } catch (e) {} stopAt = null; }
     var wrap = el('div', 'atcard');
     if (!p || !(p.scan || p.gate) || AUTH.isChairman() || !window.FB || !window.FB.live() || !window.FB.watchMyAttend) return wrap;
+    atKept = wrap;
+    wrap.key = p.id + '|' + stamp();
     atKind = p.gate && !p.scan ? 'gt' : 'at';
     if (atKind === 'gt' && !stopGateConf && window.FB.watchGateConf) {
       stopGateConf = window.FB.watchGateConf(function (d) { gateFrom = d || null; if (gateRedraw) gateRedraw(); });
@@ -1563,6 +1576,7 @@
     var docs = null;
     function draw() {
       if (!docs) return;
+      if (typingIn(wrap, draw)) return;
       var from = atKind === 'gt' ? gateFrom || '9999-12-31'
                                  : typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-15';
       var by = {};
@@ -1900,11 +1914,16 @@
   var PA_FIELDS = [['ot15', 'paOt15'], ['ot175', 'paOt175'], ['ot2', 'paOt2'], ['ot25', 'paOt25'],
                    ['loan', 'paLoan'], ['advance', 'paAdvance'], ['cost', 'paCost'], ['court', 'paCourt']];
   var stopPa = null;
+  var paKept = null;
   function payAddCard() {
+    if (paKept && paKept.who === AUTH.who()) return paKept;
     if (stopPa) { try { stopPa(); } catch (e) {} stopPa = null; }
     var wrap = el('div', 'pacard');
     if (!window.FB || !window.FB.live() || AUTH.isChairman() || AUTH.who() !== 'betty' || !window.FB.watchPayAdd) return wrap;
-    stopPa = window.FB.watchPayAdd(function (docs) {
+    paKept = wrap;
+    wrap.who = AUTH.who();
+    stopPa = window.FB.watchPayAdd(function onPa(docs) {
+      if (typingIn(wrap, function () { onPa(docs); })) return;
       wrap.innerHTML = '';
       docs.slice().sort(function (a, b) { return a.month < b.month ? -1 : 1; }).forEach(function (d) {
         wrap.appendChild(payAddMonth(d));
@@ -2202,9 +2221,41 @@
     if (!currentView || document.hidden) return;
     var y = window.scrollY;
     var open = Array.prototype.map.call(document.querySelectorAll('#app details'), function (d) { return d.open; });
+    /* a box someone is typing in: its card is kept (below), and the keyboard goes back to it */
+    var a = document.activeElement, sel = null;
+    if (a && /^(INPUT|TEXTAREA)$/.test(a.tagName)) { try { sel = [a.selectionStart, a.selectionEnd]; } catch (e) { sel = null; } }
     currentView();
     Array.prototype.forEach.call(document.querySelectorAll('#app details'), function (d, i) { if (open[i]) d.open = true; });
+    if (a && a !== document.activeElement && document.body.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) {
+      try { a.focus({ preventScroll: true }); if (sel) a.setSelectionRange(sel[0], sel[1]); } catch (e) {}
+    }
     window.scrollTo(0, y);
+  }
+  /* CARDS PEOPLE TYPE IN (the bug hunt, 15 Oct 2026): the home page redraws
+     itself every minute and whenever the app is opened again, and a card
+     built afresh came back empty — Ephrata's real amounts, Selam's overtime
+     and loans, a note on an instruction, a reason for a missed check-in,
+     gone while she checked a figure in another app. Such a card is built
+     once for the page's life (as Amaha's gate card), and its own redraw,
+     when its data changes, waits while someone is typing in it. */
+  function typingIn(wrap, retry) {
+    var a = document.activeElement;
+    if (!(a && wrap.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return false;
+    wrap.retryDraw = retry;
+    if (!wrap.waitingDraw) {
+      wrap.waitingDraw = true;
+      wrap.addEventListener('focusout', function again() {
+        setTimeout(function () {
+          if (wrap.contains(document.activeElement)) return;
+          wrap.removeEventListener('focusout', again);
+          wrap.waitingDraw = false;
+          var r = wrap.retryDraw;
+          wrap.retryDraw = null;
+          if (r) r();
+        }, 60);
+      });
+    }
+    return true;
   }
 
   function renderIndex(root) {
@@ -4048,6 +4099,7 @@
     return hit;
   }
   function shown(f) {
+    if (f.carry && f.carry.hideEmpty && !(Array.isArray(values[f.id]) && values[f.id].length)) return false;
     if (!f.show) return true;
     var p = fieldById(f.show.f), w = f.show.when || 'pos';
     if (!p || !shown(p)) return false;
@@ -4546,10 +4598,19 @@
   function carryAnswered(f, r) {
     return !!r && f.cols.some(function (c, i) { return i > 0 && has(r[c.id]); });
   }
+  /* what a carried row is known by: its job codes — or, with carry.text, the
+     words themselves (a lead's name, 15 Oct 2026) */
+  function carryKeys(f, v) {
+    if (f && f.carry && f.carry.text) {
+      var w = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+      return w ? [w] : [];
+    }
+    return jobCodes(v, true);
+  }
   /* the job codes one filing names in a source: 'list.col', a question's
      words, or {f, col, when:{col, is|in}} — only the rows that say so (a job
      that did not pass, a defect sent for rework) */
-  function carryCodes(v, src) {
+  function carryCodes(v, src, f) {
     var s = typeof src === 'string' ? { f: src.split('.')[0], col: src.split('.')[1] } : src;
     var x = v[s.f], out = [];
     if (!s.col) return jobCodes(x, false);
@@ -4557,7 +4618,7 @@
       if (!r) return;
       var w = s.when, cv = w ? r[w.col] : null;
       if (w && (w.in ? w.in.indexOf(cv) === -1 : cv !== w.is)) return;
-      out = out.concat(jobCodes(r[s.col], true));
+      out = out.concat(carryKeys(f, r[s.col]));
     });
     return out;
   }
@@ -4568,12 +4629,12 @@
       return d.report === report.id && ymdOf(addis(d.at)) < day;
     }).sort(function (a, b) { return a.at - b.at; }).forEach(function (d) {
       var v = d.values || {}, named = [], shut = [];
-      (c.from || []).forEach(function (src) { named = named.concat(carryCodes(v, src)); });
-      (c.shut || []).forEach(function (src) { shut = shut.concat(carryCodes(v, src)); });
+      (c.from || []).forEach(function (src) { named = named.concat(carryCodes(v, src, f)); });
+      (c.shut || []).forEach(function (src) { shut = shut.concat(carryCodes(v, src, f)); });
       /* its own rows: answered "not yet" keeps a job open, closed shuts it */
       (Array.isArray(v[f.id]) ? v[f.id] : []).forEach(function (r) {
         if (!r) return;
-        var ks = jobCodes(r[first], true);
+        var ks = carryKeys(f, r[first]);
         if ((close.in || []).indexOf(r[close.col]) !== -1) shut = shut.concat(ks); else named = named.concat(ks);
       });
       named.forEach(function (k) { if (open.indexOf(k) === -1) open.push(k); });
@@ -4590,10 +4651,10 @@
     for (var i = data.length - 1; i >= 0; i--) {
       var r = data[i];
       if (!r || !has(r[first])) { data.splice(i, 1); continue; }
-      if (!carryAnswered(f, r) && open.indexOf(jobCodes(r[first], true)[0]) === -1) data.splice(i, 1);
+      if (!carryAnswered(f, r) && open.indexOf(carryKeys(f, r[first])[0]) === -1) data.splice(i, 1);
     }
     open.forEach(function (k) {
-      var there = data.some(function (r) { return jobCodes(r[first], true).indexOf(k) !== -1; });
+      var there = data.some(function (r) { return carryKeys(f, r[first]).indexOf(k) !== -1; });
       if (!there) { var row = {}; row[first] = k; data.push(row); }
     });
   }
@@ -4761,9 +4822,16 @@
   function autoSpan() {
     var now = Date.now();
     if (report.cadence === 'monthly') {
-      var a = addis(now);
-      return { from: dayStartMs(a.getUTCFullYear() + '-' + pad2(a.getUTCMonth() + 1) + '-01'),
-               to: now + 864e5 };
+      /* the month the report is FOR: due on the 1st (or the 2nd) of the next
+         one, it adds up the month just ended — opened on its due day it was
+         adding up the new month, and filed every figure blank (the bug hunt,
+         15 Oct 2026). Sent early, from the 25th, the month so far. Outside
+         its window, this month so far. */
+      var pd = periodNow(report);
+      var base = pd.day ? addDays(pd.day, -3) : stamp();
+      var first = base.slice(0, 8) + '01';
+      var nextFirst = addDays(first, 32).slice(0, 8) + '01';
+      return { from: dayStartMs(first), to: Math.min(dayStartMs(nextFirst), now + 864e5) };
     }
     var sun = weekClose(now, report.id);
     return { from: deadlineOf(addDays(sun, -7), cutOf(report.id)),
@@ -4982,7 +5050,7 @@
     });
     fields.forEach(function (f) {
       var open = shown(f);
-      if (f.show && !f.quiet) {
+      if ((f.show || (f.carry && f.carry.hideEmpty)) && !f.quiet) {
         var fr = document.getElementById('r_' + f.id) || document.getElementById('w_' + f.id);
         if (fr && fr.hidden === open) {
           fr.hidden = !open;

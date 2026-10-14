@@ -155,6 +155,12 @@ function checkRowCond(id, c, fdef) {
   if (c && c.all) return c.all.forEach(x => checkRowCond(id, x, fdef));
   if (c && c.any) return c.any.forEach(x => checkRowCond(id, x, fdef));
   if (c && c.not) return checkRowCond(id, c.not, fdef);
+  /* {qc:'code', is:'passed'|'known'} — the jobs register's QC record of the job in that column (Rules.js) */
+  if (c && c.qc) {
+    if (!(fdef.cols || []).some(x => x.id === c.qc)) err(id, 'table ' + fdef.id + ' has no column ' + c.qc);
+    if (!['passed', 'known'].includes(c.is)) err(id, 'qc condition must say is: passed or known');
+    return;
+  }
   err(id, 'cannot judge row ' + JSON.stringify(c));
 }
 

@@ -77,8 +77,11 @@ var PENALTY = {
                           src: 'Mahelet’s letter — “Daily operations report late –200 / missing –500”' },
   'liu-weekly':         { late: 500,  miss: 500,
                           src: 'Mahelet’s letter — “Weekly report late –500”; never sent: the same 500 (the Chairman, 4 Oct 2026)' },
-  'liu-plan':           { late: 5000, missAgain: 10000,
-                          src: 'Mahelet’s letter — “15-day production plan late –5,000”, “Two consecutive weeks without a plan –10,000”' },
+  /* never sent: the same 5,000 as late (the Chairman's rule of 4 Oct above —
+     the plan had been left out of it, so not sending it was free while
+     sending it late cost 5,000; the bug hunt, 15 Oct 2026) */
+  'liu-plan':           { late: 5000, miss: 5000, missAgain: 10000,
+                          src: 'Mahelet’s letter — “15-day production plan late –5,000”, “Two consecutive weeks without a plan –10,000”; never sent: the same 5,000 (the Chairman, 4 Oct 2026)' },
 
   'betty-daily':        { late: 200,  miss: 500,
                           src: 'Selam’s letter — “Daily finance report late –200 / missing –500”' },

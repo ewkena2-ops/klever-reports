@@ -218,9 +218,12 @@ function ran_(job, fn) {
   try {
     out = fn() || {};
   } catch (e) {
+    /* with where it stopped — the file and line — so a failure can be found
+       without the script editor's log (15 Oct 2026) */
     var msg = String((e && e.message) || e).substring(0, 500);
-    health_(job, { ok: false, error: msg, ms: new Date().getTime() - t0.getTime() });
-    if (job !== 'reading') failMail_(job, msg);
+    var at = where_(e);
+    health_(job, { ok: false, error: msg, where: at, ms: new Date().getTime() - t0.getTime() });
+    if (job !== 'reading') failMail_(job, msg + at);
     throw e;
   }
   health_(job, { ok: true, ms: new Date().getTime() - t0.getTime(),
@@ -853,6 +856,7 @@ function owedOn_(schedule, day) {
    Sunday was in no close at all. With no part given, both at once. */
 function closeDay_(day, opts) {
   opts = opts || {};
+  var sheetWarn = [];
   var schedule = loadSchedule_();
   var names = {};
   (schedule.people || []).forEach(function (p) { names[p.id] = p.en; });
@@ -951,9 +955,18 @@ function closeDay_(day, opts) {
     }
     fsPut_('ledger/' + day, doc);
     /* the Sheet gets each line once: the week's with the week, the rest of
-       the Sunday with the rest */
-    if (part !== 'day') writeLedgerTab_(ledger, day);
-    writeRulesTab_(part === 'day' ? dayLines : rules.lines, day);
+       the Sunday with the rest. The Sheet is his window, not the record: one
+       that cannot be written is said, and the reading still runs (15 Oct
+       2026: the morning stopped three seconds after the ledger was saved,
+       "You do not have permission to access the requested document", and
+       the day had no reading and no email). */
+    try {
+      if (part !== 'day') writeLedgerTab_(ledger, day);
+      writeRulesTab_(part === 'day' ? dayLines : rules.lines, day);
+    } catch (e) {
+      Logger.log('sheet tabs: %s %s', e.message, where_(e));
+      sheetWarn.push('The Sheet copy of the day’s lines was not written: ' + e.message + where_(e));
+    }
   }
 
   return {
@@ -967,7 +980,8 @@ function closeDay_(day, opts) {
     ledger: ledger,
     ruleLines: rules.lines,
     ruleErrors: rules.errors,
-    weekWaiting: weekWaiting_(schedule, day, filings, names, opts.asOf || null)
+    weekWaiting: weekWaiting_(schedule, day, filings, names, opts.asOf || null),
+    warn: sheetWarn
   };
 }
 
@@ -1122,6 +1136,13 @@ function fmt_(n) {
 function cell_(v) {
   if (typeof v !== 'string') return v;
   return /^[=+@\t\r]/.test(v) || /^-[^0-9.\s]/.test(v) ? "'" + v : v;
+}
+/* " [at closeDay_ (Agent:955)]": the first few places in our code an error
+   passed through, from its stack — '' when there is none */
+function where_(e) {
+  var at = String((e && e.stack) || '').split('\n').filter(function (l) { return /^\s*at /.test(l); })
+    .slice(0, 4).map(function (l) { return l.trim().replace(/^at /, '').replace(/:\d+\)$/, ')'); });
+  return at.length ? ' [at ' + at.join(' < ') + ']' : '';
 }
 function esc_(v) {
   return String(v == null ? '' : v)

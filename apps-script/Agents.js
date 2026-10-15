@@ -1550,8 +1550,9 @@ function closeAndRead_(day, warn, caught, by) {
                                    : 'nothing was due') +
                      (caught.length ? '; also closed ' + caught.join(', ') + ', which had been missed' : '') +
                      by };
+  (c.warn || []).forEach(function (w) { warn.push(w); });
   if (!c.due.length) return done;
-  runOn_(c, false);
+  runOn_(c, false, { warn: warn });
   return done;
 }
 
@@ -1680,14 +1681,23 @@ function runOn_(c, provisional, opts) {
   var quiet = !!(opts && opts.quiet);
   var d = gather_(c, provisional);
   var results = askAll_(d);
-  if (!quiet) writeAnalysis_(results, d);
+  /* the Sheet copy and the email each fail alone, said in the run's warnings:
+     neither may cost the reading on his page (15 Oct 2026) */
+  var warn = (opts && opts.warn) || [];
+  if (!quiet) {
+    try { writeAnalysis_(results, d); }
+    catch (e) { Logger.log('analysis tab: %s %s', e.message, where_(e)); warn.push('The Sheet copy of the reading was not written: ' + e.message + where_(e)); }
+  }
   publishAnalysis_(results, d);
   /* each owner's copy of their agents' readings — the closed day only (Owners.js) */
   if (!provisional) {
     try { deliverReadings_(results.map(function (r) { return { id: r.id, en: r.en, am: r.am, text: r.text }; }), d.day, 'morning'); }
     catch (e) { Logger.log('readings to owners: %s', e.message); }
   }
-  if (!quiet) mailAnalysis_(results, d);
+  if (!quiet) {
+    try { mailAnalysis_(results, d); }
+    catch (e) { Logger.log('analysis mail: %s %s', e.message, where_(e)); warn.push('The morning email did not go: ' + e.message + where_(e)); }
+  }
   /* the morning's brief to his WhatsApp (Wa.js) — the closed day only, not a mid-day look */
   if (!quiet && !provisional) waSendBrief_(results, d);
 }

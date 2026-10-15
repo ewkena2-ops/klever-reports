@@ -456,10 +456,12 @@ const RULES = [
     src:'Getachew’s letter — “Purchasing Failure Penalty Wrong material ordered –1,000 Birr”' },
 
   { id:'getachew-no-job-code', who:['getachew'], kind:'penalty', birr:200, per:'item', how:'auto',
-    en:'Purchase request without a job code',
-    am:'የሥራ ኮድ የሌለው የግዥ ጥያቄ',
+    en:'Purchase request for a customer’s job without a job code',
+    am:'የሥራ ኮድ የሌለው ለደንበኛ ሥራ የቀረበ የግዥ ጥያቄ',
     src:'Getachew’s letter — “Missing job code on a request –200 Birr”',
-    test:{ at:'day', rows:{ of:'getachew-daily.pr_list', where:{ blank:'code' } } } },
+    note:'Charged 200 for each request without a job code, unless he said it is for store stock, the factory, the office or something else — those have no job (the user, 15 Oct 2026).',
+    test:{ at:'day', rows:{ of:'getachew-daily.pr_list', where:{ all:[ { blank:'code' },
+      { not:{ any:[ ['for', '==', 'stock'], ['for', '==', 'factory'], ['for', '==', 'office'], ['for', '==', 'other'] ] } } ] } } } },
 
   { id:'getachew-late-request', who:['getachew'], kind:'penalty', birr:300, per:'event', how:'recorded',
     en:'Late purchase request',

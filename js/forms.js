@@ -1681,7 +1681,17 @@ const REPORTS = [
       {id:'pr_list', en:'Each request prepared today', am:'ዛሬ የተዘጋጀ እያንዳንዱ ጥያቄ', t:'table', addEn:'Add a request', addAm:'ጥያቄ ጨምር',
         show:{f:'pr_any', when:'yes'},
         cols:[
-          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          /* what it is for: only a request for a customer's job has a job
+             code to give, and only that one is fined without it (the user,
+             15 Oct 2026: "he may buy office accessories and other things") */
+          {id:'for', en:'What is it for?', am:'ለምንድነው?', t:'choice', must:1, opts:[
+            {v:'job',     en:'A customer’s job',                         am:'የደንበኛ ሥራ'},
+            {v:'stock',   en:'Store stock — no job yet',                 am:'የመጋዘን ክምችት — ገና ለሥራ ያልተመደበ'},
+            {v:'factory', en:'The factory — tools, parts, consumables',  am:'ፋብሪካ — መሣሪያ፣ መለዋወጫ፣ ፍጆታ'},
+            {v:'office',  en:'The office — stationery and supplies',     am:'ቢሮ — የጽሕፈት መሣሪያና ዕቃ'},
+            {v:'other',   en:'Other',                                    am:'ሌላ'}
+          ]},
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text', ifCol:'for', ifIn:['job']},
           {id:'item', en:'Materials', am:'ዕቃዎች', t:'choice', opts:MATERIAL_OPTS},
           {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
           /* "Amount" was read two ways: 104,403.48 one day, 20 (sheets) the

@@ -49,7 +49,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TAU, ease, webglOk, makeRenderer, makeComposer, paintSky, makeStars, glowSprite, glowTexture,
-         makeWorld, makeSun, ringTexture, makeBelt, makeBrightStars } from './space3d.js?v=1d82963b';
+         makeWorld, makeSun, ringTexture, makeBelt, makeBrightStars } from './space3d.js?v=7a78ea7a';
 
 /* ---------------------------------------------------------------- *
  *  The shape of the company                                          *

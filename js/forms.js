@@ -1652,7 +1652,9 @@ const REPORTS = [
             ifCol:'buy', ifNot:['done', 'hold']},
           /* what the job's material came to, once it is all bought: the
              Chairman's net on the job (apps-script/JobMoney.js) */
-          {id:'cost', en:'What did all its material cost, in Birr?', am:'የሥራው ዕቃ በሙሉ ስንት ብር ወጣ?', t:'money', must:1,
+          /* `mustFrom`: not required on Thu 15 Oct 2026 (the user: "for today
+             don't ask Getachew the amount — that is why he can't send") */
+          {id:'cost', en:'What did all its material cost, in Birr?', am:'የሥራው ዕቃ በሙሉ ስንት ብር ወጣ?', t:'money', must:1, mustFrom:'2026-10-16',
             ifCol:'buy', ifIn:['done']}
         ]}
     ]},
@@ -1668,7 +1670,7 @@ const REPORTS = [
         carry:{ask:'material', close:{col:'amount'}},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'amount', en:'All its material, in Birr (your best figure)', am:'የሥራው ዕቃ በሙሉ በብር (የሚጠብቁት ዋጋ)', t:'money', must:1}
+          {id:'amount', en:'All its material, in Birr (your best figure)', am:'የሥራው ዕቃ በሙሉ በብር (የሚጠብቁት ዋጋ)', t:'money', must:1, mustFrom:'2026-10-16'}
         ]}
     ]},
     { en:'Purchase requests', am:'የግዥ ጥያቄዎች', fields:[

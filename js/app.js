@@ -4482,7 +4482,9 @@
     liveFields().forEach(function (f) {
       if (f.t === 'table') {
         (f.cols || []).forEach(function (c) {
-          if (!c.must) return;
+          /* `mustFrom`: a box that may be left empty before that day (the
+             user, 15 Oct 2026: Getachew's job amounts, for that day only) */
+          if (!c.must || (c.mustFrom && addis().toISOString().slice(0, 10) < c.mustFrom)) return;
           (values[f.id] || []).forEach(function (row, i) {
             if (row && rowHasData(row, f.cols) && colOn(c, row) && !has(row[c.id])) {
               cells.push({ f: f, c: c, row: row, id: 'c_' + f.id + '_' + i + '_' + c.id, n: i + 1 });

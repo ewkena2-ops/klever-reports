@@ -510,6 +510,11 @@ input.mustgap,textarea.mustgap,select.mustgap{
 .mfpick:hover{border-color:var(--teal-line)}
 .mfpick:active{background:var(--teal-bg)}
 .mfbox{flex:1 1 140px;min-width:0;min-height:42px;font-family:var(--mono)}
+/* receipts to confirm (Selam): the tap she chose stays lit */
+.rcpick.on{background:var(--teal-bg);border-color:var(--teal-hi);color:var(--ink)}
+.rcpick.rc_no.on{background:transparent;border-color:var(--coral);color:var(--coral)}
+.rcdup{font-size:12.5px;color:var(--coral);margin:-4px 0 8px;line-height:1.4}
+.rcwaitline{color:var(--dim)}
 /* office check-in at the door (app.js atScanCard / attendCard, Attend.js) */
 .atscan.good::before,.ins.at.good::before{background:var(--teal-hi)}
 .atscan.late::before,.ins.at.late::before{background:var(--gold)}

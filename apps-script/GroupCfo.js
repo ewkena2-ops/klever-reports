@@ -148,6 +148,16 @@ function groupCfo_(d) {
   if (ay_(f0, 'cash_banked') === false) controls.push({ who: 'betty', what: 'not all of the day’s cash was banked' });
   if (ay_(f0, 'asm_unreserved') === true) controls.push({ who: 'betty', what: 'a job being installed without its assembler payment reserved' });
   if (klever.banks_differ_from_total_by) controls.push({ who: 'betty', what: 'the four bank lines add up to ' + fmt_(partsSum) + ', not the ' + fmt_(bank) + ' total' });
+  /* the salespeople's payments against Selam's receipts (Receipts.js) */
+  var receipts = null;
+  try { receipts = rcptFacts_(d.day, names); } catch (e) { Logger.log('group cfo receipts: %s', e.message); }
+  ((receipts && receipts.selam_says_wrong) || []).forEach(function (r) {
+    controls.push({ who: 'sales', what: r.salesperson + ' reported ' + fmt_(r.birr) + ' Birr from ' + (r.customer || 'a customer') + ' on ' + r.day +
+                    ' (receipt ' + r.receipt_no + ') — Selam says ' + r.selam_says });
+  });
+  ((receipts && receipts.receipt_number_given_twice) || []).forEach(function (r) {
+    controls.push({ who: 'sales', what: 'receipt ' + r.receipt_no + ' given for ' + r.salesperson + '’s ' + fmt_(r.birr) + ' Birr on ' + r.day + ' and also for ' + r.also_given_for });
+  });
 
   /* the sister companies */
   var reportOf = {};
@@ -185,6 +195,10 @@ function groupCfo_(d) {
   ((expected && expected.payments) || []).filter(function (p) { return whenOf(p) === 'today' || whenOf(p) === 'tomorrow'; })
     .sort(function (a, b) { return (whenOf(a) === 'today' ? 0 : 1) - (whenOf(b) === 'today' ? 0 : 1) || b.birr - a.birr; })
     .forEach(function (p) { add('ephrata', 'collect ' + fmt_(p.birr) + ' Birr from ' + p.client + (p['for'] ? ' (' + (kindL[p['for']] || p['for']) + ')' : ''), 'she expected it ' + whenOf(p) + ' in her report of ' + dayLabel_(eph.day)); });
+  if (receipts && receipts.waiting_count) {
+    add('betty', 'say on the site whether you issued the receipt for each of ' + receipts.waiting_count +
+        (receipts.waiting_count === 1 ? ' payment' : ' payments') + ' the salespeople reported', 'under “Receipts to confirm” on your page');
+  }
   group.forEach(function (g, i) { if (!g.filed_the_day_read) add(GC_SISTERS_[i].id, 'send the daily report for ' + dayLabel_(d.day), g.company + '’s money in and out is not known for that day'); });
 
   var today_actions = {};
@@ -211,6 +225,7 @@ function groupCfo_(d) {
       bank_loans: loans
     },
     same_day_controls_broken: controls.map(function (c) { return c.what; }),
+    receipts_for_the_salespeoples_payments: receipts,
     group: group,
     never_add: 'Klever’s figures are its own; each sister company’s are its own. Do not add them into a group total.',
     today_actions: today_actions

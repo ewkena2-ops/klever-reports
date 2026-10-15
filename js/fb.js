@@ -317,6 +317,27 @@
       return function () { a(); b(); };
       });
     },
+    /* The salespeople's payments waiting for me to say whether I issued
+       their receipts (apps-script/Receipts.js), and the answers I have
+       sent: cb(rcptcheck docs, my answers). */
+    watchMyReceipts: function (cb) {
+      return later(function () {
+      if (!user) return null;
+      var docs = null, mine = null;
+      function both() { if (docs && mine) cb(docs, mine); }
+      var a = F.onSnapshot(F.query(F.collection(db, 'rcptcheck'), F.where('to', '==', idOf(user))), function (snap) {
+        docs = [];
+        snap.forEach(function (d) { var x = d.data(); x.id = d.id; docs.push(x); });
+        both();
+      }, function () { docs = []; both(); });
+      var b = F.onSnapshot(F.query(F.collection(db, 'rcptok'), F.where('person', '==', idOf(user))), function (snap) {
+        mine = [];
+        snap.forEach(function (d) { var x = d.data({ serverTimestamps: 'estimate' }); x.id = d.id; mine.push(x); });
+        both();
+      }, function () { mine = []; both(); });
+      return function () { a(); b(); };
+      });
+    },
     /* The months' payroll the Chairman approved, for Selam to pay
        (apps-script/Payroll.js): cb(docs), newest month first. Anyone else
        is refused by the rules and gets []. */
@@ -496,6 +517,16 @@
       return F.addDoc(F.collection(db, 'fixes'), {
         day: fix.day, person: idOf(user), by: idOf(user),
         items: fix.items, list: fix.list, total: fix.total,
+        at: F.serverTimestamp()
+      });
+    },
+
+    /* My answers for one day's payments: issued, a different amount, or
+       no such receipt. Filed, never changed. */
+    fileReceipts: function (r) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      return F.addDoc(F.collection(db, 'rcptok'), {
+        day: r.day, person: idOf(user), by: idOf(user), items: r.items,
         at: F.serverTimestamp()
       });
     },

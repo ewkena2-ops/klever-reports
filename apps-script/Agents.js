@@ -2338,6 +2338,8 @@ function watch_(waitMs) {
     notifyWaiting_();
     /* a day whose collections she was asked to fix: closed when her fix is in (Money.js) */
     try { moneyWatch_(); } catch (e) { Logger.log('money watch: %s', e.message); }
+    /* a day of payments still waiting on Selam: her answers reach it (Receipts.js) */
+    try { rcptWatch_(); } catch (e) { Logger.log('receipts watch: %s', e.message); }
     /* the money on each job: once an hour, so a new day moves the plan on (JobMoney.js) */
     try { jobMoneyWatch_(); } catch (e) { Logger.log('job money watch: %s', e.message); }
     /* the payroll: this month so far, last month final from the 6th, and
@@ -2436,6 +2438,8 @@ function runIfNew_(opt) {
   try { registerUpdate_(fresh); } catch (e) { Logger.log('register: %s', e.message); }
   /* Ephrata's collections against the salespeople's: a difference goes to her phone now (Money.js) */
   try { moneyAfter_(fresh); } catch (e) { Logger.log('money: %s', e.message); }
+  /* each payment a salesperson lists, with its receipt number: to Selam to confirm (Receipts.js) */
+  try { rcptAfter_(fresh); } catch (e) { Logger.log('receipts: %s', e.message); }
   /* a plan, a contract, a material cost or a day's m² in: the money on each job again (JobMoney.js) */
   try { jobMoneyAfter_(fresh); } catch (e) { Logger.log('job money: %s', e.message); }
   if (opt.noRead) return true;

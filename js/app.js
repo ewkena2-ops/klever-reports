@@ -1168,6 +1168,126 @@
     row.appendChild(box);
     return row;
   }
+  /* ---------------- receipts to confirm ----------------
+
+     The user, 15 Oct 2026: each payment a salesperson reports carries its
+     receipt number, and Selam, who issues Klever's receipts, says whether
+     she issued it (apps-script/Receipts.js). One card a day: each payment,
+     three taps — issued, a different amount (she types the one on her
+     receipt), no such receipt. She may send the ones she knows and leave
+     the rest; those stay until answered. */
+  var stopRc = null, rcKept = null;
+  function receiptCard() {
+    if (rcKept && rcKept.who === AUTH.who()) return rcKept;
+    if (stopRc) { try { stopRc(); } catch (e) {} stopRc = null; }
+    var wrap = el('div', 'inswrap mfwrap rcwrap');
+    if (!window.FB || !window.FB.live() || AUTH.isChairman() || !window.FB.watchMyReceipts) return wrap;
+    rcKept = wrap;
+    wrap.who = AUTH.who();
+    var sentNow = {};
+    stopRc = window.FB.watchMyReceipts(function onRc(docs, mine) {
+      if (typingIn(wrap, function () { onRc(docs, mine); })) return;
+      wrap.innerHTML = '';
+      /* what she has already answered, by day */
+      var answered = {};
+      mine.forEach(function (f) { (f.items || []).forEach(function (x) { (answered[f.day] = answered[f.day] || {})[x.key] = 1; }); });
+      var open = docs.map(function (d) {
+        var a = answered[d.day] || {}, s = sentNow[d.day] || {};
+        var items = (d.items || []).filter(function (it) { return it && !it.ans && !a[it.key] && !s[it.key]; });
+        return items.length ? { day: d.day, items: items } : null;
+      }).filter(function (d) { return d; }).sort(function (a, b) { return a.day < b.day ? -1 : 1; });
+      if (!open.length) return;
+      wrap.appendChild(el('h2', 'eyebrow', t('rcTitle')));
+      open.forEach(function (d) {
+        wrap.appendChild(receiptRow(d, function (keys) {
+          var s = sentNow[d.day] = sentNow[d.day] || {};
+          Object.keys(keys).forEach(function (k) { s[k] = 1; });
+        }));
+      });
+    });
+    return wrap;
+  }
+  function receiptRow(d, onSent) {
+    var row = el('div', 'ins over mf rc');
+    row.appendChild(el('div', 'inst', tfill_(d.items.length === 1 ? 'rcDayOne' : 'rcDay', { day: dayLabel(d.day), n: d.items.length })));
+    row.appendChild(el('div', 'mfhow', t('rcHow')));
+    var picked = [];
+    var go = el('button', 'pushbtn insgo', t('rcSend'));
+    go.type = 'button';
+    function check() {
+      var any = false, bad = false;
+      picked.forEach(function (p) {
+        if (!p.ans) return;
+        any = true;
+        if (p.ans === 'amount' && !(num_(p.box.value) > 0)) bad = true;
+      });
+      go.disabled = !any || bad;
+    }
+    d.items.forEach(function (it, i) {
+      var p = { it: it, ans: '', box: null };
+      picked.push(p);
+      var card = el('div', 'mfitem rcitem');
+      card.appendChild(el('div', 'mfcust', [personName_(it.who), it.cust, it.code].filter(Boolean).join(' · ')));
+      var kind = it.kind && T[lang]['rcKind_' + it.kind] ? ' · ' + t('rcKind_' + it.kind) : '';
+      card.appendChild(el('div', 'mfsaid', tfill_('rcSaid', { v: money(Math.round(it.amount)), no: it.rcpt || t('rcNoNumber') }) + kind));
+      if (it.dup && it.dup.day) {
+        card.appendChild(el('div', 'rcdup', tfill_('rcDup', { who: personName_(it.dup.who), cust: it.dup.cust || '—',
+                                                              v: money(Math.round(it.dup.amount)), day: dayLabel(it.dup.day) })));
+      }
+      var line = el('div', 'mfline rcline');
+      var box = el('input', 'mfbox');
+      box.type = 'text'; box.inputMode = 'decimal';
+      box.placeholder = t('rcType');
+      box.setAttribute('aria-label', t('rcType') + ' — ' + (it.cust || it.code || it.rcpt || ''));
+      box.id = 'rc_' + d.day + '_' + i;
+      box.hidden = true;
+      box.oninput = check;
+      p.box = box;
+      var btns = [];
+      [['yes', 'rcYes'], ['amount', 'rcAmount'], ['no', 'rcNo']].forEach(function (o) {
+        var b = el('button', 'mfpick rcpick rc_' + o[0], t(o[1]));
+        b.type = 'button';
+        b.setAttribute('aria-pressed', 'false');
+        b.onclick = function () {
+          p.ans = p.ans === o[0] ? '' : o[0];
+          btns.forEach(function (x) {
+            var on = x === b && p.ans === o[0];
+            x.classList.toggle('on', on);
+            x.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+          box.hidden = p.ans !== 'amount';
+          if (p.ans === 'amount') { if (!box.value) box.value = money(Math.round(it.amount)); box.focus(); }
+          check();
+        };
+        btns.push(b);
+        line.appendChild(b);
+      });
+      line.appendChild(box);
+      card.appendChild(line);
+      row.appendChild(card);
+    });
+    check();
+    go.onclick = function () {
+      if (go.disabled) return;
+      go.disabled = true;
+      var items = picked.filter(function (p) { return p.ans; }).map(function (p) {
+        return { key: p.it.key, ans: p.ans, amount: p.ans === 'amount' ? num_(p.box.value) : null };
+      });
+      window.FB.fileReceipts({ day: d.day, items: items }).then(function () {
+        onSent(items.reduce(function (o, x) { o[x.key] = 1; return o; }, {}));
+        row.innerHTML = '';
+        row.className = 'ins mf done';
+        row.appendChild(el('div', 'inst', tfill_('rcThanks', { n: items.length, day: dayLabel(d.day) })));
+      }, function () {
+        go.disabled = false;
+        toast(t('rcFailed'));
+      });
+    };
+    var box = el('div', 'insbox');
+    box.appendChild(go);
+    row.appendChild(box);
+    return row;
+  }
   function num_(v) { var x = String(v == null ? '' : v).replace(/[^0-9.\-]/g, ''); return x === '' ? NaN : Number(x); }
   function tfill_(k, o) { return t(k).replace(/\{(\w+)\}/g, function (m, n) { return o[n] != null ? o[n] : m; }); }
   function personName_(id) { var p = PEOPLE.filter(function (x) { return x.id === id; })[0]; return p ? L(p).split(' ')[0] : id; }
@@ -2413,6 +2533,7 @@
     root.appendChild(attendCard(p));
     root.appendChild(gateHeadCard(p));
     root.appendChild(moneyFixCard());
+    root.appendChild(receiptCard());
     root.appendChild(payrollCard());
     root.appendChild(payAddCard());
     root.appendChild(instructionsCard());

@@ -367,6 +367,12 @@ import {
     jobm.appendChild(el('p', 'codenote', t('chLoading')));
     root.appendChild(jobm);
 
+    /* --- each payment a salesperson reported, and whether Selam issued its receipt (apps-script/Receipts.js) --- */
+    root.appendChild(el('p', 'eyebrow', t('rcChTitle')));
+    var rcBox = el('div', 'chjm chrc');
+    rcBox.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(rcBox);
+
     /* --- what the agents made of it --- */
     root.appendChild(el('p', 'eyebrow', t('chAnalysis')));
     var runBtn = el('button', 'seed', t('chRunNow'));
@@ -536,6 +542,7 @@ import {
     watchCharts(charts);
     watchPromises(proms);
     watchJobMoney(jobm);
+    watchReceipts(rcBox);
     watchHealth(sys, sysAlarm);
   }
 
@@ -678,6 +685,65 @@ import {
       if (parts.length) card.appendChild(el('div', 'jmparts', parts.join(' · ')));
       var w = (r.waitFor || []).map(function (k) { return t(k === 'contract' ? 'jmWaitContract' : k === 'material' ? 'jmWaitMaterial' : 'jmWaitM2'); });
       if (w.length) card.appendChild(el('div', 'jmwait', t('jmWait') + ': ' + w.join(' · ')));
+      into.appendChild(card);
+    });
+  }
+
+  /* RECEIPTS (the user, 15 Oct 2026: "on sales add the receipt with its
+     number, and ask Selam that she did confirm"). The script writes each
+     day's payments (/rcptcheck); Selam's answers (/rcptok) are read here
+     too, so what she says shows at once. Two weeks, newest first: how many
+     she has confirmed, what still waits on her, and what she says is wrong
+     or carries a receipt number given twice. */
+  function watchReceipts(into) {
+    var st = { docs: null, ans: null };
+    var since = addDays(DAY, -13);
+    function draw() { if (st.docs && st.ans) drawReceipts(into, st); }
+    onSnapshot(query(collection(db, 'rcptcheck'), where('day', '>=', since)), function (snap) {
+      st.docs = [];
+      snap.forEach(function (d) { st.docs.push(d.data()); });
+      draw();
+    }, failInto(into));
+    onSnapshot(query(collection(db, 'rcptok'), where('day', '>=', since)), function (snap) {
+      st.ans = [];
+      snap.forEach(function (d) { st.ans.push(d.data({ serverTimestamps: 'estimate' })); });
+      draw();
+    }, function () { st.ans = []; draw(); });
+  }
+  function drawReceipts(into, st) {
+    into.innerHTML = '';
+    /* her latest answer to each payment */
+    var latest = {};
+    st.ans.slice().sort(function (a, b) {
+      return (a.at && a.at.toMillis ? a.at.toMillis() : 0) - (b.at && b.at.toMillis ? b.at.toMillis() : 0);
+    }).forEach(function (f) {
+      (f.items || []).forEach(function (x) { if (x && x.key) latest[f.day + '|' + x.key] = x; });
+    });
+    var days = st.docs.filter(function (d) { return d.day && (d.items || []).length; })
+      .sort(function (a, b) { return a.day < b.day ? 1 : -1; });
+    if (!days.length) { into.appendChild(el('p', 'codenote', t('rcChNone'))); return; }
+    days.forEach(function (d) {
+      var ok = 0, waiting = [], bad = [];
+      (d.items || []).forEach(function (it) {
+        var a = latest[d.day + '|' + it.key];
+        var ans = a ? a.ans : it.ans, amt = a ? a.amount : it.ansAmount;
+        var what = [nameOf(it.who), [it.cust, it.code].filter(Boolean).join(' '), birr(Math.round(it.amount)) + ' Birr',
+                    (lang === 'am' ? 'ደረሰኝ ' : 'receipt ') + (it.rcpt || '—')].filter(Boolean).join(' · ');
+        if (ans === 'yes') ok++;
+        else if (ans === 'no') bad.push(what + ' — ' + t('rcChWrong'));
+        else if (ans === 'amount') bad.push(what + ' — ' + t('rcChAmount').replace('{v}', birr(Math.round(amt || 0))));
+        else waiting.push(what);
+        if (it.dup && it.dup.day) {
+          bad.push(what + ' — ' + t('rcChTwice').replace('{who}', nameOf(it.dup.who)).replace('{v}', birr(it.dup.amount)).replace('{day}', prettyDay(it.dup.day)));
+        }
+      });
+      var card = el('div', 'jmrow' + (bad.length ? ' bad' : waiting.length ? ' wait' : ''));
+      var head = el('div', 'jmhead');
+      head.appendChild(el('span', 'jmcode', t('rcChDay').replace('{day}', prettyDay(d.day)).replace('{n}', d.items.length).replace('{ok}', ok)));
+      if (waiting.length) head.appendChild(el('span', 'jmnet rcwait', t('rcChWait').replace('{n}', waiting.length)));
+      card.appendChild(head);
+      bad.forEach(function (s) { card.appendChild(el('div', 'jmwait', s)); });
+      waiting.forEach(function (s) { card.appendChild(el('div', 'jmparts rcwaitline', s)); });
       into.appendChild(card);
     });
   }

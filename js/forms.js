@@ -8246,7 +8246,10 @@ const SALES_DAILY = {
           {id:'kind', en:'For', am:'የምን', t:'choice', opts:[
             {v:'advance', en:'Advance', am:'ቅድመ ክፍያ'},
             {v:'final', en:'Final payment', am:'የመጨረሻ ክፍያ'},
-            {v:'other', en:'Other', am:'ሌላ'}]}
+            {v:'other', en:'Other', am:'ሌላ'}]},
+          /* the user, 15 Oct 2026: every payment with its receipt number, and
+             Selam, who issues Klever's receipts, confirms each (apps-script/Receipts.js) */
+          {id:'rcpt', en:'Receipt no.', am:'የደረሰኝ ቁጥር', t:'text', must:1}
         ]},
       {id:'k_today', en:'How much did you collect from customers today?', am:'ዛሬ ከደንበኞች ስንት ብር ተሰበሰበ?', t:'money',
         auto:{sum:'k_list.amount'}, sumEn:'collected', sumAm:'ተሰብስቧል'},

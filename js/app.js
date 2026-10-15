@@ -366,7 +366,11 @@
 
     /* signed in? then the way out is in the bar, on every page */
     if (AUTH.who()) {
-      var me = personById(AUTH.who());
+      /* an account no longer on the staff list (Yordanos, who left on 15
+         Oct 2026; the gate tablet's) is shown by its id: looked up as a
+         person, it threw here, after the bar was taken down, and the page
+         stood at "Connecting… the line is slow" for good */
+      var me = personById(AUTH.who()) || { en: AUTH.who(), am: AUTH.who() };
       var out = el('button', 'signoutbtn');
       out.type = 'button';
       out.appendChild(el('span', 'soinit', AUTH.isChairman() ? '★' : L(me).charAt(0)));
@@ -6004,6 +6008,20 @@
 
     function route() {
       if (!AUTH.who()) { renderSignIn(root); return; }
+      /* signed in as an account that is no one on the staff list: the gate
+         tablet's goes to its own page; any other (someone who has left) is
+         signed out, and the sign-in card says why (15 Oct 2026) */
+      if (!AUTH.isChairman() && !personById(AUTH.who())) {
+        if (AUTH.who() === 'gate') { location.replace('gate.html'); return; }
+        var gone = AUTH.who();
+        AUTH._adopt(null);
+        rebuildTop();
+        renderSignIn(root);
+        toast(t('accountGone'));
+        if (window.FB && window.FB.signOut) window.FB.signOut()['catch'](function () {});
+        try { if (localStorage.getItem('klever.lastUser') === gone) localStorage.removeItem('klever.lastUser'); } catch (e) {}
+        return;
+      }
       root.classList.remove('signing');
       try { localStorage.setItem('klever.lastUser', AUTH.who()); } catch (e) {}
       watchFilings();

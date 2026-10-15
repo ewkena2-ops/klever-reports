@@ -44,7 +44,7 @@ function groupCfo_(d) {
   var names = {};
   ((d.schedule && d.schedule.people) || []).forEach(function (p) { names[p.id] = p.en; });
   var today = d.provisional ? d.day : addDays_(d.day, 1);
-  while (dow_(today) === 0) today = addDays_(today, 1);
+  while (closed_(today)) today = addDays_(today, 1);
   var dw = dow_(d.day);
   var monday = addDays_(d.day, -(dw === 0 ? 6 : dw - 1));
 

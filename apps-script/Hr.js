@@ -55,11 +55,12 @@ function hrDaysBetween_(a, b) {
   return Math.round((dayStart_(b).getTime() - dayStart_(a).getTime()) / 86400000);
 }
 /* the nth working day from `from`, counting `from` as the first. Klever
-   works Monday to Saturday; public holidays are not taken out. */
+   works Monday to Saturday; holidays are taken out (15 Oct 2026), as the
+   plan's form does (js/app.js gridRowLabel). */
 function hrWorkday_(from, n) {
   var d = from, k = 0;
   for (var guard = 0; guard < 400; guard++) {
-    if (dow_(d) !== 0) { k++; if (k === n) return d; }
+    if (!closed_(d)) { k++; if (k === n) return d; }
     d = addDays_(d, 1);
   }
   return d;

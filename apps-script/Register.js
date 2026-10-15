@@ -339,10 +339,10 @@ function regStore_(filing) {
   return true;
 }
 
-/* working days from one day to another (Sundays are not) */
+/* working days from one day to another (Sundays and holidays are not) */
 function regWorkingDays_(from, to) {
   var n = 0, d = from;
-  while (d < to) { d = addDays_(d, 1); if (dow_(d) !== 0) n++; }
+  while (d < to) { d = addDays_(d, 1); if (!closed_(d)) n++; }
   return n;
 }
 function regDaysBetween_(a, b) {

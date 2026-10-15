@@ -524,7 +524,7 @@ function dayName_(day) {
 }
 function nextWorkingDay_(day) {
   var d = addDays_(day, 1);
-  while (dow_(d) === 0) d = addDays_(d, 1);
+  while (closed_(d)) d = addDays_(d, 1);
   return d;
 }
 

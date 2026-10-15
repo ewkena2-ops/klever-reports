@@ -38,7 +38,7 @@ function teamOrderId_(day) { return 'ai-' + day; }
 /* From the watch. True if a list was written this time. */
 function teamPlanIfDue_() {
   var today = todayAddis_();
-  if (dow_(today) === 0) return false;
+  if (closed_(today)) return false;          /* Sunday, or a holiday: no list */
   var start = prop_('LEDGER_START', '');
   if (start && today <= start) return false;
   var hour = Number(Utilities.formatDate(new Date(), tz_(), 'HH'));
@@ -61,10 +61,10 @@ function teamPlanIfDue_() {
   return !!r.written;
 }
 
-/* The working day before `day` — Saturday, on a Monday. */
+/* The working day before `day` — Saturday, on a Monday; past any holiday. */
 function lastWorkingDay_(day) {
   var d = addDays_(day, -1);
-  if (dow_(d) === 0) d = addDays_(d, -1);
+  for (var g = 0; g < 14 && closed_(d); g++) d = addDays_(d, -1);
   return d;
 }
 

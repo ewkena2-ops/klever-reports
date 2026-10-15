@@ -369,6 +369,25 @@
       });
     },
     /* the day the gate is counted from: cb('yyyy-mm-dd' | null) */
+    /* the Chairman's changes to the holidays (forms.js HOLIDAYS):
+       cb({add:[{d,en,am}], remove:[d]}), or cb(null) when not readable */
+    watchHolidays: function (cb) {
+      return later(function () {
+      if (!user) return null;
+      return F.onSnapshot(F.doc(db, 'holidays', 'klever'), function (d) {
+        var x = d.exists() ? d.data() : {};
+        cb({ add: Array.isArray(x.add) ? x.add : [], remove: Array.isArray(x.remove) ? x.remove : [] });
+      }, function () { cb(null); });
+      });
+    },
+    saveHolidays: function (x) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      return F.setDoc(F.doc(db, 'holidays', 'klever'), {
+        add: (x.add || []).slice(0, 60).map(function (h) { return { d: String(h.d), en: String(h.en || '').slice(0, 60), am: String(h.am || h.en || '').slice(0, 60) }; }),
+        remove: (x.remove || []).slice(0, 60).map(String),
+        by: idOf(user), at: F.serverTimestamp()
+      });
+    },
     watchGateConf: function (cb) {
       return later(function () {
       if (!user) return null;

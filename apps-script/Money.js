@@ -245,7 +245,7 @@ function moneyWatch_() {
     var today = todayAddis_(), start = prop_('LEDGER_START', '');
     for (var k = 0; k <= MONEY_BACK_DAYS_; k++) {
       var d = addDays_(today, -k);
-      if (dow_(d) !== 0 && (!start || d >= start)) days[d] = 1;
+      if (!closed_(d) && (!start || d >= start)) days[d] = 1;
     }
   }
   /* an open day is looked at again once an hour — or at once when she has

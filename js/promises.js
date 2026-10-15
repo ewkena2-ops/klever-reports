@@ -101,7 +101,8 @@
   /* the next working day: Sundays are off */
   function nextWorkDay(day) {
     var n = addDays(day, 1);
-    return new Date(n + 'T12:00:00Z').getUTCDay() === 0 ? addDays(n, 1) : n;
+    for (var g = 0; g < 14 && closedDay(n); g++) n = addDays(n, 1);     /* Sundays and holidays are off */
+    return n;
   }
 
   /* Promises made on each day, checked on the next working day.
@@ -176,7 +177,7 @@
     var byDay = {};
     plans.forEach(function (plan) {
     var day = plan.values.plan_start;
-    if (new Date(day + 'T12:00:00Z').getUTCDay() === 0) day = addDays(day, 1);
+    for (var g0 = 0; g0 < 14 && closedDay(day); g0++) day = addDays(day, 1);
     /* since 11 Oct the plan is written job by job (plan_week: k1/m1, k2/n2,
        k3/n3 a day); a plan filed before that has only the day's job list */
     var week = Array.isArray(plan.values.plan_week) ? plan.values.plan_week : null;

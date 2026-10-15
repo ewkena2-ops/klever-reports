@@ -64,7 +64,7 @@ function rdMonthSoFar_(P, kind) {
 }
 function rdWorkdays_(from, days) {
   var n = 0;
-  for (var i = 0; i < days; i++) if (dow_(addDays_(from, i)) !== 0) n++;
+  for (var i = 0; i < days; i++) if (!closed_(addDays_(from, i))) n++;      /* Sundays and holidays out */
   return n;
 }
 function rdPct_(a, b) { return a !== null && b ? Math.round(a / b * 1000) / 10 : null; }

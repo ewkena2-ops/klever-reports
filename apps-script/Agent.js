@@ -286,8 +286,30 @@ function addDays_(day, n) {
 /* 0 Sunday .. 6 Saturday. Noon in Addis is still the same date in UTC. */
 function dow_(day) { return new Date(day + 'T12:00:00' + ADDIS_).getUTCDay(); }
 function deadline_(report, day) {
+  /* a weekly report whose day is a holiday: on time until its week closes */
+  if (report.cadence === 'weekly' && holiday_(day)) return weekCut_(sundayOf_(day), report.id);
   return new Date(day + 'T' + (report.dueTime || '17:30') + ':00' + ADDIS_);
 }
+
+/* PUBLIC HOLIDAYS (15 Oct 2026): forms.js HOLIDAYS, with the Chairman's
+   changes in /holidays/klever — a day added, or one taken off. Read once a
+   run. A closed day is a Sunday or a holiday: nothing is owed on it. */
+var HOLIDAYS_ = null;
+function holidays_() {
+  if (HOLIDAYS_) return HOLIDAYS_;
+  var set = {};
+  try { (loadSchedule_().holidays || []).forEach(function (h) { if (h && h.d) set[h.d] = h; }); } catch (e) {}
+  try {
+    var x = fsGet_('holidays/klever');
+    if (x) {
+      (x.add || []).forEach(function (h) { if (h && h.d) set[h.d] = h; });
+      (x.remove || []).forEach(function (d) { delete set[d]; });
+    }
+  } catch (e) {}
+  return (HOLIDAYS_ = set);
+}
+function holiday_(day) { return holidays_()[day] || null; }
+function closed_(day) { return dow_(day) === 0 || !!holiday_(day); }
 function dayLabel_(day) {
   return Utilities.formatDate(new Date(day + 'T12:00:00' + ADDIS_), tz_(), 'EEEE d MMMM yyyy');
 }
@@ -388,7 +410,8 @@ function loadSchedule_() {
   /* forms.js declares PEOPLE and REPORTS at the top level, and oddFigures —
      the check for answers that cannot be right, shared with the form */
   var read = new Function(src.getContentText() + '; return { people: PEOPLE, reports: REPORTS, ' +
-                          'odd: typeof oddFigures === "function" ? oddFigures : null };');
+                          'odd: typeof oddFigures === "function" ? oddFigures : null, ' +
+                          'holidays: typeof HOLIDAYS !== "undefined" ? HOLIDAYS : [] };');
   SCHEDULE_ = read();
   if (!SCHEDULE_.reports || !SCHEDULE_.reports.length) throw new Error('Schedule came back empty');
   return SCHEDULE_;
@@ -401,8 +424,11 @@ function loadSchedule_() {
    Chairman's page use this same rule. */
 function dueOn_(schedule, day) {
   var dow = dow_(day);
-  var first = day.slice(8) === '01' || (day.slice(8) === '02' && dow_(addDays_(day, -1)) === 0);
-  if (dow === 0) return [];
+  /* nothing on a Sunday or a holiday; a monthly report on the month's first
+     working day (15 Oct 2026: holidays) */
+  if (closed_(day)) return [];
+  var first = true;
+  for (var b = day.slice(0, 8) + '01'; b < day; b = addDays_(b, 1)) if (!closed_(b)) { first = false; break; }
   return schedule.reports.filter(function (r) {
     /* a report that starts on a later day (`from` on the report) */
     if (r.from && day < r.from) return false;

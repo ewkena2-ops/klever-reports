@@ -109,7 +109,7 @@ function cfoFacts_(P, ops) {
 
   /* food: per meal, per working day, against who came, and cash instead */
   var workDays = 0;
-  for (var d = P.start; d <= P.end; d = addDays_(d, 1)) if (dow_(d) !== 0) workDays++;
+  for (var d = P.start; d <= P.end; d = addDays_(d, 1)) if (!closed_(d)) workDays++;
   var food = a_(v, 'sp_food'), meals = a_(v, 'sp_meals');
   var factory = avgOf_(daysOf_(P, 'amaha-daily'), 'mp_present');
   var site = avgOf_(daysOf_(P, 'elyas-daily'), 'a_present');

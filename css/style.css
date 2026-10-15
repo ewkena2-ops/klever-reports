@@ -2187,3 +2187,10 @@ body.gatepage{padding:0;overflow-x:hidden}
 .prchip.short{color:var(--gold);border-color:var(--gold);background:var(--gold-bg)}
 /* the gate's password: hidden as typed, never offered for saving (bug hunt, 15 Oct 2026) */
 .gtsecret{-webkit-text-security:disc;text-security:disc}
+/* the holidays card on the Chairman's page (15 Oct 2026) */
+.chholist .chinsrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.chholist .chinsrow.done .chrt{color:var(--mut)}
+.chhoadd{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chhoadd input{font:inherit;font-size:16px;min-height:44px;padding:0 10px;border:1px solid var(--line-2);border-radius:10px;background:var(--card-2,var(--card));color:var(--ink)}
+.chhoadd input[type=text]{flex:1 1 180px;min-width:0}
+.chhoadd .chmini{min-height:44px}

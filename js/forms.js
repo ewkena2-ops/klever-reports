@@ -96,6 +96,43 @@ const PEOPLE = [
   { id:'bereke', en:'Bereke', am:'በረከ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 }
 ];
 
+/* PUBLIC HOLIDAYS — the days Klever is closed besides Sundays (the user, 15
+   Oct 2026: "fix in holiday"). On them, as on a Sunday, nothing is owed: no
+   daily report, no check-in at the door or the gate. A weekly report whose
+   day falls on one is on time until its week closes (Sunday 9 PM); a monthly
+   one is due on the next working day. Ethiopia's federal holidays; the Muslim
+   ones go by the moon (moon:1) — the Chairman puts a date right on his page
+   (Firestore /holidays/klever: days added, days taken off), and that wins.
+   Copied into js/people.js by stamp.py for the pages without this file. */
+const HOLIDAYS = [
+  { d:'2027-01-07', en:'Ethiopian Christmas (Genna)',        am:'ገና' },
+  { d:'2027-01-19', en:'Epiphany (Timket)',                  am:'ጥምቀት' },
+  { d:'2027-03-02', en:'Adwa Victory Day',                   am:'የዓድዋ ድል በዓል' },
+  { d:'2027-03-10', en:'Eid al-Fitr',                        am:'ኢድ አልፈጥር', moon:1 },
+  { d:'2027-04-30', en:'Good Friday (Siklet)',               am:'ስቅለት' },
+  { d:'2027-05-01', en:'International Labour Day',           am:'የዓለም የሠራተኞች ቀን' },
+  { d:'2027-05-02', en:'Easter (Fasika)',                    am:'ፋሲካ' },
+  { d:'2027-05-05', en:'Patriots’ Victory Day',              am:'የአርበኞች ድል ቀን' },
+  { d:'2027-05-17', en:'Eid al-Adha (Arafa)',                am:'ኢድ አልአድሐ (አረፋ)', moon:1 },
+  { d:'2027-05-28', en:'Downfall of the Derg (Ginbot 20)',   am:'ግንቦት 20' },
+  { d:'2027-08-15', en:'The Prophet’s Birthday (Mawlid)',    am:'መውሊድ', moon:1 },
+  { d:'2027-09-12', en:'Ethiopian New Year (Enkutatash)',    am:'እንቁጣጣሽ' },
+  { d:'2027-09-28', en:'Finding of the True Cross (Meskel)', am:'መስቀል' }
+];
+/* the Chairman's changes, {add:[{d,en,am}], remove:[d]} — js/fb.js watchHolidays fills it */
+var HOLIDAY_EDITS = { add: [], remove: [] };
+/* the holiday on a yyyy-mm-dd ({d, en, am}), or null */
+function holidayOn(ymd) {
+  var E = HOLIDAY_EDITS || { add: [], remove: [] };
+  if ((E.remove || []).indexOf(ymd) >= 0) return null;
+  var own = (E.add || []).filter(function (h) { return h && h.d === ymd; })[0];
+  if (own) return own;
+  return HOLIDAYS.filter(function (h) { return h.d === ymd; })[0] || null;
+}
+/* a day nobody works: Sunday, or a holiday */
+function closedDay(ymd) { return new Date(ymd + 'T12:00:00Z').getUTCDay() === 0 || !!holidayOn(ymd); }
+/* END HOLIDAYS */
+
 /* ------------------------------------------------------------------ *
  *  The twelve materials                                               *
  * ------------------------------------------------------------------ *

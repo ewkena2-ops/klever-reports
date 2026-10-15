@@ -220,7 +220,7 @@ function monthCtx_(month, filings, ledgers, schedule) {
     month: month, start: start, end: end, days: days,
     schedule: schedule,
     ledgers: ledgers,
-    workingDays: days.filter(function (x) { return dow_(x) !== 0; }),
+    workingDays: days.filter(function (x) { return !closed_(x); }),
     /* [{day, v}] for every day this report was filed in the month */
     series: function (reportId) {
       /* a weekly report: once a week — the last sent in its week — in the

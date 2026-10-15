@@ -79,7 +79,7 @@ function sdMember_(m, byDay, d, monday, from, left, names) {
   weekDays.forEach(function (x) { var y = a_(byDay[x], f.week); if (y !== null) own = y; });
   var leftBirr = collected === null ? null : Math.max(0, m.target - collected);
   var working = 0;
-  for (var x = from; x <= d.day; x = addDays_(x, 1)) if (dow_(x) !== 0) working++;
+  for (var x = from; x <= d.day; x = addDays_(x, 1)) if (!closed_(x)) working++;
   var leads = sdSum_(byDay, allDays, f.leads), contracts = sdSum_(byDay, allDays, f.contracts);
   var quotes = sdSum_(byDay, allDays, f.quotes);
   var out = {

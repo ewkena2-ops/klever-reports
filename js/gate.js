@@ -472,7 +472,9 @@
       answer(person, { already: true, m: done[person].m });
       return;
     }
-    var sunday = new Date(day + 'T12:00:00Z').getUTCDay() === 0;
+    /* a Sunday or a holiday (people.js closedDay): recorded, never late */
+    var hol = typeof holidayOn === 'function' ? holidayOn(day) : null;
+    var sunday = new Date(day + 'T12:00:00Z').getUTCDay() === 0 || !!hol;
     var late = !sunday && m > LATE;
     done[person] = { m: m, late: late, how: how };
     store(DKEY + day, done);
@@ -480,7 +482,7 @@
     saveQueue();
     drawQueue();
     pump();
-    answer(person, { m: m, late: late, mins: late ? m - LATE : 0, how: how, sunday: sunday });
+    answer(person, { m: m, late: late, mins: late ? m - LATE : 0, how: how, sunday: sunday, holiday: !!hol });
   }
   /* the answer, big, for a few seconds */
   function answer(person, a) {
@@ -493,7 +495,10 @@
     txt.appendChild(two({ am: p.am || p.name, en: p.name }, null, 'gtname'));
     var c = clock(a.m);
     if (a.already) txt.appendChild(two({ am: fill(word('gtAlready').am, { at: c.am }), en: fill(word('gtAlready').en, { at: c.en }) }, null, 'gtstatus'));
-    else if (a.sunday) txt.appendChild(two({ am: '✓ ' + c.am + ' — ' + word('gtSunday').am, en: '✓ ' + c.en + ' — ' + word('gtSunday').en }, null, 'gtstatus'));
+    else if (a.sunday) {
+      var off = a.holiday ? 'gtHoliday' : 'gtSunday';
+      txt.appendChild(two({ am: '✓ ' + c.am + ' — ' + word(off).am, en: '✓ ' + c.en + ' — ' + word(off).en }, null, 'gtstatus'));
+    }
     else if (a.late) {
       var l = durOf(a.mins);
       txt.appendChild(two({ am: fill(word('gtLate').am, { at: c.am, m: l.am }), en: fill(word('gtLate').en, { at: c.en, m: l.en }) }, null, 'gtstatus'));

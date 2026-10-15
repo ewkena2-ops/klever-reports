@@ -773,6 +773,18 @@ service cloud.firestore {
                             && request.resource.data.at == request.time;
       allow delete: if isChairman() || (isAmaha() && person != 'amaha');
     }
+    /* the holidays, as the Chairman changes them (forms.js HOLIDAYS): read by
+       every page and the script; his to write (15 Oct 2026) */
+    match /holidays/{id} {
+      allow get: if signedIn();
+      allow create, update: if isChairman() && id == 'klever'
+                            && request.resource.data.keys().hasOnly(['add', 'remove', 'by', 'at'])
+                            && request.resource.data.add is list && request.resource.data.add.size() <= 60
+                            && request.resource.data.remove is list && request.resource.data.remove.size() <= 60
+                            && request.resource.data.by == 'chairman'
+                            && request.resource.data.at == request.time;
+      allow delete: if false;
+    }
     /* the picture taken at each gate scan — written by the script */
     match /gatephoto/{id} {
       allow get, list: if isChairman() || isLedger() || isAmaha();

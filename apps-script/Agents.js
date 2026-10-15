@@ -1090,7 +1090,12 @@ var AGENTS = [
         sinceMonday_(d, 'ephrata-daily', 'collected_today').total),
       /* Monday to Saturday; the first live run said "tomorrow cannot close
          the gap" on a Thursday, with Friday and Saturday both still to come */
-      working_days_left_this_week: Math.max(0, 6 - dow_(d.day)),
+      /* holidays are not working days (15 Oct 2026) */
+      working_days_left_this_week: (function () {
+        var n = 0;
+        for (var x = addDays_(d.day, 1); dow_(x) !== 0; x = addDays_(x, 1)) if (!closed_(x)) n++;
+        return n;
+      })(),
       leads_last_7_days: salesSeries_(d, 'l_total'),
       contracts_last_7_days: series_(d, 'ephrata-daily', 'contracts'),
       /* what she expects to collect, added up in code */
@@ -1479,7 +1484,7 @@ function dailyRun_() {
      the stored lines, so what he cancelled on the 4th is off by the 5th.
      Done before yesterday's close, so a failure there cannot cost the month. */
   var dom = Number(todayAddis_().slice(8));
-  if (dom >= 3 && dom <= 6) {
+  if (dom >= 3 && dom <= 6 && !monthlyWaits_(todayAddis_())) {
     var prevM = prevMonthStart_(todayAddis_()).slice(0, 7);
     var monthDone = null;
     try { monthDone = fsQuery_('months', [['month', 'EQUAL', prevM]], null).length > 0; }
@@ -1863,7 +1868,7 @@ function promptFor_(agent, facts, d) {
    "today", a day the factory is shut. */
 function actingLine_(d) {
   var act = d.provisional ? d.day : addDays_(d.day, 1);
-  while (dow_(act) === 0) act = addDays_(act, 1);
+  while (closed_(act)) act = addDays_(act, 1);
   var run = todayAddis_();
   if (act === run) return 'What to do is for today, ' + dayLabel_(act) + '.';
   var wd = Utilities.formatDate(new Date(act + 'T12:00:00' + ADDIS_), tz_(), 'EEEE').toUpperCase();

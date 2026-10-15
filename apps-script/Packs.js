@@ -192,9 +192,13 @@ function previewMonthly(month) {
  *  Reading the period                                                 *
  * ------------------------------------------------------------------ */
 
-/* the 2nd of a month whose 1st was a Sunday */
+/* the month's own reports are due on its first working day (the 2nd when
+   the 1st is a Sunday, later after a holiday — 15 Oct 2026): until the day
+   after it, the month waits for them */
 function monthlyWaits_(today) {
-  return today.slice(8) === '02' && dow_(addDays_(today, -1)) === 0;
+  var first = today.slice(0, 8) + '01';
+  for (var g = 0; g < 10 && closed_(first); g++) first = addDays_(first, 1);
+  return today.slice(8) !== '01' && today <= first;
 }
 
 function isDay_(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v); }

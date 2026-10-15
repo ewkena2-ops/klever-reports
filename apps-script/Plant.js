@@ -127,7 +127,7 @@ function plantManager_(d) {
   ((d.schedule && d.schedule.people) || []).forEach(function (p) { names[p.id] = p.en; });
   var nm = function (k) { return names[PM_WHO_[k]] || PM_WHO_[k]; };
   var today = d.provisional ? d.day : addDays_(d.day, 1);
-  while (dow_(today) === 0) today = addDays_(today, 1);       /* Sunday is nobody's working day */
+  while (closed_(today)) today = addDays_(today, 1);         /* Sunday, or a holiday, is nobody's working day */
   var dw = dow_(d.day);
   var monday = addDays_(d.day, -(dw === 0 ? 6 : dw - 1));
   var left = Math.max(0, PM_WEEK_DAYS_ - dw);
@@ -149,7 +149,7 @@ function plantManager_(d) {
   var made = pmMade_(by, d.day);
   var weekMade = 0, weekPlanned = 0, known = 0, owed = 0;
   for (var x = monday; x <= d.day; x = addDays_(x, 1)) {
-    if (dow_(x) === 0) continue;
+    if (closed_(x)) continue;
     owed++;
     var m = pmMade_(by, x);
     if (m !== null) { weekMade += m; known++; }
@@ -207,7 +207,7 @@ function plantManager_(d) {
   jobs.forEach(function (j) { byCode[opsCode_(j.job)] = j; });
   var queue = pT ? rows_(pT.plan.v.plan_queue) : [];
   var tomorrow = addDays_(today, 1);
-  while (dow_(tomorrow) === 0) tomorrow = addDays_(tomorrow, 1);
+  while (closed_(tomorrow)) tomorrow = addDays_(tomorrow, 1);
   var late = [], due = [], noFinal = [];
   queue.forEach(function (q) {
     var code = opsCode_(q && q.code);

@@ -254,10 +254,10 @@ function planWaiting_() {
 function shortDay_(day) {
   return Utilities.formatDate(new Date(day + 'T12:00:00' + ADDIS_), tz_(), 'EEE d MMM');
 }
-/* the working day n working days after `day` (Sunday is nobody's day) */
+/* the working day n working days after `day` (Sundays and holidays are nobody's) */
 function workingDaysOn_(day, n) {
   var d = day;
-  while (n > 0) { d = addDays_(d, 1); if (dow_(d) !== 0) n--; }
+  while (n > 0) { d = addDays_(d, 1); if (!closed_(d)) n--; }
   return d;
 }
 
@@ -276,7 +276,7 @@ function orderContext_(day, schedule) {
   for (var i = 0; i <= 21; i++) {
     var d = addDays_(day, i);
     cal.push(Utilities.formatDate(new Date(d + 'T12:00:00' + ADDIS_), tz_(), 'EEEE d MMMM') + ' = ' + d +
-             (dow_(d) === 0 ? ' (Sunday, closed)' : '') + (i === 0 ? ' (today)' : ''));
+             (dow_(d) === 0 ? ' (Sunday, closed)' : holiday_(d) ? ' (holiday: ' + holiday_(d).en + ', closed)' : '') + (i === 0 ? ' (today)' : ''));
   }
   var open = [];
   try {
@@ -363,7 +363,7 @@ function orderPlan_(reply, day, schedule, opt) {
     /* not a real day (31 February rolls over to March), past, or too far off */
     if (!/^\d{4}-\d{2}-\d{2}$/.test(due) || dayOf_(new Date(due + 'T12:00:00' + ADDIS_)) !== due ||
         due < day || due > latest) due = dflt;
-    if (dow_(due) === 0) due = addDays_(due, 1);
+    while (closed_(due)) due = addDays_(due, 1);
     var why = String(t.why || '').trim().substring(0, 300);
     if (byPerson[to]) {
       var b = byPerson[to];

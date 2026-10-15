@@ -108,14 +108,19 @@
      on the 2nd when the 1st is a Sunday. */
   function dueOn(r, ymd) {
     var dow = dowOf(ymd), dom = Number(ymd.slice(8));
-    if (dow === 0) return false;
+    /* nothing on a Sunday or a holiday (forms.js closedDay, 15 Oct 2026) */
+    if (closedDay(ymd)) return false;
     /* a report that starts on a later day (`from` on the report) is owed by
        nobody before it — the board check, added at 6 PM on 12 Oct 2026 */
     if (r.from && ymd < r.from) return false;
     /* a weekly report made from the daily reports (built:1, js/weekly.js)
        is owed by nobody — the Chairman, 11 Oct 2026 */
     if (r.built) return false;
-    if (r.cadence === 'monthly') return dom === 1 || (dom === 2 && dowOf(addDays(ymd, -1)) === 0);
+    /* the month's first working day */
+    if (r.cadence === 'monthly') {
+      for (var b = ymd.slice(0, 8) + '01'; b < ymd; b = addDays(b, 1)) if (!closedDay(b)) return false;
+      return true;
+    }
     if (r.cadence === 'weekly') return r.dueDay === dow;
     return !(r.skipDays && r.skipDays.indexOf(dow) >= 0);
   }
@@ -156,6 +161,8 @@
     var wsun = r.cadence === 'weekly' ? weekClose(now, r.id) : null;
     if (wsun && wsun >= WEEK_FROM) {
       var wd = addDays(wsun, r.dueDay - 7), wdl = deadlineOf(wd, r.dueTime);
+      /* its day a holiday: on time until the week closes (Agent.js deadline_) */
+      if (holidayOn(wd)) wdl = deadlineOf(wsun, cutOf(r.id));
       return { day: wd, deadline: wdl, state: now > wdl ? 'late' : (wd === d0 ? 'due' : 'early') };
     }
     for (var k = 0; k <= windowDays(r); k++) {
@@ -1555,6 +1562,7 @@
                       : show('good', tfill_('atOnTime', { at: a.at }));
       }
       var w = a.why || 'unavailable';
+      if (w === 'holiday') return show('bad', tfill_('atHoliday', { name: lang === 'am' && a.nameAm ? a.nameAm : (a.name || '') }));
       var msg = { 'not-wifi': 'atNotWifi', 'no-wifi-set': 'atNoWifiSet', sunday: 'atSunday', 'not-office': 'atNotOffice',
                   signin: 'atSignIn' }[w] || 'atFailed';
       show('bad', t(msg), a.ip ? tfill_('atAddr', { ip: a.ip }) : '');
@@ -1640,6 +1648,7 @@
       if (test && !(x && x.scanAt)) continue;
       var st, cls, why = '';
       if (dowOf(d) === 0) { st = t('atSundayOff'); cls = 'off'; }
+      else if (holidayOn(d)) { st = t('atHolidayOff') + ' · ' + L(holidayOn(d)); cls = 'off'; }
       else if (x && x.scanAt && !x.late) { st = '✓ ' + x.hm; cls = 'good'; if (!test) n.on++; }
       else if (x && x.scanAt) { st = '! ' + tfill_('atLateShortMine', { at: x.hm, m: atDur(x.minsLate) }); cls = 'late'; if (!test) n.late++; }
       else if (d === today) {
@@ -1867,6 +1876,7 @@
     }
     /* today, everyone */
     if (dowOf(today) === 0) wrap.appendChild(el('p', 'codenote', t('atSundayOff')));
+    else if (holidayOn(today)) wrap.appendChild(el('p', 'codenote', t('atHolidayOff') + ' · ' + L(holidayOn(today))));
     else {
       var n = { on: 0, late: 0, none: 0 };
       var list = el('div', 'ins gtlistday');
@@ -5314,11 +5324,13 @@
       var d = new Date(values[f.dateFrom] + 'T12:00:00Z');
       if (!isNaN(d.getTime())) {
         if (f.workDays) {
-          /* Monday to Saturday: Sundays are stepped over, a Sunday start too */
-          if (d.getUTCDay() === 0) d.setUTCDate(d.getUTCDate() + 1);
+          /* Monday to Saturday: Sundays and holidays are stepped over, a
+             closed start too (as apps-script/Hr.js hrWorkday_) */
+          var shut = function () { return closedDay(d.toISOString().slice(0, 10)); };
+          for (var g = 0; g < 14 && shut(); g++) d.setUTCDate(d.getUTCDate() + 1);
           for (var k = 0; k < i; k++) {
             d.setUTCDate(d.getUTCDate() + 1);
-            if (d.getUTCDay() === 0) d.setUTCDate(d.getUTCDate() + 1);
+            for (var g2 = 0; g2 < 14 && shut(); g2++) d.setUTCDate(d.getUTCDate() + 1);
           }
         } else {
           d.setUTCDate(d.getUTCDate() + i);
@@ -5610,6 +5622,13 @@
   function watchFilings() {
     if (stopFilings || !window.FB || !window.FB.watchFilings || !AUTH.who()) return;
     var since = new Date(dayStartMs(addDays(stamp(), -7)));
+    /* the Chairman's changes to the holidays (forms.js HOLIDAY_EDITS) */
+    if (window.FB.watchHolidays) window.FB.watchHolidays(function (x) {
+      if (!x) return;
+      HOLIDAY_EDITS = x;
+      rerender();
+      drawStatus();
+    });
     stopFilings = window.FB.watchFilings(AUTH.isChairman() ? null : AUTH.who(), since, function (list) {
       SERVER_FILINGS = list;
       mergeFilings();

@@ -124,7 +124,11 @@ import {
   }
   /* 0 Sunday .. 6 Saturday, of the date itself */
   function dow(day) { return new Date(day + 'T12:00:00Z').getUTCDay(); }
-  function deadline(r, day) { return new Date(day + 'T' + (r.dueTime || '17:30') + ':00' + ADDIS); }
+  function deadline(r, day) {
+    /* a weekly report whose day is a holiday: on time until Sunday 9 PM (Agent.js deadline_) */
+    if (r.cadence === 'weekly' && holidayOn(day)) return new Date(addDays(day, (7 - dow(day)) % 7) + 'T21:00:00' + ADDIS);
+    return new Date(day + 'T' + (r.dueTime || '17:30') + ':00' + ADDIS);
+  }
   /* THE WEEK (apps-script/Agent.js): a weekly report belongs to the week it
      is sent in, which closes on Sunday at 9 PM. weekClose is the Sunday whose
      9 PM closes the week a moment falls in. */
@@ -170,12 +174,14 @@ import {
   /* The 1st — or Monday the 2nd when the 1st is a Sunday, since nothing is
      ever due on a Sunday. */
   function monthlyDueOn(day) {
-    var dd = day.slice(8);
-    return (dd === '01' && dow(day) !== 0) || (dd === '02' && dow(day) === 1);
+    /* the month's first working day (holidays, 15 Oct 2026) */
+    if (closedDay(day)) return false;
+    for (var b = day.slice(0, 8) + '01'; b < day; b = addDays(b, 1)) if (!closedDay(b)) return false;
+    return true;
   }
   function dueOn(day) {
     var d = dow(day);
-    if (d === 0) return [];
+    if (closedDay(day)) return [];
     return REPORTS.filter(function (r) {
       /* not before its own start, nor its person's (Agent.js dueOn_, owedOn_) */
       if (r.from && day < r.from) return false;
@@ -451,6 +457,12 @@ import {
     var gtBox = el('div', 'chattend chgate');
     gtBox.appendChild(el('p', 'codenote', t('chLoading')));
     root.appendChild(gtBox);
+
+    /* --- the days Klever is closed besides Sundays (forms.js HOLIDAYS, his changes in /holidays/klever) --- */
+    root.appendChild(el('p', 'eyebrow', t('hoTitle')));
+    var hoBox = el('div', 'chholidays');
+    root.appendChild(hoBox);
+    drawHolidays(hoBox);
     var record = el('div', 'chrecord');
     root.appendChild(record);
 
@@ -770,9 +782,9 @@ import {
     }
 
     /* today */
-    var sunday = new Date(DAY + 'T12:00:00Z').getUTCDay() === 0;
+    var sunday = closedDay(DAY);
     into.appendChild(el('p', 'skysub', t('atTodayHead') + ' · ' + prettyDay(DAY)));
-    if (sunday) into.appendChild(el('p', 'codenote', t('atSundayNote')));
+    if (sunday) into.appendChild(el('p', 'codenote', holidayOn(DAY) ? tfill('atHolidayNote', { name: L(holidayOn(DAY)) }) : t('atSundayNote')));
     else {
       var counts = { on: 0, late: 0, none: 0 }, list = el('div', 'atlist');
       people.filter(function (p) { return !p.from || p.from <= DAY; }).forEach(function (p) {
@@ -858,10 +870,84 @@ import {
     });
     return out;
   }
+  /* PUBLIC HOLIDAYS (15 Oct 2026): the coming year's, from forms.js and his
+     own changes. A day can be said not to be closed after all (a Muslim
+     holiday the moon moved), and a closed day added — a holiday on another
+     date, or a day the factory is shut. Nothing is owed on them. */
+  function drawHolidays(into) {
+    var edits = null;
+    var save = function (next, btn) {
+      btn.disabled = true;
+      window.FB.saveHolidays(next).then(null, function () {
+        btn.disabled = false;
+        into.appendChild(el('p', 'pywarn', t('hoFailed')));
+      });
+    };
+    var draw = function () {
+      into.innerHTML = '';
+      into.appendChild(el('p', 'codenote', t('hoNote')));
+      if (!edits) { into.appendChild(el('p', 'codenote', t('chLoading'))); return; }
+      var all = {};
+      (typeof HOLIDAYS !== 'undefined' ? HOLIDAYS : []).forEach(function (h) { all[h.d] = { d: h.d, en: h.en, am: h.am, moon: h.moon }; });
+      edits.add.forEach(function (h) { if (h && h.d) all[h.d] = { d: h.d, en: h.en, am: h.am || h.en, added: true }; });
+      var days = Object.keys(all).filter(function (d) { return d >= DAY && d <= addDays(DAY, 400); }).sort();
+      var list = el('div', 'ins chholist');
+      if (!days.length) list.appendChild(el('p', 'codenote', t('hoNone')));
+      days.forEach(function (d) {
+        var h = all[d], off = edits.remove.indexOf(d) >= 0;
+        var row = el('div', 'chinsrow' + (off ? ' done' : ''));
+        var head = el('div', 'chinshead');
+        head.appendChild(el('span', 'chrw', prettyDay(d)));
+        head.appendChild(el('span', 'chrt', L(h) + (h.moon && !off ? ' · ' + t('hoMoon') : '') + (off ? ' · ' + t('hoOpen') : '')));
+        row.appendChild(head);
+        var b = el('button', 'chmini' + (off || h.added ? '' : ' bad'), off ? t('hoCloseAgain') : (h.added ? t('hoRemove') : t('hoNotClosed')));
+        b.type = 'button';
+        b.onclick = function () {
+          var next = { add: edits.add.slice(), remove: edits.remove.slice() };
+          if (off) next.remove = next.remove.filter(function (x) { return x !== d; });
+          else if (h.added) next.add = next.add.filter(function (x) { return x.d !== d; });
+          else next.remove.push(d);
+          save(next, b);
+        };
+        row.appendChild(b);
+        list.appendChild(row);
+      });
+      into.appendChild(list);
+      var add = el('div', 'chhoadd');
+      var dIn = el('input');
+      dIn.type = 'date';
+      dIn.min = DAY;
+      dIn.setAttribute('aria-label', t('hoDate'));
+      var nIn = el('input');
+      nIn.type = 'text';
+      nIn.maxLength = 60;
+      nIn.placeholder = t('hoName');
+      var go = el('button', 'chmini', t('hoAdd'));
+      go.type = 'button';
+      go.onclick = function () {
+        var d = dIn.value, nm = nIn.value.trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !nm) { (nm ? dIn : nIn).focus(); return; }
+        save({ add: edits.add.filter(function (x) { return x.d !== d; }).concat([{ d: d, en: nm, am: nm }]),
+               remove: edits.remove.filter(function (x) { return x !== d; }) }, go);
+      };
+      add.appendChild(dIn);
+      add.appendChild(nIn);
+      add.appendChild(go);
+      into.appendChild(add);
+    };
+    draw();
+    if (!window.FB || !window.FB.watchHolidays) return;
+    window.FB.watchHolidays(function (x) {
+      edits = x || { add: [], remove: [] };
+      HOLIDAY_EDITS = edits;
+      draw();
+    });
+  }
   /* the day after today that is not a Sunday */
   function gtTomorrow() {
     var d = addDays(DAY, 1);
-    return new Date(d + 'T12:00:00Z').getUTCDay() === 0 ? addDays(d, 1) : d;
+    for (var g = 0; g < 14 && closedDay(d); g++) d = addDays(d, 1);
+    return d;
   }
   /* the arrival that counts (apps-script/Attend.js atEffective_): a tapped
      name he or Amaha said was someone else is none — or the person's own
@@ -951,9 +1037,9 @@ import {
     }
 
     /* today */
-    var sunday = new Date(DAY + 'T12:00:00Z').getUTCDay() === 0;
+    var sunday = closedDay(DAY);
     into.appendChild(el('p', 'skysub', t('atTodayHead') + ' · ' + prettyDay(DAY) + (counting ? '' : ' · ' + t('atTest'))));
-    if (sunday) into.appendChild(el('p', 'codenote', t('atSundayNote')));
+    if (sunday) into.appendChild(el('p', 'codenote', holidayOn(DAY) ? tfill('atHolidayNote', { name: L(holidayOn(DAY)) }) : t('atSundayNote')));
     else {
       var a = new Date(Date.now() + 3 * 3600000), nowMin = a.getUTCHours() * 60 + a.getUTCMinutes();
       var counts = { on: 0, late: 0, none: 0 }, list = el('div', 'atlist');
@@ -1763,7 +1849,7 @@ import {
         if (v == null) { v = fig((fc[d] || {}).cf7_bank); note = t('chgFromForecast'); }
         pts.push({ day: d, top: String(Number(d.slice(8))), bottom: (i === 27 || d.slice(8) === '01') ? monShort(d) : '',
                    title: dayShort(d), v: v, note: v == null ? '' : note,
-                   open: dow(d) === 0 ? null : (function (day) {
+                   open: closedDay(d) ? null : (function (day) {
                      return function (from) {
                        /* her daily report is owed every working day (7 Oct 2026; it skipped Fridays before) */
                        var owed = dueOn(day).some(function (r) { return r.id === 'betty-daily'; });
@@ -2133,7 +2219,7 @@ import {
     var due = el('input');
     due.type = 'date';
     var d2 = addDays(DAY, 2);
-    if (dow(d2) === 0) d2 = addDays(d2, 1);         /* never the day off (Orders.js does the same) */
+    for (var g = 0; g < 14 && closedDay(d2); g++) d2 = addDays(d2, 1);   /* never a day off (Orders.js does the same) */
     due.value = d2;
     var give = el('button', 'seed', t('chInsGive'));
     give.type = 'button';

@@ -100,6 +100,7 @@ function attendPost_(row, poster) {
   }
   if (poster === 'chairman') return JSON.stringify({ ok: true, chairman: true, ip: addr });
   if (dow_(day) === 0) return JSON.stringify({ ok: false, why: 'sunday' });
+  if (holiday_(day)) return JSON.stringify({ ok: false, why: 'holiday', name: holiday_(day).en, nameAm: holiday_(day).am || '' });
   var path = 'attend/' + day + '_' + poster;
   var had = null;
   try { had = fsGet_(path); } catch (e) { had = null; }
@@ -160,6 +161,7 @@ function atEth_(ymd) {
 function attendFacts_(day) {
   var schedule = loadSchedule_();
   if (dow_(day) === 0) return { day: day, note: 'Sunday — no check-in' };
+  if (holiday_(day)) return { day: day, note: 'Holiday (' + holiday_(day).en + ') — no check-in' };
   /* the Ethiopian month, as each person and the Chairman see it */
   var eth = atEth_(day);
   var monthStart = addDays_(day, -(eth.d - 1));
@@ -168,7 +170,7 @@ function attendFacts_(day) {
   var docs = tryQuery_('attend', [['day', 'GREATER_THAN_OR_EQUAL', monthStart], ['day', 'LESS_THAN_OR_EQUAL', day]], 'day');
   var month = {};
   var days = [];
-  for (var d = monthStart; d <= day; d = addDays_(d, 1)) if (dow_(d) !== 0) days.push(d);
+  for (var d = monthStart; d <= day; d = addDays_(d, 1)) if (!closed_(d)) days.push(d);
   days.forEach(function (d) {
     attendDay_(schedule, d, docs).forEach(function (r) {
       var m = month[r.id] || (month[r.id] = { name: r.name, on_time: 0, late: 0, no_scan: 0, late_or_missing_days: [] });

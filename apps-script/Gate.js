@@ -121,7 +121,7 @@ function gatePost_(row, poster) {
   var day = Utilities.formatDate(when, tz_(), 'yyyy-MM-dd'), mins = atMinutes_(when);
   var path = 'attend/' + day + '_' + person;
   var how = row.how === 'face' ? 'face' : 'tap';
-  var sunday = dow_(day) === 0;
+  var sunday = closed_(day);            /* or a holiday: recorded, never late */
   var photo = String(row.photo || '');
   var goodPhoto = /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+\/=]+$/.test(photo) && photo.length <= GT_PHOTO_MAX_;
   var had = null;
@@ -170,6 +170,7 @@ function factoryGateFacts_(day) {
   if (!from) return { day: day, note: 'The factory gate tablet is not counted yet (the Chairman starts it on his page)' };
   if (day < from) return { day: day, note: 'The factory gate is counted from ' + from };
   if (dow_(day) === 0) return { day: day, note: 'Sunday — no check-in' };
+  if (holiday_(day)) return { day: day, note: 'Holiday (' + holiday_(day).en + ') — no check-in' };
   var schedule = loadSchedule_();
   var faces = gtFaces_();
   var people = gtPeople_(schedule, faces);
@@ -179,7 +180,7 @@ function factoryGateFacts_(day) {
   var docs = tryQuery_('attend', [['day', 'GREATER_THAN_OR_EQUAL', monthStart], ['day', 'LESS_THAN_OR_EQUAL', day]], 'day');
   var month = {};
   for (var d = monthStart; d <= day; d = addDays_(d, 1)) {
-    if (dow_(d) === 0) continue;
+    if (closed_(d)) continue;
     attendDay_(schedule, d, docs, people).forEach(function (r) {
       var m = month[r.id] || (month[r.id] = { name: r.name, on_time: 0, late: 0, no_scan: 0, late_or_missing_days: [] });
       if (r.status === 'on time') m.on_time++;

@@ -1634,7 +1634,9 @@ const REPORTS = [
        job is on hold); written again in a later report, it comes back. The
        section is not on the screen when nothing is waiting. */
     { en:'Jobs from your earlier reports', am:'ባለፉት ሪፖርቶችዎ የጠቀሷቸው ሥራዎች', fields:[
-      {id:'fu_jobs', en:'Have you finished buying for each job you named before?', am:'ከዚህ በፊት ለጠቀሷቸው ሥራዎች ግዥውን ጨርሰዋል?', t:'table',
+      /* `askFrom`: not asked at all on Thu 15 Oct 2026 (the user: "for today
+         don't ask Getachew — he still cannot send"); back from the 16th */
+      {id:'fu_jobs', en:'Have you finished buying for each job you named before?', am:'ከዚህ በፊት ለጠቀሷቸው ሥራዎች ግዥውን ጨርሰዋል?', t:'table', askFrom:'2026-10-16',
         carry:{from:['pr_list.code', 'ord_list.code', 'sup_delay_list.code', 'del_rej_list.code', 'tomorrow', 'mat_plan.code'],
                close:{col:'buy', in:['done', 'hold']}, days:30},
         cols:[
@@ -1666,7 +1668,7 @@ const REPORTS = [
        is on his "Jobs from your earlier reports" list, until everything is
        bought and he says what it all cost. */
     { en:'Material cost for jobs on the plan', am:'በዕቅዱ ላይ ላሉ ሥራዎች የዕቃ ወጪ', fields:[
-      {id:'mat_plan', en:'How much will all the material for each of these jobs cost?', am:'የእያንዳንዱ ሥራ ዕቃ በሙሉ ስንት ብር ያወጣል?', t:'table',
+      {id:'mat_plan', en:'How much will all the material for each of these jobs cost?', am:'የእያንዳንዱ ሥራ ዕቃ በሙሉ ስንት ብር ያወጣል?', t:'table', askFrom:'2026-10-16',
         carry:{ask:'material', close:{col:'amount'}},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},

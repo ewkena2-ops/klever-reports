@@ -4448,6 +4448,9 @@
     return hit;
   }
   function shown(f) {
+    /* `askFrom`: a question not asked before that day (the user, 15 Oct
+       2026: Getachew's earlier jobs and job amounts, not that day) */
+    if (f.askFrom && addis().toISOString().slice(0, 10) < f.askFrom) return false;
     if (f.carry && f.carry.hideEmpty && !(Array.isArray(values[f.id]) && values[f.id].length)) return false;
     if (!f.show) return true;
     var p = fieldById(f.show.f), w = f.show.when || 'pos';

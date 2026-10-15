@@ -8249,7 +8249,11 @@ const SALES_DAILY = {
             {v:'other', en:'Other', am:'ሌላ'}]},
           /* the user, 15 Oct 2026: every payment with its receipt number, and
              Selam, who issues Klever's receipts, confirms each (apps-script/Receipts.js) */
-          {id:'rcpt', en:'Receipt no.', am:'የደረሰኝ ቁጥር', t:'text', must:1}
+          {id:'rcpt', en:'Receipt no.', am:'የደረሰኝ ቁጥር', t:'text', must:1},
+          /* the user, 15 Oct 2026: a photo of the customer's slip (bank slip
+             or transfer screenshot) in the row; Selam sees it beside the
+             payment she confirms, and the Chairman too (/slips, app.js slipCell) */
+          {id:'slip', en:'Photo of the payment slip', am:'የክፍያ ስሊፕ ፎቶ', t:'slip'}
         ]},
       {id:'k_today', en:'How much did you collect from customers today?', am:'ዛሬ ከደንበኞች ስንት ብር ተሰበሰበ?', t:'money',
         auto:{sum:'k_list.amount'}, sumEn:'collected', sumAm:'ተሰብስቧል'},

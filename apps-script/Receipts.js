@@ -20,6 +20,9 @@
      ('done') once every payment has one. The Chairman's page shows the days,
      what is still waiting and what she said was wrong; the Group CFO reads
      the same (rcptFacts_).
+   · A photo of the customer's slip may be taken in the row (forms.js
+     `slip`, 15 Oct 2026); its /slips ids ride on the item (`slips`), and
+     Selam and the Chairman open the picture beside the payment.
    · No fine: no letter says one. A receipt she denies is for the Chairman.
 
    A report sent again the same day replaces that salesperson's payments
@@ -43,15 +46,23 @@ function rcptRows_(list, who) {
     if (a === null || a <= 0) return null;
     var typed = String(r.rcpt == null ? '' : r.rcpt).trim();
     return { who: who, cust: String(r.cust || '').trim(), code: String(r.lc || '').trim(), amount: a,
-             kind: String(r.kind || ''), rcpt: typed, no: rcptNo_(typed) };
+             kind: String(r.kind || ''), rcpt: typed, no: rcptNo_(typed), slips: rcptSlips_(r) };
   }).filter(function (x) { return x; });
+}
+/* The slip photos taken in the row (js/app.js slipCell, 15 Oct 2026): the
+   /slips ids, kept beside the count under slip__ids. Selam and the Chairman
+   open them by id. */
+function rcptSlips_(r) {
+  return String((r && r.slip__ids) || '').split(/\s+/)
+    .filter(function (x) { return /^[A-Za-z0-9]{10,40}$/.test(x); }).slice(0, 4);
 }
 function rcptKey_(r) { return r.who + ':' + (r.no || '-') + ':' + Math.round(r.amount); }
 /* what a day's items say, in an order Firestore's reading back does not change */
 function rcptSig_(items) {
   return (items || []).map(function (it) {
     var d = it.dup || {};
-    return [it.key, it.cust, it.code, it.kind, it.rcpt, it.ans || '', it.ansAmount == null ? '' : it.ansAmount, d.day || '', d.who || ''].join('\u0001');
+    return [it.key, it.cust, it.code, it.kind, it.rcpt, it.ans || '', it.ansAmount == null ? '' : it.ansAmount, d.day || '', d.who || '',
+            (it.slips || []).join(' ')].join('\u0001');
   }).join('\u0002');
 }
 
@@ -105,7 +116,7 @@ function rcptCheck_(day) {
     if (seen[key]) key += ':' + (seen[key]++);   /* the same payment written twice: two items */
     else seen[key] = 1;
     var it = { key: key, who: r.who, cust: r.cust, code: r.code, amount: r.amount, kind: r.kind, rcpt: r.rcpt,
-               ans: '', ansAmount: null, dup: null };
+               slips: r.slips, ans: '', ansAmount: null, dup: null };
     var a = answers[key];
     if (a) { it.ans = a.ans; it.ansAmount = a.amount; }
     return it;
@@ -195,12 +206,14 @@ function rcptFacts_(day, names) {
     names = {};
     ((loadSchedule_() || {}).people || []).forEach(function (p) { names[p.id] = p.en; });
   }
-  var all = 0, ok = 0, waiting = [], wrong = [], twice = [];
+  var all = 0, ok = 0, slipped = 0, waiting = [], wrong = [], twice = [];
   docs.sort(function (a, b) { return a.day < b.day ? -1 : 1; }).forEach(function (d) {
     (d.items || []).forEach(function (it) {
       all++;
+      var nSlips = (it.slips || []).length;
+      if (nSlips) slipped++;
       var line = { day: dayLabel_(d.day), salesperson: names[it.who] || it.who, customer: [it.cust, it.code].filter(Boolean).join(' '),
-                   birr: Math.round(it.amount), receipt_no: it.rcpt || '(none given)' };
+                   birr: Math.round(it.amount), receipt_no: it.rcpt || '(none given)', slip_photo: nSlips ? 'yes' : 'no' };
       if (it.ans === 'yes') ok++;
       if (!it.ans) waiting.push(line);
       if (it.ans === 'no') wrong.push(Object.assign({ selam_says: 'she issued no such receipt' }, line));
@@ -213,7 +226,7 @@ function rcptFacts_(day, names) {
   });
   return {
     note: 'Each payment a salesperson reports carries the receipt number; Selam, who issues Klever’s receipts, confirms each.',
-    payments_this_week: all, confirmed_by_selam: ok,
+    payments_this_week: all, confirmed_by_selam: ok, with_a_photo_of_the_slip: slipped,
     waiting_for_selam: waiting.slice(0, 20), waiting_count: waiting.length,
     selam_says_wrong: wrong.slice(0, 20),
     receipt_number_given_twice: twice.slice(0, 20)

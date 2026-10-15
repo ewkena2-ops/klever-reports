@@ -1234,6 +1234,9 @@
         card.appendChild(el('div', 'rcdup', tfill_('rcDup', { who: personName_(it.dup.who), cust: it.dup.cust || '—',
                                                               v: money(Math.round(it.dup.amount)), day: dayLabel(it.dup.day) })));
       }
+      /* the slip the salesperson photographed, to look at before answering */
+      var slips = Array.isArray(it.slips) ? it.slips : [];
+      card.appendChild(slips.length ? slipButtons(slips) : el('div', 'rcnoslip', t('slipNone')));
       var line = el('div', 'mfline rcline');
       var box = el('input', 'mfbox');
       box.type = 'text'; box.inputMode = 'decimal';
@@ -2990,6 +2993,19 @@
             card.appendChild(cell);
             return;
           }
+          /* A photo of the payment slip (the user, 15 Oct 2026): kept apart
+             from the chat rooms, for Selam, who confirms the receipt, and the
+             Chairman (slipCell) */
+          if (c.t === 'slip') {
+            cell.className = 'cell wide rowphoto slipcell';
+            cl.removeAttribute('for');
+            slipCell(cell, rowData, c, 'c_' + f.id + '_' + i + '_' + c.id, function () {
+              refresh();
+              if (wrap.sumUp) wrap.sumUp();
+            });
+            card.appendChild(cell);
+            return;
+          }
           /* A colour code, picked from the pictures (the Chairman, 13 Oct
              2026). `of` names the row's material column: only a board or edge
              tape has a colour (COLOUR_ITEMS), so the box shows for those
@@ -3922,6 +3938,151 @@
                      : why === 'not-an-image' ? t('chatCantRead') : t('photoFailed');
       item.className = 'phitem bad';
     });
+  }
+
+  /* PAYMENT SLIPS (the user, 15 Oct 2026: "does sales have a photo option
+     for the slip?"). A photo picked in a salesperson's payment row goes to
+     /slips as it is picked, like a site photo, so a closed tab loses
+     nothing. The row keeps how many in its box and their ids under
+     `<id>__ids`; the receipt check (apps-script/Receipts.js) hands the ids
+     to Selam with the payment. × takes a wrong one off the row. */
+  var SLIP_MAX = 4;
+  var slipSeen = {};          /* id → the picture, for this page's life: a row redrawn keeps its thumbnails */
+  function slipIds(row, id) {
+    return String(row[id + '__ids'] || '').split(/\s+/).filter(function (x) { return /^[A-Za-z0-9]{10,40}$/.test(x); });
+  }
+  function slipSet(row, id, ids) {
+    if (ids.length) { row[id + '__ids'] = ids.join(' '); row[id] = String(ids.length); }
+    else { delete row[id + '__ids']; delete row[id]; }
+  }
+  function slipCell(cell, row, c, pid, changed) {
+    var pk = document.createElement('input');
+    pk.type = 'file';
+    pk.accept = 'image/*';
+    pk.className = 'phpick';
+    pk.id = pid;
+    var pb = el('label', 'btn phadd', t('slipAdd'));
+    pb.appendChild(pk);
+    var strip = el('div', 'phstrip');
+    function drop(id, item) {
+      slipSet(row, c.id, slipIds(row, c.id).filter(function (x) { return x !== id; }));
+      if (item.parentNode) item.parentNode.removeChild(item);
+      changed();
+    }
+    function slipItem(id, src) {
+      var item = el('div', 'phitem ok slipitem');
+      item.setAttribute('data-slip', id);
+      if (src) {
+        var im = document.createElement('img');
+        im.src = src;
+        im.alt = '';
+        im.onclick = function () { slipView(id); };
+        item.appendChild(im);
+      } else {
+        var v = el('button', 'slipbtn', t('slipView'));
+        v.type = 'button';
+        v.onclick = function () { slipView(id); };
+        item.appendChild(v);
+      }
+      var x = el('button', 'slipx', '×');
+      x.type = 'button';
+      x.setAttribute('aria-label', t('slipRemove'));
+      x.onclick = function () { drop(id, item); };
+      item.appendChild(x);
+      return item;
+    }
+    slipIds(row, c.id).forEach(function (id) { strip.appendChild(slipItem(id, slipSeen[id])); });
+    pk.onchange = function () {
+      var file = (pk.files || [])[0];
+      pk.value = '';
+      if (!file) return;
+      if (slipIds(row, c.id).length >= SLIP_MAX) { toast(t('slipMax')); return; }
+      if (!window.FB || !window.FB.live() || !AUTH.who() || !window.FB.postSlip) { toast(t('photoNeedsSignIn')); return; }
+      if (!window.KMEDIA) { toast(t('photoNotReady')); return; }
+      var wait = el('div', 'phitem busy');
+      var st = el('div', 'phst', t('photoShrinking'));
+      wait.appendChild(st);
+      strip.appendChild(wait);
+      window.KMEDIA.shrinkImage(file).then(function (img) {
+        var r;
+        try { r = window.FB.postSlip(img, addis().toISOString().slice(0, 10)); } catch (e) { r = null; }
+        if (!r) { st.textContent = t('photoNeedsSignIn'); wait.className = 'phitem bad'; return; }
+        slipSeen[r.id] = img.data;
+        slipSet(row, c.id, slipIds(row, c.id).concat([r.id]));
+        var item = slipItem(r.id, img.data);
+        item.className = 'phitem busy slipitem';
+        var st2 = el('div', 'phst', t('photoSending'));
+        item.appendChild(st2);
+        strip.replaceChild(item, wait);
+        photosUp++;
+        r.done.then(function () {
+          photosUp--;
+          st2.textContent = t('photoSent');
+          item.className = 'phitem ok slipitem';
+        }, function (e) {
+          photosUp--;
+          slipSet(row, c.id, slipIds(row, c.id).filter(function (x) { return x !== r.id; }));
+          st2.textContent = (e && e.code === 'permission-denied') ? t('sendRefused') : t('photoFailed');
+          item.className = 'phitem bad slipitem';
+          changed();
+        });
+        changed();
+      }, function (e) {
+        var why = e && e.message;
+        st.textContent = why === 'too-big' ? t('chatTooBig')
+                       : why === 'file-huge' ? t('chatFileHuge')
+                       : why === 'not-an-image' ? t('chatCantRead') : t('photoFailed');
+        wait.className = 'phitem bad';
+      });
+    };
+    cell.appendChild(pb);
+    cell.appendChild(strip);
+  }
+  /* a slip's photo over the page; tap or Escape closes it */
+  function slipView(id) {
+    var back = el('div', 'slipview');
+    back.setAttribute('role', 'dialog');
+    back.setAttribute('aria-modal', 'true');
+    back.setAttribute('aria-label', t('slipTitle'));
+    var x = el('button', 'colsheet-x slipclose', '×');
+    x.type = 'button';
+    x.setAttribute('aria-label', t('colClose'));
+    var msg = el('div', 'slipmsg', t('slipLoading'));
+    back.appendChild(x);
+    back.appendChild(msg);
+    document.body.appendChild(back);
+    document.body.classList.add('noscroll');
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+    function close() {
+      document.removeEventListener('keydown', onKey);
+      if (back.parentNode) back.parentNode.removeChild(back);
+      document.body.classList.remove('noscroll');
+    }
+    back.onclick = close;
+    x.focus();
+    var got = slipSeen[id] ? Promise.resolve(slipSeen[id])
+            : window.FB && window.FB.getSlip ? window.FB.getSlip(id) : Promise.resolve(null);
+    got.then(function (src) {
+      if (!back.parentNode) return;
+      if (!src || String(src).indexOf('data:image/') !== 0) { msg.textContent = t('slipGone'); return; }
+      slipSeen[id] = src;
+      var im = document.createElement('img');
+      im.src = src;
+      im.alt = t('slipTitle');
+      back.replaceChild(im, msg);
+    });
+  }
+  /* "📷 Slip 1", "📷 Slip 2" — one button a photo, for Selam's card and the Chairman's page */
+  function slipButtons(ids) {
+    var box = el('div', 'slipbtns');
+    (ids || []).forEach(function (id, n) {
+      var b = el('button', 'slipbtn', t('slipView') + (ids.length > 1 ? ' ' + (n + 1) : ''));
+      b.type = 'button';
+      b.onclick = function () { slipView(id); };
+      box.appendChild(b);
+    });
+    return box;
   }
 
   /* a grid with dateFrom shows a date per row — redraw those when the date changes */
@@ -5508,7 +5669,7 @@
     }
     if (c.t === 'money') return money(v) + ' ' + t('birr');
     if (c.t === 'date') return prettyDate(String(v).trim());
-    if (c.t === 'photo') return String(v).trim() + ' 📷';
+    if (c.t === 'photo' || c.t === 'slip') return String(v).trim() + ' 📷';
     return String(v).trim();
   }
 
@@ -5665,6 +5826,8 @@
     signIn: function () { var r = document.getElementById('app'); if (r) renderSignIn(r); },
     /* the same clear dates, for the Chairman's page */
     prettyDate: prettyDate,
+    /* a payment's slip photos, as buttons that open them (the Chairman's receipts) */
+    slipButtons: slipButtons,
     /* the Ethiopian month (office check-in counts by it) */
     ethMonthStart: ethMonthStart,
     ethMonthName: ethMonthName,

@@ -892,6 +892,29 @@ service cloud.firestore {
                     && get(/databases/$(database)/documents/rcptcheck/$(request.resource.data.day)).data.to == me();
       allow update, delete: if false;
     }
+    /* A payment slip's photo, taken in a salesperson's payment row (the
+       user, 15 Oct 2026). Filed as the person, at the server's time, a
+       picture and nothing else, never changed after. Read by id: by whoever
+       took it, by Selam (betty), who confirms the receipts, and by the
+       Chairman. */
+    match /slips/{sid} {
+      allow get: if isChairman() || isLedger()
+                 || (signedIn() && (resource.data.person == me() || me() == 'betty'));
+      allow list: if isChairman() || isLedger();
+      allow create: if signedIn()
+                    && !isLedger()
+                    && request.resource.data.keys().hasOnly(['person','day','media','mime','w','h','at'])
+                    && request.resource.data.person == me()
+                    && request.resource.data.at == request.time
+                    && request.resource.data.day is string
+                    && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                    && request.resource.data.mime == 'image/jpeg'
+                    && request.resource.data.w is int && request.resource.data.h is int
+                    && request.resource.data.media is string
+                    && request.resource.data.media.size() <= 700000
+                    && request.resource.data.media.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$');
+      allow update, delete: if false;
+    }
 
     match /instructions/{iid} {
       allow get, list: if isChairman() || isLedger()

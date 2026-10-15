@@ -729,12 +729,14 @@ import {
         var ans = a ? a.ans : it.ans, amt = a ? a.amount : it.ansAmount;
         var what = [nameOf(it.who), [it.cust, it.code].filter(Boolean).join(' '), birr(Math.round(it.amount)) + ' Birr',
                     (lang === 'am' ? 'ደረሰኝ ' : 'receipt ') + (it.rcpt || '—')].filter(Boolean).join(' · ');
+        /* the slip photos the salesperson took, beside each line about the payment */
+        var slips = Array.isArray(it.slips) ? it.slips : [];
         if (ans === 'yes') ok++;
-        else if (ans === 'no') bad.push(what + ' — ' + t('rcChWrong'));
-        else if (ans === 'amount') bad.push(what + ' — ' + t('rcChAmount').replace('{v}', birr(Math.round(amt || 0))));
-        else waiting.push(what);
+        else if (ans === 'no') bad.push({ s: what + ' — ' + t('rcChWrong'), slips: slips });
+        else if (ans === 'amount') bad.push({ s: what + ' — ' + t('rcChAmount').replace('{v}', birr(Math.round(amt || 0))), slips: slips });
+        else waiting.push({ s: what, slips: slips });
         if (it.dup && it.dup.day) {
-          bad.push(what + ' — ' + t('rcChTwice').replace('{who}', nameOf(it.dup.who)).replace('{v}', birr(it.dup.amount)).replace('{day}', prettyDay(it.dup.day)));
+          bad.push({ s: what + ' — ' + t('rcChTwice').replace('{who}', nameOf(it.dup.who)).replace('{v}', birr(it.dup.amount)).replace('{day}', prettyDay(it.dup.day)), slips: slips });
         }
       });
       var card = el('div', 'jmrow' + (bad.length ? ' bad' : waiting.length ? ' wait' : ''));
@@ -742,8 +744,13 @@ import {
       head.appendChild(el('span', 'jmcode', t('rcChDay').replace('{day}', prettyDay(d.day)).replace('{n}', d.items.length).replace('{ok}', ok)));
       if (waiting.length) head.appendChild(el('span', 'jmnet rcwait', t('rcChWait').replace('{n}', waiting.length)));
       card.appendChild(head);
-      bad.forEach(function (s) { card.appendChild(el('div', 'jmwait', s)); });
-      waiting.forEach(function (s) { card.appendChild(el('div', 'jmparts rcwaitline', s)); });
+      function line(x, cls) {
+        var ln = el('div', cls, x.s);
+        if (x.slips.length && window.KLEVER && window.KLEVER.slipButtons) ln.appendChild(window.KLEVER.slipButtons(x.slips));
+        card.appendChild(ln);
+      }
+      bad.forEach(function (x) { line(x, 'jmwait'); });
+      waiting.forEach(function (x) { line(x, 'jmparts rcwaitline'); });
       into.appendChild(card);
     });
   }

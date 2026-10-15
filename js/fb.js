@@ -530,6 +530,27 @@
         at: F.serverTimestamp()
       });
     },
+    /* A payment slip's photo, from a salesperson's payment row (the user,
+       15 Oct 2026). Its id is known at once — with no signal the photo waits
+       on the phone and goes later, and the row already names it — and
+       `done` settles when the server has it. Read back by Selam and the
+       Chairman by id. */
+    postSlip: function (img, day) {
+      if (!db || !user) throw new Error('not signed in');
+      var ref = F.doc(F.collection(db, 'slips'));
+      var done = F.setDoc(ref, {
+        person: idOf(user), day: day, media: img.data, mime: 'image/jpeg',
+        w: img.w, h: img.h, at: F.serverTimestamp()
+      });
+      return { id: ref.id, done: done };
+    },
+    /* one slip's picture, or null */
+    getSlip: function (id) {
+      if (!db || !user) return Promise.resolve(null);
+      return F.getDoc(F.doc(db, 'slips', id)).then(function (d) {
+        return d.exists() ? d.data().media || null : null;
+      })['catch'](function () { return null; });
+    },
 
     /* My agents' readings (apps-script/Owners.js): the latest of each. */
     watchMyReadings: function (cb) {

@@ -38,7 +38,7 @@
       en: 'Reports that disagree', am: 'የሚጋጩ ሪፖርቶች',
       watchEn: 'Two people describing the same day with numbers that cannot both be true.',
       watchAm: 'አንድን ቀን የሚገልጹ ሁለት ሰዎች፣ ሁለቱም እውነት ሊሆኑ የማይችሉ ቁጥሮች ሲሰጡ።',
-      reads: [['Amaha', 'አማሃ'], ['Mahelet', 'ማህሌት'], ['Wude', 'ውዱ'], ['Elyas', 'ኤልያስ'], ['Yordanos', 'ዮርዳኖስ']]
+      reads: [['Amaha', 'አማሃ'], ['Mahelet', 'ማህሌት'], ['Wude', 'ውዱ'], ['Elyas', 'ኤልያስ'], ['Alemaya', 'አለማያ']]
     },
     compliance: {
       en: 'Who reported', am: 'ማን ሪፖርት አደረገ',
@@ -68,7 +68,7 @@
       en: 'Store and stock', am: 'መጋዘንና ዕቃ',
       watchEn: 'What is about to run out, and whether it stops production before it is replaced.',
       watchAm: 'ሊያልቅ የተቃረበው ምን እንደሆነ፣ ከመተካቱ በፊት ምርትን ያቆም እንደሆነ።',
-      reads: [['Yordanos’s daily store report', 'የዮርዳኖስ ዕለታዊ የመጋዘን ሪፖርት']]
+      reads: [['Alemaya’s daily store report', 'የአለማያ ዕለታዊ የመጋዘን ሪፖርት']]
     },
     purchasing: {
       en: 'Purchasing', am: 'ግዥ',

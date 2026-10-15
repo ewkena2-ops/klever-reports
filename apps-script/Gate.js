@@ -4,7 +4,7 @@
    face scan — because they don't have phones". His answers that day: a
    tablet at the factory gate with a face scan, on our own page · the
    factory has its own WiFi line · on arriving only · everyone at the
-   factory — the workers and the heads (Amaha, Wude, Yordanos) — on the
+   factory — the workers and the heads (Amaha, Wude, Alemaya) — on the
    same tablet.
 
    HOW. gate.html runs on the tablet, signed in as the gate's own account
@@ -28,7 +28,7 @@
    arrival; until then the tap stands — a person who tapped their own name
    at 7:30 and walks past the camera at noon is not made late. Workers have no
    phones, so Amaha says why for a worker who did not come or came late;
-   Amaha, Wude and Yordanos say it for themselves, as the office does.
+   Amaha, Wude and Alemaya say it for themselves, as the office does.
 
    COUNTED FROM the day the Chairman chose on his page (/gateconf/factory
    .from); before that every scan is a test. No money is taken, as at the

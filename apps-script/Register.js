@@ -60,6 +60,8 @@ var REG_SOURCES_ = [
   /* `colour`: the board's colour code, picked by picture (13 Oct 2026) */
   { r: 'getachew-daily', f: 'pr_list', k: 'request', job: 'code', what: 'item', amount: 'amount', colour: 'colour' },
   { r: 'getachew-daily', f: 'ord_list', k: 'ordered', job: 'code', what: 'item', amount: 'amount', colour: 'colour' },
+  { r: 'alemaya-daily', f: 'rec_list', k: 'received', job: 'code', what: 'item', ok: 'ok', colour: 'colour' },
+  /* the same report while Yordanos kept the store (to 13 Oct 2026), so a rebuilt register keeps what she received */
   { r: 'yordanos-daily', f: 'rec_list', k: 'received', job: 'code', what: 'item', ok: 'ok', colour: 'colour' },
   { r: 'betty-daily', f: 'final_req_list', k: 'finalreq', cust: 'cust', job: 'code', amount: 'amount' },
   { r: 'betty-joblist', f: 'jl_held_list', k: 'held', cust: 'cust', job: 'code', amount: 'owed', what: 'expect' },
@@ -116,7 +118,7 @@ var REG_BOARD_ = [
   { n: 3, id: 'measure', en: 'Final measurement done', who: 'Designer' },
   { n: 4, id: 'selection', en: 'Material selection signed', who: 'Designer' },
   { n: 5, id: 'ordered', en: 'Materials ordered', who: 'Getachew' },
-  { n: 6, id: 'received', en: 'Materials received in store', who: 'Yordanos' },
+  { n: 6, id: 'received', en: 'Materials received in store', who: 'Alemaya' },
   { n: 7, id: 'finalreq', en: 'Final payment requested', who: 'Selam' },
   { n: 8, id: 'final', en: 'Final payment received', who: 'Selam' },
   { n: 9, id: 'production', en: 'Production approved and started', who: 'Mahelet' },
@@ -692,8 +694,8 @@ function regFold_(events, today, names, sellers) {
     if (installed && !J.followup && regDaysBetween_(installed, today) > 2) {
       p.push({ code: 'followup-late', text: 'Installed ' + pushDay_(installed) + '; no 48-hour follow-up call recorded' });
     }
-    if (J.bomMismatch) p.push({ code: 'bom', text: 'Material received that does not match the BOM: ' + J.bomMismatch.what + ' (Yordanos, ' + pushDay_(J.bomMismatch.day) + ')' });
-    if (J.bomUnchecked) notes.push('Material received without checking it against the BOM: ' + J.bomUnchecked.what + ' (Yordanos, ' + pushDay_(J.bomUnchecked.day) + ')');
+    if (J.bomMismatch) p.push({ code: 'bom', text: 'Material received that does not match the BOM: ' + J.bomMismatch.what + ' (Alemaya, ' + pushDay_(J.bomMismatch.day) + ')' });
+    if (J.bomUnchecked) notes.push('Material received without checking it against the BOM: ' + J.bomUnchecked.what + ' (Alemaya, ' + pushDay_(J.bomUnchecked.day) + ')');
     if (J.unhappy) p.push({ code: 'unhappy', text: 'Customer not happy at the follow-up call (' + pushDay_(J.unhappy) + ')' });
     if (J.delivered && J.cleared === false) p.push({ code: 'not-cleared', text: 'Delivered ' + pushDay_(J.delivered) + ' without Selam’s clearance' });
     if (J.delivered && J.cleared == null) notes.push('Delivered ' + pushDay_(J.delivered) + '; whether Selam cleared it was not written');

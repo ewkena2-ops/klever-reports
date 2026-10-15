@@ -83,8 +83,8 @@ var ORDER_DUTIES_ = {
     'reporting supplier delays, price changes and quality problems; replacing rejected materials',
     'purchase documents to Selam within 24 hours'],
     covers: [] },
-  /* Klever-Yordanos-Storekeeper-Terms */
-  yordanos: { reportsTo: 'liu', duties: [
+  /* Klever-Alemaya-Storekeeper-Terms */
+  alemaya: { reportsTo: 'liu', duties: [
     'receiving deliveries and checking them against the Job File and BOM; rejecting with photos',
     'stock records every day and the Saturday stock count',
     'issuing materials — only with Mahelet’s signed approval',

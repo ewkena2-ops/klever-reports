@@ -22,7 +22,13 @@ const PEOPLE = [
   { id:'liu',      en:'Mahelet Teshome', am:'ማህሌት ተሾመ',   roleEn:'Operations Lead',   roleAm:'የኦፕሬሽን ኃላፊ', grp:'lead', scan:1 },
   { id:'betty',    en:'Selam',  am:'ሰላም', roleEn:'Finance Officer',   roleAm:'የፋይናንስ ኃላፊ', grp:'finance', scan:1 },
   { id:'getachew', en:'Getachew Negash', am:'ጌታቸው ነጋሽ',   roleEn:'Purchasing Officer', roleAm:'የግዥ ኃላፊ', grp:'finance', scan:1 },
-  { id:'yordanos', en:'Yordanos Fikadu', am:'ዮርዳኖስ ፍቃዱ',  roleEn:'Storekeeper',       roleAm:'የመጋዘን ኃላፊ', grp:'finance', gate:1 },
+  /* The storekeeper. Yordanos Fikadu left the factory (the user, 15 Oct
+     2026; her last report Tue 13 Oct) and Alemaya took the store from Fri
+     16 Oct. Her reports, fines and pay stay under her id 'yordanos' (the
+     Sheet's staff tab keeps her row for the payroll); the store reports are
+     Alemaya's. No surname and no terms letter yet, so `noLetter`: no fines
+     until the letter is signed — then take `noLetter` out. */
+  { id:'alemaya', en:'Alemaya', am:'አለማያ',  roleEn:'Storekeeper',       roleAm:'የመጋዘን ኃላፊ', grp:'finance', gate:1, from:'2026-10-16', noLetter:1 },
   { id:'amaha',      en:'Amaha Temechew',       am:'አማሃ ተመቸው',      roleEn:'Production Supervisor', roleAm:'የምርት ተቆጣጣሪ', grp:'production', gate:1 },
   { id:'wude',       en:'Wude Birhanu',         am:'ውዱ ብርሃኑ',       roleEn:'Quality Control Officer', roleAm:'የጥራት ቁጥጥር ኃላፊ', grp:'production', gate:1 },
   { id:'elyas',      en:'Elyas Mullatu',        am:'ኤልያስ ሙላቱ',      roleEn:'Site Supervisor',   roleAm:'የተከላ ቦታ ተቆጣጣሪ', grp:'site' },
@@ -168,7 +174,7 @@ const MATERIAL_OPTS = MATERIALS.concat([
 /* REWORK (the Chairman, 13 Oct 2026: "so it's easy to say, when there is
    rework, which material"): each defect says what must be cut again — or
    that nothing new is needed — with its colour by picture and how many
-   pieces, so Amaha cuts it and Getachew and Yordanos know what it takes. */
+   pieces, so Amaha cuts it and Getachew and Alemaya know what it takes. */
 const REDO_OPTS = [{ v:'none', en:'Nothing new — fixed as it is', am:'አዲስ ዕቃ አያስፈልግም — እንዳለ ተስተካክሏል' }].concat(MATERIALS, [
   { v:'Other', en:'Other', am:'ሌላ' }
 ]);
@@ -228,7 +234,7 @@ const BOARD_WHO = [
   { v:'designer', en:'A designer',            am:'ዲዛይነር' },
   { v:'betty',    en:'Selam — finance',       am:'ሰላም — ፋይናንስ' },
   { v:'getachew', en:'Getachew — purchasing', am:'ጌታቸው — ግዥ' },
-  { v:'yordanos', en:'Yordanos — store',      am:'ዮርዳኖስ — መጋዘን' },
+  { v:'alemaya', en:'Alemaya — store',      am:'አለማያ — መጋዘን' },
   { v:'liu',      en:'Mahelet — operations',  am:'ማህሌት — ኦፕሬሽን' },
   { v:'amaha',    en:'Amaha — production',    am:'አማሃ — ምርት' },
   { v:'wude',     en:'Wude — quality',        am:'ውዱ — ጥራት' },
@@ -1052,7 +1058,7 @@ const REPORTS = [
           {id:'who',  en:'Who caused it', am:'ምክንያቱ ማን ነው', t:'choice', opts:[
             {v:'amaha',    en:'Amaha — production late',      am:'አማሃ — ምርቱ ዘገየ'},
             {v:'getachew', en:'Getachew — material late',     am:'ጌታቸው — ዕቃው ዘገየ'},
-            {v:'yordanos', en:'Yordanos — the store',         am:'ዮርዳኖስ — መጋዘኑ'},
+            {v:'alemaya', en:'Alemaya — the store',         am:'አለማያ — መጋዘኑ'},
             {v:'wude',     en:'Wude — the quality check',     am:'ውዱ — የጥራት ፍተሻው'},
             {v:'elyas',    en:'Elyas — installation',         am:'ኤልያስ — ተከላው'},
             {v:'ephrata',  en:'Ephrata — sales',              am:'ኤፍራታ — ሽያጩ'},
@@ -1543,7 +1549,7 @@ const REPORTS = [
           {id:'doc', en:'Document', am:'ሰነድ', t:'text'},
           {id:'from', en:'From (supplier or staff)', am:'ከማን (አቅራቢ ወይም ሠራተኛ)', t:'text'},
           {id:'since', en:'Missing since', am:'ከመቼ ጀምሮ', t:'text'},
-          {id:'chase', en:'Who is chasing it', am:'የሚከታተለው', t:'text', picks:[{ en:'Getachew', am:'ጌታቸው' }, { en:'Selam', am:'ሰላም' }, { en:'Yordanos', am:'ዮርዳኖስ' }]}
+          {id:'chase', en:'Who is chasing it', am:'የሚከታተለው', t:'text', picks:[{ en:'Getachew', am:'ጌታቸው' }, { en:'Selam', am:'ሰላም' }, { en:'Alemaya', am:'አለማያ' }]}
         ]},
       {id:'doc_missing', en:'How many documents are still missing?', am:'እስካሁን ስንት ሰነዶች ጎድለዋል?', t:'num',
         auto:{rows:'doc_missing_list'}, sumEn:'still missing', sumAm:'ገና ጎድለዋል'}
@@ -1568,7 +1574,7 @@ const REPORTS = [
           { en:'Kidan\'s approval for a payment',       am:'ለክፍያ የኪዳን ፈቃድ' },
           { en:'Mahelet to confirm where a job stands', am:'ማህሌት የሥራው ደረጃ የት እንደደረሰ እንድታረጋግጥ' },
           { en:'Elyas to confirm a customer accepted the work', am:'ኤልያስ ደንበኛው ሥራውን መቀበሉን እንዲያረጋግጥ' },
-          { en:'Yordanos to confirm a delivery',        am:'ዮርዳኖስ ዕቃ መድረሱን እንድታረጋግጥ' },
+          { en:'Alemaya to confirm a delivery',        am:'አለማያ ዕቃ መድረሱን ማረጋገጥ' },
           { en:'A decision from the Chairman',          am:'የሊቀመንበሩ ውሳኔ' }
         ]},
       {id:'need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno', yes:{en:'I need a decision', am:'ውሳኔ ያስፈልገኛል'}, no:{en:'No decision needed', am:'ውሳኔ አያስፈልገኝም'}},
@@ -1849,7 +1855,7 @@ const REPORTS = [
         auto:{rows:'sup_delay_list', when:{col:'stops', is:'yes'}}, sumEn:'holding up production', sumAm:'ምርት የሚያቆሙ'},
 
       /* — a rejection at the store. How many deliveries reached the store is
-         Yordanos's count — she signs for them (the Chairman, 9 Oct 2026).
+         Alemaya's count — the storekeeper signs for them (the Chairman, 9 Oct 2026).
          What is Getachew's is the chase afterwards: a rejection is his to put
          right with the supplier. */
       {id:'del_rej_any', en:'Did the store reject anything you ordered today?', am:'ዛሬ ካዘዙት ዕቃ መጋዘኑ ያልተቀበለው አለ?', t:'yesno', quiet:1, auto:{picked:'g_events', v:'rejected'}},
@@ -2040,7 +2046,7 @@ const REPORTS = [
           { en:'Money moved to ZamZam (Selam)',     am:'ገንዘብ ወደ ዘምዘም እንዲገባ (ሰላም)' },
           { en:'The material list or job code (Mahelet)', am:'የዕቃ ዝርዝር ወይም የሥራ ኮድ (ማህሌት)' },
           { en:'A decision from Mahelet',           am:'የማህሌት ውሳኔ' },
-          { en:'A stock count (Yordanos)',          am:'የዕቃ ቆጠራ (ዮርዳኖስ)' },
+          { en:'A stock count (Alemaya)',          am:'የዕቃ ቆጠራ (አለማያ)' },
           { en:'Transport',                         am:'ትራንስፖርት' }
         ]},
       {id:'need_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno', yes:{en:'I need a decision', am:'ውሳኔ ያስፈልገኛል'}, no:{en:'No decision needed', am:'ውሳኔ አያስፈልገኝም'}},
@@ -2070,7 +2076,7 @@ const REPORTS = [
 
 /* =========================== YORDANOS — DAILY =========================== */
 {
-  id:'yordanos-daily', person:'yordanos', cadence:'daily', dueTime:'17:30',
+  id:'alemaya-daily', person:'alemaya', cadence:'daily', dueTime:'17:30',
   en:'Daily Store Report', am:'ዕለታዊ የመጋዘን ሪፖርት',
   toEn:'Chairman, copied to Mahelet and Selam', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለሰላም',
   dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)',
@@ -2257,7 +2263,7 @@ const REPORTS = [
       /* counted from the list of mismatches (a tap on the list below opens
          it); 0 when the list was answered without that tap. The fine is
          charged from the Friday count, not from this (js/rules.js
-         yordanos-stock-discrepancy). */
+         alemaya-stock-discrepancy). */
       {id:'st_disc', en:'How many differences did you find between the record and the shelf?', am:'በመዝገቡና በመደርደሪያው መካከል ስንት ልዩነት ተገኘ?', t:'num',
         auto:{rows:'st_disc_list'},
         tgt:{op:'lte', v:0, en:'–500 Birr each · report same day', am:'እያንዳንዱ –500 ብር · በዕለቱ ማሳወቅ'}},
@@ -2922,8 +2928,8 @@ const REPORTS = [
       /* her pay reads it (≥99%), so it stays asked */
       {id:'s_accuracy', en:'What % of the items counted in the store this week matched the record? (100% if every item matched.)', am:'በዚህ ሳምንት በመጋዘን ከተቆጠሩት ዕቃዎች ስንት % ከመዝገቡ ጋር ተመሳሰሉ? (ሁሉም ከተመሳሰሉ 100%።)', t:'pct',
         tgt:{op:'gte', v:99, en:'Target ≥99%', am:'ዒላማ ≥99%'}},
-      {id:'s_disc_any', en:'Did the count find any difference this week?', am:'በዚህ ሳምንት ቆጠራው ልዩነት አገኘ?', t:'yesno', auto:{week:'st_any', from:'yordanos-daily', how:'anyyes'}, quiet:1,},
-      {id:'s_disc_list', en:'Which items did not match?', am:'ከመዝገቡ ጋር ያልተመሳሰሉት የትኞቹ ዕቃዎች ናቸው?', t:'table', auto:{weekRows:'st_disc_list', from:'yordanos-daily', map:{book:'rec', shelf:'cnt'}}, addEn:'Add an item', addAm:'ዕቃ ጨምር',
+      {id:'s_disc_any', en:'Did the count find any difference this week?', am:'በዚህ ሳምንት ቆጠራው ልዩነት አገኘ?', t:'yesno', auto:{week:'st_any', from:'alemaya-daily', how:'anyyes'}, quiet:1,},
+      {id:'s_disc_list', en:'Which items did not match?', am:'ከመዝገቡ ጋር ያልተመሳሰሉት የትኞቹ ዕቃዎች ናቸው?', t:'table', auto:{weekRows:'st_disc_list', from:'alemaya-daily', map:{book:'rec', shelf:'cnt'}}, addEn:'Add an item', addAm:'ዕቃ ጨምር',
         show:{f:'s_disc_any', when:'yes'},
         cols:[
           {id:'item', en:'Item', am:'ዕቃ', t:'text'},
@@ -2933,7 +2939,7 @@ const REPORTS = [
         ]},
       {id:'s_disc', en:'How many stock discrepancies were found?', am:'ስንት የዕቃ ልዩነቶች ተገኙ?', t:'num',
         auto:{rows:'s_disc_list'}, sumEn:'differences', sumAm:'ልዩነቶች'},
-      {id:'s_short', en:'How many material shortages were there this week?', am:'በዚህ ሳምንት ስንት የዕቃ እጥረቶች ነበሩ?', t:'num', auto:{week:'sh_flagged', from:'yordanos-daily'}, zero:1,
+      {id:'s_short', en:'How many material shortages were there this week?', am:'በዚህ ሳምንት ስንት የዕቃ እጥረቶች ነበሩ?', t:'num', auto:{week:'sh_flagged', from:'alemaya-daily'}, zero:1,
 },
       {id:'s_short_what', en:'Which material ran short, and what did it hold up? (Write the jobs in the box.)', am:'ያጠረው የትኛው ዕቃ ነው? ምን አቆመ? (ሥራዎቹን በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'shortage_hit', from:'liu-daily'},
         picks:[
@@ -3959,7 +3965,7 @@ const REPORTS = [
 
 /* ===================== YORDANOS — WEEKLY STORE ===================== */
 {
-  id:'yordanos-weekly', person:'yordanos', cadence:'weekly', built:1, dueTime:'17:00', dueDay:6,
+  id:'alemaya-weekly', person:'alemaya', cadence:'weekly', built:1, dueTime:'17:00', dueDay:6,
   en:'Weekly Store Summary', am:'ሳምንታዊ የመጋዘን ሪፖርት',
   toEn:'Chairman, copied to Mahelet and Selam', toAm:'ሊቀመንበር፣ ግልባጭ ለማህሌትና ለሰላም',
   dueEn:'Saturday 5:00 PM', dueAm:'ቅዳሜ ከቀኑ 11፡00 (5:00 PM)',
@@ -4006,11 +4012,11 @@ const REPORTS = [
           { en:'Damaged and thrown away',          am:'ተበላሽቶ ተጣለ' },
           { en:'Offcuts not written down',         am:'ቁርጥራጮች አልተመዘገቡም' }
         ], show:{f:'y_accuracy', when:'miss'}},
-      {id:'y_disc_any', en:'Did the count find any difference from the record?', am:'ቆጠራው ከመዝገቡ ጋር ልዩነት አገኘ?', t:'yesno', auto:{week:'st_any', from:'yordanos-daily', how:'anyyes'}, yes:{en:'Differences found', am:'ልዩነት ተገኝቷል'}, no:{en:'Everything matched', am:'ሁሉም ይመሳሰላል'},
+      {id:'y_disc_any', en:'Did the count find any difference from the record?', am:'ቆጠራው ከመዝገቡ ጋር ልዩነት አገኘ?', t:'yesno', auto:{week:'st_any', from:'alemaya-daily', how:'anyyes'}, yes:{en:'Differences found', am:'ልዩነት ተገኝቷል'}, no:{en:'Everything matched', am:'ሁሉም ይመሳሰላል'},
 },
       /* the rulebook fines each difference counted here (–500) and pays the
          month with none (1,000) */
-      {id:'y_disc_list', en:'List each difference', am:'እያንዳንዱን ልዩነት ይዘርዝሩ', t:'table', auto:{weekRows:'st_disc_list', from:'yordanos-daily', map:{shelf:'count'}}, addEn:'Add an item', addAm:'ዕቃ ጨምር',
+      {id:'y_disc_list', en:'List each difference', am:'እያንዳንዱን ልዩነት ይዘርዝሩ', t:'table', auto:{weekRows:'st_disc_list', from:'alemaya-daily', map:{shelf:'count'}}, addEn:'Add an item', addAm:'ዕቃ ጨምር',
         show:{f:'y_disc_any', when:'yes'},
         cols:[
           {id:'item', en:'Material', am:'ዕቃ', t:'text'},
@@ -4060,7 +4066,7 @@ const REPORTS = [
           { en:'Selam was told',                   am:'ለሰላም ተነግሯል' }
         ], show:{f:'y_missing', when:'pos'}},
       {id:'y_short', en:'How many shortages did you flag this week?', am:'በዚህ ሳምንት ስንት እጥረት ጠቆሙ?', t:'num', auto:{week:'sh_flagged'}},
-      {id:'y_short_what', en:'Which materials, and did each arrive before it was needed?', am:'የትኞቹ ዕቃዎች? እያንዳንዱ ከመፈለጉ በፊት ደረሰ?', t:'area', auto:{weekText:'sh_what', from:'yordanos-daily'},
+      {id:'y_short_what', en:'Which materials, and did each arrive before it was needed?', am:'የትኞቹ ዕቃዎች? እያንዳንዱ ከመፈለጉ በፊት ደረሰ?', t:'area', auto:{weekText:'sh_what', from:'alemaya-daily'},
         picks:[
           { en:'Board',                            am:'ሰሌዳ' },
           { en:'Edge banding',                     am:'ጠርዝ ማሰሪያ' },
@@ -4078,7 +4084,7 @@ const REPORTS = [
         am:'እጥረት በጊዜ ስላልተነገረ ምርት ስንት ጊዜ ቆመ?', t:'num', zero:1,
         show:{f:'wk_events', when:'has', v:'stopped'},
         tgt:{op:'lte', v:0, en:'Zero earns the 500 Birr bonus', am:'ዜሮ ከሆነ 500 ብር ቦነስ'}},
-      {id:'y_stopped_what', en:'Why was it not reported in time? (Write the jobs and for how long in the box.)', am:'ለምን በጊዜ አልተነገረም? (ሥራዎቹንና ለምን ያህል ጊዜ እንደቆመ በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'sh_stopped_what', from:'yordanos-daily'},
+      {id:'y_stopped_what', en:'Why was it not reported in time? (Write the jobs and for how long in the box.)', am:'ለምን በጊዜ አልተነገረም? (ሥራዎቹንና ለምን ያህል ጊዜ እንደቆመ በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'sh_stopped_what', from:'alemaya-daily'},
         picks:[
           { en:'The record was wrong',             am:'መዝገቡ ስህተት ነበር' },
           { en:'Used up faster than expected',     am:'ከተጠበቀው በፍጥነት አለቀ' },
@@ -4104,7 +4110,7 @@ const REPORTS = [
           { en:'Not replaced yet',                 am:'ገና አልተተካም' }
         ], show:{f:'y_rejected', when:'pos'}},
       {id:'y_grn', en:'Was everything received against a Job File or BOM?', am:'ሁሉም ከጆብ ፋይሉ ወይም ከዕቃ ዝርዝሩ ጋር ተረጋግጦ ገብቷል?', t:'yesno', quiet:1, auto:{picked:'wk_events', v:'unchecked', flip:1}},
-      {id:'y_grn_why', en:'Why was it not checked? (Write what came in the box.)', am:'ለምን አልተረጋገጠም? (ምን እንደገባ በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'rec_checked_why', from:'yordanos-daily'},
+      {id:'y_grn_why', en:'Why was it not checked? (Write what came in the box.)', am:'ለምን አልተረጋገጠም? (ምን እንደገባ በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'rec_checked_why', from:'alemaya-daily'},
         picks:[
           { en:'There was no Job File for it',     am:'የጆብ ፋይል አልነበረውም' },
           { en:'It came while I was away',         am:'እኔ በሌለሁበት መጣ' },
@@ -4114,16 +4120,16 @@ const REPORTS = [
     ]},
     { en:'Issuing', am:'ዕቃ ማውጣት', fields:[
       {id:'y_issues', en:'How many times were materials issued this week?', am:'በዚህ ሳምንት ስንት ጊዜ ዕቃ ከመጋዘን ወጣ?', t:'num', auto:{week:'iss_count'}},
-      {id:'y_approved', en:'Did every issue carry Mahelet\'s signed approval?', am:'እያንዳንዱ ዕቃ በማህሌት ፊርማ ፈቃድ ወጥቷል?', t:'yesno', auto:{week:'iss_approved', from:'yordanos-daily', how:'allyes'}, quiet:1,},
-      {id:'y_approved_why', en:'Who allowed it? (Write what went out, and for which job, in the box.)', am:'ማን ፈቀደ? (ምን እንደወጣና ለየትኛው ሥራ በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'iss_approved_why', from:'yordanos-daily'},
+      {id:'y_approved', en:'Did every issue carry Mahelet\'s signed approval?', am:'እያንዳንዱ ዕቃ በማህሌት ፊርማ ፈቃድ ወጥቷል?', t:'yesno', auto:{week:'iss_approved', from:'alemaya-daily', how:'allyes'}, quiet:1,},
+      {id:'y_approved_why', en:'Who allowed it? (Write what went out, and for which job, in the box.)', am:'ማን ፈቀደ? (ምን እንደወጣና ለየትኛው ሥራ በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'iss_approved_why', from:'alemaya-daily'},
         picks:[
           { en:'Mahelet allowed it by phone',      am:'ማህሌት በስልክ ፈቀደች' },
           { en:'Amaha',                            am:'አማሃ' },
           { en:'Urgent — signed later',            am:'አስቸኳይ ነበር — ቆይቶ ተፈረመ' },
           { en:'No one',                           am:'ማንም' }
         ], show:{f:'y_approved', when:'no'}},
-      {id:'y_correct', en:'Did everything go to the correct job?', am:'ሁሉም ለትክክለኛው ሥራ ወጥቷል?', t:'yesno', auto:{week:'iss_correct', from:'yordanos-daily', how:'allyes'}, quiet:1,},
-      {id:'y_correct_why', en:'Has it been put right? (Write what went to the wrong job in the box.)', am:'ተስተካክሏል? (ወደ ተሳሳተ ሥራ የሄደውን በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'iss_correct_why', from:'yordanos-daily'}, one:1,
+      {id:'y_correct', en:'Did everything go to the correct job?', am:'ሁሉም ለትክክለኛው ሥራ ወጥቷል?', t:'yesno', auto:{week:'iss_correct', from:'alemaya-daily', how:'allyes'}, quiet:1,},
+      {id:'y_correct_why', en:'Has it been put right? (Write what went to the wrong job in the box.)', am:'ተስተካክሏል? (ወደ ተሳሳተ ሥራ የሄደውን በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'iss_correct_why', from:'alemaya-daily'}, one:1,
         picks:[
           { en:'Put right',                        am:'ተስተካክሏል' },
           { en:'Not yet',                          am:'ገና አልተስተካከለም' },
@@ -4135,7 +4141,7 @@ const REPORTS = [
       {id:'y_con_mtd', en:'How much has been spent on consumables this month so far?', am:'በዚህ ወር እስካሁን ለፍጆታ ዕቃ ስንት ብር ወጣ?', t:'money', auto:{week:'con_mtd', how:'last'},
         tgt:{op:'lte', v:30000, en:'Budget 30,000 Birr/month — above needs Chairman approval',
              am:'የወር በጀት 30,000 ብር — በላይ ከሆነ የሊቀመንበር ፈቃድ'}},
-      {id:'y_con_mtd_why', en:'The month is over 30,000 Birr. What drove it, and has the Chairman approved the extra?', am:'የወሩ ወጪ ከ30,000 ብር አልፏል። ምን አሳደገው? ተጨማሪውን ሊቀመንበሩ ፈቅደዋል?', t:'area', auto:{weekLast:'con_mtd_why', from:'yordanos-daily'},
+      {id:'y_con_mtd_why', en:'The month is over 30,000 Birr. What drove it, and has the Chairman approved the extra?', am:'የወሩ ወጪ ከ30,000 ብር አልፏል። ምን አሳደገው? ተጨማሪውን ሊቀመንበሩ ፈቅደዋል?', t:'area', auto:{weekLast:'con_mtd_why', from:'alemaya-daily'},
         picks:[
           { en:'Blades',                           am:'ቢላዎች' },
           { en:'Sandpaper',                        am:'ሳንድፔፐር' },
@@ -4146,8 +4152,8 @@ const REPORTS = [
         ], show:{f:'y_con_mtd', when:'miss'}}
     ]},
     { en:'Security', am:'ጥበቃ', fields:[
-      {id:'y_secure', en:'Was the store locked and secure every night?', am:'መጋዘኑ በየምሽቱ ተቆልፎ ደህንነቱ ተጠብቆ ነበር?', t:'yesno', auto:{week:'sec_locked', from:'yordanos-daily', how:'allyes'}, quiet:1,},
-      {id:'y_secure_why', en:'Why was it not locked? (Write which nights in the box.)', am:'ለምን አልተቆለፈም? (የትኞቹ ምሽቶች እንደሆኑ በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'sec_locked_why', from:'yordanos-daily'},
+      {id:'y_secure', en:'Was the store locked and secure every night?', am:'መጋዘኑ በየምሽቱ ተቆልፎ ደህንነቱ ተጠብቆ ነበር?', t:'yesno', auto:{week:'sec_locked', from:'alemaya-daily', how:'allyes'}, quiet:1,},
+      {id:'y_secure_why', en:'Why was it not locked? (Write which nights in the box.)', am:'ለምን አልተቆለፈም? (የትኞቹ ምሽቶች እንደሆኑ በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'sec_locked_why', from:'alemaya-daily'},
         picks:[
           { en:'The key was lost',                 am:'ቁልፉ ጠፋ' },
           { en:'The lock is broken',               am:'መቆለፊያው ተበላሽቷል' },
@@ -4155,8 +4161,8 @@ const REPORTS = [
           { en:'Someone else closed up',           am:'ሌላ ሰው ዘጋ' }
         ], show:{f:'y_secure', when:'no'}},
       /* the zero-loss bonus reads this "yes" */
-      {id:'y_theft', en:'Was anything stolen or taken out without permission this week?', am:'በዚህ ሳምንት የተሰረቀ ወይም ያለፈቃድ የወጣ ዕቃ አለ?', t:'yesno', auto:{week:'sec_theft', from:'yordanos-daily', how:'anyyes'}, quiet:1,},
-      {id:'y_theft_what', en:'What was taken, and were Mahelet and Selam told? (Write what it is worth and who is involved in the box.)', am:'ምን ተወሰደ? ለማህሌትና ለሰላም ተነግሯል? (ዋጋውንና ማን እንደተሳተፈ በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'sec_theft_what', from:'yordanos-daily'},
+      {id:'y_theft', en:'Was anything stolen or taken out without permission this week?', am:'በዚህ ሳምንት የተሰረቀ ወይም ያለፈቃድ የወጣ ዕቃ አለ?', t:'yesno', auto:{week:'sec_theft', from:'alemaya-daily', how:'anyyes'}, quiet:1,},
+      {id:'y_theft_what', en:'What was taken, and were Mahelet and Selam told? (Write what it is worth and who is involved in the box.)', am:'ምን ተወሰደ? ለማህሌትና ለሰላም ተነግሯል? (ዋጋውንና ማን እንደተሳተፈ በሳጥኑ ይጻፉ።)', t:'area', auto:{weekText:'sec_theft_what', from:'alemaya-daily'},
         picks:[
           { en:'Board',                            am:'ሰሌዳ' },
           { en:'Hardware',                         am:'ሃርድዌር' },
@@ -4167,7 +4173,7 @@ const REPORTS = [
         ], show:{f:'y_theft', when:'yes'}}
     ]},
     { en:'Problems and help', am:'ችግርና እርዳታ', fields:[
-      {id:'y_problem', en:'What was the biggest problem in the store this week, and what caused it?', am:'በመጋዘኑ የዚህ ሳምንት ትልቁ ችግር ምን ነበር? ምክንያቱስ?', t:'area', auto:{weekText:'problem', from:'yordanos-daily'}, opt:1,
+      {id:'y_problem', en:'What was the biggest problem in the store this week, and what caused it?', am:'በመጋዘኑ የዚህ ሳምንት ትልቁ ችግር ምን ነበር? ምክንያቱስ?', t:'area', auto:{weekText:'problem', from:'alemaya-daily'}, opt:1,
         picks:[
           { en:'No big problem this week',         am:'በዚህ ሳምንት ትልቅ ችግር አልነበረም' },
           { en:'Deliveries came late',             am:'ጭነቶች ዘገዩ' },
@@ -4184,7 +4190,7 @@ const REPORTS = [
           { en:'The record was corrected',         am:'መዝገቡ ተስተካከለ' },
           { en:'Nothing done yet',                 am:'ገና ምንም አልተደረገም' }
         ]},
-      {id:'y_need', en:'What do you need, and from whom?', am:'ምን ያስፈልግዎታል? ከማን?', t:'area', auto:{weekText:'need_help', from:'yordanos-daily'}, opt:1,
+      {id:'y_need', en:'What do you need, and from whom?', am:'ምን ያስፈልግዎታል? ከማን?', t:'area', auto:{weekText:'need_help', from:'alemaya-daily'}, opt:1,
         picks:[
           { en:'Nothing needed',                   am:'ምንም አያስፈልግም', nil:1 },
           { en:'Approvals signed by Mahelet',      am:'በማህሌት የተፈረሙ ፈቃዶች' },
@@ -4193,8 +4199,8 @@ const REPORTS = [
           { en:'More shelves or space',            am:'ተጨማሪ መደርደሪያ ወይም ቦታ' },
           { en:'A helper for the count',           am:'ለቆጠራ ረዳት' }
         ]},
-      {id:'y_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno', auto:{week:'need_chair', from:'yordanos-daily', how:'anyyes'}, yes:{en:'I need a decision', am:'ውሳኔ ያስፈልገኛል'}, no:{en:'No decision needed', am:'ውሳኔ አያስፈልገኝም'}},
-      {id:'y_chair_what', en:'What should he decide, and by when?', am:'ሊቀመንበሩ ምን እንዲወስኑ ይፈልጋሉ? እስከ መቼ?', t:'area', auto:{weekText:'need_chair_what', from:'yordanos-daily'},
+      {id:'y_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno', auto:{week:'need_chair', from:'alemaya-daily', how:'anyyes'}, yes:{en:'I need a decision', am:'ውሳኔ ያስፈልገኛል'}, no:{en:'No decision needed', am:'ውሳኔ አያስፈልገኝም'}},
+      {id:'y_chair_what', en:'What should he decide, and by when?', am:'ሊቀመንበሩ ምን እንዲወስኑ ይፈልጋሉ? እስከ መቼ?', t:'area', auto:{weekText:'need_chair_what', from:'alemaya-daily'},
         picks:[
           { en:'More consumables budget',          am:'ተጨማሪ የፍጆታ በጀት' },
           { en:'A missing item',                   am:'የጠፋ ዕቃ' },
@@ -6361,7 +6367,7 @@ const REPORTS = [
           { en:'Faulty hinge, slide or handle',     am:'የተበላሸ ማጠፊያ፣ ተንሸራታች ወይም መያዣ' },
           { en:'Edge band will not stick',          am:'የጠርዝ ማሰሪያው አይጣበቅም' }
         ], show:{f:'c_sup', when:'pos'}},
-      {id:'c_suptold', en:'Were Getachew and Yordanos told the same day?', am:'ለጌታቸውና ለዮርዳኖስ በዚያው ቀን ተነግሯል?', t:'yesno', yes:{en:'Both told today', am:'ሁለቱም ዛሬ ተነግሯቸዋል'}, no:{en:'Not told yet', am:'ገና አልተነገራቸውም'}, opt:1, i:1,
+      {id:'c_suptold', en:'Were Getachew and Alemaya told the same day?', am:'ለጌታቸውና ለአለማያ በዚያው ቀን ተነግሯል?', t:'yesno', yes:{en:'Both told today', am:'ሁለቱም ዛሬ ተነግሯቸዋል'}, no:{en:'Not told yet', am:'ገና አልተነገራቸውም'}, opt:1, i:1,
         show:{f:'c_sup', when:'pos'}},
 
       /* — rework finished. A real 0 on a normal day: the week adds r_done up

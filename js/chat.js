@@ -35,7 +35,7 @@ import {
   onSnapshot, getDocs, serverTimestamp, terminate, clearIndexedDbPersistence,
   deleteDoc, waitForPendingWrites
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
-import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js?v=458ddef0';
+import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js?v=906c7b6e';
 
 (function () {
   'use strict';

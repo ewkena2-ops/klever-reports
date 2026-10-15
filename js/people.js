@@ -4,7 +4,13 @@ const PEOPLE = [
   { id:'liu',      en:'Mahelet Teshome', am:'ማህሌት ተሾመ',   roleEn:'Operations Lead',   roleAm:'የኦፕሬሽን ኃላፊ', grp:'lead', scan:1 },
   { id:'betty',    en:'Selam',  am:'ሰላም', roleEn:'Finance Officer',   roleAm:'የፋይናንስ ኃላፊ', grp:'finance', scan:1 },
   { id:'getachew', en:'Getachew Negash', am:'ጌታቸው ነጋሽ',   roleEn:'Purchasing Officer', roleAm:'የግዥ ኃላፊ', grp:'finance', scan:1 },
-  { id:'yordanos', en:'Yordanos Fikadu', am:'ዮርዳኖስ ፍቃዱ',  roleEn:'Storekeeper',       roleAm:'የመጋዘን ኃላፊ', grp:'finance', gate:1 },
+  /* The storekeeper. Yordanos Fikadu left the factory (the user, 15 Oct
+     2026; her last report Tue 13 Oct) and Alemaya took the store from Fri
+     16 Oct. Her reports, fines and pay stay under her id 'yordanos' (the
+     Sheet's staff tab keeps her row for the payroll); the store reports are
+     Alemaya's. No surname and no terms letter yet, so `noLetter`: no fines
+     until the letter is signed — then take `noLetter` out. */
+  { id:'alemaya', en:'Alemaya', am:'አለማያ',  roleEn:'Storekeeper',       roleAm:'የመጋዘን ኃላፊ', grp:'finance', gate:1, from:'2026-10-16', noLetter:1 },
   { id:'amaha',      en:'Amaha Temechew',       am:'አማሃ ተመቸው',      roleEn:'Production Supervisor', roleAm:'የምርት ተቆጣጣሪ', grp:'production', gate:1 },
   { id:'wude',       en:'Wude Birhanu',         am:'ውዱ ብርሃኑ',       roleEn:'Quality Control Officer', roleAm:'የጥራት ቁጥጥር ኃላፊ', grp:'production', gate:1 },
   { id:'elyas',      en:'Elyas Mullatu',        am:'ኤልያስ ሙላቱ',      roleEn:'Site Supervisor',   roleAm:'የተከላ ቦታ ተቆጣጣሪ', grp:'site' },

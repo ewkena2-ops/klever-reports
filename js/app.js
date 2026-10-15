@@ -650,7 +650,7 @@
     var best = null;
     mine.forEach(function (ch) {
       if (ch.kind === 'direct') return;
-      /* never #all. Yordanos's store report names the Chairman, Mahelet and
+      /* never #all. Alemaya's store report names the Chairman, Mahelet and
          Betelhem, and the only room holding all three that he is also in is
          everyone — so the smallest-room rule would have put his stock figures
          in front of forty people including twenty-two men on the factory
@@ -1700,7 +1700,7 @@
      user, 14 Oct 2026: "the person who scans sees his month — missed, late
      or on time") */
   var stopAt = null;
-  /* The factory's heads (Amaha, Wude, Yordanos) check in by face at the
+  /* The factory's heads (Amaha, Wude, Alemaya) check in by face at the
      gate's tablet (js/gate.js, 14 Oct 2026): the same card, the gate's words
      ('gt…' in place of 'at…' where the place is named), and counted from the
      day the Chairman started the gate — until then a scan shows as a test

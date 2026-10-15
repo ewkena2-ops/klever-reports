@@ -18,7 +18,7 @@ var PM_WEEK_DAYS_ = 6;
 var PM_ACTIONS_ = 3;
 var PM_LOW_DAYS_ = 5;
 /* who does what, by account id */
-var PM_WHO_ = { lead: 'liu', floor: 'amaha', qc: 'wude', store: 'yordanos', buy: 'getachew', site: 'elyas', money: 'betty' };
+var PM_WHO_ = { lead: 'liu', floor: 'amaha', qc: 'wude', store: 'alemaya', buy: 'getachew', site: 'elyas', money: 'betty' };
 
 /* the row labels of a grid question, from the live schedule */
 function pmGridLabels_(schedule, reportId, fieldId) {
@@ -141,7 +141,7 @@ function plantManager_(d) {
   });
   var v = function (rep) { return (by[rep] || {})[d.day] || {}; };
   var amaha = v('amaha-daily'), liu = v('liu-daily'), wude = v('wude-daily');
-  var yord = v('yordanos-daily'), geta = v('getachew-daily');
+  var yord = v('alemaya-daily'), geta = v('getachew-daily');
 
   /* yesterday, the week, today's plan */
   var plans = pmPlans_(monday, today);
@@ -176,7 +176,7 @@ function plantManager_(d) {
   });
 
   /* materials: running out, short, late from suppliers, rejected */
-  var labels = pmGridLabels_(d.schedule, 'yordanos-daily', 'k_stock');
+  var labels = pmGridLabels_(d.schedule, 'alemaya-daily', 'k_stock');
   var low = rows_(yord.k_stock).map(function (r, i) {
     return { material: labels[i] || ('row ' + (i + 1)), on_hand: a_(r, 'qty'), days_left: a_(r, 'days') };
   }).filter(function (r) { return r.days_left !== null && r.days_left <= PM_LOW_DAYS_; })
@@ -261,7 +261,7 @@ function plantManager_(d) {
   lateSup.filter(function (s) { return s.stops_production; }).forEach(function (s) {
     add(PM_WHO_.buy, 'get ' + s.item + (s.supplier ? ' from ' + s.supplier : '') + ' in', 'late' + (s.job ? ' for ' + s.job : '') + ', it stops production' + (s.now ? '; now promised ' + s.now : ''));
   });
-  low.forEach(function (r) { add(PM_WHO_.buy, 'order ' + r.material, r.days_left + ' days of it left in the store (Yordanos)'); });
+  low.forEach(function (r) { add(PM_WHO_.buy, 'order ' + r.material, r.days_left + ' days of it left in the store (Alemaya)'); });
   rejected.forEach(function (r) { add(PM_WHO_.buy, 'replace the rejected ' + r.item + (r.supplier ? ' from ' + r.supplier : ''), r.why || 'rejected at the store'); });
   if (ay_(yord, 'k_low') === true && !low.length) add(PM_WHO_.store, 'tell Getachew what runs out within 5 days', 'said something will, without saying what');
   due.filter(function (x) { return x.to_be === 'delivered'; }).forEach(function (x) { add(PM_WHO_.site, 'deliver ' + x.job + (x.customer ? ' to ' + x.customer : '') + ' — confirm the site is ready', 'delivery planned ' + x.on + '; now at ' + x.step_now); });

@@ -318,8 +318,8 @@ var BROKEN_ = [
   { r:'wude-daily', f:'i_all', is:'no', say:['i_all_why'], what:'Jobs were released without a full QC inspection' },
   { r:'liu-daily', f:'resist', is:'yes', say:['resist_what'], what:'Someone refused or worked around an operations rule' },
   { r:'liu-daily', f:'mat_out_signed', is:'no', say:['mat_out_unsigned'], what:'Material left the store without approval' },
-  { r:'yordanos-daily', f:'iss_approved', is:'no', say:['iss_approved_why'], what:'Material was issued without Mahelet\u2019s signed approval' },
-  { r:'yordanos-daily', f:'sec_theft', is:'yes', say:['sec_theft_what'], what:'Something was stolen or taken out without permission' },
+  { r:'alemaya-daily', f:'iss_approved', is:'no', say:['iss_approved_why'], what:'Material was issued without Mahelet\u2019s signed approval' },
+  { r:'alemaya-daily', f:'sec_theft', is:'yes', say:['sec_theft_what'], what:'Something was stolen or taken out without permission' },
   { r:'amaha-daily', f:'u_any', is:'yes', say:['u_what'], what:'Something was made or sent out without all four confirmations' },
   { r:'amaha-daily', f:'ws_thrown', is:'yes', say:['ws_thrown_what'], what:'Reusable material was thrown away without being recorded' },
   { r:'amaha-daily', f:'mp_safety', is:'yes', say:['mp_safety_what'], what:'Someone was hurt, or worked without safety gear' },
@@ -603,15 +603,16 @@ var SETTLED = [
 
 var DECISIONS = [
 
-{ id:'yordanos-penalty', what:'What Yordanos owes for a missing store report',
+{ id:'alemaya-penalty', what:'What Alemaya owes for a missing store report',
   yours:true,
-  detail:'Every other daily reporter has a late and a missing figure in their letter. His has '+
-         'neither, so the ledger lists him and charges nothing.',
-  blocks:'The penalty ledger, every day he is late or absent',
+  detail:'Every other daily reporter has a late and a missing figure in their letter. The storekeeper’s '+
+         'letter (Yordanos’s, the last one signed) has neither, and Alemaya, storekeeper from 16 Oct 2026, has no '+
+         'terms letter yet, so the ledger lists the storekeeper and charges nothing.',
+  blocks:'The penalty ledger, every day the storekeeper is late or absent',
   bites: function (d) {
     var hit = null;
     d.ledger.forEach(function (l) {
-      if (String(l.person).indexOf('Yordanos') === 0 &&
+      if (String(l.person).indexOf('Alemaya') === 0 &&
           (l.status === 'LATE' || l.status === 'MISSING')) hit = l.status;
     });
     if (!hit) return null;
@@ -620,10 +621,10 @@ var DECISIONS = [
        charged today (on a day he is the only one missing, nobody is) */
     var start = prop_('LEDGER_START', '');
     var charging = !start || d.day >= start;
-    return 'Yordanos was ' + hit + ' today and was charged nothing, because his letter sets no '+
-           'figure. ' + (charging ? 'Anyone else late or missing with a daily report is charged.'
+    return 'Alemaya was ' + hit + ' today and was charged nothing: there is no terms letter for Alemaya yet, '+
+           'and the storekeeper’s letter sets no figure. ' + (charging ? 'Anyone else late or missing with a daily report is charged.'
                                   : 'Nobody is charged yet — charging starts ' + start +
-                                    '. From then everyone else in the same position pays and he still would not.');
+                                    '. From then everyone else in the same position pays and the storekeeper still would not.');
   } },
 
 { id:'rework-band', what:'The 2–5% rework dead band',
@@ -854,7 +855,7 @@ var AGENTS = [
    figure and action is worked out in code (plantManager_ in Plant.js); the
    morning's AI task list (Team.js) reads this finding. */
 { id:'plantmanager', en:'Daily COO / Plant Manager', am:'የዕለቱ የፋብሪካ ሥራ አስኪያጅ (COO)', words: 180,
-  said:['amaha-daily', 'liu-daily', 'wude-daily', 'yordanos-daily', 'getachew-daily', 'elyas-daily'],
+  said:['amaha-daily', 'liu-daily', 'wude-daily', 'alemaya-daily', 'getachew-daily', 'elyas-daily'],
   facts: function (d) { return plantManager_(d); },
   ask:'You run the plant this morning. First yesterday: made against the plan and the 40 m², the OEE '+
       'where it is given (say it is approximate), and the one thing that cost the most. Then the week: on pace for 240 m² or not, and what each remaining '+
@@ -872,7 +873,7 @@ var AGENTS = [
       'clearance are the most serious. End with TODAY, one line per person: their actions in today_actions, and only '+
       'those. If no gate is broken, say so in one line.' },
 { id:'reconcile', en:'Reconciliation', am:'ማስታረቅ', words: 150,
-  said:['betty-daily', 'getachew-daily', 'ephrata-daily', 'yordanos-daily'],
+  said:['betty-daily', 'getachew-daily', 'ephrata-daily', 'alemaya-daily'],
   facts: function (d) { return reconcileFacts_(d); },
   ask:'You reconcile yesterday’s figures. Say which checks did not agree, with both figures and the difference as '+
       'given, largest first; cheques with no matching approval; cheques beyond the ZamZam transfer. Say which reports '+
@@ -922,9 +923,9 @@ var AGENTS = [
       'If anyone pressured Wude to pass a defect, that is the headline.' },
 
 { id:'store', en:'Store and stock', am:'መጋዘንና ዕቃ',
-  said:['yordanos-daily', 'yordanos-weekly'],
+  said:['alemaya-daily', 'alemaya-weekly'],
   facts: function (d) {
-    var yord = vals_(d.filed, 'yordanos-daily');
+    var yord = vals_(d.filed, 'alemaya-daily');
     return {
       stock_and_days_of_cover: rows_(yord.k_stock),
       anything_at_5_days_or_less: ay_(yord, 'k_low'),
@@ -938,8 +939,8 @@ var AGENTS = [
       consumables_month_to_date: a_(yord, 'con_mtd'),
       consumables_budget: 30000,
       theft_or_unauthorized_removal: ay_(yord, 'sec_theft'),
-      shortages_flagged_last_7_days: series_(d, 'yordanos-daily', 'sh_flagged'),
-      production_stops_last_7_days: series_(d, 'yordanos-daily', 'sh_stopped')
+      shortages_flagged_last_7_days: series_(d, 'alemaya-daily', 'sh_flagged'),
+      production_stops_last_7_days: series_(d, 'alemaya-daily', 'sh_stopped')
     };
   },
   ask:'What is about to run out, and will it stop production before it is replaced. '+
@@ -1303,8 +1304,8 @@ var AGENTS = [
       charges: owed.map(function (l) {
         return { person:l.person, report:l.report, status:l.status, birr:l.amount, under:l.why };
       }),
-      note_yordanos: 'Yordanos files a daily store report but his letter sets no penalty ' +
-                     'for missing it — he is listed and charged nothing until the Chairman decides.',
+      note_alemaya: 'Alemaya (storekeeper from 16 Oct 2026, after Yordanos left) files the daily store report but has ' +
+                     'no terms letter yet, and the storekeeper’s letter sets no penalty for missing it — listed, charged nothing.',
       more_than_once_this_week: repeats_(d),
       /* everything else the letters charged and paid today — fines for what
          happened, bonuses earned, warnings — already worked out in code */
@@ -1351,11 +1352,11 @@ var AGENTS = [
       'directions. Say which one is moving, not all four.' },
 
 { id:'contradictions', en:'Reports that disagree', am:'የሚጋጩ ሪፖርቶች',
-  said:['amaha-daily', 'yordanos-daily', 'liu-daily', 'wude-daily', 'elyas-daily', 'ephrata-daily', 'getachew-daily'],
+  said:['amaha-daily', 'alemaya-daily', 'liu-daily', 'wude-daily', 'elyas-daily', 'ephrata-daily', 'getachew-daily'],
   facts: function (d) {
     var N = function (rid, f) { return nOrNull_(d.filed, rid, f); };
     var amaha = vals_(d.filed, 'amaha-daily');
-    var yord = vals_(d.filed, 'yordanos-daily');
+    var yord = vals_(d.filed, 'alemaya-daily');
     /* offcuts leaving the factory are recorded per material row, not as a
        total (the rows moved from b_rows to p_mat on 9 Oct 2026, when the
        boards and the accessories became one list) */
@@ -1374,15 +1375,15 @@ var AGENTS = [
       amaha_waste_pct: N('amaha-daily','w_pct'),   mahelet_waste_pct: N('liu-daily','waste'),
       amaha_stopped_for_board: ay_(amaha, 'b_short'),
       amaha_which_board: amaha.b_shortw || '',
-      yordanos_shortages: N('yordanos-daily','sh_flagged'),
-      yordanos_stopped_production: ay_(yord, 'sh_stopped'),
-      yordanos_which: yord.sh_what || '',
+      alemaya_shortages: N('alemaya-daily','sh_flagged'),
+      alemaya_stopped_production: ay_(yord, 'sh_stopped'),
+      alemaya_which: yord.sh_what || '',
       wude_pass_rate: N('wude-daily','i_rate'),
       /* quality is Wude's alone now (the Chairman, 8 Oct 2026): Mahelet is
          not asked, so there is no second count to disagree with hers */
       /* the site is Elyas's alone now (the Chairman, 8 Oct 2026) */
       elyas_jobs_finished: N('elyas-daily','j_done'),
-      offcut_m2_received_by_store: N('yordanos-daily','k_offin'),
+      offcut_m2_received_by_store: N('alemaya-daily','k_offin'),
       offcut_m2_sent_by_factory: sentOut,
       /* already checked in code: pairs that differ by more than a tenth, where
          both reports were actually filed */

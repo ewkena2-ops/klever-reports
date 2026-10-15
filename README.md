@@ -36,7 +36,7 @@ still kept in that phone's own browser storage and swept the next day.
 | Mahelet Teshome | Daily Operations Report | 5:30 PM |
 | Betelhem Aklog | Daily Finance Report | 5:30 PM, not Friday |
 | Getachew Negash | Daily Purchasing Report | 5:30 PM |
-| Yordanos Fikadu | Daily Store Report | 5:30 PM |
+| Alemaya (storekeeper from 16 Oct 2026; was Yordanos Fikadu) | Daily Store Report | 5:30 PM |
 | Betelhem Aklog | Daily Customer Pulse Report | 6:00 PM |
 
 **Weekly**
@@ -48,7 +48,7 @@ still kept in that phone's own browser storage and swept the next day.
 | Betelhem Aklog | Weekly Finance Report (incl. ZamZam reconciliation) | Friday 5:00 PM |
 | Betelhem Aklog | Weekly Customer Experience Summary | Monday 11:00 AM |
 | Getachew Negash | Weekly Purchasing Summary | Friday 5:00 PM |
-| Yordanos Fikadu | Weekly Store Summary | Friday 5:00 PM |
+| Alemaya | Weekly Store Summary | Friday 5:00 PM |
 
 A weekly form counts as late only once its due day has passed, not merely
 after its time of day.

@@ -79,7 +79,8 @@ The ids are the same ones the report site uses, in `js/forms.js`:
 | Betelhem Aklog | `betty@klever.local` |
 | Seble Mulugeta | `seble@klever.local` |
 | Getachew Negash | `getachew@klever.local` |
-| Yordanos Fikadu | `yordanos@klever.local` |
+| Alemaya (storekeeper from 16 Oct 2026) | `alemaya@klever.local` |
+| Yordanos Fikadu (left; off the site 15 Oct 2026) | `yordanos@klever.local` — opens nothing |
 | Amaha Temechew | `amaha@klever.local` |
 | Wude Birhanu | `wude@klever.local` |
 | Elyas Mullatu | `elyas@klever.local` |

@@ -26,10 +26,10 @@ var ALERTS_ = [
     say: function () { return 'Selam reports a cash discrepancy'; } },
   { report: 'betty-cashflow', test: function (v) { return yes__(v.cf_short); },
     say: function () { return 'A cash shortfall is expected in the next 4 weeks'; } },
-  { report: 'yordanos-daily', test: function (v) { return yes__(v.sec_theft); },
+  { report: 'alemaya-daily', test: function (v) { return yes__(v.sec_theft); },
     say: function () { return 'Theft or unauthorized removal reported at the store'; } },
   /* a yes/no question: read as a number it was always 0, and this alert never fired */
-  { report: 'yordanos-daily', test: function (v) { return yes__(v.sh_stopped); },
+  { report: 'alemaya-daily', test: function (v) { return yes__(v.sh_stopped); },
     say: function (v) { return 'Production stopped by a material shortage' +
                                (has_(v.sh_stopped_what) ? ' — ' + v.sh_stopped_what
                                 : has_(v.sh_what) ? ' — ' + v.sh_what : ''); } },

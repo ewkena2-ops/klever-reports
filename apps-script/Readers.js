@@ -83,7 +83,7 @@ function auditFacts_(P, base, kind) {
   var back = addDays_(w.from, -AUDIT_LOOKBACK_);
   var sel = rdBy_('betty', back, w.to)['betty-daily'] || {};
   var get = rdBy_('getachew', back, w.to)['getachew-daily'] || {};
-  var yor = rdBy_('yordanos', back, w.to)['yordanos-daily'] || {};
+  var yor = rdBy_('alemaya', back, w.to)['alemaya-daily'] || {};
   var ama = rdBy_('amaha', w.from, w.to)['amaha-daily'] || {};
   var eph = rdBy_('ephrata', w.from, w.to)['ephrata-daily'] || {};
   var inW = function (d) { return d >= w.from && d <= w.to; };
@@ -208,7 +208,7 @@ function auditFacts_(P, base, kind) {
     period: dayLabel_(w.from) + ' to ' + dayLabel_(w.to),
     period_is: kind === 'month' ? 'the whole month' : 'this month so far',
     reports_read: { selam_days: Object.keys(sel).filter(inW).length, getachew_days: Object.keys(get).filter(inW).length,
-                    yordanos_days: Object.keys(yor).filter(inW).length },
+                    alemaya_days: Object.keys(yor).filter(inW).length },
     high_findings: high, medium_findings: medium, policy_breaches_total: count(policy),
     possible_duplicate_payments: dups,
     cheque_numbers_used_twice: reused,
@@ -527,8 +527,8 @@ var READERS_ = [
               { en: 'Rules broken', am: 'የተጣሱ ደንቦች', v: String(f.policy_breaches_total) },
               { en: 'First-time suppliers', am: 'አዲስ አቅራቢዎች', v: String(f.suppliers_paid_for_the_first_time.length) }];
     },
-    empty: function (f) { return !f.reports_read.selam_days && !f.reports_read.getachew_days && !f.reports_read.yordanos_days; },
-    emptyText: 'Selam, Getachew and Yordanos filed nothing in this period, so there is nothing to audit yet.' },
+    empty: function (f) { return !f.reports_read.selam_days && !f.reports_read.getachew_days && !f.reports_read.alemaya_days; },
+    emptyText: 'Selam, Getachew and Alemaya filed nothing in this period, so there is nothing to audit yet.' },
   { id: 'risk', en: 'Risk register', am: 'የአደጋ መዝገብ', role: 'risk officer',
     when: { week: true }, facts: riskFacts_, ask: RISK_ASK_,
     tiles: function (f) {

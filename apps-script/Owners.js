@@ -6,7 +6,7 @@
    Accountant → Selam (betty), CFO → Kidan for the group and Selam for
    Klever, COO and Operations Lead → Mahelet (liu), Production Supervisor →
    Amaha, Commercial Lead → Ephrata, Site Supervisor → Elyas, Purchasing
-   Officer → Getachew, Storekeeper → Yordanos, QC Officer → Wude. The
+   Officer → Getachew, Storekeeper → Alemaya, QC Officer → Wude. The
    positions nobody holds (HR Manager, Legal Counsel, Risk Officer, HSE
    Manager, Project Director, Internal Auditor) keep their readings with the
    Chairman alone — and so do the audit, risk and legal readings, which are
@@ -28,7 +28,7 @@ var OWNERS_ = {
   /* the morning agents (Agents.js) */
   finance: ['betty', 'kidan'], groupcfo: ['kidan', 'betty'], production: ['amaha'],
   plantmanager: ['liu', 'amaha'], commercial: ['ephrata'], salesdirector: ['ephrata'],
-  site: ['elyas'], quality: ['wude'], store: ['yordanos', 'liu'], purchasing: ['getachew'],
+  site: ['elyas'], quality: ['wude'], store: ['alemaya', 'liu'], purchasing: ['getachew'],
   customer: ['ephrata', 'betty'], gate: ['ephrata', 'betty'], reconcile: ['betty', 'kidan'],
   /* the Logistics Officer: Alex, who has no account — his messages reach Mahelet */
   route: ['liu', 'elyas'],
@@ -143,7 +143,7 @@ function realtimeAlerts_(fresh, schedule) {
         }
       }
       /* 23 · Store receipt: a delivery rejected, production stopped, a material about to run out */
-      if (rep === 'yordanos-daily') {
+      if (rep === 'alemaya-daily') {
         /* rejected or short is the "taken in, or rejected?" column (take: in /
            part / out); "ok" says whether it was checked against the BOM — read
            as a rejection, an unchecked delivery was called rejected and a real
@@ -161,9 +161,9 @@ function realtimeAlerts_(fresh, schedule) {
                              off.map(named).join('; ') + '. Put it right and close this with what was done.', day);
         }
         if (ay_(v, 'sh_stopped') === true) {
-          sent += alertMany_(base + '-stop', ['liu', 'getachew'], 'Production stopped on ' + dayLabel_(day) + ' because something ran out (Yordanos). Say what, and when it arrives.', day);
+          sent += alertMany_(base + '-stop', ['liu', 'getachew'], 'Production stopped on ' + dayLabel_(day) + ' because something ran out (Alemaya). Say what, and when it arrives.', day);
         }
-        var labels = pmGridLabels_(schedule, 'yordanos-daily', 'k_stock');
+        var labels = pmGridLabels_(schedule, 'alemaya-daily', 'k_stock');
         var out = rows_(v.k_stock).map(function (r, i) { return { m: labels[i] || ('row ' + (i + 1)), d: a_(r, 'days') }; })
           .filter(function (x) { return x.d !== null && x.d <= 3; });
         if (out.length) {

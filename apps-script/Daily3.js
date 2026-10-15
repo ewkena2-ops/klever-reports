@@ -81,7 +81,7 @@ function recCheck_(list, check, aLabel, a, bLabel, b, who, tol) {
 }
 function reconcileFacts_(d) {
   var sel = vals_(d.filed, 'betty-daily'), eph = vals_(d.filed, 'ephrata-daily');
-  var get = vals_(d.filed, 'getachew-daily'), yor = vals_(d.filed, 'yordanos-daily');
+  var get = vals_(d.filed, 'getachew-daily'), yor = vals_(d.filed, 'alemaya-daily');
   var c = [];
   var banks = [a_(sel, 'bank_cbe'), a_(sel, 'bank_awash'), a_(sel, 'bank_aby'), a_(sel, 'bank_zz')];
   if (banks.every(function (x) { return x !== null; })) {
@@ -102,7 +102,7 @@ function reconcileFacts_(d) {
   var cover = chq !== null && zz !== null ? { cheques_written: chq, moved_to_zamzam: zz, cheques_beyond_the_transfer: Math.max(0, chq - zz) } : null;
   var acc = a_(yor, 'rec_accepted'), rej = a_(yor, 'rec_rejected');
   recCheck_(c, 'Deliveries accepted and rejected against deliveries received', 'accepted + rejected', acc === null && rej === null ? null : (acc || 0) + (rej || 0),
-            'received', a_(yor, 'rec_deliv'), 'Yordanos', 0);
+            'received', a_(yor, 'rec_deliv'), 'Alemaya', 0);
   /* each cheque against an approval in Selam's list, within three days */
   var pays = [];
   (d.recent || []).concat(d.filed || []).forEach(function (f) {
@@ -126,7 +126,7 @@ function reconcileFacts_(d) {
   }
   return {
     the_day_read: dayLabel_(d.day),
-    reports: { selam: !!got_(d.filed, 'betty-daily'), ephrata: !!got_(d.filed, 'ephrata-daily'), getachew: !!got_(d.filed, 'getachew-daily'), yordanos: !!got_(d.filed, 'yordanos-daily') },
+    reports: { selam: !!got_(d.filed, 'betty-daily'), ephrata: !!got_(d.filed, 'ephrata-daily'), getachew: !!got_(d.filed, 'getachew-daily'), alemaya: !!got_(d.filed, 'alemaya-daily') },
     checks_made: c.length, differences: bad.length,
     checks: c,
     cheques_against_the_zamzam_transfer: cover,

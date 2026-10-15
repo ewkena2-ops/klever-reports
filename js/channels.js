@@ -27,7 +27,7 @@ const CHAIRMAN = 'chairman';
    To add someone: create their account (see docs/firebase-setup.md), add their
    id here, push, and press Set up channels again. */
 const CHAT_ACCOUNTS = [
-  'ephrata', 'liu', 'betty', 'seble', 'getachew', 'yordanos',
+  'ephrata', 'liu', 'betty', 'seble', 'getachew', 'alemaya',
   'amaha', 'wude', 'elyas', 'ashenafi',
   'tsega', 'biruktayet',
   'yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w', 'ermiyas',
@@ -69,10 +69,10 @@ const CHANNEL_DEFS = [
     grp:'commercial' },
 
   { id:'finance',    kind:'team', en:'Finance',      am:'ፋይናንስ',
-    descEn:'Selam, Seble, Getachew, Yordanos — and Mahelet, who is copied on their reports.',
-    descAm:'ሰላም፣ ሰብለ፣ ጌታቸው፣ ዮርዳኖስ — እና ሪፖርቶቻቸው የሚደርሳት ማህሌት።',
+    descEn:'Selam, Seble, Getachew, Alemaya — and Mahelet, who is copied on their reports.',
+    descAm:'ሰላም፣ ሰብለ፣ ጌታቸው፣ አለማያ — እና ሪፖርቶቻቸው የሚደርሳት ማህሌት።',
     grp:'finance',
-    /* Mahelet is Operations, not Finance, but Getachew's and Yordanos's
+    /* Mahelet is Operations, not Finance, but Getachew's and Alemaya's
        letters both address their reports to "Chairman, copied to Mahelet and
        Betelhem". Without her here there is no room holding all three
        recipients that either man belongs to, and their reports would be

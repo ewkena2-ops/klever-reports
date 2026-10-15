@@ -53,7 +53,7 @@ function opsPlan_(P) {
 
 /* WHAT THE PLAN NEEDS, AGAINST WHAT THE STORE HAS (the Chairman, 8 Oct
    2026: "she'll plan the production date before they even get bought").
-   Mahelet's plan now names the material each job needs; Yordanos counts
+   Mahelet's plan now names the material each job needs; Alemaya counts
    the same twelve on his shelf. What the plan needs and the store has not
    got is what Getachew must buy, and the job's planned start says by when. */
 function opsPlanMaterials_(P, plan) {
@@ -66,8 +66,8 @@ function opsPlanMaterials_(P, plan) {
     if (q && q.code && q.start) starts[opsCode_(q.code)] = String(q.start).trim();
   });
   /* the store's latest count of the same twelve */
-  var yord = daysOf_(P, 'yordanos-daily');
-  var labels = pmGridLabels_(loadSchedule_(), 'yordanos-daily', 'k_stock');
+  var yord = daysOf_(P, 'alemaya-daily');
+  var labels = pmGridLabels_(loadSchedule_(), 'alemaya-daily', 'k_stock');
   /* each material from the last day it was counted: since 11 Oct he taps
      only what he counts that day, so the newest day alone left the rest
      "not counted" (the bug hunt, 15 Oct 2026) */

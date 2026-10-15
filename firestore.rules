@@ -28,7 +28,7 @@ service cloud.firestore {
        account in the Firebase console. */
     function known(id) {
       return id in ['chairman', 'ledger',
-                    'ephrata', 'liu', 'betty', 'seble', 'getachew', 'yordanos',
+                    'ephrata', 'liu', 'betty', 'seble', 'getachew', 'alemaya',
                     'amaha', 'wude', 'elyas', 'ashenafi', 'tsega', 'biruktayet',
                     'yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w',
                     /* the sixth designer, 6 Oct 2026 */
@@ -93,7 +93,7 @@ service cloud.firestore {
               || p.matches('^pay-[a-z0-9-]{2,60}$'));
     }
     function gateFolk(p) {
-      return gateWorker(p) || p in ['amaha', 'wude', 'yordanos'];
+      return gateWorker(p) || p in ['amaha', 'wude', 'alemaya'];
     }
     function attendWhy(d) {
       return d.why in ['visit', 'sick', 'leave', 'forgot', 'holiday', 'transport', 'other']

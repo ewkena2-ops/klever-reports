@@ -35,7 +35,7 @@ function spCount_(xs, f) {
 function procurementFacts_(P) {
   var from = P.start, to = P.end, back = addDays_(to, -55);
   var get = rdBy_('getachew', back, to), gd = get['getachew-daily'] || {}, gw = get['getachew-weekly'] || {};
-  var rec = rdRows_((rdBy_('yordanos', back, to)['yordanos-daily']) || {}, 'rec_list').map(function (x) {
+  var rec = rdRows_((rdBy_('alemaya', back, to)['alemaya-daily']) || {}, 'rec_list').map(function (x) {
     return { day: x.day, key: spName_(x.r.sup), job: x.r.code ? opsCode_(x.r.code) : '' };
   });
   var week = rdRows_(gd, 'ord_list', from, to);
@@ -84,7 +84,7 @@ function procurementFacts_(P) {
     requests_with_3_quotes: spPairs_(gd, 'pr_quotes', from, to),
     supplier_lead_times_8_weeks: suppliers,
     average_lead_days_8_weeks: allLead.length ? Math.round(allLead.reduce(function (a, x) { return a + x; }, 0) / allLead.length * 10) / 10 : null,
-    lead_time_method: 'an order, and the first delivery Yordanos received from that supplier on or after it (same job where both name one)',
+    lead_time_method: 'an order, and the first delivery Alemaya received from that supplier on or after it (same job where both name one)',
     deliveries_late_this_week: delays.length,
     late_deliveries_that_stop_production: delays.filter(function (x) { return ay_(x.r, 'stops') === true; }).length,
     deliveries_rejected_this_week: rdRows_(gd, 'del_rej_list', from, to).filter(function (x) { return x.r.item; }).length,
@@ -594,7 +594,7 @@ var CHRONIC_ASK_ =
 function vendorsFacts_(P) {
   var to = P.end, back = addDays_(to, -55);
   var gd = (rdBy_('getachew', back, to)['getachew-daily']) || {};
-  var yd = (rdBy_('yordanos', back, to)['yordanos-daily']) || {};
+  var yd = (rdBy_('alemaya', back, to)['alemaya-daily']) || {};
   var items = {};
   rdRows_(gd, 'p_rows').forEach(function (x) {
     var ik = spLower_(x.r.pitem), sk = creditName_(x.r.psup), price = a_(x.r, 'pnow');

@@ -2,7 +2,7 @@
    this for this KK' — so how is it going?").
 
    Every evening people write what they will do tomorrow — "What comes first
-   tomorrow?" (p1, p2, p3), Getachew's and Yordanos's "tomorrow", Elyas's plan
+   tomorrow?" (p1, p2, p3), Getachew's and Alemaya's "tomorrow", Elyas's plan
    for tomorrow's sites — and Mahelet's 15-day plan names the jobs the
    factory makes each day. Nothing used to look back. This does: a promise
    made on one working day is due the next, and that day's reports either

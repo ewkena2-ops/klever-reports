@@ -90,7 +90,7 @@
     ready.then(function () { if (!stopped && db) stop = start(); });
     return function () { stopped = true; if (stop) try { stop(); } catch (e) {} };
   }
-  function timeOf(v) { return v && v.toDate ? v.toDate() : new Date(); }
+  function timeOf(v) { return v && v.toDate ? v.toDate() : new Date(Date.now() + (window.KLEVER_SKEW || 0)); }
 
   /* what one person adding faces may do, with their own sign-in */
   function faceSession(dbx, u, end) {

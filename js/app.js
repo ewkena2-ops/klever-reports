@@ -69,8 +69,33 @@
      the day rolled over at 3am. Every date and deadline here is Addis time:
      addis() is "now" shifted three hours, always read with getUTC*. */
   var ADDIS_MS = 3 * 3600e3;
+  /* NOR THE PHONE'S CLOCK (16 Oct 2026). Mahelet's phone ran six hours
+     ahead: a report she sent at 4:51 PM went out marked late ("10:51 PM"),
+     and one sent at 6:59 PM was kept as the next day's, so the next day her
+     form opened on yesterday's figures, already "sent". "Now" here is the
+     server's: the gap between this phone's clock and the Date the site's
+     own server gives one tiny request is measured on every load and taken
+     off. A gap under two minutes is left alone; with no line, the gap last
+     measured on this phone is used. Only on the live site: a test that
+     sets the time asks for this check by name (KLEVER_CLOCK_ON). */
+  var SKEW = 0, CLOCK_ON = /\.github\.io$/.test(location.hostname) || !!window.KLEVER_CLOCK_ON;
+  try { if (CLOCK_ON) SKEW = Number(localStorage.getItem('klever.skew')) || 0; } catch (e) {}
+  window.KLEVER_SKEW = SKEW;
+  function nowMs() { return Date.now() + SKEW; }
+  var CLOCK = !CLOCK_ON || !window.fetch ? Promise.resolve() : (function () {
+    var t0 = Date.now();
+    return fetch('js/firebase-config.js?clock=' + t0, { method: 'HEAD', cache: 'no-store' }).then(function (r) {
+      var t1 = Date.now(), srv = Date.parse(r.headers.get('Date') || '');
+      if (isNaN(srv) || t1 - t0 > 10000) return;
+      /* the header is to the second: its middle, at the middle of the trip */
+      var gap = srv + 500 - (t0 + t1) / 2;
+      SKEW = Math.abs(gap) < 120000 ? 0 : Math.round(gap);
+      window.KLEVER_SKEW = SKEW;
+      try { localStorage.setItem('klever.skew', String(SKEW)); } catch (e) {}
+    })['catch'](function () {});
+  })();
   function pad2(n) { return ('0' + n).slice(-2); }
-  function addis(ms) { return new Date((ms == null ? Date.now() : ms) + ADDIS_MS); }
+  function addis(ms) { return new Date((ms == null ? nowMs() : ms) + ADDIS_MS); }
   function ymdOf(a) { return a.getUTCFullYear() + '-' + pad2(a.getUTCMonth() + 1) + '-' + pad2(a.getUTCDate()); }
   /* yyyy-mm-dd of today, in Addis */
   function stamp() { return ymdOf(addis()); }
@@ -156,8 +181,10 @@
      9 PM: on Saturday a Friday report is late, for that Friday.
      This is the same answer the ledger will give when it closes the day, so
      the phone, the email, the Sheet and the fines all say the same thing. */
-  function periodNow(r) {
-    var d0 = stamp(), now = Date.now();
+  function periodNow(r) { return periodAt(r, nowMs()); }
+  /* the same, for a filing sent at a given moment */
+  function periodAt(r, now) {
+    var d0 = ymdOf(addis(now));
     var wsun = r.cadence === 'weekly' ? weekClose(now, r.id) : null;
     if (wsun && wsun >= WEEK_FROM) {
       var wd = addDays(wsun, r.dueDay - 7), wdl = deadlineOf(wd, r.dueTime);
@@ -210,7 +237,7 @@
   }
   function savePending(l) { try { localStorage.setItem('klever.pending', JSON.stringify(l)); } catch (e) {} }
   function addPending(r) {
-    var p = { k: Math.random().toString(36).slice(2), report: r.id, person: r.person, at: Date.now() };
+    var p = { k: Math.random().toString(36).slice(2), report: r.id, person: r.person, at: nowMs() };
     savePending(pendingList().concat([p]));
     mergeFilings();
     return p.k;
@@ -220,7 +247,7 @@
     mergeFilings();
   }
   function mergeFilings() {
-    var cut = Date.now() - 8 * 864e5;
+    var cut = nowMs() - 8 * 864e5;
     var pend = pendingList().filter(function (p) {
       if (p.at < cut) return false;
       /* the server copy is here (its time is the server's; a phone clock
@@ -539,7 +566,7 @@
 
   function minsUntil(tm) {
     if (!tm) return null;
-    return Math.floor((deadlineOf(stamp(), tm) - Date.now()) / 60000);
+    return Math.floor((deadlineOf(stamp(), tm) - nowMs()) / 60000);
   }
 
   function countdown(mins) {
@@ -2675,7 +2702,13 @@
        the first one decides on time (apps-script/Agents.js got_, Agent.js). */
     var sentCopy = null;
     try { sentCopy = JSON.parse(store.get(sentKeyOf(draftKey)) || 'null'); } catch (e) { sentCopy = null; }
-    sentBefore = sentCopy && sentCopy.at ? sentCopy.at : null;
+    /* a copy whose send, on the server's clock, counted for another period
+       is not this one's (a phone hours out kept 6:59 PM as the next day's,
+       16 Oct 2026). Copies kept before then hold the phone's own time: read
+       them with today's gap. */
+    var sentAt = sentCopy && sentCopy.at ? (sentCopy.srv ? sentCopy.at : sentCopy.at + SKEW) : null;
+    if (sentAt && periodAt(report, sentAt).day !== pd0.day) { sentCopy = null; sentAt = null; }
+    sentBefore = sentAt;
     /* an empty draft (the form was only opened) does not hide a real one */
     if (!values || typeof values !== 'object' || !hasContent(values)) {
       values = {};
@@ -2833,7 +2866,7 @@
         if (r && whose.indexOf(r.person) < 0) whose.push(r.person);
       });
     }
-    var since = new Date(Date.now() - 9 * 864e5);
+    var since = new Date(nowMs() - 9 * 864e5);
     Promise.all(whose.map(function (p) {
       return FB.ownReports(p, since)['catch'](function () { return []; });
     })).then(function (lists) {
@@ -4375,7 +4408,7 @@
          The Sheet is sent English names and ids whatever language the form
          was filled in, so one report's history stays in one tab. */
       ARCHIVE.file({
-        at: new Date().toISOString(),
+        at: new Date(nowMs()).toISOString(),
         person: report.person,
         personName: person.en,
         report: report.id,
@@ -4432,8 +4465,8 @@
         sending = false;
         sentThisVisit = true;
         lastSent = sentDraft;
-        sentBefore = Date.now();
-        try { store.set(sentKeyOf(draftKey), JSON.stringify({ at: sentBefore, values: JSON.parse(sentDraft) })); } catch (e) {}
+        sentBefore = nowMs();
+        try { store.set(sentKeyOf(draftKey), JSON.stringify({ at: sentBefore, srv: 1, values: JSON.parse(sentDraft) })); } catch (e) {}
         send.textContent = t('sentDone');
         replay(send, 'sentok');
         if (reportTo(report).length && names) toast(t('sentTo').replace('{who}', names));
@@ -4946,7 +4979,7 @@
     recentFor = report.id;
     RECENT = {};
     if (!window.FB || !FB.ownReports || !AUTH.who()) return;
-    FB.ownReports(report.person, new Date(Date.now() - 21 * 864e5)).then(function (list) {
+    FB.ownReports(report.person, new Date(nowMs() - 21 * 864e5)).then(function (list) {
       var got = {};
       (list || []).slice().sort(function (a, b) { return b.at - a.at; }).forEach(function (d) {
         if (d.report !== report.id) return;
@@ -5088,7 +5121,7 @@
     var days = Math.max.apply(null, cs.map(function (f) { return f.carry.days || 30; }));
     var day = periodNow(report).day || stamp(), was = report.id;
     var asked = cs.some(function (f) { return f.carry.ask; }) && FB.myJobAsk ? FB.myJobAsk()['catch'](function () { return null; }) : Promise.resolve(null);
-    Promise.all([FB.ownReports(report.person, new Date(Date.now() - days * 864e5)), asked]).then(function (got) {
+    Promise.all([FB.ownReports(report.person, new Date(nowMs() - days * 864e5)), asked]).then(function (got) {
       if (!report || report.id !== was) return;
       var list = got[0] || [], ask = got[1];
       cs.forEach(function (f) {
@@ -5136,7 +5169,7 @@
     weekValsFor = report.id;
     WEEKVALS = null;
     if (!window.FB || !FB.ownReports || !AUTH.who()) return;
-    FB.ownReports(report.person, new Date(Date.now() - 40 * 864e5)).then(function (list) {
+    FB.ownReports(report.person, new Date(nowMs() - 40 * 864e5)).then(function (list) {
       WEEKVALS = list || [];
       refresh();
     })['catch'](function () { WEEKVALS = []; refresh(); });
@@ -5243,7 +5276,7 @@
   /* the stretch of time a weekly or monthly figure covers: the week as the
      ledger counts it (Sunday 9 PM to Sunday 9 PM), or the calendar month */
   function autoSpan() {
-    var now = Date.now();
+    var now = nowMs();
     if (report.cadence === 'monthly') {
       /* the month the report is FOR: due on the 1st (or the 2nd) of the next
          one, it adds up the month just ended — opened on its due day it was
@@ -6101,7 +6134,10 @@
       else renderIndex(root);
     }
 
-    raced.then(function (id) {
+    /* and the server's clock, before any day or deadline is drawn — three
+       seconds at most, so no line never means no page */
+    Promise.all([raced, Promise.race([CLOCK, new Promise(function (r) { setTimeout(r, 3000); })])]).then(function (got) {
+      var id = got[0];
       AUTH._adopt(id);
       settledOnce = true;
       /* the bar was drawn before Firebase answered, so it had no sign-out

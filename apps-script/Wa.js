@@ -101,7 +101,14 @@ function waChairman_(row) {
          "ok" meaning thanks, later, did a proposal he had moved on from (the
          bug hunt, 15 Oct 2026) */
       if (pending) waPendingClear_(slot);
-      if (/^\s*(brief|the brief|ብሪፍ|ማጠቃለያ)\s*[.!?]?\s*$/i.test(text)) reply = waLastBrief_();
+      /* the bank balance — "bank CBE 2,300,000 Awash …" — from either phone:
+         the user, 16 Oct 2026, "I report the bank balance, not Finance" (Bank.js) */
+      var bank = bankPropose_(text, chair ? 'chairman' : 'owner');
+      if (bank) {
+        if (bank.action) waPendingSet_([bank.action], slot);
+        reply = bank.reply;
+      }
+      else if (/^\s*(brief|the brief|ብሪፍ|ማጠቃለያ)\s*[.!?]?\s*$/i.test(text)) reply = waLastBrief_();
       else if (waLooksLikeQuestion_(text)) reply = waAnswer_(text, row.history, row.customers, day, !chair);
       else reply = waDecideOrAnswer_(text, row.history, row.customers, day, chair ? null : ['book'], slot);
     }
@@ -467,8 +474,9 @@ function waExecute_(actions, slot) {
   waPendingClear_(slot);
   var done = [], failed = [];
   var site = prop_('SITE', AGENT_DEFAULT_SITE);
-  /* from the owner phone's slot only a booking is done, whatever was kept */
-  if (slot === 'WA_PENDING_OWNER') actions = (actions || []).filter(function (a) { return a && a.kind === 'book'; });
+  /* from the owner phone's slot only a booking or a bank balance is done,
+     whatever was kept */
+  if (slot === 'WA_PENDING_OWNER') actions = (actions || []).filter(function (a) { return a && (a.kind === 'book' || a.kind === 'bank'); });
   (actions || []).forEach(function (a) {
     try {
       if (a.kind === 'instruction') {
@@ -489,6 +497,8 @@ function waExecute_(actions, slot) {
       } else if (a.kind === 'book') {
         var r = waBook_({ lead: a.lead, designer: a.designer, date: a.date, time: a.time });
         if (!r.ok || !r.booked) throw new Error(r.message || 'not booked');
+      } else if (a.kind === 'bank') {
+        bankSave_(a);
       } else {
         throw new Error('unknown action');
       }

@@ -365,8 +365,13 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
       this_week: askTaxis_(P, monday, day),
       this_month: askTaxis_(P, monthStart, day)
     },
+    /* the last bank balance, bank by bank: the owner's, on WhatsApp (Bank.js) */
+    bank_balance_latest: bankLatestOf_(P.filings),
     by_day: {
-      bank_balance: series('betty-daily', 'bank_total'),
+      /* the owner's balance on WhatsApp from 16 Oct 2026 (Bank.js) */
+      bank_balance: series(BANK_REPORT_, 'bank_total'),
+      money_in: series('betty-daily', 'money_in'),
+      money_out: series('betty-daily', 'money_out'),
       cash_in: series('betty-daily', 'cash_in'),
       collected_by_sales: series('ephrata-daily', 'collected_today'),
       m2_produced: series('amaha-daily', 'p_total'),

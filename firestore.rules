@@ -352,6 +352,24 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    /* The bank balance (apps-script/Bank.js, 16 Oct 2026): the owner gives it
+       on WhatsApp — "I report the bank balance, not Finance" — and the
+       script writes it on his YES, one document a message, at the server's
+       time. The Chairman's page draws it; nobody changes or removes one. */
+    match /bank/{id} {
+      allow get, list: if isChairman() || isLedger();
+      allow create: if isLedger()
+                    && request.resource.data.keys().hasOnly(['day', 'total', 'cbe', 'awash', 'aby', 'zz',
+                                                             'given', 'carried', 'by', 'via', 'at'])
+                    && request.resource.data.via == 'whatsapp'
+                    && request.resource.data.by in ['owner', 'chairman']
+                    && request.resource.data.day is string
+                    && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                    && request.resource.data.total is number
+                    && request.resource.data.at == request.time;
+      allow update, delete: if false;
+    }
+
     match /packs/{id} {
       allow get, list: if isChairman() || isLedger();
       allow create, update: if isLedger();

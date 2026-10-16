@@ -372,13 +372,20 @@ function forecastFacts_(P) {
     if (!ks.length) return null;
     return Math.min(4, Math.max(1, (hrDaysBetween_(ks[0], end) + 1) / 7));
   };
-  /* the bank now: the last evening balance in the four weeks */
-  var bankDay = Object.keys(fd).filter(function (d) { return a_(fd[d], 'bank_total') !== null; }).sort().pop() || null;
-  var bank = bankDay ? a_(fd[bankDay], 'bank_total') : null;
+  /* the bank now: the last evening balance in the four weeks — the owner's,
+     sent on WhatsApp (16 Oct 2026, Bank.js), or before that Selam's */
+  var own = {};
+  bankDocs_(back, end).forEach(function (b) { if (b.total !== null && b.total !== undefined) own[b.day] = n_(b.total); });
+  Object.keys(fd).forEach(function (d) { if (own[d] === undefined && a_(fd[d], 'bank_total') !== null) own[d] = a_(fd[d], 'bank_total'); });
+  var bankDay = Object.keys(own).sort().pop() || null;
+  var bank = bankDay ? own[bankDay] : null;
   /* money in a week, from Selam's daily cash in, over the weeks reported */
   var weeks = {};
   Object.keys(fd).forEach(function (d) {
-    var x = a_(fd[d], 'cash_in');
+    /* all the money in, from her list of every transaction (16 Oct 2026);
+       before it her report had only the cash */
+    var x = a_(fd[d], 'money_in');
+    if (x === null) x = a_(fd[d], 'cash_in');
     if (x === null) return;
     var s = sundayOf_(d);
     weeks[s] = (weeks[s] || 0) + x;

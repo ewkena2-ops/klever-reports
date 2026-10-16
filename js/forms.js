@@ -241,6 +241,42 @@ const BOARD_WHO = [
   { v:'elyas',    en:'Elyas — site',          am:'ኤልያስ — ተከላ' },
   { v:'Other',    en:'Other',                 am:'ሌላ' }
 ];
+/* Selam's one list of every transaction (16 Oct 2026): which way the money
+   went, what it was, and which of Klever's accounts it went through. A move
+   between Klever's own accounts (cash taken to the bank, money sent to
+   ZamZam) is neither in nor out. */
+const TX_DIR = [
+  { v:'in',   en:'Money in',                   am:'ገቢ' },
+  { v:'out',  en:'Money out',                  am:'ወጪ' },
+  { v:'move', en:'Moved between our accounts', am:'በራሳችን ሂሳቦች መካከል የተዛወረ' }
+];
+const TX_IN = [
+  { v:'advance',  en:'Customer advance',        am:'የደንበኛ ቅድመ ክፍያ' },
+  { v:'final',    en:'Customer final payment',  am:'የደንበኛ የመጨረሻ ክፍያ' },
+  { v:'customer', en:'Other customer payment',  am:'ሌላ የደንበኛ ክፍያ' },
+  { v:'group',    en:'From the group (Kidan)',  am:'ከቡድኑ (ከኪዳን)' },
+  { v:'loan',     en:'A loan received',         am:'የተገኘ ብድር' },
+  { v:'other',    en:'Other',                   am:'ሌላ' }
+];
+const TX_OUT = [
+  { v:'supplier',  en:'Supplier or materials', am:'አቅራቢ ወይም ዕቃ' },
+  { v:'salary',    en:'Salaries',              am:'ደመወዝ' },
+  { v:'assembler', en:'Assemblers',            am:'ገጣጣሚዎች' },
+  { v:'transport', en:'Transport',             am:'ትራንስፖርት' },
+  { v:'rent',      en:'Rent',                  am:'ኪራይ' },
+  { v:'tax',       en:'Tax',                   am:'ግብር' },
+  { v:'loan',      en:'Loan repayment',        am:'የብድር ክፍያ' },
+  { v:'charges',   en:'Bank charges',          am:'የባንክ ክፍያ' },
+  { v:'group',     en:'To the group (Kidan)',  am:'ለቡድኑ (ለኪዳን)' },
+  { v:'other',     en:'Other',                 am:'ሌላ' }
+];
+const TX_ACCOUNTS = [
+  { v:'cbe',   en:'CBE',        am:'ንግድ ባንክ' },
+  { v:'awash', en:'Awash',      am:'አዋሽ' },
+  { v:'aby',   en:'Abyssinia',  am:'አቢሲኒያ' },
+  { v:'zz',    en:'ZamZam',     am:'ዘምዘም' },
+  { v:'cash',  en:'Cash',       am:'ጥሬ ገንዘብ' }
+];
 /* the ones that come as sheets, and the ones that come as pieces — a sheet
    count and a hinge count cannot be added to each other */
 const BOARDS = ['MDF 18mm', 'MDF 16mm', 'Melamine 18mm', 'Melamine 16mm', 'Plywood', 'Back panel 3mm', 'Back panel 6mm'];
@@ -1190,23 +1226,9 @@ const REPORTS = [
        zz_confirmed, board_match, asm_unreserved) are worked out from the
        list ({picked:…}, quiet:1); the counts behind it file a real 0 on a
        normal day (zero:1); the lists behind it read 0 when it was answered
-       without them. The four bank lines and the total they must add up to
-       (7 Oct 2026) are exactly as they were. */
-    { en:'Cash', am:'ጥሬ ገንዘብ', fields:[
-      {id:'cash_any', en:'Did any cash come in today?', am:'ዛሬ የገባ ጥሬ ገንዘብ አለ?', t:'yesno', yes:{en:'Cash came in', am:'ጥሬ ገንዘብ ገብቷል'}, no:{en:'No cash today', am:'ዛሬ ጥሬ ገንዘብ አልገባም'}},
-      {id:'cash_in_list', en:'Each cash receipt today', am:'የዛሬ እያንዳንዱ የጥሬ ገንዘብ ደረሰኝ', t:'table', addEn:'Add a receipt', addAm:'ደረሰኝ ጨምር',
-        show:{f:'cash_any', when:'yes'},
-        cols:[
-          {id:'from', en:'From', am:'ከማን', t:'text'},
-          {id:'kind', en:'For', am:'የምን', t:'choice', opts:[
-            {v:'advance', en:'Advance', am:'ቅድመ ክፍያ'},
-            {v:'final', en:'Final payment', am:'የመጨረሻ ክፍያ'},
-            {v:'other', en:'Other', am:'ሌላ'}]},
-          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
-          {id:'receipt', en:'Receipt no.', am:'የደረሰኝ ቁጥር', t:'text'}
-        ]},
-      {id:'cash_in', en:'How much cash came in today?', am:'ዛሬ ስንት ብር ጥሬ ገንዘብ ገባ?', t:'money',
-        auto:{sum:'cash_in_list.amount'}, sumEn:'came in', sumAm:'ገብቷል'},
+       without them. 16 Oct 2026: the bank lines are gone — the owner gives the
+       balance on WhatsApp — and the money lists are one list (below). */
+    { en:'Cash on hand', am:'በእጅ ያለ ጥሬ ገንዘብ', fields:[
       /* asked every day: the rulebook fines more than 5,000 overnight
          (betty-cash-overnight) and the Group CFO reads it each morning */
       {id:'cash_hand', en:'How much cash is on hand at close?', am:'በመዝጊያ ሰዓት በእጅ ስንት ጥሬ ገንዘብ አለ?', t:'money',
@@ -1221,89 +1243,72 @@ const REPORTS = [
           { en:'Goes to the bank first thing tomorrow', am:'ነገ ጠዋት መጀመሪያ ባንክ ይገባል' }
         ], show:{f:'cash_hand', when:'miss'}}
     ]},
-    { en:'Bank position', am:'የባንክ ሁኔታ', fields:[
-      {id:'bank_total', en:'What is the total bank balance tonight?', am:'ዛሬ ማታ ጠቅላላ የባንክ ቀሪ ስንት ነው?', t:'money',
-        tgt:{op:'gte', v:6000000, en:'6 Million Birr Cash Reserve Rule', am:'የ6 ሚሊዮን ብር መጠባበቂያ ደንብ'},
-        parts:{of:['bank_cbe','bank_awash','bank_aby','bank_zz'], all:1}},
-      /* Klever's four banks, each on its own line (Chairman, 7 Oct 2026) */
-      {id:'bank_cbe', en:'In Commercial Bank of Ethiopia (CBE)', am:'በኢትዮጵያ ንግድ ባንክ', t:'money', i:1},
-      {id:'bank_awash', en:'In Awash Bank', am:'በአዋሽ ባንክ', t:'money', i:1},
-      {id:'bank_aby', en:'In Bank of Abyssinia', am:'በአቢሲኒያ ባንክ', t:'money', i:1},
-      {id:'bank_zz', en:'In ZamZam Bank', am:'በዘምዘም ባንክ', t:'money', i:1},
-      /* asked only when the total is under 6,000,000, and then it must be
-         answered: the rulebook fines a "no" (betty-below-6m-not-reported),
-         and while it stood optional on every day a blank charged nothing —
-         the rule's own note asked for exactly this */
-      {id:'below6_reported', en:'Below 6 million: was the Chairman told today?', am:'ከ6 ሚሊዮን በታች ነው፦ ዛሬ ለሊቀመንበሩ ተነግሯል?', t:'yesno', yes:{en:'Told today', am:'ዛሬ ተነግሯቸዋል'}, no:{en:'Not told yet', am:'ገና አልተነገራቸውም'},
-        show:{f:'bank_total', when:'miss'}},
-      {id:'bank_total_why', en:'Below the 6,000,000 Birr reserve. Why, and what is on hold until it recovers? (Write which payments still went out today in the box.)', am:'ከ6,000,000 ብር መጠባበቂያ በታች ነው። ለምን? እስኪመለስ ድረስ ምን ቆመ? (ዛሬ የተከፈሉትን ክፍያዎች በሳጥኑ ይጻፉ።)', t:'area',
-        picks:[
-          { en:'Customer payments came in late',      am:'የደንበኞች ክፍያ ዘግይቶ ገባ' },
-          { en:'A big supplier payment went out',     am:'ትልቅ የአቅራቢ ክፍያ ወጣ' },
-          { en:'Salaries were paid',                  am:'ደመወዝ ተከፈለ' },
-          { en:'Only essential payments went out',    am:'የወጡት አስፈላጊ ክፍያዎች ብቻ ናቸው' },
-          { en:'Non-essential payments are on hold',  am:'አስፈላጊ ያልሆኑ ክፍያዎች ቆመዋል' },
-          { en:'Chasing final payments to bring it back', am:'እንዲመለስ የመጨረሻ ክፍያዎች እየተከታተልን ነው' }
-        ], show:{f:'bank_total', when:'miss'}}
-    ]},
-    /* Four money totals and two counts stood over these three lists, and
-       every one of them was the list added up (the Chairman, 9 Oct 2026). */
-    { en:'Money from customers', am:'ከደንበኞች የገባ ገንዘብ', fields:[
-      {id:'adv_any', en:'Did any advance payment come in today?', am:'ዛሬ የገባ ቅድመ ክፍያ አለ?', t:'yesno', yes:{en:'An advance came in', am:'ቅድመ ክፍያ ገብቷል'}, no:{en:'No advance today', am:'ዛሬ ቅድመ ክፍያ አልገባም'}},
-      {id:'adv_in_list', en:'Each advance received today', am:'ዛሬ የገባ እያንዳንዱ ቅድመ ክፍያ', t:'table', addEn:'Add an advance', addAm:'ቅድመ ክፍያ ጨምር',
-        show:{f:'adv_any', when:'yes'},
+    /* EVERY TRANSACTION, ONE LIST (the user, 16 Oct 2026: "start today — I
+       report the bank balance, not Finance; Finance reports all transactions
+       in and out"). The bank balance is the owner's, sent on WhatsApp
+       (apps-script/Bank.js), and is no longer asked here. The five lists that
+       stood here — cash receipts, advances, final payments, payments
+       approved, transfers to ZamZam — are this one list: each row money in,
+       money out, or a move between Klever's own accounts. Every key the
+       rulebook, the register, the Group CFO and the checks read is still
+       filed under its old name, worked out from the rows: the old lists are
+       folded out of it (quiet), the totals are its rows added up. Each
+       evening the owner's balance is checked against the one before it plus
+       the bank's money in and less its money out (Bank.js bankCheck_). */
+    { en:'Money in and out today', am:'ዛሬ የገባና የወጣ ገንዘብ', fields:[
+      {id:'tx_any', en:'Did any money come in or go out today — bank or cash?', am:'ዛሬ የገባ ወይም የወጣ ገንዘብ አለ? (ባንክ ወይም ጥሬ ገንዘብ)', t:'yesno', yes:{en:'Money moved', am:'ገንዘብ ተንቀሳቅሷል'}, no:{en:'Nothing moved today', am:'ዛሬ ምንም አልተንቀሳቀሰም'}},
+      {id:'tx_list', en:'Every transaction today, one row each — in, out, and between our accounts', am:'የዛሬ እያንዳንዱ ገቢ፣ ወጪና ዝውውር — በየረድፉ', t:'table', addEn:'Add a transaction', addAm:'ገቢ ወይም ወጪ ጨምር',
+        show:{f:'tx_any', when:'yes'},
         cols:[
-          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
-          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'dir', en:'In, out or moved', am:'ገቢ፣ ወጪ ወይስ ዝውውር', t:'choice', opts:TX_DIR},
+          {id:'kin', en:'What came in', am:'የገባው ምንድን ነው', t:'choice', opts:TX_IN, ifCol:'dir', ifIn:['in']},
+          {id:'kout', en:'What it was paid for', am:'የተከፈለው ለምንድን ነው', t:'choice', opts:TX_OUT, ifCol:'dir', ifIn:['out']},
+          {id:'via', en:'Which account (a move: taken from)', am:'የትኛው ሂሳብ (ዝውውር ከሆነ፦ ከየት)', t:'choice', opts:TX_ACCOUNTS},
+          {id:'via2', en:'Moved into', am:'የገባበት ሂሳብ', t:'choice', opts:TX_ACCOUNTS, ifCol:'dir', ifIn:['move']},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
-          {id:'file', en:'Job File opened', am:'ጆብ ፋይል ተከፍቷል', t:'yesno', yes:{en:'Opened', am:'ተከፍቷል'}, no:{en:'Not yet', am:'ገና አልተከፈተም'}},
-          {id:'group', en:'WhatsApp group created', am:'ዋትስአፕ ግሩፕ ተከፍቷል', t:'yesno', yes:{en:'Created', am:'ተከፍቷል'}, no:{en:'Not yet', am:'ገና አልተከፈተም'}}
+          {id:'who', en:'From whom / paid to', am:'ከማን / ለማን', t:'text', ifCol:'dir', ifIn:['in', 'out']},
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text', ifCol:'kin', ifIn:['advance', 'final', 'customer']},
+          {id:'ref', en:'Receipt or reference no.', am:'የደረሰኝ ወይም የማጣቀሻ ቁጥር', t:'text'},
+          {id:'file', en:'Job File opened', am:'ጆብ ፋይል ተከፍቷል', t:'yesno', yes:{en:'Opened', am:'ተከፍቷል'}, no:{en:'Not yet', am:'ገና አልተከፈተም'}, ifCol:'kin', ifIn:['advance']},
+          {id:'group', en:'WhatsApp group created', am:'ዋትስአፕ ግሩፕ ተከፍቷል', t:'yesno', yes:{en:'Created', am:'ተከፍቷል'}, no:{en:'Not yet', am:'ገና አልተከፈተም'}, ifCol:'kin', ifIn:['advance']},
+          {id:'prod', en:'Mahelet told production may start', am:'ምርት እንዲጀመር ለማህሌት ተነግሯል', t:'yesno', yes:{en:'Mahelet told', am:'ለማህሌት ተነግሯታል'}, no:{en:'Not told yet', am:'ገና አልተነገራትም'}, ifCol:'kin', ifIn:['final']},
+          {id:'kidan', en:'Kidan\'s approval (needed over 50,000)', am:'የኪዳን ፈቃድ (ከ50,000 በላይ ያስፈልጋል)', t:'yesno', yes:{en:'Kidan approved', am:'ኪዳን ፈቅደዋል'}, no:{en:'Without Kidan', am:'ያለ ኪዳን ፈቃድ'}, ifCol:'dir', ifIn:['out']},
+          {id:'req', en:'Purchase request it covers', am:'የሚሸፍነው የግዥ ጥያቄ', t:'text', ifCol:'via2', ifIn:['zz']},
+          {id:'sup', en:'For which supplier', am:'ለየትኛው አቅራቢ', t:'text', ifCol:'via2', ifIn:['zz']},
+          {id:'match', en:'Same as the approved amount', am:'ከጸደቀው መጠን ጋር እኩል ነው', t:'yesno', yes:{en:'Same amount', am:'መጠኑ እኩል ነው'}, no:{en:'Different amount', am:'መጠኑ ይለያል'}, ifCol:'via2', ifIn:['zz']}
         ]},
-      {id:'adv_in', en:'How much came in as advance payments today?', am:'ዛሬ ስንት ብር ቅድመ ክፍያ ገባ?', t:'money',
-        auto:{sum:'adv_in_list.amount'}, sumEn:'in advances', sumAm:'በቅድመ ክፍያ'},
-      {id:'jf_created', en:'How many Job Files were opened today?', am:'ዛሬ ስንት ጆብ ፋይሎች ተከፈቱ?', t:'num',
-        auto:{rows:'adv_in_list', when:{col:'file', is:'yes'}}, sumEn:'Job Files opened', sumAm:'ጆብ ፋይሎች ተከፍተዋል'},
-      {id:'wa_created', en:'How many customer WhatsApp groups were created today?', am:'ዛሬ ስንት የደንበኛ ዋትስአፕ ግሩፖች ተከፈቱ?', t:'num',
-        auto:{rows:'adv_in_list', when:{col:'group', is:'yes'}}, sumEn:'groups created', sumAm:'ግሩፖች ተከፍተዋል'},
-      {id:'final_any', en:'Did any final payment come in today?', am:'ዛሬ የገባ የመጨረሻ ክፍያ አለ?', t:'yesno', yes:{en:'A final payment came in', am:'የመጨረሻ ክፍያ ገብቷል'}, no:{en:'None today', am:'ዛሬ የመጨረሻ ክፍያ አልገባም'}},
-      {id:'final_in_list', en:'Each final payment received today', am:'ዛሬ የገባ እያንዳንዱ የመጨረሻ ክፍያ', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
-        show:{f:'final_any', when:'yes'},
-        cols:[
-          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
-          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
-          {id:'prod', en:'Mahelet told production may start', am:'ምርት እንዲጀመር ለማህሌት ተነግሯል', t:'yesno', yes:{en:'Mahelet told', am:'ለማህሌት ተነግሯታል'}, no:{en:'Not told yet', am:'ገና አልተነገራትም'}}
-        ]},
-      {id:'final_in', en:'How much came in as final payments today?', am:'ዛሬ ስንት ብር የመጨረሻ ክፍያ ገባ?', t:'money',
-        auto:{sum:'final_in_list.amount'}, sumEn:'in final payments', sumAm:'በመጨረሻ ክፍያ'},
-      {id:'prod_confirmed', en:'How many production go-aheads did you give Mahelet today?', am:'ዛሬ ለማህሌት ስንት የምርት ፈቃድ ሰጡ?', t:'num',
-        auto:{rows:'final_in_list', when:{col:'prod', is:'yes'}}, sumEn:'told to Mahelet', sumAm:'ለማህሌት ተነግረዋል'},
+      {id:'money_in', en:'How much came in today?', am:'ዛሬ ስንት ብር ገባ?', t:'money',
+        auto:{sum:'tx_list.amount', when:{col:'dir', is:'in'}, orZero:1}, sumEn:'in', sumAm:'ገብቷል'},
+      {id:'money_out', en:'How much went out today?', am:'ዛሬ ስንት ብር ወጣ?', t:'money',
+        auto:{sum:'tx_list.amount', when:{col:'dir', is:'out'}, orZero:1}, sumEn:'out', sumAm:'ወጥቷል'},
+      /* the keys read before 16 Oct, each the rows that are that kind of money */
+      {id:'cash_in', en:'How much cash came in today?', am:'ዛሬ ስንት ብር ጥሬ ገንዘብ ገባ?', t:'money', quiet:1,
+        auto:{sum:'tx_list.amount', when:[{col:'dir', is:'in'}, {col:'via', is:'cash'}], orZero:1}},
+      {id:'adv_in', en:'How much came in as advance payments today?', am:'ዛሬ ስንት ብር ቅድመ ክፍያ ገባ?', t:'money', quiet:1,
+        auto:{sum:'tx_list.amount', when:[{col:'dir', is:'in'}, {col:'kin', is:'advance'}], orZero:1}},
+      {id:'jf_created', en:'How many Job Files were opened today?', am:'ዛሬ ስንት ጆብ ፋይሎች ተከፈቱ?', t:'num', quiet:1,
+        auto:{rows:'tx_list', when:[{col:'dir', is:'in'}, {col:'kin', is:'advance'}, {col:'file', is:'yes'}]}},
+      {id:'wa_created', en:'How many customer WhatsApp groups were created today?', am:'ዛሬ ስንት የደንበኛ ዋትስአፕ ግሩፖች ተከፈቱ?', t:'num', quiet:1,
+        auto:{rows:'tx_list', when:[{col:'dir', is:'in'}, {col:'kin', is:'advance'}, {col:'group', is:'yes'}]}},
+      {id:'final_in', en:'How much came in as final payments today?', am:'ዛሬ ስንት ብር የመጨረሻ ክፍያ ገባ?', t:'money', quiet:1,
+        auto:{sum:'tx_list.amount', when:[{col:'dir', is:'in'}, {col:'kin', is:'final'}], orZero:1}},
+      {id:'prod_confirmed', en:'How many production go-aheads did you give Mahelet today?', am:'ዛሬ ለማህሌት ስንት የምርት ፈቃድ ሰጡ?', t:'num', quiet:1,
+        auto:{rows:'tx_list', when:[{col:'dir', is:'in'}, {col:'kin', is:'final'}, {col:'prod', is:'yes'}]}},
       /* the job codes are already in the rows above; what is left to say is
          whether the money behind each go-ahead was seen in the bank */
       {id:'prod_list', en:'You told Mahelet production may start. Was each final payment seen in the bank?', am:'ምርት እንዲጀመር ለማህሌት ተነግሯል። የእያንዳንዱ የመጨረሻ ክፍያ ባንክ ውስጥ ታይቷል?', t:'area', one:1,
         picks:[
           { en:'Yes — every one is in the bank',                  am:'አዎ — ሁሉም ባንክ ገብቷል' },
           { en:'Not all — one is on a receipt only (job code in the box)', am:'ሁሉም አይደለም — አንዱ በደረሰኝ ብቻ ነው (የሥራ ኮዱን በሳጥኑ ይጻፉ)' }
-        ], show:{f:'prod_confirmed', when:'pos'}}
-    ]},
-    { en:'Payments you approved', am:'ያጸደቋቸው ክፍያዎች', fields:[
-      {id:'pay_any', en:'Did you approve any payment today?', am:'ዛሬ ያጸደቁት ክፍያ አለ?', t:'yesno', yes:{en:'I approved payments', am:'ክፍያ ፈቅጃለሁ'}, no:{en:'I approved none', am:'ምንም ክፍያ አልፈቀድኩም'}},
-      {id:'pay_list', en:'Each payment approved today', am:'ዛሬ የጸደቀ እያንዳንዱ ክፍያ', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
-        show:{f:'pay_any', when:'yes'},
-        cols:[
-          {id:'to', en:'Paid to', am:'ተከፋይ', t:'text'},
-          {id:'for', en:'For (job code or purpose)', am:'ለምን (የሥራ ኮድ ወይም ዓላማ)', t:'text'},
-          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
-          {id:'kidan', en:'Kidan\'s approval (over 50,000)', am:'የኪዳን ፈቃድ (ከ50,000 በላይ)', t:'yesno', yes:{en:'Kidan approved', am:'ኪዳን ፈቅደዋል'}, no:{en:'Without Kidan', am:'ያለ ኪዳን ፈቃድ'}}
-        ]},
-      {id:'pay_approved', en:'How many payments did you approve today?', am:'ዛሬ ስንት ክፍያዎችን አጸደቁ?', t:'num',
-        auto:{rows:'pay_list'}, sumEn:'payments', sumAm:'ክፍያዎች'},
-      {id:'pay_value', en:'What is the total value of payments approved today?', am:'ዛሬ የጸደቁት ክፍያዎች ጠቅላላ ዋጋ ስንት ነው?', t:'money',
-        auto:{sum:'pay_list.amount'}, sumEn:'approved', sumAm:'ተጽድቋል'},
-      {id:'pay_kidan', en:'How many payments over 50,000 Birr went to Kidan for approval?', am:'ከ50,000 ብር በላይ የሆኑ ስንት ክፍያዎች ለኪዳን ፈቃድ ተላኩ?', t:'num',
-        auto:{rows:'pay_list', when:{col:'kidan', is:'yes'}}, sumEn:'went to Kidan', sumAm:'ለኪዳን ቀርበዋል'},
-      {id:'pay_big_unapproved', en:'How many payments over 50,000 Birr went out without Kidan?', am:'ከ50,000 ብር በላይ ያለኪዳን ፈቃድ የወጡ ክፍያዎች ስንት ናቸው?', t:'num',
-        auto:{rows:'pay_list', when:[{col:'amount', gte:50001}, {col:'kidan', is:'no'}]},
+        ], show:{f:'prod_confirmed', when:'pos'}},
+      {id:'pay_approved', en:'How many payments went out today?', am:'ዛሬ ስንት ክፍያዎች ወጡ?', t:'num', quiet:1,
+        auto:{rows:'tx_list', when:{col:'dir', is:'out'}}},
+      {id:'pay_value', en:'What is the total of the payments that went out today?', am:'ዛሬ የወጡት ክፍያዎች ጠቅላላ ስንት ነው?', t:'money', quiet:1,
+        auto:{sum:'tx_list.amount', when:{col:'dir', is:'out'}, orZero:1}},
+      {id:'pay_kidan', en:'How many payments over 50,000 Birr went to Kidan for approval?', am:'ከ50,000 ብር በላይ የሆኑ ስንት ክፍያዎች ለኪዳን ፈቃድ ተላኩ?', t:'num', quiet:1,
+        auto:{rows:'tx_list', when:[{col:'dir', is:'out'}, {col:'kidan', is:'yes'}]}},
+      {id:'pay_big_unapproved', en:'How many payments over 50,000 Birr went out without Kidan?', am:'ከ50,000 ብር በላይ ያለኪዳን ፈቃድ የወጡ ክፍያዎች ስንት ናቸው?', t:'num', quiet:1,
+        auto:{rows:'tx_list', when:[{col:'dir', is:'out'}, {col:'amount', gte:50001}, {col:'kidan', is:'no'}]},
         tgt:{op:'lte', v:0, en:'Over 50,000 Birr needs Kidan first', am:'ከ50,000 ብር በላይ የኪዳን ፈቃድ ይጠይቃል'}},
       {id:'pay_big_why', en:'A payment over 50,000 Birr went out without Kidan. Why? (Write which one in the box.)', am:'ከ50,000 ብር በላይ የሆነ ክፍያ ያለ ኪዳን ፈቃድ ወጣ። ለምን? (የትኛው እንደሆነ በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
@@ -1318,24 +1323,56 @@ const REPORTS = [
           { en:'All approved by Kidan',             am:'ሁሉም በኪዳን ጸድቀዋል' },
           { en:'Some are still waiting for Kidan',  am:'አንዳንዶቹ የኪዳንን ፈቃድ እየጠበቁ ነው' },
           { en:'One was not approved',              am:'አንዱ አልተፈቀደም' }
-        ], show:{f:'pay_kidan', when:'pos'}}
-    ]},
-    { en:'Money to ZamZam Bank', am:'ወደ ዘምዘም ባንክ የተላለፈ ገንዘብ', fields:[
-      {id:'zz_any', en:'Was anything transferred to ZamZam Bank today?', am:'ዛሬ ወደ ዘምዘም ባንክ የተላለፈ ገንዘብ አለ?', t:'yesno', yes:{en:'Money was transferred', am:'ገንዘብ ተላልፏል'}, no:{en:'Nothing transferred', am:'ምንም አልተላለፈም'}},
-      {id:'zz_list', en:'Which approved purchase request does each transfer cover?', am:'እያንዳንዱ ዝውውር የትኛውን የጸደቀ የግዥ ጥያቄ ይሸፍናል?', t:'table', addEn:'Add a transfer', addAm:'ዝውውር ጨምር',
-        show:{f:'zz_any', when:'yes'},
+        ], show:{f:'pay_kidan', when:'pos'}},
+      {id:'zz_transfer', en:'How much was transferred to ZamZam Bank today?', am:'ዛሬ ወደ ዘምዘም ባንክ ስንት ብር ተላለፈ?', t:'money', quiet:1,
+        auto:{sum:'tx_list.amount', when:[{col:'dir', is:'move'}, {col:'via2', is:'zz'}], orZero:1}},
+      {id:'zz_count', en:'How many transfers to ZamZam was that?', am:'ወደ ዘምዘም ስንት ዝውውሮች ነበሩ?', t:'num', quiet:1,
+        auto:{rows:'tx_list', when:[{col:'dir', is:'move'}, {col:'via2', is:'zz'}]}},
+      {id:'zz_off', en:'How many transfers to ZamZam were not the approved amount?', am:'ወደ ዘምዘም ከጸደቀው መጠን የተለዩ ዝውውሮች ስንት ናቸው?', t:'num', quiet:1,
+        auto:{rows:'tx_list', when:[{col:'dir', is:'move'}, {col:'via2', is:'zz'}, {col:'match', is:'no'}]}},
+      /* the lists the register, the rulebook and the readers read, folded out
+         of the rows under their old names and columns */
+      {id:'cash_in_list', en:'Each cash receipt today', am:'የዛሬ እያንዳንዱ የጥሬ ገንዘብ ደረሰኝ', t:'table', quiet:1,
+        auto:{fold:'tx_list', when:[{col:'dir', is:'in'}, {col:'via', is:'cash'}], keep:{from:'who', kind:'kin', amount:'amount', receipt:'ref'}},
+        cols:[
+          {id:'from', en:'From', am:'ከማን', t:'text'},
+          {id:'kind', en:'For', am:'የምን', t:'text'},
+          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
+          {id:'receipt', en:'Receipt no.', am:'የደረሰኝ ቁጥር', t:'text'}
+        ]},
+      {id:'adv_in_list', en:'Each advance received today', am:'ዛሬ የገባ እያንዳንዱ ቅድመ ክፍያ', t:'table', quiet:1,
+        auto:{fold:'tx_list', when:[{col:'dir', is:'in'}, {col:'kin', is:'advance'}], keep:{cust:'who', code:'code', amount:'amount', file:'file', group:'group'}},
+        cols:[
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
+          {id:'file', en:'Job File opened', am:'ጆብ ፋይል ተከፍቷል', t:'text'},
+          {id:'group', en:'WhatsApp group created', am:'ዋትስአፕ ግሩፕ ተከፍቷል', t:'text'}
+        ]},
+      {id:'final_in_list', en:'Each final payment received today', am:'ዛሬ የገባ እያንዳንዱ የመጨረሻ ክፍያ', t:'table', quiet:1,
+        auto:{fold:'tx_list', when:[{col:'dir', is:'in'}, {col:'kin', is:'final'}], keep:{cust:'who', code:'code', amount:'amount', prod:'prod'}},
+        cols:[
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
+          {id:'prod', en:'Mahelet told production may start', am:'ምርት እንዲጀመር ለማህሌት ተነግሯል', t:'text'}
+        ]},
+      {id:'pay_list', en:'Each payment that went out today', am:'ዛሬ የወጣ እያንዳንዱ ክፍያ', t:'table', quiet:1,
+        auto:{fold:'tx_list', when:{col:'dir', is:'out'}, keep:{to:'who', amount:'amount', kidan:'kidan'}, join:{'for':['kout', 'ref']}},
+        cols:[
+          {id:'to', en:'Paid to', am:'ተከፋይ', t:'text'},
+          {id:'for', en:'For', am:'ለምን', t:'text'},
+          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
+          {id:'kidan', en:'Kidan\'s approval (over 50,000)', am:'የኪዳን ፈቃድ (ከ50,000 በላይ)', t:'text'}
+        ]},
+      {id:'zz_list', en:'Each transfer to ZamZam Bank today', am:'ዛሬ ወደ ዘምዘም ባንክ የተላለፈ እያንዳንዱ', t:'table', quiet:1,
+        auto:{fold:'tx_list', when:[{col:'dir', is:'move'}, {col:'via2', is:'zz'}], keep:{req:'req', sup:'sup', amount:'amount', match:'match'}},
         cols:[
           {id:'req', en:'Purchase request', am:'የግዥ ጥያቄ', t:'text'},
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
-          {id:'match', en:'Same as the approved amount', am:'ከጸደቀው መጠን ጋር እኩል ነው', t:'yesno', yes:{en:'Same amount', am:'መጠኑ እኩል ነው'}, no:{en:'Different amount', am:'መጠኑ ይለያል'}}
-        ]},
-      {id:'zz_transfer', en:'How much was transferred to ZamZam Bank today?', am:'ዛሬ ወደ ዘምዘም ባንክ ስንት ብር ተላለፈ?', t:'money',
-        auto:{sum:'zz_list.amount'}, sumEn:'transferred', sumAm:'ተላልፏል'},
-      {id:'zz_count', en:'How many transfers was that?', am:'ስንት ዝውውሮች ነበሩ?', t:'num',
-        auto:{rows:'zz_list'}, sumEn:'transfers', sumAm:'ዝውውሮች'},
-      {id:'zz_off', en:'How many transfers were not the approved amount?', am:'ከጸደቀው መጠን የተለዩ ዝውውሮች ስንት ናቸው?', t:'num',
-        auto:{rows:'zz_list', when:{col:'match', is:'no'}}, sumEn:'not the approved amount', sumAm:'ከጸደቀው የተለዩ'}
+          {id:'match', en:'Same as the approved amount', am:'ከጸደቀው መጠን ጋር እኩል ነው', t:'text'}
+        ]}
     ]},
     /* THE ONE LIST. Ten yes/no checks and two counts stood in sections of
        their own, each asked every day, and three more gates for money that
@@ -3212,21 +3249,9 @@ const REPORTS = [
       {id:'f_total', en:'How much was collected in total this week?', am:'በዚህ ሳምንት በጠቅላላ ስንት ብር ተሰበሰበ?', t:'money',
         auto:{plus:['f_adv', 'f_final']}}
     ]},
-    { en:'Cash position', am:'የገንዘብ ሁኔታ', fields:[
-      /* typed, not taken from the dailies: the weekly is due at 5:00 PM and
-         Saturday's own daily at 5:30, and the CFO reads this one */
-      {id:'f_bank', en:'What is the bank balance at the end of the week?', am:'በሳምንቱ መጨረሻ የባንክ ቀሪ ስንት ነው?', t:'money', auto:{week:'bank_total', from:'betty-daily', how:'last'},
-        tgt:{op:'gte', v:6000000, en:'6 Million Birr Cash Reserve Rule', am:'የ6 ሚሊዮን ብር መጠባበቂያ ደንብ'}},
-      {id:'f_bank_why', en:'Below the 6,000,000 Birr reserve. Why, what is on hold, and when will it recover?', am:'ከ6,000,000 ብር መጠባበቂያ በታች ነው። ለምን? ምን ቆሟል? መቼ ይመለሳል?', t:'area', auto:{weekText:'bank_total_why', from:'betty-daily'},
-        picks:[
-          { en:'Customer payments came in late',      am:'የደንበኞች ክፍያ ዘግይቶ ገባ' },
-          { en:'Big supplier payments went out',      am:'ትላልቅ የአቅራቢ ክፍያዎች ወጡ' },
-          { en:'Salaries were paid',                  am:'ደመወዝ ተከፈለ' },
-          { en:'Non-essential payments are on hold',  am:'አስፈላጊ ያልሆኑ ክፍያዎች ቆመዋል' },
-          { en:'Back above it next week',             am:'በሚቀጥለው ሳምንት ይመለሳል' },
-          { en:'Not known yet when it recovers',      am:'መቼ እንደሚመለስ ገና አልታወቀም' }
-        ], show:{f:'f_bank', when:'miss'}}
-    ]},
+    /* "Cash position" — the bank at the end of the week, and why below the
+       reserve — went on 16 Oct 2026: the bank balance is the owner's, sent on
+       WhatsApp (apps-script/Bank.js), and the CFO reads it from there. */
     /* Every line here is read by the Sunday CFO (apps-script/Cfo.js) and
        by the 30/60/90-day forecast; they stay asked, one figure each. The
        title is the one the CFO's messages name. */
@@ -4907,25 +4932,12 @@ const REPORTS = [
        (dateFrom), as it was. */
     { en:'This morning', am:'የዛሬ ጠዋት ሁኔታ', fields:[
       {id:'cf7_date', en:'What day does this forecast start?', am:'ትንበያው ከየትኛው ቀን ይጀምራል?', t:'date'},
-      {id:'cf7_bank', en:'What is the bank balance this morning?', am:'ዛሬ ጠዋት የባንክ ቀሪ ስንት ነው?', t:'money',
-        tgt:{op:'gte', v:6000000, en:'6 Million Birr Cash Reserve Rule — below this must be reported',
-             am:'የ6 ሚሊዮን ብር መጠባበቂያ ደንብ — ከዚህ በታች ከሆነ ማሳወቅ ግዴታ ነው'}},
-      /* asked only when it is below — on every other morning it was an
-         optional question about nothing */
-      {id:'cf7_reported', en:'Below 6 million: has the Chairman already been told?', am:'ከ6 ሚሊዮን በታች ነው፦ ለሊቀመንበሩ ቀድሞ ተነግሯል?', t:'yesno', yes:{en:'Already told', am:'ቀድሞ ተነግሯቸዋል'}, no:{en:'Not told yet', am:'ገና አልተነገራቸውም'},
-        show:{f:'cf7_bank', when:'miss'}},
-      {id:'cf7_bank_why', en:'Below the 6,000,000 Birr reserve. What is on hold today, and what brings it back?', am:'ከ6,000,000 ብር መጠባበቂያ በታች ነው። ዛሬ ምን ቆሟል? ምን ይመልሰዋል?', t:'area',
-        picks:[
-          { en:'Non-essential payments are on hold',     am:'አስፈላጊ ያልሆኑ ክፍያዎች ቆመዋል' },
-          { en:'Supplier payments wait',                 am:'የአቅራቢ ክፍያዎች ይቆያሉ' },
-          { en:'Final payments coming in bring it back', am:'የሚገቡ የመጨረሻ ክፍያዎች ይመልሱታል' },
-          { en:'Advances from new contracts bring it back', am:'ከአዲስ ውሎች የሚገቡ ቅድመ ክፍያዎች ይመልሱታል' },
-          { en:'Needs money from the group (Kidan)',     am:'ከቡድኑ (ከኪዳን) ገንዘብ ያስፈልጋል' }
-        ], show:{f:'cf7_bank', when:'miss'}},
-      /* nothing reads these two; the evening report has the cash on hand and
-         the ZamZam line */
-      {id:'cf7_cash', en:'How much cash is on hand? (If you counted it.)', am:'በእጅ ስንት ጥሬ ገንዘብ አለ? (ከቆጠሩ።)', t:'money', opt:1},
-      {id:'cf7_zamzam', en:'What is the ZamZam Bank balance? (If you checked it this morning.)', am:'የዘምዘም ባንክ ቀሪ ስንት ነው? (ዛሬ ጠዋት ካረጋገጡ።)', t:'money', opt:1}
+      /* The morning bank balance went on 16 Oct 2026, with "has the Chairman
+         been told" and why, and the ZamZam line: the owner gives the balance
+         on WhatsApp (apps-script/Bank.js) — the user: "I report the bank
+         balance, not Finance". */
+      /* nothing reads this; the evening report has the cash on hand */
+      {id:'cf7_cash', en:'How much cash is on hand? (If you counted it.)', am:'በእጅ ስንት ጥሬ ገንዘብ አለ? (ከቆጠሩ።)', t:'money', opt:1}
     ]},
     { en:'The next 7 days', am:'የሚቀጥሉት 7 ቀናት', fields:[
       /* the Group CFO reads every row of this grid — the lowest close, the

@@ -1277,6 +1277,7 @@ g.on .cg-bar,g.on .cg-dot{filter:brightness(1.18)}
 .cg-key.is-partial i{background:var(--teal-hi);opacity:.45}
 .cg-refkey b{display:inline-block;width:16px;height:0;border-top:1.5px solid var(--ink-2);opacity:.8}
 .cg-cap{font-size:12.5px;color:var(--mut);margin:8px 0 0;line-height:1.5}
+.cg-cap.bad{color:var(--coral)}
 .cg-empty{position:absolute;left:46px;right:8px;top:46px;text-align:center;font-size:12.5px;color:var(--mut);pointer-events:none;line-height:1.45}
 .cg-tip{position:absolute;z-index:3;pointer-events:none;background:var(--raise);border:1px solid var(--line-2);border-radius:8px;
   padding:6px 9px;box-shadow:var(--shadow);max-width:250px;font-size:12px;line-height:1.4}

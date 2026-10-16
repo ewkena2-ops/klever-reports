@@ -3087,6 +3087,20 @@
             card.appendChild(cell);
             return;
           }
+          /* a tap box asked only once another in the row says so (ifCol), as a
+             typed one is below — Selam's one list of every transaction (16 Oct
+             2026) asks "Job File opened" of an advance and "Kidan" of money
+             out, never of the others. Its answer goes if that changes. */
+          var tapIf = function (clear) {
+            if (!c.ifCol) return;
+            var syncTap = function () {
+              var on = colOn(c, rowData);
+              cell.hidden = !on;
+              if (!on && has(rowData[c.id])) { delete rowData[c.id]; clear(); }
+            };
+            (card.syncs = card.syncs || []).push(syncTap);
+            syncTap();
+          };
           if (c.t === 'yesno') {
             var cseg = el('div', 'seg mini' + (rowData[c.id] === 'no' ? ' no' : ''));
             cseg.id = 'c_' + f.id + '_' + i + '_' + c.id;
@@ -3103,6 +3117,7 @@
                 Array.prototype.forEach.call(cseg.children, function (x) {
                   x.setAttribute('aria-pressed', x === yb ? 'true' : 'false');
                 });
+                if (card.syncs) card.syncs.forEach(function (fn) { fn(); });
                 refresh();
                 if (wrap.sumUp) wrap.sumUp();
               };
@@ -3110,6 +3125,10 @@
             });
             cl.removeAttribute('for');
             cell.appendChild(cseg);
+            tapIf(function () {
+              cseg.className = 'seg mini';
+              Array.prototype.forEach.call(cseg.children, function (x) { x.setAttribute('aria-pressed', 'false'); });
+            });
             card.appendChild(cell);
             return;
           }
@@ -3141,6 +3160,10 @@
             cell.className = 'cell wide';
             cell.appendChild(ccb);
             if (oth) cell.appendChild(oth);
+            tapIf(function () {
+              Array.prototype.forEach.call(ccb.children, function (x) { x.setAttribute('aria-pressed', 'false'); });
+              if (oth) oth.sync(true);
+            });
             card.appendChild(cell);
             return;
           }
@@ -4759,7 +4782,9 @@
        sum:{m2:['m1','n2','n3']}, join:{jobs:['k1','k2','k3']}, keep:{notes:'notes'}}
        — the day's total m² and its jobs from the jobs written one by one */
     if (k.fold != null) {
-      var src = Array.isArray(values[k.fold]) ? values[k.fold] : [];
+      /* `when`: only the rows that say so — Selam's advances, out of her one
+         list of every transaction (16 Oct 2026) */
+      var src = k.when ? rowsMatch(k.fold, k.when) : (Array.isArray(values[k.fold]) ? values[k.fold] : []);
       return src.map(function (r) {
         r = r || {};
         var o = {};
@@ -4898,7 +4923,9 @@
       rowsMatch(s[0], k.when).forEach(function (r) {
         var sx = num(r && r[s[1]]); if (!isNaN(sx)) { st += sx; sn++; }
       });
-      return sn ? round(st, 3) : NaN;
+      /* `orZero`: the list is answered and none of its rows are of this kind
+         — no advance among today's transactions is 0 advances, not a blank */
+      return sn ? round(st, 3) : (k.orZero ? 0 : NaN);
     }
     return NaN;
   }

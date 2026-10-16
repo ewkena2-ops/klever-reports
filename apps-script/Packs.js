@@ -236,7 +236,8 @@ function packData_(start, end) {
        Sunday 9 PM — because last week's forecasts are judged against this
        week's money. And a day past the end, because a month's own reports
        are due on the 1st of the next one. */
-    filings: filedBetween_(addDays_(start, -8), addDays_(end, 2)),
+    /* and the owner's bank balances, as filings of 'owner-bank' (Bank.js) */
+    filings: withBank_(filedBetween_(addDays_(start, -8), addDays_(end, 2)), addDays_(start, -8), addDays_(end, 2)),
     waivers: fsQuery_('waivers', [['day', 'GREATER_THAN_OR_EQUAL', start],
                                    ['day', 'LESS_THAN', after]], 'day'),
     analysis: tryQuery_('analysis', [['day', 'GREATER_THAN_OR_EQUAL', start],
@@ -352,8 +353,12 @@ function operations_(P) {
     (doc.lines || []).forEach(function (l) { if (l.report === 'amaha-daily') prodDays++; });
   });
 
-  var banks = fin.filter(function (x) { return x.v.bank_total !== '' && x.v.bank_total != null; })
-                 .map(function (x) { return { day: x.day, birr: n_(x.v.bank_total) }; });
+  /* the bank: the owner's balance (WhatsApp, from 16 Oct 2026 — Bank.js), and
+     on a day before it Selam's, from her old report */
+  var own = {};
+  daysOf_(P, BANK_REPORT_).forEach(function (x) { if (!blank_(x.v.bank_total)) own[x.day] = n_(x.v.bank_total); });
+  fin.forEach(function (x) { if (own[x.day] === undefined && !blank_(x.v.bank_total)) own[x.day] = n_(x.v.bank_total); });
+  var banks = Object.keys(own).sort().map(function (d) { return { day: d, birr: own[d] }; });
   var low = banks.reduce(function (m, b) { return !m || b.birr < m.birr ? b : m; }, null);
 
   return {

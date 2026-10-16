@@ -1742,6 +1742,21 @@ import {
     /* Ephrata's fixes of her collections, and the days she was asked to fix
        (apps-script/Money.js): her fixed day is the one the charts show */
     var fixes = {}, mfix = {};
+    /* the owner's bank balance, sent on WhatsApp, the last of each day
+       (apps-script/Bank.js — the user, 16 Oct 2026: "I report the bank
+       balance, not Finance") */
+    var ownBank = {}, BANK_FROM = '2026-10-16';
+    onSnapshot(query(collection(db, 'bank'), where('day', '>=', addDays(DAY, -40))),
+      function (qs) {
+        var by = {};
+        qs.forEach(function (d) {
+          var x = d.data({ serverTimestamps: 'estimate' });
+          x.when = x.at && x.at.toDate ? x.at.toDate() : new Date();
+          if (x.day && (!by[x.day] || x.when > by[x.day].when)) by[x.day] = x;
+        });
+        ownBank = by;
+        draw();
+      }, function () {});
 
     onSnapshot(query(collection(db, 'ledger'), where('day', '>=', addDays(DAY, -20)), orderBy('day', 'asc')),
       function (qs) {
@@ -1918,8 +1933,10 @@ import {
       var daily = byDay('betty-daily'), fc = byDay('betty-forecast'), pts = [];
       for (var i = 27; i >= 0; i--) {
         var d = addDays(DAY, -i);
-        var v = fig((daily[d] || {}).bank_total), note = t('chgFromDaily');
-        if (v == null) { v = fig((fc[d] || {}).cf7_bank); note = t('chgFromForecast'); }
+        /* the balance given on WhatsApp; on a day before 16 Oct 2026, Selam's */
+        var v = ownBank[d] ? fig(ownBank[d].total) : null, note = t('chgFromOwner');
+        if (v == null && d < BANK_FROM) { v = fig((daily[d] || {}).bank_total); note = t('chgFromDaily'); }
+        if (v == null && d < BANK_FROM) { v = fig((fc[d] || {}).cf7_bank); note = t('chgFromForecast'); }
         pts.push({ day: d, top: String(Number(d.slice(8))), bottom: (i === 27 || d.slice(8) === '01') ? monShort(d) : '',
                    title: dayShort(d), v: v, note: v == null ? '' : note,
                    open: closedDay(d) ? null : (function (day) {
@@ -1934,8 +1951,10 @@ import {
       var status = !lastP ? { kind: 'none', icon: '–', text: t('chgBankNone') }
         : lastP.v < 6000000 ? { kind: 'bad', icon: '▼', text: tfill('chgBankBelow', { v: birr(lastP.v), day: dayShort(lastP.day) }) }
         : { kind: 'good', icon: '✓', text: tfill('chgBankAbove', { v: birr(lastP.v), day: dayShort(lastP.day) }) };
+      var chk = bankCheck(daily);
       return C.line({
         title: t('chgBank'), sub: t('chgBankSub') + ' ' + t('chgTapBar'), status: status, points: pts, joinGap: 2,
+        caption: chk ? chk.text : '', capBad: !!(chk && chk.bad),
         ref: { v: 6000000, label: t('chgReserve'), good: 'above' },
         fmt: function (v) { return birr(v) + ' ' + t('unBirr'); }, tick: function (v) { return short(v); },
         lab: function (v) { return short(v); },
@@ -1943,6 +1962,43 @@ import {
         numbers: { title: t('chgNumbers'), head: [t('chgDay'), t('chgValue')],
                    rows: pts.filter(function (p) { return p.v != null; }).map(function (p) { return [p.title + ' · ' + p.note, birr(p.v)]; }) }
       });
+    }
+
+    /* The last balance given against the one before it and Selam's
+       transactions in between — the same sum as apps-script/Bank.js
+       bankCheck_: the balance before, plus what came into the four banks,
+       less what went out, plus cash taken to a bank, less cash drawn out. */
+    function bankNet(v) {
+      if (String(v.tx_any || '') === 'no') return { into: 0, out: 0 };
+      if (v.tx_list == null) return null;
+      var BANKS = ['cbe', 'awash', 'aby', 'zz'], r = { into: 0, out: 0 };
+      (Array.isArray(v.tx_list) ? v.tx_list : []).forEach(function (x) {
+        var a = x ? fig(x.amount) : null;
+        if (!a) return;
+        var from = BANKS.indexOf(x.via) >= 0, to = BANKS.indexOf(x.via2) >= 0;
+        if (x.dir === 'in' && from) r.into += a;
+        else if (x.dir === 'out' && from) r.out += a;
+        else if (x.dir === 'move' && x.via === 'cash' && to) r.into += a;
+        else if (x.dir === 'move' && from && x.via2 === 'cash') r.out += a;
+      });
+      return r;
+    }
+    function bankCheck(daily) {
+      var days = Object.keys(ownBank).filter(function (d) { return fig(ownBank[d].total) != null; }).sort();
+      if (days.length < 2) return null;
+      var day = days[days.length - 1], before = days[days.length - 2];
+      var into = 0, out = 0, missing = [];
+      for (var d = addDays(before, 1); d <= day; d = addDays(d, 1)) {
+        var n = daily[d] ? bankNet(daily[d]) : null;
+        if (!n) { if (daily[d] || !closedDay(d)) missing.push(dayShort(d)); continue; }
+        into += n.into; out += n.out;
+      }
+      if (missing.length) return { text: tfill('chgBankWait', { day: dayShort(day), days: missing.join(', ') }) };
+      var given = fig(ownBank[day].total), was = fig(ownBank[before].total), exp = was + into - out, diff = given - exp;
+      var o = { day: dayShort(day), was: birr(was), bday: dayShort(before), 'in': birr(into), out: birr(out), exp: birr(exp),
+                given: birr(given), diff: birr(Math.abs(diff)) };
+      if (Math.abs(diff) < 1) return { text: tfill('chgBankOk', o) };
+      return { bad: true, text: tfill(diff > 0 ? 'chgBankMore' : 'chgBankLess', o) };
     }
 
     /* ---- collected each week, against the 4,000,000 floor (the Chairman, 13 Oct 2026;

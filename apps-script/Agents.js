@@ -994,8 +994,10 @@ var AGENTS = [
     return {
       /* a yes/no: read as a number it was 0 whatever she answered */
       cash_in: a_(fin, 'cash_in'), all_cash_banked_today: ay_(fin, 'cash_banked'), cash_in_hand: a_(fin, 'cash_hand'),
-      bank_total: a_(fin, 'bank_total'), reserve_floor: 6000000,
-      below_6m_reported: ay_(fin, 'below6_reported'),
+      /* the bank is the owner's, sent on WhatsApp — not Selam's (16 Oct 2026,
+         Bank.js); her report is every transaction in and out */
+      bank: bankFacts_(d),
+      money_in_today: a_(fin, 'money_in'), money_out_today: a_(fin, 'money_out'),
       discrepancy: ay_(fin, 'discrepancy'),
       payments_approved: a_(fin, 'pay_approved'), payment_value: a_(fin, 'pay_value'),
       /* a count, not a yes/no — "1" was read as "no Kidan approval", and the
@@ -1006,13 +1008,8 @@ var AGENTS = [
       advance_received: a_(fin, 'adv_in'), final_received: a_(fin, 'final_in'),
       board_mismatch: a_(fin, 'board_mismatch'),
       documents_missing: a_(fin, 'doc_missing'),
-      bank_total_this_week: trend_(series_(d, 'betty-daily', 'bank_total')),
-      morning_bank_balance_last_7_days: series_(d, 'betty-forecast', 'cf7_bank'),
-      /* the last balance anyone reported this week, and when — so a reserve
-         already breached is said on a day Selam did not file, rather than
-         left to be spotted in a list of seven */
-      last_bank_balance_reported: lastKnown_(d, [['betty-daily', 'bank_total'], ['betty-forecast', 'cf7_bank']], 6000000),
-      days_until_below_6m_at_this_rate: daysToFloor_(series_(d, 'betty-forecast', 'cf7_bank'), 6000000),
+      bank_total_this_week: trend_(series_(d, BANK_REPORT_, 'bank_total')),
+      days_until_below_6m_at_this_rate: daysToFloor_(series_(d, BANK_REPORT_, 'bank_total'), 6000000),
       /* the bank loans (Loans.js): a payment due this week, and one past its date not shown paid */
       bank_loans: (function () {
         var lf = null;
@@ -1027,8 +1024,12 @@ var AGENTS = [
       'transfer, or a payment over 50,000 without Kidan is a same-day problem, not a '+
       'month-end one. If days_until_below_6m_at_this_rate gives a number, say it — that is '+
       'the warning Selam’s letter fines for not giving. If it gives none, do not '+
-      'estimate one. If last_bank_balance_reported is below the reserve, say so with its day '+
-      'even when today’s report is missing — the last thing known is that the floor was broken. '+
+      'estimate one. The bank balance is the owner’s, sent on WhatsApp (bank), not Selam’s; '+
+      'her report is every transaction in and out. If bank.last_balance_given is below the reserve, '+
+      'say so with its day even when today’s balance is missing — the last thing known is that the '+
+      'floor was broken. If bank.check_against_selams_transactions does not match, lead with it: '+
+      'the balance before, plus what she says came in, less what went out, is not the balance '+
+      'given — name the difference in Birr; money her list does not show is for her to explain. '+
       'If bank_loans has a payment due within 7 days, say it with its Birr and day and whether the '+
       'bank covers it and stays above the floor; a past payment not shown paid is for Selam to confirm '+
       'with the bank — never say it was paid or missed.' },

@@ -110,7 +110,7 @@ import {
      'instructions', 'nothing', 'agent', 'openObs', 'outside', 'notReported', 'birr', 'dept', 'people', 'noOne', 'noOneSub', 'fromKlever', 'toKidan', 'payKidan',
      'payKidanShort', 'roveM2', 'forRove', 'cust', 'custLegend', 'custNext', 'custContract', 'custAdv', 'custFinal',
      'custUnpaid', 'custProblems', 'custOpen', 'coOn', 'personOn', 'personOff', 'roveOnSub', 'gfOnSub', 'roveDaily',
-     'fromRove', 'meriOnSub', 'reOnSub', 'ownDaily', 'fromCo', 'banks', 'bankTotal', 'bankFrom', 'bankNone'].forEach(function (k) {
+     'fromRove', 'meriOnSub', 'reOnSub', 'ownDaily', 'fromCo', 'banks', 'bankTotal', 'bankFrom', 'bankOwn', 'bankNone'].forEach(function (k) {
       out[k] = t('un' + k.charAt(0).toUpperCase() + k.slice(1));
     });
     /* the board's steps, in words, for a customer's sheet */
@@ -327,6 +327,20 @@ import {
       data.filings = out;
       push();
     }, failed);
+
+    /* the bank balance, given on WhatsApp (apps-script/Bank.js, 16 Oct 2026):
+       the moons' figures. The Chairman's alone to read; a page that cannot
+       read it keeps Selam's older figures. */
+    onSnapshot(query(collection(db, 'bank'), where('day', '>=', addDays(DAY, -7))), function (qs) {
+      var out = [];
+      qs.forEach(function (d) {
+        var x = d.data({ serverTimestamps: 'estimate' });
+        if (!x.at || !x.at.toDate) return;
+        out.push({ day: x.day, at: x.at.toDate(), total: x.total, cbe: x.cbe, awash: x.awash, aby: x.aby, zz: x.zz });
+      });
+      data.bank = out;
+      push();
+    }, function () {});
 
     onSnapshot(query(collection(db, 'analysis'), orderBy('day', 'desc'), limit(1)), function (qs) {
       if (qs.empty) { data.findings = []; data.analysisDay = null; }

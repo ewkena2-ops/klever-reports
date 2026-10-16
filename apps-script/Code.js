@@ -14,14 +14,13 @@ var RESERVED_TABS_ = /^(Penalty Ledger|Daily Analysis|Deductions|Penalties|Bonus
 
    This is the anonymous endpoint, so a forged row could raise a false alert.
    That costs an email, not a fine: nothing here is charged or recorded. */
+/* (the two "bank below 6,000,000" alerts on Selam's reports went on 16 Oct
+   2026: the owner gives the balance on WhatsApp now, and is told there when
+   it is below the reserve — Bank.js) */
 var ALERTS_ = [
-  { report: 'betty-forecast', test: function (v) { return has_(v.cf7_bank) && num_(v.cf7_bank) < 6000000; },
-    say: function (v) { return 'Bank balance ' + money_(v.cf7_bank) + ' Birr this morning — below the 6,000,000 reserve'; } },
   { report: 'betty-forecast', test: function (v) { return yes__(v.cf7_short); },
     say: function (v) { return 'Selam expects a cash shortfall in the next 7 days' +
                                (has_(v.cf7_amount) ? ' — ' + money_(v.cf7_amount) + ' Birr short' : ''); } },
-  { report: 'betty-daily', test: function (v) { return has_(v.bank_total) && num_(v.bank_total) < 6000000; },
-    say: function (v) { return 'Bank total ' + money_(v.bank_total) + ' Birr — below the 6,000,000 reserve'; } },
   { report: 'betty-daily', test: function (v) { return yes__(v.discrepancy); },
     say: function () { return 'Selam reports a cash discrepancy'; } },
   { report: 'betty-cashflow', test: function (v) { return yes__(v.cf_short); },

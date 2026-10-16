@@ -56,29 +56,32 @@ function groupCfo_(d) {
   var finD = by['betty-daily'] || {};
   var fin = finD[d.day] || null, f0 = fin || {};
 
-  /* Klever's cash, the evening of the day read */
-  var bank = a_(f0, 'bank_total');
-  var banks = { cbe: a_(f0, 'bank_cbe'), awash: a_(f0, 'bank_awash'), abyssinia: a_(f0, 'bank_aby'), zamzam: a_(f0, 'bank_zz') };
-  var parts = [banks.cbe, banks.awash, banks.abyssinia, banks.zamzam].filter(function (x) { return x !== null; });
-  var partsSum = parts.length === 4 ? parts.reduce(function (a, x) { return a + x; }, 0) : null;
-  var last = lastKnown_(d, [['betty-daily', 'bank_total'], ['betty-forecast', 'cf7_bank']], GC_FLOOR_);
+  /* Klever's cash, the evening of the day read: the owner's balance, sent on
+     WhatsApp — not Selam's (16 Oct 2026, Bank.js) — and the check of it
+     against her transactions */
+  var ownD = by[BANK_REPORT_] || {}, own = ownD[d.day] || {};
+  var bank = a_(own, 'bank_total');
+  var banks = { cbe: a_(own, 'bank_cbe'), awash: a_(own, 'bank_awash'), abyssinia: a_(own, 'bank_aby'), zamzam: a_(own, 'bank_zz') };
+  var last = lastKnown_(d, [[BANK_REPORT_, 'bank_total']], GC_FLOOR_);
+  if (last) last.from = 'the owner, on WhatsApp';
+  var check = bankCheck_(d.day, (d.recent || []).concat(d.filed || []));
   var klever = {
     selam_filed: !!fin,
+    bank_balance_given_by: 'the owner on WhatsApp',
     bank_total: bank,
     by_bank: banks,
-    the_four_banks_add_up_to: partsSum,
-    /* to the Birr: 0.1 + 0.2 is not 0.3 in a computer (the bug hunt, 15 Oct 2026) */
-    banks_differ_from_total_by: partsSum !== null && bank !== null && Math.abs(partsSum - bank) >= 1 ? Math.round(partsSum - bank) : (partsSum !== null && bank !== null ? 0 : null),
     reserve_floor: GC_FLOOR_,
     above_the_floor_by: bank !== null ? bank - GC_FLOOR_ : null,
     last_bank_balance_reported: last,
+    balance_checked_against_selams_transactions: check,
+    money_in_today: a_(f0, 'money_in'), money_out_today: a_(f0, 'money_out'),
     cash_in: a_(f0, 'cash_in'), advances_in: a_(f0, 'adv_in'), final_payments_in: a_(f0, 'final_in'),
     cash_on_hand: a_(f0, 'cash_hand'), cash_on_hand_limit: GC_CASH_HAND_MAX_, all_cash_banked: ay_(f0, 'cash_banked'),
     payments_approved: a_(f0, 'pay_approved'), payments_approved_birr: a_(f0, 'pay_value'),
     week_so_far: { from: dayLabel_(monday), cash_in: gcSum_(finD, monday, d.day, 'cash_in'),
                    payments_approved_birr: gcSum_(finD, monday, d.day, 'pay_value') },
-    bank_last_7_days: series_(d, 'betty-daily', 'bank_total'),
-    days_until_below_the_floor_at_this_rate: daysToFloor_(series_(d, 'betty-daily', 'bank_total'), GC_FLOOR_)
+    bank_last_7_days: series_(d, BANK_REPORT_, 'bank_total'),
+    days_until_below_the_floor_at_this_rate: daysToFloor_(series_(d, BANK_REPORT_, 'bank_total'), GC_FLOOR_)
   };
 
   /* Selam's latest 7-day forecast */
@@ -140,14 +143,15 @@ function groupCfo_(d) {
     return r && n_(r.amount) > GC_KIDAN_ABOVE_ && !yes_(r.kidan);
   }).map(function (r) { return { to: String(r.to || '').trim(), for_what: String(r['for'] || '').trim(), birr: n_(r.amount) }; });
   bigNoKidan.forEach(function (p) { controls.push({ who: 'kidan', what: 'payment of ' + fmt_(p.birr) + ' Birr to ' + p.to + ' approved without Kidan (over 50,000)' }); });
-  if (bank !== null && bank < GC_FLOOR_ && ay_(f0, 'below6_reported') !== true) controls.push({ who: 'betty', what: 'bank below 6,000,000 and the Chairman not told the same day' });
+  /* the owner's balance against Selam's transactions (Bank.js): money her list does not show */
+  if (check && check.matches === false) controls.push({ who: 'betty', what: 'the bank balance of ' + check.day + ' is ' + fmt_(Math.round(Math.abs(check.difference))) +
+    ' Birr ' + (check.difference > 0 ? 'more' : 'less') + ' than the balance before it and her transactions explain' });
   if (ay_(f0, 'discrepancy') === true) controls.push({ who: 'betty', what: 'a cash discrepancy' + (ay_(f0, 'discrepancy_told') === true ? ' (the Chairman and Kidan were told)' : ', and the Chairman and Kidan were not told') });
   if (a_(f0, 'zz_disc') > 0) controls.push({ who: 'betty', what: a_(f0, 'zz_disc') + ' ZamZam discrepancies' });
   if (ay_(f0, 'zz_confirmed') === false) controls.push({ who: 'betty', what: 'a ZamZam cheque written without funds confirmed' });
   if (a_(f0, 'cash_hand') > GC_CASH_HAND_MAX_) controls.push({ who: 'betty', what: fmt_(a_(f0, 'cash_hand')) + ' Birr cash on hand overnight (limit 5,000)' });
   if (ay_(f0, 'cash_banked') === false) controls.push({ who: 'betty', what: 'not all of the day’s cash was banked' });
   if (ay_(f0, 'asm_unreserved') === true) controls.push({ who: 'betty', what: 'a job being installed without its assembler payment reserved' });
-  if (klever.banks_differ_from_total_by) controls.push({ who: 'betty', what: 'the four bank lines add up to ' + fmt_(partsSum) + ', not the ' + fmt_(bank) + ' total' });
   /* the salespeople's payments against Selam's receipts (Receipts.js) */
   var receipts = null;
   try { receipts = rcptFacts_(d.day, names); } catch (e) { Logger.log('group cfo receipts: %s', e.message); }

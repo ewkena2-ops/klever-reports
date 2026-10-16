@@ -93,11 +93,14 @@ function cfoFacts_(P, ops) {
              : (ops.money.cash_in !== null ? 'Selam’s daily reports, added up' : null);
   var net = (moneyIn !== null && spent !== null) ? moneyIn - spent : null;
 
+  /* the weekly report's own bank line went on 16 Oct 2026; the owner gives
+     the balance on WhatsApp (Bank.js), and a week before that Selam did */
   var bank = a_(v, 'f_bank');
   var bankFrom = 'Selam’s weekly report (end of week)';
   if (bank === null && ops.money.bank_last) {
     bank = ops.money.bank_last.birr;
-    bankFrom = 'Selam’s daily report of ' + dayLabel_(ops.money.bank_last.day);
+    bankFrom = (ops.money.bank_last.day >= '2026-10-16' ? 'the owner’s balance on WhatsApp, ' : 'Selam’s daily report of ') +
+               dayLabel_(ops.money.bank_last.day);
   }
   if (bank === null) bankFrom = null;
   var weeksLeft = null, weeksNote = null;

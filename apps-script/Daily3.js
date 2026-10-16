@@ -83,10 +83,12 @@ function reconcileFacts_(d) {
   var sel = vals_(d.filed, 'betty-daily'), eph = vals_(d.filed, 'ephrata-daily');
   var get = vals_(d.filed, 'getachew-daily'), yor = vals_(d.filed, 'alemaya-daily');
   var c = [];
-  var banks = [a_(sel, 'bank_cbe'), a_(sel, 'bank_awash'), a_(sel, 'bank_aby'), a_(sel, 'bank_zz')];
-  if (banks.every(function (x) { return x !== null; })) {
-    recCheck_(c, 'The four bank lines against the total', 'CBE + Awash + Abyssinia + ZamZam', banks.reduce(function (a, x) { return a + x; }, 0),
-              'Selam’s bank total', a_(sel, 'bank_total'), 'Selam');
+  /* the owner's bank balance (WhatsApp, 16 Oct 2026) against the one before it
+     and Selam's transactions in between (Bank.js) */
+  var bc = bankCheck_(d.day, (d.recent || []).concat(d.filed || []));
+  if (bc && bc.expected !== undefined) {
+    recCheck_(c, 'The bank balance against the balance before it and Selam’s transactions', 'balance given (owner)', bc.balance_given,
+              bc.before_day + ' balance + money into the banks − money out', bc.expected, 'Selam', 1);
   }
   recCheck_(c, 'Cash receipts listed against cash in', 'receipts listed', recSum_(sel.cash_in_list, 'amount'), 'cash in', a_(sel, 'cash_in'), 'Selam');
   recCheck_(c, 'Advances listed against advances', 'advances listed', recSum_(sel.adv_in_list, 'amount'), 'advances', a_(sel, 'adv_in'), 'Selam');

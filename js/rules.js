@@ -249,12 +249,14 @@ const RULES = [
     src:'Selam’s letter — “Petty cash receipt missing –100 Birr per receipt”',
     note:'No form asks about petty cash.' },
 
-  { id:'betty-below-6m-not-reported', who:['betty'], kind:'penalty', birr:1000, per:'event', how:'auto',
+  /* worked out from her bank balance and "was the Chairman told" until 16 Oct
+     2026, when the owner took over the balance (WhatsApp, apps-script/Bank.js)
+     and both questions left her report */
+  { id:'betty-below-6m-not-reported', who:['betty'], kind:'penalty', birr:1000, per:'event', how:'recorded',
     en:'Balance below 6 million not reported to the Chairman',
     am:'ከ6 ሚሊዮን ብር በታች ያለ የባንክ ሂሳብ ለሊቀመንበሩ አልተነገረም',
     src:'Selam’s letter — “Failed to report balance below 6M –1,000 Birr”',
-    note:'below6_reported is optional, so a blank answer charges nothing; making it required when the balance is under 6M would close that.',
-    test:{ at:'day', when:{ all:[['betty-daily.bank_total', '<', 6000000], ['betty-daily.below6_reported', '==', 'no']] } } },
+    hold:'Selam no longer reports the bank balance — the owner gives it on WhatsApp from 16 Oct 2026. Does this fine still apply to her?' },
 
   { id:'betty-nonessential-below-6m', who:['betty'], kind:'penalty', birr:5000, per:'event', how:'recorded',
     en:'Non-essential payment made while below 6 million',

@@ -974,7 +974,9 @@ function closeDay_(day, opts) {
     schedule: schedule,
     names: names,
     due: due,
-    filings: filings,
+    /* the readers' filings carry the owner's bank balances too (Bank.js) —
+       after the ledger and the rulebook, which owe and charge nothing on them */
+    filings: withBank_(filings, addDays_(day, isWeek ? -13 : -7), addDays_(day, 1)),
     filed: filings.filter(function (f) { return f.day === day; }),
     before: before,
     ledger: ledger,

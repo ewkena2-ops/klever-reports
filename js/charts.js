@@ -385,6 +385,9 @@
     });
 
     legend(box, o);
+    /* a line under it, as the grid has — the bank balance against Selam's
+       transactions (chairman.js bankChart, 16 Oct 2026) */
+    if (o.caption) el('p', 'cg-cap' + (o.capBad ? ' bad' : ''), o.caption, box);
     if (o.numbers) box.appendChild(table(o.numbers.title, o.numbers.head, o.numbers.rows));
     return box;
   }

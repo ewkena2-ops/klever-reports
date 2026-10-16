@@ -156,10 +156,11 @@ const CUST_WORD = { moving: { en: 'Moving', am: 'በሂደት ላይ' }, hold: {
 const FLOWS = [
   { from: 'customers', to: 'ephrata', report: 'ephrata-daily', field: 'collected_today', sum: null,
     en: 'Collected from customers — Ephrata’s report', am: 'ከደንበኞች የተሰበሰበ — የኤፍራታ ሪፖርት' },
-  { from: 'customers', to: 'bank', report: 'betty-daily', field: 'cash_in', sum: 'in',
-    en: 'Cash received — Selam’s report', am: 'የገባ ጥሬ ገንዘብ — የሰላም ሪፖርት' },
-  { from: 'bank', to: 'suppliers', report: 'betty-daily', field: 'pay_value', sum: 'out',
-    en: 'Payments approved — Selam’s report', am: 'የጸደቁ ክፍያዎች — የሰላም ሪፖርት' },
+  /* her one list of every transaction (16 Oct 2026): all the money in, all out */
+  { from: 'customers', to: 'bank', report: 'betty-daily', field: 'money_in', sum: 'in',
+    en: 'Money in — Selam’s report', am: 'ገቢ — የሰላም ሪፖርት' },
+  { from: 'bank', to: 'suppliers', report: 'betty-daily', field: 'money_out', sum: 'out',
+    en: 'Money out — Selam’s report', am: 'ወጪ — የሰላም ሪፖርት' },
   { from: 'bank', to: 'zamzam', report: 'betty-daily', field: 'zz_transfer', sum: null,
     en: 'Moved to ZamZam — Selam’s report', am: 'ወደ ዘምዘም የተላለፈ — የሰላም ሪፖርት' }
 ];
@@ -850,7 +851,7 @@ export function mount(root, opts) {
   });
   const bankOf = {};
   banks.forEach(m => { bankOf[m.b.id] = m; });
-  let bankTotal = null, bankAt = null;
+  let bankTotal = null, bankAt = null, bankOwn = false;
   const where = id => (nodes[id] ? nodes[id].pos : insts[id] ? insts[id].pos : bankOf[id] ? bankOf[id].pos : null);
 
   /* the day's report beams */
@@ -1151,6 +1152,13 @@ export function mount(root, opts) {
   const filled = x => x !== '' && x != null;
   function lastBalance(t) {
     let b = null;
+    /* the balance given on WhatsApp (apps-script/Bank.js, 16 Oct 2026) */
+    for (const x of (D.bank || [])) {
+      if (x.at.getTime() <= t && (!b || x.at > b.at)) {
+        b = { v: { bank_total: x.total, bank_cbe: x.cbe, bank_awash: x.awash, bank_aby: x.aby, bank_zz: x.zz }, at: x.at, own: true };
+      }
+    }
+    if (b) return b;
     for (const f of D.filings) {
       if (f.report === 'betty-daily' && f.at.getTime() <= t && f.values && filled(f.values.bank_total)) b = { v: f.values, at: f.at };
     }
@@ -1250,6 +1258,7 @@ export function mount(root, opts) {
     });
     bankTotal = bal ? num(bal.v.bank_total) : null;
     bankAt = bal ? bal.at : null;
+    bankOwn = !!(bal && bal.own);
     setText(bankI.lab, L(bankI.it) + (bankTotal != null ? ' · ' + money(bankTotal) : ''));
     let inn = 0, out = 0;
     flows.forEach(fl => {
@@ -1650,9 +1659,9 @@ export function mount(root, opts) {
         sheet.appendChild(row);
       };
       if (id === 'bank') {
-        /* Klever's own banks: each balance, then the total, as Selam last reported them */
+        /* Klever's own banks: each balance, then the total, as last given on WhatsApp (16 Oct 2026) */
         sheetHead(s('banks', 'Klever’s banks'), null, null, L(it),
-                  bankAt ? s('bankFrom', 'Balances from Selam’s report of') + ' ' + dayName(bankAt) + ' · ' + hhmm(bankAt)
+                  bankAt ? (bankOwn ? s('bankOwn', 'Balances given on WhatsApp') : s('bankFrom', 'Balances from Selam’s report of')) + ' ' + dayName(bankAt) + ' · ' + hhmm(bankAt)
                          : s('bankNone', 'No balance reported yet'));
         banks.forEach(m => rep(L(m.b), m.bal != null ? money(m.bal) + ' ' + s('birr', 'Birr') : s('notReported', 'not reported'), m.b.pal[0]));
         if (bankTotal != null) rep(s('bankTotal', 'All four banks'), money(bankTotal) + ' ' + s('birr', 'Birr'), '#ffd9a0');

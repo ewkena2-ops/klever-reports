@@ -36,39 +36,64 @@ var BANK_ACCOUNTS_ = [
 var BANK_IDS_ = ['cbe', 'awash', 'aby', 'zz'];
 /* a message that starts with one of these, and gives a figure, is a balance */
 var BANK_MSG_RE_ = /^\s*(?:(?:bank|banks|balance)(?![a-z])|ባንክ)/i;
+/* Without that word first, a message that names a bank beside a figure is a
+   balance too — "I have 70 K on CBE, 28K on BOA and 48 K on Awash" (the
+   user's own first try, 16 Oct 2026, which went to the AI instead) — unless it
+   is an order or a question: "tell Selam to move 500,000 from CBE". */
+var BANK_NOT_A_BALANCE_RE_ = /\b(tell|ask|order|move|moved|moving|transfer|transferred|pay|paid|send|sent|give|instruct|remind|why|how|what|who|when|where|which|did|does|can|could|should|will|would|please)\b/i;
 
 /* The figures in a message, or null when it is not a balance (no figure, or
-   a question: "bank balance?" is asked, not given). */
+   a question: "bank balance?" is asked, not given). The figure may come after
+   the bank ("CBE 70k") or before it ("70k on CBE"): whichever of the two the
+   message starts with is how it is written throughout. */
 function bankParse_(text) {
   var s = String(text || '');
-  if (/\?\s*$/.test(s) || !BANK_MSG_RE_.test(s)) return null;
-  s = s.replace(BANK_MSG_RE_, ' ');
+  if (/\?\s*$/.test(s)) return null;
+  var led = BANK_MSG_RE_.test(s);
+  if (led) s = s.replace(BANK_MSG_RE_, ' ');
+  else if (BANK_NOT_A_BALANCE_RE_.test(s)) return null;
   var out = { yesterday: /\byesterday\b|ትናንት/i.test(s), banks: {}, total: null, loose: [] };
   /* thousands written 2,300,000 · 2.300.000 · 2 300 000 → 2300000 */
   s = s.replace(/(\d)[,'’](?=\d{3}(?!\d))/g, '$1')
        .replace(/\b\d{1,3}(?:\.\d{3}){2,}\b/g, function (m) { return m.replace(/\./g, ''); })
        .replace(/(\d) (?=\d{3}(?!\d))/g, '$1');
   var re = /([A-Za-zሀ-፿]+)|(\d+(?:\.\d+)?)(?:\s*(k|thousand|ሺ|ሺህ|m|mn|mil|million|ሚሊዮን|ሚሊየን)(?![A-Za-zሀ-፿]))?/gi;
-  var cur = null, m;
+  var toks = [], m;
   while ((m = re.exec(s))) {
     if (m[1]) {
       var hit = null;
       BANK_ACCOUNTS_.forEach(function (b) { if (!hit && b.re.test(m[1])) hit = b.id; });
-      if (hit) cur = hit;
-      else if (/^(total|ጠቅላላ|ድምር)$/i.test(m[1])) cur = 'total';
-      /* any other word — birr, bank, of — leaves the bank it follows */
+      if (hit) toks.push({ bank: hit });
+      else if (/^(total|ጠቅላላ|ድምር)$/i.test(m[1])) toks.push({ bank: 'total' });
+      /* any other word — birr, bank, of, on — is passed over */
       continue;
     }
     var x = Number(m[2]), suf = String(m[3] || '').toLowerCase();
     if (/^(k|thousand|ሺ|ሺህ)$/.test(suf)) x *= 1000;
     else if (suf) x *= 1000000;
-    x = Math.round(x * 100) / 100;
-    if (cur === 'total') out.total = x;
-    else if (cur) { if (out.banks[cur] == null) out.banks[cur] = x; }
-    else out.loose.push(x);
-    cur = null;
+    toks.push({ v: Math.round(x * 100) / 100 });
   }
+  /* figure first? — a small number (a date) does not decide it */
+  var lead = toks.filter(function (t) { return t.bank || t.v >= 1000; })[0];
+  var figureFirst = !!(lead && !lead.bank);
+  var put = function (id, v) {
+    if (id === 'total') out.total = v;
+    else if (out.banks[id] == null) out.banks[id] = v;
+  };
+  var cur = null, held = null;
+  toks.forEach(function (t) {
+    if (figureFirst) {
+      if (t.bank) { if (held !== null) put(t.bank, held); held = null; }
+      else { if (held !== null) out.loose.push(held); held = t.v; }
+    } else {
+      if (t.bank) cur = t.bank;
+      else { if (cur) put(cur, t.v); else out.loose.push(t.v); cur = null; }
+    }
+  });
+  if (held !== null) out.loose.push(held);
   if (!Object.keys(out.banks).length) {
+    /* a total alone only after "bank": "Ephrata collected 500,000" is not one */
+    if (!led) return null;
     /* a figure under 1,000 with no bank before it is a date, not a balance */
     var big = out.loose.filter(function (x) { return x >= 1000; });
     if (out.total === null && big.length === 1) out.total = big[0];
@@ -194,7 +219,22 @@ function bankCheckFilings_(fromDay, day) {
    {reply, action} — or null when the message is not a balance. */
 function bankPropose_(text, who) {
   var p = bankParse_(text);
-  if (!p) return null;
+  return p ? bankProposeParsed_(p, who) : null;
+}
+/* The same from the WhatsApp AI's reading of a message the plain reading
+   above did not catch (Wa.js waDecideOrAnswer_, action "bank" — the user, 16
+   Oct 2026: "the AI has to understand what I want"). Only real figures pass. */
+function bankFromAi_(a, who) {
+  var fig = function (x) { var n = Number(x); return x !== null && x !== '' && isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null; };
+  var p = { yesterday: a.yesterday === true, banks: {}, total: fig(a.total), loose: [] };
+  BANK_IDS_.forEach(function (id) { var v = fig(a[id]); if (v !== null) p.banks[id] = v; });
+  if (!Object.keys(p.banks).length) {
+    if (p.total === null) return null;
+    p.totalOnly = true;
+  }
+  return bankProposeParsed_(p, who);
+}
+function bankProposeParsed_(p, who) {
   var day = todayAddis_();
   if (p.yesterday) day = addDays_(day, -1);
   var rec = { day: day, cbe: null, awash: null, aby: null, zz: null, total: null, given: [], carried: {}, by: who };
@@ -204,6 +244,13 @@ function bankPropose_(text, who) {
     rec.given = ['total'];
     lines.push('Total ' + bankMoney_(rec.total) + ' Birr (no banks named)');
   } else {
+    /* banks given in a message a few minutes ago that lacked the rest: kept,
+       so "zamzam 0" finishes "70k on CBE, 28k on BOA, 48k on Awash" */
+    var cache = CacheService.getScriptCache(), dkey = 'bank:draft:' + who, draft = null;
+    try { draft = JSON.parse(cache.get(dkey) || 'null'); } catch (e) { draft = null; }
+    if (draft && draft.day === day) {
+      Object.keys(draft.banks || {}).forEach(function (id) { if (p.banks[id] == null) p.banks[id] = draft.banks[id]; });
+    }
     var before = bankDocs_(addDays_(day, -60), day).filter(function (b) { return b.day <= day; });
     var last = {};
     before.forEach(function (b) { BANK_IDS_.forEach(function (id) { if (b[id] !== null && b[id] !== undefined) last[id] = { v: Number(b[id]), day: b.day }; }); });
@@ -220,10 +267,15 @@ function bankPropose_(text, who) {
       } else missing.push(a.en);
     });
     if (missing.length) {
-      return { reply: 'Not saved: no figure for ' + missing.join(', ') + ' yet. The first time, send all four banks, e.g.\n' +
-                      'bank CBE 2,300,000 Awash 900,000 Abyssinia 1,200,000 ZamZam 3,000,000\n' +
-                      'አልተቀመጠም፦ መጀመሪያ አራቱንም ባንኮች ይላኩ።' };
+      cache.put(dkey, JSON.stringify({ day: day, banks: p.banks }), 30 * 60);
+      var got = BANK_ACCOUNTS_.filter(function (a) { return p.banks[a.id] != null; })
+        .map(function (a) { return a.en + ' ' + bankMoney_(p.banks[a.id]); });
+      return { reply: 'Got ' + got.join(' · ') + '.\n' +
+                      'Still needed: ' + missing.join(', ') + ' — send ' + (missing.length === 1 ? 'it' : 'them') +
+                      ' now (0 if the account is empty), e.g. "' + missing[0].toLowerCase() + ' 0".\n' +
+                      'ገና ያልተላከ፦ ' + missing.join('፣ ') + ' — አሁን ይላኩ (ባዶ ከሆነ 0)።' };
     }
+    try { cache.remove(dkey); } catch (e) {}
     rec.total = Math.round(BANK_IDS_.reduce(function (s, id) { return s + rec[id]; }, 0) * 100) / 100;
     if (p.total !== null && Math.abs(p.total - rec.total) >= 1) {
       return { reply: 'Not saved: you wrote total ' + bankMoney_(p.total) + ', but the four banks add up to ' +

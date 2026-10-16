@@ -198,6 +198,8 @@
      yet, which count as sent-but-waiting. A report is done for a due day when
      a filing of it, by its owner's name, falls inside that day's window. */
   var FILINGS = [], SERVER_FILINGS = [];
+  /* the server's list has come at least once: before it, every day looks unsent */
+  var FILINGS_IN = false;
 
   /* Filings sent from this phone and not yet on the server. They wait in
      Firestore's cache and go when there is signal, but its queries leave
@@ -2285,6 +2287,38 @@
     return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000);
   }
 
+  /* ---------------- a report that keeps not coming ----------------
+
+     Ephrata's Board Check was owed on 13, 14 and 15 Oct 2026 and never came;
+     the user (16 Oct): "make her send it". A report with `remind` (forms.js)
+     says at the top of its person's home page, in red, the days of the last
+     week it was not sent, until today's is in. The script also rings their
+     phones at the `remind` time (apps-script/Push.js remindWatch_). */
+  function nagCard(p) {
+    var wrap = el('div', 'inswrap');
+    if (AUTH.isChairman() || !FILINGS_IN) return wrap;
+    var today = stamp();
+    reportsFor(p.id).forEach(function (r) {
+      if (!r.remind || r.cadence !== 'daily' || !dueOn(r, today) || filingFor(r, today)) return;
+      var missed = [];
+      for (var k = 7; k >= 1; k--) {
+        var d = addDays(today, -k);
+        if (dueOn(r, d) && !filingFor(r, d)) missed.push(dayLabel(d));
+      }
+      var passed = minsUntil(r.dueTime) < 0;
+      if (!missed.length && !passed) return;
+      var row = el('div', 'ins over nag');
+      row.appendChild(el('div', 'inst', tfill_('nagTitle', { report: L(r) })));
+      if (missed.length) row.appendChild(el('div', 'insd', tfill_('nagDays', { days: missed.join(', ') })));
+      row.appendChild(el('p', 'mfhow', tfill_(passed ? 'nagPassed' : 'nagToday', { time: hhmm(r.dueTime) }) + ' ' + t('nagSeen')));
+      var go = el('a', 'pushbtn nagbtn', t('fillItIn'));
+      go.href = 'form.html?r=' + encodeURIComponent(r.id);
+      row.appendChild(go);
+      wrap.appendChild(row);
+    });
+    return wrap;
+  }
+
   /* ---------------- notifications on this phone ---------------- */
 
   /* The Chairman's instructions reach the phone as a notification, even with
@@ -2537,6 +2571,7 @@
     var st = standing(p.id);
     root.appendChild(atScanCard());
     root.appendChild(deck(p, st));
+    root.appendChild(nagCard(p));
     root.appendChild(attendCard(p));
     root.appendChild(gateHeadCard(p));
     root.appendChild(moneyFixCard());
@@ -5924,6 +5959,7 @@
     });
     stopFilings = window.FB.watchFilings(AUTH.isChairman() ? null : AUTH.who(), since, function (list) {
       SERVER_FILINGS = list;
+      FILINGS_IN = true;
       mergeFilings();
       rerender();
       drawStatus();

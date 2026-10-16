@@ -2347,6 +2347,8 @@ function watch_(waitMs) {
     try { waPhotoWatch_(); } catch (e) { Logger.log('wa photos: %s', e.message); }
     /* and an instruction of his that has not reached its person's phone (Push.js) */
     notifyWaiting_();
+    /* a report that keeps not coming: its person's phones ring at its `remind` time (Push.js) */
+    try { remindWatch_(); } catch (e) { Logger.log('remind: %s', e.message); }
     /* a day whose collections she was asked to fix: closed when her fix is in (Money.js) */
     try { moneyWatch_(); } catch (e) { Logger.log('money watch: %s', e.message); }
     /* a day of payments still waiting on Selam: her answers reach it (Receipts.js) */

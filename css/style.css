@@ -499,6 +499,10 @@ input.mustgap,textarea.mustgap,select.mustgap{
 .ins.over .insd{color:var(--coral)}
 .insbox{display:flex;flex-direction:column;gap:9px}
 .insbox .insgo{align-self:flex-start;background:linear-gradient(180deg,var(--teal-hi),var(--teal));color:var(--teal-ink);border:0}
+/* a report that keeps not coming (app.js nagCard): the days it was not sent, and a way in */
+.nag .insd{margin-bottom:4px}
+.nag .mfhow{margin-bottom:2px}
+.nagbtn{display:inline-flex;align-items:center;text-decoration:none}
 /* collections to fix (Ephrata's home): each payment, both figures, a tap for either, a box for the real one */
 .mfhow{font-size:13.5px;color:var(--ink-2);line-height:1.5;margin:6px 0 10px}
 .mfitem{border-top:1px solid var(--line);padding:10px 0 12px}

@@ -159,6 +159,58 @@ function notifyWaiting_() {
   }
 }
 
+/* A REPORT THAT KEEPS NOT COMING (16 Oct 2026). Ephrata's Board Check was
+   owed on 13, 14 and 15 Oct and never came; the user: "make her send it".
+   A daily report with `remind` (forms.js, a time) rings its person's phones
+   at that time on a day it is owed and not yet in — once that day, even
+   when they have no phone to ring (Script Property REMIND_<report> holds the
+   day done; /pushlog/remind-<report>-<day> what was sent). Their home page
+   says the days it was not sent (js/app.js nagCard). */
+function remindWatch_() {
+  var day = todayAddis_();
+  var now = Utilities.formatDate(new Date(), tz_(), 'HH:mm');
+  var props = PropertiesService.getScriptProperties();
+  var waiting = remindList_().filter(function (r) {
+    return now >= r.remind && props.getProperty('REMIND_' + r.id) !== day;
+  });
+  if (!waiting.length) return;
+  var owed = dueOn_({ reports: waiting }, day);
+  waiting.forEach(function (r) {
+    try {
+      if (owed.indexOf(r) !== -1) remindOne_(r, day);
+      props.setProperty('REMIND_' + r.id, day);
+    } catch (e) { Logger.log('remind %s: %s', r.id, e.message); }
+  });
+}
+/* The reports with `remind`, from forms.js — read for this at most every
+   six hours, not on every ten-minute look */
+function remindList_() {
+  var cache = CacheService.getScriptCache();
+  try { var hit = JSON.parse(cache.get('remind:list') || 'null'); if (hit) return hit; } catch (e) {}
+  var list = loadSchedule_().reports.filter(function (r) { return r.remind && r.cadence === 'daily'; })
+    .map(function (r) {
+      return { id: r.id, person: r.person, cadence: r.cadence, dueTime: r.dueTime, remind: r.remind,
+               from: r.from || null, skipDays: r.skipDays || null, en: r.en, am: r.am };
+    });
+  cache.put('remind:list', JSON.stringify(list), 6 * 3600);
+  return list;
+}
+function remindOne_(r, day) {
+  var id = 'remind-' + r.id + '-' + day;
+  var filed = fsQuery_('reports', [['person', 'EQUAL', r.person], ['at', 'GREATER_THAN_OR_EQUAL', dayStart_(day)]], 'at')
+    .some(function (f) { return f.report === r.id; });
+  if (filed) return;
+  var due = deadline_(r, day), clock = atClock_(atMinutes_(due));   /* "4:00 PM" (Attend.js) */
+  var late = Date.now() >= due.getTime();
+  var res = pushTo_(r.person, 'Klever · ' + r.en + ' · ' + r.am,
+                    late ? 'Due at ' + clock + ' and not sent yet — send it now. · እስከ ' + clock + ' መላክ ነበረበት — አሁኑኑ ይላኩ።'
+                         : 'Due at ' + clock + ' today, not sent yet. · ዛሬ እስከ ' + clock + ' ድረስ ይላኩ — ገና አልተላከም።',
+                    id, 'form.html?r=' + encodeURIComponent(r.id));
+  fsPut_('pushlog/' + id, { to: r.person, report: r.id, day: day, at: new Date(), phones: res.phones,
+                            sent: res.sent, failed: res.failed, error: res.error });
+  Logger.log('remind %s: %s phone(s), %s rang', r.id, res.phones, res.sent);
+}
+
 /* "Send me a test", from a person's own page: to their own phones only. */
 function pushTestPost_(person) {
   var cache = CacheService.getScriptCache();

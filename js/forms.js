@@ -4335,9 +4335,13 @@ const REPORTS = [
    a mismatch blocks the card and goes to the Chairman the same day — this
    report is that. The totals, the matches and mismatches, PASS or FAIL, the
    jobs at each gate and the oldest card are worked out from what she taps.
-   Not in her terms letter, so no fine (noFine) until it is. */
+   Not in her terms letter, so no fine (noFine) until it is.
+   Never sent on 13, 14 or 15 Oct; the user, 16 Oct: "make her send it" —
+   her phones ring at 3:30 PM on a day it is not in yet, and her home page
+   says in red the days it was not sent (remind: app.js nagCard, Push.js
+   remindWatch_). */
 {
-  id:'ephrata-board', person:'ephrata', cadence:'daily', dueTime:'16:00', noFine:1, derived:1, from:'2026-10-13',
+  id:'ephrata-board', person:'ephrata', cadence:'daily', dueTime:'16:00', remind:'15:30', noFine:1, derived:1, from:'2026-10-13',
   en:'Daily Board Check', am:'ዕለታዊ የቦርድ ፍተሻ',
   toEn:'Chairman', toAm:'ሊቀመንበር',
   dueEn:'4:00 PM, Monday to Saturday', dueAm:'ከሰኞ እስከ ቅዳሜ ከቀኑ 10፡00 (4:00 PM)',

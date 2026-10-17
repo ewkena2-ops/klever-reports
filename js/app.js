@@ -2687,12 +2687,13 @@
     setView(null);
     /* A draft belongs to the due day it is for, not the calendar day it was
        typed on: a weekly report started on Thursday for Friday is still
-       there on Friday. If there is none for this period, the newest unsent
-       draft of this report from the last week comes back instead — a daily
-       report typed at 23:50 is not lost at 00:05. */
+       there on Friday. It is kept on the phone for that period only (the
+       user, 17 Oct 2026: "we agreed to save on the device for one day, so
+       they can fill in their whole day"): an earlier period's answers, sent
+       or not, never come back into a new one, and are cleared here. */
     var pd0 = periodNow(report);
     draftKey = 'klever.draft.' + report.id + '.' + (pd0.day || stamp());
-    var restoredFrom = null;
+    dropOtherPeriods(report.id, draftKey);
     try { values = JSON.parse(store.get(draftKey) || 'null'); } catch (e) { values = null; }
     bareCarry(values);
     /* What was sent for this period stays on this phone until the period is
@@ -2732,9 +2733,6 @@
       if (sentCopy && sentCopy.values && typeof sentCopy.values === 'object') {
         values = sentCopy.values;
         bareCarry(values);
-      } else {
-        var older = latestDraft(report.id, draftKey);
-        if (older) { values = older.values; restoredFrom = older.day; }
       }
     }
 
@@ -2775,9 +2773,6 @@
     head.appendChild(already);
     if (sentBefore) {
       head.appendChild(el('div', 'penalty soft sentkept', tfill_('sentKept', { at: clockOf(new Date(sentBefore)) })));
-    }
-    if (restoredFrom) {
-      head.appendChild(el('div', 'penalty soft', t('draftRestored').replace('{day}', dayLabel(restoredFrom))));
     }
 
     /* the penalty is the reason the deadline matters, so it is not a footnote */
@@ -2930,23 +2925,18 @@
     });
   }
 
-  /* the newest unsent draft of a report from the past week, other than `except` */
-  function latestDraft(reportId, except) {
-    var best = null, prefix = 'klever.draft.' + reportId + '.';
+  /* this report's answers kept for any other period (draft or sent copy):
+     gone — a new day starts empty */
+  function dropOtherPeriods(reportId, keep) {
     try {
+      var kill = [], keepSent = sentKeyOf(keep);
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (!k || k.indexOf(prefix) !== 0 || k === except) continue;
-        var day = k.slice(prefix.length);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < addDays(stamp(), -7)) continue;
-        /* a day whose report was sent: what is left is that day's, never another's */
-        if (localStorage.getItem('klever.sent.' + reportId + '.' + day)) continue;
-        var v = JSON.parse(localStorage.getItem(k) || 'null');
-        bareCarry(v, reportById(reportId));
-        if (v && hasContent(v) && (!best || day > best.day)) best = { day: day, values: v };
+        if (!k || k === keep || k === keepSent) continue;
+        if (k.indexOf('klever.draft.' + reportId + '.') === 0 || k.indexOf('klever.sent.' + reportId + '.') === 0) kill.push(k);
       }
-    } catch (e) { /* a blocked store just means no draft */ }
-    return best;
+      kill.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) { /* a blocked store just means nothing was kept */ }
   }
   function clearDrafts(reportId) {
     try {

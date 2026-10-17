@@ -415,6 +415,84 @@
       }, function () { cb(null); });
       });
     },
+    /* THE PRODUCTION TEAM AS AMAHA KEEPS IT (the user, 17 Oct 2026: "for
+       the production team, can Amaha add new persons by himself"). The
+       workers in js/forms.js are the code's; Amaha (or the Chairman) adds
+       one on his page — /workers/wk-… — and marks any worker as left with
+       the last day worked — /workersLeft/{id}. Decided that day: an added
+       worker counts at once (his lists, the gate) and the Chairman is told;
+       a left worker goes from the day after. Neither is a wage or a rule:
+       the payroll stays the Sheet's, the rulebook the code's.
+       cb({added: [docs], left: {id: {left, by, at}}}), or cb(null) when not
+       readable (anyone but Amaha, the Chairman, the gate and the script). */
+    watchWorkers: function (cb) {
+      return later(function () {
+      if (!user) return null;
+      var added = null, left = null;
+      function both() { if (added && left) cb({ added: added, left: left }); }
+      var a = F.onSnapshot(F.collection(db, 'workers'), function (snap) {
+        added = [];
+        snap.forEach(function (d) { var x = d.data({ serverTimestamps: 'estimate' }); x.id = d.id; added.push(x); });
+        both();
+      }, function () { cb(null); });
+      var b = F.onSnapshot(F.collection(db, 'workersLeft'), function (snap) {
+        left = {};
+        snap.forEach(function (d) { left[d.id] = d.data({ serverTimestamps: 'estimate' }); });
+        both();
+      }, function () { cb(null); });
+      return function () { a(); b(); };
+      });
+    },
+    /* a new worker: {en, am, roleEn, roleAm, from, phone} — its id made
+       from the name, never one taken (`taken`: the ids already in use) */
+    addWorker: function (w, taken) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      var base = 'wk-' + (String(w.en || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'worker');
+      var id = base, n = 2;
+      while (taken && taken[id]) id = base + '-' + (n++);
+      var x = { en: String(w.en || '').trim().slice(0, 80), roleEn: String(w.roleEn || '').trim().slice(0, 60),
+                from: String(w.from || ''), by: idOf(user), at: F.serverTimestamp() };
+      if (String(w.am || '').trim()) x.am = String(w.am).trim().slice(0, 80);
+      if (String(w.roleAm || '').trim()) x.roleAm = String(w.roleAm).trim().slice(0, 60);
+      if (String(w.phone || '').trim()) x.phone = String(w.phone).replace(/[^0-9+ ]/g, '').slice(0, 20);
+      return F.setDoc(F.doc(db, 'workers', id), x).then(function () { return id; });
+    },
+    /* the last day a worker worked ('' takes it back) */
+    setWorkerLeft: function (id, day) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      return F.setDoc(F.doc(db, 'workersLeft', id), { left: String(day || ''), by: idOf(user), at: F.serverTimestamp() });
+    },
+    /* the Chairman: a worker added by mistake (kept, marked) */
+    removeWorker: function (id) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      return F.updateDoc(F.doc(db, 'workers', id), { removed: true, removedBy: 'chairman', removedAt: F.serverTimestamp() });
+    },
+    /* Everyone at the factory gate, as people: the code's (`gate` in PEOPLE,
+       no company) and the workers added on Amaha's page (not removed), each
+       with `from` and `left` — the day they started and the last day they
+       worked, when known. `wk` is watchWorkers's answer (or null). */
+    gateTeam: function (wk) {
+      var left = (wk && wk.left) || {}, out = [], have = {};
+      (typeof PEOPLE !== 'undefined' ? PEOPLE : []).forEach(function (p) {
+        if (!p.gate || p.company) return;
+        var q = Object.assign({}, p);
+        if (p.worker && left[p.id] && left[p.id].left) q.left = left[p.id].left;
+        have[p.id] = 1;
+        out.push(q);
+      });
+      ((wk && wk.added) || []).forEach(function (w) {
+        if (w.removed || have[w.id] || !/^wk-[a-z0-9-]+$/.test(w.id)) return;
+        have[w.id] = 1;
+        out.push({ id: w.id, en: w.en, am: w.am || w.en, roleEn: w.roleEn, roleAm: w.roleAm || w.roleEn, grp: 'production',
+                   gate: 1, worker: 1, added: 1, from: w.from || null, left: (left[w.id] && left[w.id].left) || null,
+                   by: w.by, at: w.at, phone: w.phone || '' });
+      });
+      return out;
+    },
+    /* at the factory on `day`: started, and not past the last day worked */
+    onTeam: function (p, day) {
+      return !!p && !(p.from && day < p.from) && !(p.left && day > p.left);
+    },
     /* the day the gate is counted from: cb('yyyy-mm-dd' | null) */
     /* the Chairman's changes to the holidays (forms.js HOLIDAYS):
        cb({add:[{d,en,am}], remove:[d]}), or cb(null) when not readable */

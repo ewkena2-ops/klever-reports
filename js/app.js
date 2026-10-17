@@ -1997,9 +1997,9 @@
     if (gateHeadBox) return gateHeadBox;
     var wrap = gateHeadBox = el('div', 'atcard gthead');
     var today = wrap.day = stamp();
-    var st = { docs: null, photos: {}, faces: null, from: undefined };
+    var st = { docs: null, photos: {}, faces: null, from: undefined, wk: window.FB.watchWorkers ? undefined : null };
     function draw() {
-      if (!st.docs || !st.faces || st.from === undefined) return;
+      if (!st.docs || !st.faces || st.from === undefined || st.wk === undefined) return;
       var a = document.activeElement;
       if (a && a.tagName === 'INPUT' && wrap.contains(a)) {
         a.addEventListener('blur', function again() { a.removeEventListener('blur', again); setTimeout(draw, 200); });
@@ -2013,13 +2013,264 @@
       window.FB.watchGatePhotos(today, function (ph) { st.photos = ph || {}; draw(); }),
       window.FB.watchFaces(function (f) { if (f) { st.faces = f; draw(); } }),
       window.FB.watchGateConf(function (d) { st.from = d || null; draw(); })
-    ];
+    ].concat(window.FB.watchWorkers ? [window.FB.watchWorkers(function (wk) { st.wk = wk; draw(); })] : []);
     return wrap;
   }
-  /* everyone at the gate: `gate` in js/forms.js, and the payroll-only people whose face was added */
-  function gatePeopleOf(faces) {
-    var out = PEOPLE.filter(function (q) { return q.gate && !q.company; })
-      .map(function (q) { return { id: q.id, en: q.en, am: q.am, worker: !!q.worker }; });
+  /* AMAHA'S PRODUCTION TEAM (the user, 17 Oct 2026: "for the production
+     team, can Amaha add new persons by himself"). The workers at the
+     factory: the code's and the ones he added (/workers, js/fb.js). He adds
+     one — name, job, the day they start, a phone if they have one — and it
+     counts at once: his lists, the gate. He says when one has left, with the
+     last day worked (/workersLeft); they go from the day after. The Chairman
+     is told on his page. Never a wage: the payroll stays the Sheet's. */
+  var WORKER_JOBS = [
+    { en: 'Production Worker', am: 'የምርት ሠራተኛ' }, { en: 'Machine Operator', am: 'የማሽን ኦፕሬተር' },
+    { en: 'Helper', am: 'ረዳት' }, { en: 'Painter', am: 'ቀለም ቀቢ' },
+    { en: 'Cleaner', am: 'የጽዳት ሠራተኛ' }, { en: 'Guard', am: 'ጥበቃ' }
+  ];
+  var teamBox = null;
+  function teamCard(p) {
+    if (!p || p.id !== 'amaha' || AUTH.isChairman() || !window.FB || !window.FB.live() || !window.FB.watchWorkers) return el('div');
+    if (teamBox) return teamBox;
+    var wrap = teamBox = el('div', 'atcard tmcard');
+    var st = { wk: undefined, adding: false, leaving: null, form: {} };
+    function draw() {
+      if (st.wk === undefined) return;
+      if (typingIn(wrap, draw)) return;
+      drawTeam(wrap, st, draw);
+    }
+    wrap.redraw = draw;
+    wrap.stops = [window.FB.watchWorkers(function (wk) { st.wk = wk; draw(); })];
+    return wrap;
+  }
+  function drawTeam(wrap, st, redraw) {
+    wrap.innerHTML = '';
+    var today = stamp();
+    wrap.appendChild(el('h2', 'eyebrow', t('tmTitle')));
+    if (st.wk === null) { wrap.appendChild(el('p', 'codenote', t('tmNoRead'))); return; }
+    var team = window.FB.gateTeam(st.wk).filter(function (q) { return q.worker; });
+    var byName = function (a, b) { return L(a) < L(b) ? -1 : 1; };
+    var now = team.filter(function (q) { return !(q.left && q.left < today); }).sort(byName);
+    var gone = team.filter(function (q) { return q.left && q.left < today; }).sort(byName);
+    var box = el('div', 'ins tmlist');
+    box.appendChild(el('div', 'atsub', t('tmHow')));
+    /* twenty-odd names: folded under one line, open while he works in it */
+    var list = el('details', 'tmall');
+    list.open = !!st.open || !!st.leaving;
+    list.ontoggle = function () { st.open = list.open; };
+    list.appendChild(el('summary', 'atcounts', tfill_('tmCount', { n: now.length })));
+    now.forEach(function (q) { list.appendChild(teamRow(q, st, redraw, today)); });
+    box.appendChild(list);
+    wrap.appendChild(box);
+    if (st.adding) wrap.appendChild(teamAdd(st, redraw, today));
+    else {
+      var add = el('button', 'pushbtn tmaddbtn', t('tmAdd'));
+      add.type = 'button';
+      add.onclick = function () { st.adding = true; st.form = {}; redraw(); };
+      wrap.appendChild(add);
+    }
+    if (gone.length) {
+      var det = el('details', 'tmgone');
+      det.appendChild(el('summary', null, tfill_('tmGone', { n: gone.length })));
+      gone.forEach(function (q) { det.appendChild(teamRow(q, st, redraw, today)); });
+      wrap.appendChild(det);
+    }
+  }
+  function teamRow(q, st, redraw, today) {
+    var r = el('div', 'tmrow' + (q.left && q.left < today ? ' gone' : ''));
+    r.id = 'tm_' + q.id;
+    var w = el('div', 'tmname');
+    w.appendChild(el('div', 'tmn', L(q)));
+    var job = lang === 'am' ? (q.roleAm || q.roleEn) : q.roleEn;
+    var notes = [job];
+    if (q.added) notes.push(tfill_('tmAddedOn', { day: q.at && q.at.toDate ? dayLabel(ymdOf(addis(q.at.toDate().getTime()))) : '' }));
+    if (q.from && q.from > today) notes.push(tfill_('tmStarts', { day: dayLabel(q.from) }));
+    if (q.left) notes.push(tfill_('tmLastIs', { day: dayLabel(q.left) }));
+    w.appendChild(el('div', 'atsub', notes.filter(Boolean).join(' · ')));
+    r.appendChild(w);
+    var acts = el('div', 'tmacts');
+    if (q.left) {
+      var back = el('button', 'mfpick', t('tmUndo'));
+      back.type = 'button';
+      back.onclick = function () {
+        back.disabled = true;
+        window.FB.setWorkerLeft(q.id, '').then(function () { toast(t('tmBackSaved')); }, function () { back.disabled = false; toast(t('tmFailed')); });
+      };
+      acts.appendChild(back);
+    } else if (st.leaving === q.id) {
+      var lab = el('label', 'atsub', t('tmLastDay'));
+      var d = el('input');
+      d.type = 'date';
+      d.value = today;
+      d.max = addDays(today, 30);
+      if (q.from) d.min = q.from;
+      d.id = 'tmday_' + q.id;
+      lab.htmlFor = d.id;
+      acts.appendChild(lab);
+      acts.appendChild(dressDate(d));
+      var go = el('button', 'pushbtn', t('tmMarkLeft'));
+      go.type = 'button';
+      go.onclick = function () {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d.value)) { d.focus(); return; }
+        go.disabled = true;
+        window.FB.setWorkerLeft(q.id, d.value).then(function () {
+          st.leaving = null;
+          toast(t('tmLeftSaved'));
+          redraw();
+        }, function () { go.disabled = false; toast(t('tmFailed')); });
+      };
+      acts.appendChild(go);
+      var no = el('button', 'mfpick', t('tmCancel'));
+      no.type = 'button';
+      no.onclick = function () { st.leaving = null; redraw(); };
+      acts.appendChild(no);
+    } else {
+      var lb = el('button', 'mfpick tmleft', t('tmLeftBtn'));
+      lb.type = 'button';
+      lb.onclick = function () { st.leaving = q.id; redraw(); };
+      acts.appendChild(lb);
+    }
+    r.appendChild(acts);
+    return r;
+  }
+  function teamAdd(st, redraw, today) {
+    var f = st.form;
+    var box = el('div', 'ins tmform');
+    box.appendChild(el('div', 'inst', t('tmAddTitle')));
+    function field(key, label, type) {
+      var lab = el('label', 'tmlab', t(label));
+      var i = el('input');
+      i.type = type || 'text';
+      i.id = 'tm_' + key;
+      lab.htmlFor = i.id;
+      i.value = f[key] || '';
+      i.oninput = function () { f[key] = i.value; };
+      box.appendChild(lab);
+      box.appendChild(i);
+      return i;
+    }
+    var nameIn = field('en', 'tmName');
+    nameIn.autocomplete = 'off';
+    field('am', 'tmNameAm').autocomplete = 'off';
+    box.appendChild(el('div', 'tmlab', t('tmJob')));
+    var jobs = el('div', 'chips tmjobs');
+    var other = el('input');
+    other.type = 'text';
+    other.id = 'tm_jobOther';
+    other.placeholder = t('tmJobOther');
+    other.setAttribute('aria-label', t('tmJobOther'));
+    other.value = f.jobOther || '';
+    other.hidden = f.job !== 'other';
+    other.oninput = function () { f.jobOther = other.value; };
+    WORKER_JOBS.concat([{ en: 'other', am: '', other: 1 }]).forEach(function (j) {
+      var b = el('button', 'chip', j.other ? t('tmOther') : L(j));
+      b.type = 'button';
+      b.setAttribute('data-v', j.en);
+      b.setAttribute('aria-pressed', f.job === j.en ? 'true' : 'false');
+      b.onclick = function () {
+        f.job = j.en;
+        msg.hidden = true;
+        Array.prototype.forEach.call(jobs.children, function (c) { c.setAttribute('aria-pressed', c === b ? 'true' : 'false'); });
+        other.hidden = !j.other;
+        if (j.other) other.focus();
+      };
+      jobs.appendChild(b);
+    });
+    box.appendChild(jobs);
+    box.appendChild(other);
+    var fromLab = el('label', 'tmlab', t('tmFrom'));
+    var fromIn = el('input');
+    fromIn.type = 'date';
+    fromIn.id = 'tm_from';
+    fromLab.htmlFor = fromIn.id;
+    fromIn.value = f.from || today;
+    fromIn.min = addDays(today, -30);
+    fromIn.max = addDays(today, 60);
+    fromIn.onchange = fromIn.oninput = function () { f.from = fromIn.value; };
+    box.appendChild(fromLab);
+    box.appendChild(dressDate(fromIn));
+    var phoneIn = field('phone', 'tmPhone');
+    phoneIn.inputMode = 'tel';
+    var msg = el('p', 'pywarn');
+    msg.hidden = true;
+    box.appendChild(msg);
+    var bar = el('div', 'tmbar');
+    var save = el('button', 'pushbtn', t('tmSave'));
+    save.type = 'button';
+    save.onclick = function () {
+      var name = String(f.en || '').trim();
+      var jobEn = f.job === 'other' ? String(f.jobOther || '').trim() : f.job;
+      if (!name) { msg.textContent = t('tmNeedName'); msg.hidden = false; nameIn.focus(); return; }
+      if (!jobEn) { msg.textContent = t('tmNeedJob'); msg.hidden = false; return; }
+      var known = WORKER_JOBS.filter(function (j) { return j.en === jobEn; })[0];
+      var from = /^\d{4}-\d{2}-\d{2}$/.test(fromIn.value) ? fromIn.value : today;
+      var taken = {};
+      PEOPLE.forEach(function (q) { taken[q.id] = 1; });
+      ((st.wk && st.wk.added) || []).forEach(function (w) { taken[w.id] = 1; });
+      save.disabled = true;
+      window.FB.addWorker({ en: name, am: f.am, roleEn: jobEn, roleAm: known ? known.am : '', from: from, phone: f.phone }, taken).then(function () {
+        toast(tfill_('tmAdded', { name: name }));
+        st.adding = false;
+        st.form = {};
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        redraw();
+      }, function () { save.disabled = false; msg.textContent = t('tmFailed'); msg.hidden = false; });
+    };
+    bar.appendChild(save);
+    var cancel = el('button', 'mfpick', t('tmCancel'));
+    cancel.type = 'button';
+    cancel.onclick = function () { st.adding = false; st.form = {}; redraw(); };
+    bar.appendChild(cancel);
+    box.appendChild(bar);
+    return box;
+  }
+
+  /* Amaha's lists of workers — absent, late, overtime — pick from WORKERS
+     (js/forms.js): with the workers he added, and without those he marked
+     left before the day being reported. The last team seen is kept on the
+     phone (a per-phone convenience) so the lists have it on opening. */
+  function teamIntoPicks(day) {
+    if (typeof WORKERS === 'undefined' || !Array.isArray(WORKERS) || !window.FB || !window.FB.gateTeam) return;
+    var base = WORKERS.__code || (WORKERS.__code = WORKERS.slice());
+    function apply(wk) {
+      if (!wk) return;
+      var team = window.FB.gateTeam(wk), byId = {};
+      team.forEach(function (q) { byId[q.id] = q; });
+      var out = [];
+      base.forEach(function (o) {
+        var q = PEOPLE.filter(function (x) { return x.en === o.v && x.worker; })[0];
+        if (q && byId[q.id] && byId[q.id].left && byId[q.id].left < day) return;
+        if (o.v === 'Someone else') return;
+        out.push(o);
+      });
+      team.forEach(function (q) {
+        if (!q.added || !window.FB.onTeam(q, day)) return;
+        out.push({ v: q.en, en: q.en, am: q.am || q.en });
+      });
+      base.filter(function (o) { return o.v === 'Someone else'; }).forEach(function (o) { out.push(o); });
+      WORKERS.length = 0;
+      out.forEach(function (o) { WORKERS.push(o); });
+    }
+    try { apply(JSON.parse(localStorage.getItem('klever.team') || 'null')); } catch (e) {}
+    if (!window.FB.watchWorkers) return;
+    var stop = null;
+    stop = window.FB.watchWorkers(function (wk) {
+      if (!wk) return;
+      try { localStorage.setItem('klever.team', JSON.stringify({ added: wk.added.map(function (w) {
+        return { id: w.id, en: w.en, am: w.am, roleEn: w.roleEn, roleAm: w.roleAm, from: w.from, removed: !!w.removed };
+      }), left: wk.left })); } catch (e) {}
+      apply(wk);
+      if (stop) { try { stop(); } catch (e) {} }
+    });
+  }
+
+  /* everyone at the gate: `gate` in js/forms.js, the workers Amaha added
+     (/workers, with the days they started and left), and the payroll-only
+     people whose face was added */
+  function gatePeopleOf(faces, wk) {
+    var team = window.FB && window.FB.gateTeam ? window.FB.gateTeam(wk)
+             : PEOPLE.filter(function (q) { return q.gate && !q.company; });
+    var out = team.map(function (q) { return { id: q.id, en: q.en, am: q.am, worker: !!q.worker, from: q.from || null, left: q.left || null }; });
     var have = {};
     out.forEach(function (q) { have[q.id] = 1; });
     (faces || []).forEach(function (f) {
@@ -2030,7 +2281,10 @@
   function drawGateHead(wrap, st, today) {
     wrap.innerHTML = '';
     atKind = 'gt';
-    var people = gatePeopleOf(st.faces);
+    var everyone = gatePeopleOf(st.faces, st.wk);
+    /* at the factory that day: started, and not past the last day worked */
+    var onDay = function (q, d) { return !(q.from && d < q.from) && !(q.left && d > q.left); };
+    var people = everyone.filter(function (q) { return onDay(q, today); });
     var counting = !!st.from && today >= st.from;
     var by = {};
     st.docs.forEach(function (d) { (by[d.day] = by[d.day] || {})[d.person] = d; });
@@ -2125,7 +2379,8 @@
     for (var i = 1; i <= 7; i++) {
       var d = addDays(today, -i);
       if (dowOf(d) === 0) continue;
-      people.forEach(function (q) {
+      everyone.forEach(function (q) {
+        if (!onDay(q, d)) return;
         var x0 = (by[d] || {})[q.id], x = atReal(x0);
         if (x0 && x0.how === 'tap' && x0.check === 'open' && q.id !== 'amaha') {
           var row = el('div', 'ins at');
@@ -2658,6 +2913,7 @@
     root.appendChild(nagCard(p));
     root.appendChild(attendCard(p));
     root.appendChild(gateHeadCard(p));
+    root.appendChild(teamCard(p));
     root.appendChild(moneyFixCard());
     root.appendChild(receiptCard());
     root.appendChild(payrollCard());
@@ -2742,6 +2998,8 @@
     if (report.built) { renderBuilt(root, person); return; }
     /* what each lead no., KK and RBT code is (the code book, read once) */
     loadBook();
+    /* Amaha's lists of workers: the team as he keeps it (17 Oct 2026) */
+    if (report.person === 'amaha') teamIntoPicks(periodNow(report).day || stamp());
 
     setView(null);
     /* A draft belongs to the due day it is for, not the calendar day it was

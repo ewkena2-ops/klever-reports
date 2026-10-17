@@ -2244,3 +2244,24 @@ body.gatepage{padding:0;overflow-x:hidden}
 .chhoadd input{font:inherit;font-size:16px;min-height:44px;padding:0 10px;border:1px solid var(--line-2);border-radius:10px;background:var(--card-2,var(--card));color:var(--ink)}
 .chhoadd input[type=text]{flex:1 1 180px;min-width:0}
 .chhoadd .chmini{min-height:44px}
+
+/* ---------- Amaha's production team (17 Oct 2026, js/app.js teamCard) ---------- */
+.tmcard .tmlist{padding-bottom:6px}
+.tmall summary{cursor:pointer;min-height:40px;display:flex;align-items:center;margin-top:6px}
+.tmrow{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line)}
+.tmrow.gone .tmn{color:var(--dim)}
+.tmname{flex:1 1 160px;min-width:0}
+.tmn{font-size:14.5px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.tmacts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end}
+.tmacts .datebox{min-width:0;flex:1 1 180px}
+.tmacts .mfpick,.tmacts .pushbtn{min-height:40px}
+.tmaddbtn{margin-top:10px}
+.tmform{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.tmform input[type=text]{min-height:44px;width:100%}
+.tmlab{font-size:12.5px;color:var(--mut);margin-top:6px}
+.tmjobs{display:flex;flex-wrap:wrap;gap:6px}
+.tmbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.tmgone{margin-top:10px}
+.tmgone summary{cursor:pointer;color:var(--mut);font-size:13.5px;min-height:36px;display:flex;align-items:center}
+.tmch .tmchrow{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.tmch .tmchrow .codenote{margin:2px 0 0;text-align:left}

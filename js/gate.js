@@ -54,6 +54,7 @@
 
   var root = null, video = null;
   var faces = [];              /* [{person, name, photo, vecs:[Float32Array]}] */
+  var team = null;             /* the workers Amaha added and marked left (js/fb.js watchWorkers) */
   var payOnly = null;          /* the payroll-only people, for adding a face */
   var mode = 'boot', sub = '';
   var session = null;          /* whoever is adding faces */
@@ -171,17 +172,33 @@
 
   /* ---------------- who is at the gate ---------------- */
 
+  /* the code's people at the gate, the workers Amaha added (17 Oct 2026),
+     and the payroll-only people whose face was added — today's: a worker
+     he marked left is gone from the day after their last day */
   function gatePeople() {
-    var out = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.gate && !p.company; })
+    var today = dayOf();
+    var list = window.FB && window.FB.gateTeam ? window.FB.gateTeam(team)
+             : (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.gate && !p.company; });
+    var gone = {};
+    list.forEach(function (p) { if (window.FB && window.FB.onTeam && !window.FB.onTeam(p, today)) gone[p.id] = 1; });
+    var out = list.filter(function (p) { return !gone[p.id]; })
       .map(function (p) { return { id: p.id, name: p.en, am: p.am || p.en, worker: !!p.worker }; });
+    out.gone = gone;
     var have = {};
     out.forEach(function (p) { have[p.id] = 1; });
     faces.forEach(function (f) {
-      if (have[f.person]) return;
+      if (have[f.person] || gone[f.person] || /^wk-/.test(f.person)) return;
       have[f.person] = 1;
       out.push({ id: f.person, name: f.name, am: f.name, worker: true });
     });
-    return out.sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+    out.sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+    return out;
+  }
+  /* the faces of today's people only: a worker who has left is not known */
+  function liveFaces() {
+    var ids = {};
+    gatePeople().forEach(function (p) { ids[p.id] = 1; });
+    return faces.filter(function (f) { return ids[f.person]; });
   }
   function personOf(id) {
     return gatePeople().filter(function (p) { return p.id === id; })[0] || { id: id, name: id, am: id };
@@ -437,7 +454,7 @@
     var big = biggest(found);
     if (!big) { streak = null; K.ring.className = 'gtring far'; say('gtCloser'); return; }
     if (!seenSince) seenSince = Date.now();
-    var m = nearest(big.descriptor, faces);
+    var m = nearest(big.descriptor, liveFaces());
     if (sure(m)) {
       if (letBe[m.person] > Date.now()) return;
       streak = streak && streak.person === m.person ? { person: m.person, n: streak.n + 1 } : { person: m.person, n: 1 };
@@ -811,7 +828,7 @@
     if (spread > 0.6) { toast('gtEnrolMixed'); setTimeout(function () { enrolPerson(p); }, 1500); return; }
     var like = null;
     shots.forEach(function (s) {
-      var m = nearest(s.vec, faces, p.id);
+      var m = nearest(s.vec, liveFaces(), p.id);
       if (m && m.d < 0.4 && (!like || m.d < like.d)) like = m;
     });
     var save = function () {
@@ -903,7 +920,7 @@
 
   /* ---------------- start ---------------- */
 
-  var stopFaces = null;
+  var stopFaces = null, stopTeam = null;
   function start() {
     root.innerHTML = '';
     root.appendChild(two('gtStarting', null, 'gtsub gtwait'));
@@ -915,6 +932,14 @@
       a.href = 'index.html';
       message('gtNotForYou', a);
       return;
+    }
+    if (!stopTeam && window.FB.watchWorkers) {
+      stopTeam = window.FB.watchWorkers(function (wk) {
+        if (wk === null) return;
+        team = wk;
+        if (mode === 'enrol' && sub === 'list') enrolList();
+        if (mode === 'kiosk' && sub === 'idle') idleWords();
+      });
     }
     if (!stopFaces) {
       stopFaces = window.FB.watchFaces(function (list) {

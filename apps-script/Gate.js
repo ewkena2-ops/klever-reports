@@ -46,13 +46,37 @@ function gtFrom_() {
   return d && /^\d{4}-\d{2}-\d{2}$/.test(String(d.from || '')) ? d.from : null;
 }
 
-/* Everyone at the gate: `gate` in js/forms.js PEOPLE, and anyone on the
-   payroll only whose face was added there. */
+/* THE PRODUCTION TEAM AS AMAHA KEEPS IT (the user, 17 Oct 2026: "for the
+   production team, can Amaha add new persons by himself"): the workers he
+   added on his page (/workers/wk-…) and the last day any worker worked
+   (/workersLeft/{id}) — js/fb.js gateTeam is the same on the pages. Read
+   once a run; a failed read is the code's workers alone. Never a wage or a
+   rule: the payroll stays the Sheet's, the rulebook the code's. */
+var GT_TEAM_ = null;
+function gtTeam_() {
+  if (GT_TEAM_) return GT_TEAM_;
+  var added = tryQuery_('workers', [], null), left = {};
+  tryQuery_('workersLeft', [], null).forEach(function (d) { if (d && d._id) left[d._id] = String(d.left || ''); });
+  GT_TEAM_ = { added: added.filter(function (w) { return w && !w.removed && /^wk-[a-z0-9-]{2,60}$/.test(w._id || ''); }), left: left };
+  return GT_TEAM_;
+}
+
+/* Everyone at the gate: `gate` in js/forms.js PEOPLE, the workers Amaha
+   added, and anyone on the payroll only whose face was added there — each
+   with the day they started and the last day they worked, when known
+   (attendDay_ counts a person only between the two). */
 function gtPeople_(schedule, faces) {
+  var tm = gtTeam_();
   var out = ((schedule && schedule.people) || []).filter(function (p) { return p.gate && !p.company; })
-    .map(function (p) { return { id: p.id, en: p.en, from: p.from || null, worker: !!p.worker }; });
+    .map(function (p) { return { id: p.id, en: p.en, from: p.from || null, worker: !!p.worker,
+                                 left: p.worker ? tm.left[p.id] || null : null }; });
   var have = {};
   out.forEach(function (p) { have[p.id] = true; });
+  tm.added.forEach(function (w) {
+    if (have[w._id]) return;
+    have[w._id] = true;
+    out.push({ id: w._id, en: w.en, from: w.from || null, worker: true, added: true, left: tm.left[w._id] || null });
+  });
   (faces || []).forEach(function (f) {
     if (f && f.person && !have[f.person] && /^pay-[a-z0-9-]+$/.test(f.person)) {
       have[f.person] = true;
@@ -100,7 +124,7 @@ function gatePost_(row, poster) {
   var person = String(row.person || '');
   if (!/^[a-z0-9-]{2,60}$/.test(person)) return JSON.stringify({ ok: false, why: 'unknown' });
   var schedule = loadSchedule_();
-  var p = (schedule.people || []).filter(function (x) { return x.id === person && x.gate && !x.company; })[0];
+  var p = gtPeople_(schedule, []).filter(function (x) { return x.id === person; })[0];
   var face = null;
   if (!p) { try { face = fsGet_('faces/' + person); } catch (e) { face = null; } }
   if (!p && !(face && /^pay-/.test(person))) return JSON.stringify({ ok: false, why: 'unknown' });
@@ -119,6 +143,8 @@ function gatePost_(row, poster) {
   }
   var waited = Math.round((now.getTime() - when.getTime()) / 60000);
   var day = Utilities.formatDate(when, tz_(), 'yyyy-MM-dd'), mins = atMinutes_(when);
+  /* a worker Amaha marked as left is not at the gate after the last day */
+  if (p && p.left && day > p.left) return JSON.stringify({ ok: false, why: 'left' });
   var path = 'attend/' + day + '_' + person;
   var how = row.how === 'face' ? 'face' : 'tap';
   var sunday = closed_(day);            /* or a holiday: recorded, never late */
@@ -197,8 +223,28 @@ function factoryGateFacts_(day) {
          'A tapped name (face not recognised) waits until Amaha or the Chairman checks the picture. ' +
          'No money is taken for it; Amaha says why for workers, the heads say it for themselves.',
     day: day, today: attendDay_(schedule, day, docs, people),
-    no_face_added_yet: people.filter(function (p) { return !faced[p.id]; }).map(function (p) { return p.en; }),
+    no_face_added_yet: people.filter(function (p) { return !faced[p.id] && !(p.from && day < p.from) && !(p.left && day > p.left); })
+      .map(function (p) { return p.en; }),
+    team_changes_14_days: gtTeamChanges_(day),
     month: AT_ETH_MONTHS_[eth.m - 1] + ' ' + eth.y + ' (Ethiopian calendar), counted from ' + monthStart,
     month_so_far: Object.keys(month).map(function (k) { return month[k]; })
   };
+}
+
+/* what Amaha changed in the team in the 14 days to `day`, for the morning
+   reading and Ask: added (with the job and the start), marked left */
+function gtTeamChanges_(day) {
+  var since = addDays_(day, -14), out = [];
+  var tm = gtTeam_();
+  var dayOf = function (v) { return v instanceof Date ? Utilities.formatDate(v, tz_(), 'yyyy-MM-dd') : ''; };
+  tm.added.forEach(function (w) {
+    var on = dayOf(w.at);
+    if (on && on >= since) out.push((w.by === 'chairman' ? 'The Chairman' : 'Amaha') + ' added ' + w.en + ' (' + w.roleEn + '), starting ' + w.from + ' — no wage set yet');
+  });
+  tryQuery_('workersLeft', [], null).forEach(function (d) {
+    var on = dayOf(d.at);
+    if (!on || on < since) return;
+    out.push((d.by === 'chairman' ? 'The Chairman' : 'Amaha') + (d.left ? ' marked ' + d._id + ' as left, last day ' + d.left : ' put ' + d._id + ' back on the team'));
+  });
+  return out;
 }

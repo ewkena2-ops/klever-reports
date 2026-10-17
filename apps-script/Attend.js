@@ -131,7 +131,9 @@ function atEffective_(d) {
 function attendDay_(schedule, day, docs, people) {
   var by = {};
   (docs || []).forEach(function (d) { if (d.day === day) by[d.person] = d; });
-  return (people || atPeople_(schedule)).filter(function (p) { return !p.from || p.from <= day; }).map(function (p) {
+  /* from the day they started to the last day they worked (a worker Amaha
+     marked as left, 17 Oct 2026) */
+  return (people || atPeople_(schedule)).filter(function (p) { return (!p.from || p.from <= day) && (!p.left || p.left >= day); }).map(function (p) {
     var raw = by[p.id] || {}, d = atEffective_(raw);
     var scanned = !!d.scanAt;
     var r = { id: p.id, name: p.en,

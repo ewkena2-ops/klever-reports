@@ -1016,8 +1016,11 @@ import {
      at, and the Ethiopian month day by day. */
   function watchGate(into) {
     var monthStart = window.KLEVER && window.KLEVER.ethMonthStart ? window.KLEVER.ethMonthStart(DAY) : DAY.slice(0, 8) + '01';
-    var st = { docs: null, photos: null, faces: null, from: undefined };
-    function draw() { if (st.docs && st.photos && st.faces && st.from !== undefined) drawGate(into, st, monthStart); }
+    var st = { docs: null, photos: null, faces: null, from: undefined,
+               wk: window.FB && window.FB.watchWorkers ? undefined : null };
+    function draw() { if (st.docs && st.photos && st.faces && st.from !== undefined && st.wk !== undefined) drawGate(into, st, monthStart); }
+    /* the production team as Amaha keeps it (js/fb.js watchWorkers, 17 Oct 2026) */
+    if (window.FB && window.FB.watchWorkers) window.FB.watchWorkers(function (wk) { st.wk = wk; draw(); });
     onSnapshot(query(collection(db, 'attend'), where('day', '>=', monthStart)), function (snap) {
       st.docs = [];
       snap.forEach(function (d) { st.docs.push(d.data({ serverTimestamps: 'estimate' })); });
@@ -1038,9 +1041,10 @@ import {
       draw();
     }, failInto(into));
   }
-  function gtPeople(faces) {
-    var out = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.gate && !p.company; })
-      .map(function (p) { return { id: p.id, en: p.en, am: p.am, worker: !!p.worker }; });
+  function gtPeople(faces, wk) {
+    var team = window.FB && window.FB.gateTeam ? window.FB.gateTeam(wk)
+             : (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.gate && !p.company; });
+    var out = team.map(function (p) { return { id: p.id, en: p.en, am: p.am, worker: !!p.worker, from: p.from || null, left: p.left || null }; });
     var have = {};
     out.forEach(function (p) { have[p.id] = 1; });
     faces.forEach(function (f) {
@@ -1146,7 +1150,11 @@ import {
   }
   function drawGate(into, st, monthStart) {
     into.innerHTML = '';
-    var people = gtPeople(st.faces);
+    var everyone = gtPeople(st.faces, st.wk);
+    /* at the factory that day: started, and not past the last day worked */
+    var onDay = function (p, d) { return !(p.from && d < p.from) && !(p.left && d > p.left); };
+    var people = everyone.filter(function (p) { return onDay(p, DAY); });
+    teamChanges(into, st.wk);
     var by = {};
     st.docs.forEach(function (d) { if (d.place === 'factory' || people.some(function (p) { return p.id === d.person; })) (by[d.day] = by[d.day] || {})[d.person] = d; });
     var counting = !!st.from && DAY >= st.from;
@@ -1253,9 +1261,11 @@ import {
     var dayName = window.KLEVER && window.KLEVER.ethDayLabel ? window.KLEVER.ethDayLabel : prettyDay;
     var det = el('details', 'chmonth atmonth');
     det.appendChild(el('summary', null, tfill('atMonthEth', { month: window.KLEVER && window.KLEVER.ethMonthName ? window.KLEVER.ethMonthName(DAY) : '', day: prettyDay(since) })));
-    people.forEach(function (p) {
+    everyone.forEach(function (p) {
       var on = 0, late = 0, none = 0, lines = [];
+      if (!days.some(function (day) { return onDay(p, day); })) return;
       days.forEach(function (day) {
+        if (!onDay(p, day)) return;
         var x = gtEff((by[day] || {})[p.id]);
         var scanned = !!x.scanAt;
         if (scanned && !x.late) { on++; lines.push(dayName(day) + ': ✓ ' + x.hm + (x.how === 'tap' ? ' (' + t('gtByTap') + ')' : '')); return; }
@@ -1270,6 +1280,57 @@ import {
       det.appendChild(row);
     });
     into.appendChild(det);
+  }
+  /* WHAT AMAHA CHANGED IN THE PRODUCTION TEAM (the user, 17 Oct 2026: "can
+     Amaha add new persons by himself" — yes, at once, and the Chairman is
+     told). The last 14 days: who was added, who was marked left or put
+     back. An add made by mistake is removed here (kept, marked — never
+     deleted). An added worker has no wage: the payroll stays the Sheet's. */
+  function teamChanges(into, wk) {
+    if (!wk) return;
+    var since = addDays(DAY, -14), rows = [];
+    var whoOf = function (id) { return nameOf(id); };
+    var dayOfTs = function (v) { var d = v && v.toDate ? v.toDate() : null; return d ? new Date(d.getTime() + 3 * 3600000).toISOString().slice(0, 10) : ''; };
+    var wName = function (id) {
+      var w = (wk.added || []).filter(function (x) { return x.id === id; })[0];
+      if (w) return lang === 'am' && w.am ? w.am : w.en;
+      var p = personById(id);
+      return p ? L(p) : id;
+    };
+    (wk.added || []).forEach(function (w) {
+      var on = dayOfTs(w.at);
+      if (on && on < since) return;
+      rows.push({ at: w.at && w.at.toDate ? w.at.toDate().getTime() : Date.now(), w: w,
+                  text: tfill('tmChAdded', { who: whoOf(w.by), name: lang === 'am' && w.am ? w.am : w.en,
+                                             job: lang === 'am' && w.roleAm ? w.roleAm : w.roleEn, day: prettyDay(w.from) }) });
+    });
+    Object.keys(wk.left || {}).forEach(function (id) {
+      var x = wk.left[id], on = dayOfTs(x.at);
+      if (on && on < since) return;
+      rows.push({ at: x.at && x.at.toDate ? x.at.toDate().getTime() : Date.now(),
+                  text: x.left ? tfill('tmChLeft', { who: whoOf(x.by), name: wName(id), day: prettyDay(x.left) })
+                               : tfill('tmChBack', { who: whoOf(x.by), name: wName(id) }) });
+    });
+    if (!rows.length) return;
+    rows.sort(function (a, b) { return b.at - a.at; });
+    var box = el('div', 'atwifi tmch');
+    box.appendChild(el('p', 'skysub', t('tmChTitle')));
+    box.appendChild(el('p', 'codenote', t('tmChSub')));
+    rows.forEach(function (r) {
+      var row = el('div', 'tmchrow');
+      var left = el('div');
+      left.appendChild(el('div', null, r.text + (r.w && r.w.removed ? ' · ' + t('tmChRemoved') : '')));
+      if (r.w && !r.w.removed) left.appendChild(el('p', 'codenote', t('tmChNoWage')));
+      row.appendChild(left);
+      if (r.w && !r.w.removed) {
+        var b = el('button', 'chmini bad', t('tmChRemove'));
+        b.type = 'button';
+        twoTaps(b, function () { return window.FB.removeWorker(r.w.id); });
+        row.appendChild(b);
+      }
+      box.appendChild(row);
+    });
+    into.appendChild(box);
   }
   function atSetWifi(ips, ignored) {
     return setDoc(doc(db, 'attendwifi', 'office'), { ips: ips, ignored: ignored || [], setAt: serverTimestamp(), setBy: 'chairman' });

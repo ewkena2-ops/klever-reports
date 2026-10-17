@@ -566,10 +566,27 @@ function regFold_(events, today, names, sellers) {
   });
   Object.keys(jobs).forEach(function (k) { jobs[k].said = jobs[k].said.slice(-6); });
 
+  /* THE CODE BOOK (17 Oct 2026, the user: "if it's a lead you capture the
+     lead code 0000, KK code, then RBT code — the AI has to realize that and
+     arrange"). Every job code and every 4-digit lead no. the reports have
+     named, with its customer and what it links to — old and finished ones
+     too, so a late payment still finds its job. /register/codes; read by
+     every signed-in person's form (the customer beside a typed code), by
+     Money.js (a lead no. and its KK code are one payment) and by the AI.
+     Customer names only: no money, no phones. */
+  var codes = { jobs: {}, leads: {} };
+  var cut = function (s) { return String(s || '').trim().substring(0, 80); };
+
   /* what is wrong, in words he can act on */
   var leadRows = [], jobRows = [], oldLeads = 0, oldJobs = 0, finishedJobs = {};
   Object.keys(leads).forEach(function (k) {
     var L = leads[k];
+    if (/^\d{4}$/.test(L.code || '')) {
+      var cl = {};
+      if (cut(L.name)) cl.c = cut(L.name);
+      if (L.job) cl.j = L.job;
+      codes.leads[L.code] = cl;
+    }
     if (L.stage === -1) {          /* only ever forecast, never a step: the projection alone */
       L.stage = 0;
       L.last = { k: 'expected', day: L.first, by: '' };
@@ -731,6 +748,13 @@ function regFold_(events, today, names, sellers) {
     }
     var cl = Object.keys(J.contractLeads || {});
     if (cl.length > 1) p.push({ code: 'job-two-contracts', text: J.job + ' is on ' + cl.length + ' contracts, with lead nos. ' + cl.join(' and ') });
+    /* the code book's line for this job: its customer, its lead no., and
+       every customer it was written for when that is more than one */
+    var cj = {};
+    if (cut(J.cust)) cj.c = cut(J.cust);
+    if (jobLead[J.job]) cj.l = jobLead[J.job];
+    if (groups.length > 1) cj.x = groups.map(function (g) { return cut(J.names[g[0]]); });
+    codes.jobs[J.job] = cj;
     delete J.names;
     delete J.contractLeads;
     J.leadCode = jobLead[J.job] || '';
@@ -757,7 +781,13 @@ function regFold_(events, today, names, sellers) {
   });
   leadRows.sort(byNeed);
   jobRows.sort(byNeed);
-  return { leads: leadRows, jobs: jobRows, oldLeads: oldLeads, oldJobs: oldJobs };
+  /* a lead whose contract line named no job finds it through the job's
+     own lead no. */
+  Object.keys(codes.jobs).forEach(function (j) {
+    var l = codes.jobs[j].l;
+    if (l && codes.leads[l] && !codes.leads[l].j) codes.leads[l].j = j;
+  });
+  return { leads: leadRows, jobs: jobRows, oldLeads: oldLeads, oldJobs: oldJobs, codes: codes };
 }
 
 /* Read every kept line, fold, and write the tables. withNote: the morning's
@@ -797,6 +827,9 @@ function registerBuild_(today, withNote) {
   summary.rework = items.filter(function (it) { var x = (it.job || it.lead); return (x.ai ? x.ai.status : x.status) === 'rework'; }).length;
   fsPut_('register/leads', { at: summary.at, rows: R.leads });
   fsPut_('register/jobs', { at: summary.at, rows: R.jobs });
+  /* the code book, readable by everyone signed in (firestore.rules) */
+  try { fsPut_('register/codes', { at: summary.at, jobs: R.codes.jobs, leads: R.codes.leads }); }
+  catch (e) { Logger.log('register codes: %s', e.message); }
   var prev = null;
   try { prev = fsGet_('register/summary'); } catch (e) { prev = null; }
   /* the note is written once a day; between mornings the last one stays */

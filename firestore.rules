@@ -383,6 +383,9 @@ service cloud.firestore {
       allow delete: if false;
     }
     match /register/{id} {
+      /* the code book — each job code and lead no. with its customer, no
+         money, no phones — is read by everyone's form (17 Oct 2026) */
+      allow get: if id == 'codes' && signedIn();
       allow get, list: if isChairman() || isLedger();
       allow create, update: if isLedger();
       allow delete: if false;

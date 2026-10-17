@@ -54,6 +54,36 @@ function moneyRows_(list) {
   }).filter(function (x) { return x; });
 }
 function moneyKeyPart_(r) { return r.code || ('A' + Math.round(r.v)); }
+/* THE CODE BOOK (/register/codes, Register.js, 17 Oct 2026): a 4-digit
+   lead no. and the KK job it became are one customer. Read once a run; on
+   a failure, no links — the codes compare as typed, as before. */
+var MONEY_BOOK_ = null;
+function moneyBook_() {
+  if (MONEY_BOOK_) return MONEY_BOOK_;
+  var leadJob = {}, jobLead = {};
+  try {
+    var b = fsGet_('register/codes') || {};
+    Object.keys(b.leads || {}).forEach(function (l) {
+      var j = b.leads[l] && b.leads[l].j;
+      if (j) { leadJob[moneyCode_(l)] = moneyCode_(j); jobLead[moneyCode_(j)] = moneyCode_(l); }
+    });
+    Object.keys(b.jobs || {}).forEach(function (j) {
+      var l = b.jobs[j] && b.jobs[j].l;
+      if (l) { jobLead[moneyCode_(j)] = jobLead[moneyCode_(j)] || moneyCode_(l); leadJob[moneyCode_(l)] = leadJob[moneyCode_(l)] || moneyCode_(j); }
+    });
+  } catch (e) { Logger.log('money book: %s', e.message); }
+  MONEY_BOOK_ = { leadJob: leadJob, jobLead: jobLead };
+  return MONEY_BOOK_;
+}
+/* each row's other code, where the book knows one: "0338" ↔ "KK212" */
+function moneyLink_(rows, book) {
+  rows.forEach(function (r) {
+    if (!r.code) return;
+    var alt = /^\d{4}$/.test(r.code) ? book.leadJob[r.code] : book.jobLead[r.code];
+    if (alt) r.alt = alt;
+  });
+  return rows;
+}
 
 /* The differences, in code. `eph` and each of `sales` are moneyRows_;
    `allIn`: every salesperson owed that day has reported. */
@@ -64,6 +94,13 @@ function moneyCompare_(eph, sales, allIn) {
       var hit = null;
       /* the same customer code first */
       if (s.code) eph.forEach(function (e) { if (!hit && !used[e.i] && e.code === s.code) hit = e; });
+      /* then the same job under its other code — the lead no. on one side,
+         the KK code it became on the other (`alt`, from the code book,
+         moneyLink_; 17 Oct 2026). The keys below stay the codes as typed,
+         so nothing she has answered is asked again. */
+      if (!hit && s.code) eph.forEach(function (e) {
+        if (!hit && !used[e.i] && e.code && ((e.alt && e.alt === s.code) || (s.alt && s.alt === e.code) || (e.alt && e.alt === s.alt))) hit = e;
+      });
       /* then the same amount, where one side wrote no code */
       if (!hit) eph.forEach(function (e) {
         if (!hit && !used[e.i] && (!e.code || !s.code) && Math.abs(e.v - s.v) <= MONEY_TOL_) hit = e;
@@ -116,7 +153,7 @@ function moneyFixes_() {
   MONEY_FIXES_ = by;
   return by;
 }
-function moneyFresh_() { MONEY_FIXES_ = null; MONEY_BASE_ = {}; }
+function moneyFresh_() { MONEY_FIXES_ = null; MONEY_BASE_ = {}; MONEY_BOOK_ = null; }
 /* her list as it stood when she was asked to correct it (/moneyfix/{day}.baseList) */
 var MONEY_BASE_ = {};
 function moneyBase_(day) {
@@ -183,13 +220,13 @@ function moneyCheck_(day) {
   var prev = null;
   try { prev = fsGet_('moneyfix/' + day); } catch (e) { prev = null; }
   if (!eph) return null;
-  var sales = {}, n = 0;
+  var sales = {}, n = 0, book = moneyBook_();
   salesReps.forEach(function (r) {
-    if (last[r.id]) { sales[r.person] = moneyRows_(last[r.id].fields.k_list); n++; }
+    if (last[r.id]) { sales[r.person] = moneyLink_(moneyRows_(last[r.id].fields.k_list), book); n++; }
   });
   if (!n) return null;
   var allIn = owed.every(function (r) { return !!last[r.id]; });
-  var items = moneyCompare_(moneyRows_(eph.fields.collected_list), sales, allIn);
+  var items = moneyCompare_(moneyLink_(moneyRows_(eph.fields.collected_list), book), sales, allIn);
   var fx = moneyFixes_()[day], answered = fx ? fx.answers : {};
   var open = items.filter(function (it) { return !(it.key in answered); });
   var wasOpen = prev && prev.status === 'open';

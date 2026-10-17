@@ -797,9 +797,26 @@ const REPORTS = [
     { en:'WhatsApp', am:'ዋትስአፕ', fields:[
       /* read by nothing; it is the count the stage messages below are out of */
       {id:'wa_groups', en:'How many customer groups are active? (If you counted.)', am:'ስንት የደንበኛ ግሩፖች ንቁ ናቸው? (ከቆጠሩ።)', t:'num', opt:1},
+      /* WHICH PROJECTS MOVED (the user, 17 Oct 2026: "she says moved 2 — so
+         2 projects moved; you have to know their KK or RB or lead code").
+         A stage message is owed when a project moves on, and "2 / 2" named
+         none of them. Each one is a row now — its code, the stage it left,
+         the stage it reached, and whether the customer's group was told —
+         and the two boxes below are counted from the rows. */
+      {id:'wa_moved_any', en:'Did any project move to a new stage today?', am:'ዛሬ ወደ አዲስ ደረጃ የተሸጋገረ ፕሮጀክት አለ?', t:'yesno', yes:{en:'Projects moved', am:'ፕሮጀክቶች ተሸጋግረዋል'}, no:{en:'No project moved today', am:'ዛሬ ምንም ፕሮጀክት አልተሸጋገረም'}},
+      {id:'wa_moved_list', en:'Each project that moved today — from which stage to which', am:'ዛሬ የተሸጋገረ እያንዳንዱ ፕሮጀክት — ከየትኛው ደረጃ ወደ የትኛው', t:'table', addEn:'Add a project', addAm:'ፕሮጀክት ጨምር',
+        show:{f:'wa_moved_any', when:'yes'},
+        cols:[
+          {id:'lc', en:'Code: KK, RBT or 4-digit lead no.', am:'ኮድ፦ KK፣ RBT ወይም ባለ 4 አሃዝ የደንበኛ ቁጥር', t:'text', must:1, codeOk:1},
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'from', en:'Moved from', am:'የነበረበት ደረጃ', t:'choice', opts:BOARD_COLS},
+          {id:'to', en:'Moved to', am:'የተሸጋገረበት ደረጃ', t:'choice', opts:BOARD_COLS, notSame:'from'},
+          {id:'posted', en:'Stage message posted in the customer group', am:'የደረጃ መልዕክቱ በደንበኛው ግሩፕ ተለጥፏል', t:'yesno', yes:{en:'Posted', am:'ተለጥፏል'}, no:{en:'Not posted', am:'አልተለጠፈም'}}
+        ]},
       /* –300 Birr for each one missing (js/rules.js ephrata-wa-stage-missing
-         reads both boxes every day): still asked */
-      {id:'wa_stage', en:'Stage messages due today in the customer groups: how many were posted? (posted / required)', am:'ዛሬ በደንበኛ ግሩፖች መላክ የነበረባቸው የደረጃ መልዕክቶች፦ ስንቱ ተላከ? (የተላከ / የሚገባው)', t:'ratio', ask:{b:{en:"How many stage messages were due today in the customer groups?", am:"ዛሬ በደንበኛ ግሩፖች ስንት የደረጃ መልዕክት መላክ ነበረበት?"}, a:{en:"How many of them were posted?", am:"ከእነሱ ስንቱ ተላከ?"}}},
+         reads both boxes every day): counted from the rows above */
+      {id:'wa_stage', en:'Stage messages due today in the customer groups: how many were posted? (posted / required)', am:'ዛሬ በደንበኛ ግሩፖች መላክ የነበረባቸው የደረጃ መልዕክቶች፦ ስንቱ ተላከ? (የተላከ / የሚገባው)', t:'ratio',
+        auto:{a:{rows:'wa_moved_list', when:{col:'posted', is:'yes'}}, b:{rows:'wa_moved_list'}}},
       {id:'wa_stage_why', en:'Which groups missed their stage message, and why? (Write the groups in the box.)', am:'የደረጃ መልዕክት ያልደረሳቸው የትኞቹ ግሩፖች ናቸው? ለምን? (ግሩፖቹን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
           { en:'The designer forgot',              am:'ዲዛይነሩ ረሳ' },
@@ -9529,6 +9546,17 @@ function oddFigures(report, v) {
             if (c.id === 'lc' && raw.replace(/\D/g, '').length >= 7) {
               out.push({ f: f.id, en: tagEn + '“' + raw + '” looks like a phone number — write the 4-digit lead no. (or the KK code once paid)',
                          am: tagAm + '«' + raw + '» ስልክ ቁጥር ይመስላል — ባለ 4 አሃዝ የደንበኛ ቁጥሩን (ከከፈሉ በኋላ KK ኮዱን) ይጻፉ' });
+            }
+            /* codeOk: a project's code — KK-165, RBT 3375 (Rovestone), or the
+               4-digit lead no.; a bare 1–3 digits is a KK job (17 Oct 2026) */
+            if (c.codeOk && !/(^|[^a-z0-9])(k\W{0,3}k|rbt?)\W{0,3}0*\d{1,5}(?!\d)/i.test(raw) &&
+                !/(^|\D)\d{4}(?!\d)/.test(raw) && !/^\s*\d{1,3}\s*$/.test(raw)) {
+              out.push({ f: f.id, en: tagEn + '“' + raw + '” is not a code — write the KK code (KK-165), the RBT code, or the 4-digit lead no.',
+                         am: tagAm + '«' + raw + '» ኮድ አይደለም — የKK ኮዱን (KK-165)፣ የRBT ኮዱን ወይም ባለ 4 አሃዝ የደንበኛ ቁጥሩን ይጻፉ' });
+            }
+            /* notSame: moved "from" and "to" the same stage is no move */
+            if (c.notSame && raw === String(r[c.notSame] == null ? '' : r[c.notSame]).trim()) {
+              out.push({ f: f.id, en: tagEn + 'it moved from and to the same stage', am: tagAm + 'የነበረበትና የተሸጋገረበት ደረጃ አንድ ነው' });
             }
             if (c.most) {
               var x = num(raw);

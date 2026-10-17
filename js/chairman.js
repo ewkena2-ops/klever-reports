@@ -1855,12 +1855,14 @@ import {
       if (!ledgers || !reps) return;
       whoSig = todaySig();
       box.innerHTML = '';
-      /* Klever's own people, then the sister companies on their own card —
-         "this for Klever only; for the others another place beside it"
-         (the user, 17 Oct 2026) */
-      box.appendChild(whoChart(false));
-      var sis = whoChart(true);
-      if (sis) box.appendChild(sis);
+      /* Klever's own people, then each sister company on a card of its own —
+         "this for Klever only; for the others another place beside it",
+         and "these are all different companies" (the user, 17 Oct 2026) */
+      box.appendChild(whoChart(null));
+      CO_ORDER.forEach(function (co) {
+        var g = whoChart(co);
+        if (g) box.appendChild(g);
+      });
       box.appendChild(bankChart());
       box.appendChild(collectChart());
       if (SALES_REPORTS.length) box.appendChild(salesChart());
@@ -1876,19 +1878,22 @@ import {
     }
 
     /* ---- who reported: the ledger's closed days, and today so far ----
-       sister: false = Klever's own people; true = those who report for the
-       sister companies (a `company` in PEOPLE), on a card of their own, or
-       null when none of them was due in these days */
-    var CO_NAME = { rovestone: { en: 'Rovestone', am: 'ሮቭስቶን' }, meri: { en: 'Meri', am: 'መሪ' },
-                    realestate: { en: 'Lemi Kura', am: 'ለሚ ኩራ' } };
-    function whoChart(sister) {
+       co: null = Klever's own people; a company id ('rovestone', …) = those
+       who report for that sister company (its `company` in PEOPLE), on a
+       card of its own — or null when none of them was due in these days */
+    var CO_ORDER = ['rovestone', 'meri', 'realestate'];
+    var CO_NAME = { rovestone: { en: 'Rovestone', am: 'ሮቭስቶን' },
+                    meri: { en: 'Meri Block Board', am: 'መሪ ብሎክ ቦርድ', row: { en: 'Meri', am: 'መሪ' } },
+                    realestate: { en: 'Real Estate & Construction (Lemi Kura)', am: 'ሪል እስቴትና ግንባታ (ለሚ ኩራ)',
+                                  row: { en: 'Lemi Kura', am: 'ለሚ ኩራ' } } };
+    function whoChart(co) {
       var WORD = { ok: t('chgOn'), late: t('chgLate'), miss: t('chgMiss'), wait: t('chgWait') };
       var RANK = { miss: 4, late: 3, ok: 2, wait: 1 };
       function sOf(status) {
         return status === 'MISSING' ? 'miss' : status === 'LATE' ? 'late' : status === 'On time' ? 'ok'
              : status === 'NOT IN YET' ? 'wait' : null;
       }
-      function mine(l) { var p = personById(l.person); return !!(p && p.company) === sister; }
+      function mine(l) { var p = personById(l.person); return ((p && p.company) || null) === co; }
       var days = ledgers.filter(function (d) { return d.day < DAY && (d.lines || []).length; }).slice(-10);
       var cols = days.map(function (d) {
         return { day: d.day, lines: (d.lines || []).map(function (l) {
@@ -1902,14 +1907,13 @@ import {
       var names = shortNames(), seen = {};
       cols.forEach(function (c) { c.lines.forEach(function (l) { seen[l.person] = true; }); });
       var people = PEOPLE.filter(function (p) { return seen[p.id]; });
-      if (sister && !people.length) return null;
-      /* a sister company's row is called by the company — "Meri", not the
-         account's first word — unless two people report for it */
-      var perCo = {};
-      people.forEach(function (p) { if (p.company) perCo[p.company] = (perCo[p.company] || 0) + 1; });
+      if (co && !people.length) return null;
+      /* an account that reports for a company and has no person's name yet
+         ("Reports for Meri Block Board") is called by the company — "Meri",
+         not the first word of the account; a person is called by name */
       function rowName(p) {
-        var co = p.company && CO_NAME[p.company];
-        return co && perCo[p.company] === 1 ? co[lang] || co.en : names[p.id];
+        var c = p.company && CO_NAME[p.company];
+        return c && c.row && /^Reports for/.test(p.roleEn || '') ? c.row[lang] || c.row.en : names[p.id];
       }
 
       var rows = people.map(function (p) {
@@ -1948,7 +1952,8 @@ import {
         return [L(people[i]), String(n.ok), String(n.late), String(n.miss)];
       });
       return C.grid({
-        title: t(sister ? 'chgWhoSis' : 'chgWhoKl'), sub: t(sister ? 'chgWhoSisSub' : 'chgWhoSub'), cols: colsOut, rows: rows, caption: cap,
+        title: co ? tfill('chgWhoCo', { co: CO_NAME[co] ? CO_NAME[co][lang] || CO_NAME[co].en : co }) : t('chgWhoKl'),
+        sub: t(co ? 'chgWhoCoSub' : 'chgWhoSub'), cols: colsOut, rows: rows, caption: cap,
         legend: [['ok', '✓', WORD.ok], ['late', '!', WORD.late], ['miss', '✕', WORD.miss], ['wait', '·', WORD.wait], ['split', '', t('chgSplit')]],
         numbers: { title: t('chgNumbers'), head: [t('chgPerson'), '✓ ' + WORD.ok, '! ' + WORD.late, '✕ ' + WORD.miss], rows: tally }
       });

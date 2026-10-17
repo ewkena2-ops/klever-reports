@@ -16,7 +16,7 @@ import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, setDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp
+  collection, doc, setDoc, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 (function () {
@@ -315,18 +315,30 @@ import {
     var DAY = addisYmd();
     /* the past week too: a weekly report filed on Wednesday for Friday is
        Friday's, and a monthly one may come in the week before the 1st */
+    /* a filing the Chairman moved to another day counts there (/moves,
+       apps-script/Moves.js, 17 Oct 2026) — read once */
+    var moves = null, movesP = getDocs(collection(db, 'moves')).then(function (ms) {
+      moves = {};
+      ms.forEach(function (d) { var x = d.data(); if (x && x.asAt && x.asAt.toDate) moves[d.id] = x; });
+    }, function () { moves = {}; });
     onSnapshot(query(collection(db, 'reports'), where('at', '>=', dayStart(addDays(DAY, -7))), orderBy('at', 'asc')), function (qs) {
+      if (!moves) { movesP.then(function () { take(qs); }); return; }
+      take(qs);
+    }, failed);
+    function take(qs) {
       var out = [];
       qs.forEach(function (d) {
         var x = d.data({ serverTimestamps: 'estimate' });
         if (!x.at || !x.at.toDate) return;
-        var at = x.at.toDate();
+        var mv = moves[d.id];
+        var at = mv && mv.person === x.person && mv.report === x.report ? mv.asAt.toDate() : x.at.toDate();
         out.push({ report: x.report, person: x.person, at: at, values: x.values || {},
                    late: lateFiling(x.report, at) });
       });
+      out.sort(function (a, b) { return a.at - b.at; });
       data.filings = out;
       push();
-    }, failed);
+    }
 
     /* the bank balance, given on WhatsApp (apps-script/Bank.js, 16 Oct 2026):
        the moons' figures. The Chairman's alone to read; a page that cannot

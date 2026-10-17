@@ -256,6 +256,27 @@ import {
     if (c === 'resource-exhausted') return t('chQuota');
     return t('chLoadFailed');
   }
+  /* A filing the Chairman moved to another day (/moves, apps-script/Moves.js —
+     17 Oct 2026: Getachew's Friday report, sent Saturday 11:07, counts for
+     Friday): read once, and every report read on this page stands at the
+     time it was moved to. */
+  var MOVES = {}, movesP = null;
+  function movesLoaded() {
+    if (!movesP) movesP = getDocs(collection(db, 'moves')).then(function (qs) {
+      qs.forEach(function (d) { var x = d.data(); if (x && x.asAt && x.asAt.toDate) MOVES[d.id] = x; });
+    }, function () { movesP = null; });
+    return movesP || Promise.resolve();
+  }
+  function atOf(d, x) {
+    var mv = MOVES[d.id];
+    if (mv && x && mv.person === x.person && mv.report === x.report) return mv.asAt.toDate();
+    return x && x.at && x.at.toDate ? x.at.toDate() : null;
+  }
+  /* a watch of reports whose callback waits for the moves the first time */
+  function onReports(q, cb, fail) {
+    return onSnapshot(q, function (snap) { movesLoaded().then(function () { cb(snap); }); }, fail);
+  }
+
   function failInto(into) {
     return function (e) {
       into.innerHTML = '';
@@ -562,7 +583,7 @@ import {
       snap.forEach(function (d) {
         var x = d.data({ serverTimestamps: 'estimate' });
         if (!x.at || !x.at.toDate) return;
-        out.push({ id: d.id, person: x.person, report: x.report, at: x.at.toDate().getTime(), values: x.values || {} });
+        out.push({ id: d.id, person: x.person, report: x.report, at: atOf(d, x).getTime(), values: x.values || {} });
       });
       return out;
     };
@@ -573,9 +594,9 @@ import {
       all.sort(function (a, b) { return a.at - b.at; });
       drawPromises(into, all);
     };
-    onSnapshot(query(collection(db, 'reports'), where('at', '>=', dayStart(addDays(DAY, -9))), orderBy('at', 'asc')),
+    onReports(query(collection(db, 'reports'), where('at', '>=', dayStart(addDays(DAY, -9))), orderBy('at', 'asc')),
       function (snap) { recent = take(snap); both(); }, failInto(into));
-    onSnapshot(query(collection(db, 'reports'), where('person', '==', 'liu'), where('at', '>=', dayStart(addDays(DAY, -21))), orderBy('at', 'asc')),
+    onReports(query(collection(db, 'reports'), where('person', '==', 'liu'), where('at', '>=', dayStart(addDays(DAY, -21))), orderBy('at', 'asc')),
       function (snap) { plans = take(snap); both(); }, failInto(into));
   }
   function drawPromises(into, filings) {
@@ -1538,13 +1559,14 @@ import {
       if (later.length) owedBox.appendChild(owedList('chlater', t('chNotDueYet'), byDueTime(later)));
     }
 
-    onSnapshot(q, function (snap) {
+    onReports(q, function (snap) {
       all = [];
       snap.forEach(function (docu) {
         var x = docu.data({ serverTimestamps: 'estimate' });
-        x.when = x.at && x.at.toDate ? x.at.toDate() : new Date();
+        x.when = atOf(docu, x) || new Date();
         all.push(x);
       });
+      all.sort(function (a, b) { return a.when - b.when; });
       /* the charts' "today" column is drawn from these same filings */
       TODAY_FEED.all = all;
       TODAY_FEED.fns.forEach(function (f) { f(); });
@@ -1697,15 +1719,17 @@ import {
     x.focus();
 
     /* the week before as well: a weekly report may come in days early */
-    getDocs(query(collection(db, 'reports'), where('person', '==', personId),
-                  where('at', '>=', dayStart(addDays(day, -8))), where('at', '<', dayStart(addDays(day, 1)))))
-      .then(function (qs) {
+    /* no end to the read: a filing moved into this day may have come later */
+    Promise.all([getDocs(query(collection(db, 'reports'), where('person', '==', personId),
+                  where('at', '>=', dayStart(addDays(day, -8))))), movesLoaded()])
+      .then(function (got) {
+        var qs = got[0];
         if (!SHEET || SHEET.sheet !== sheet) return;
-        var filed = [];
+        var filed = [], upTo = dayStart(addDays(day, 1)).getTime();
         qs.forEach(function (d) {
           var f = d.data({ serverTimestamps: 'estimate' });
-          f.when = f.at && f.at.toDate ? f.at.toDate() : new Date();
-          filed.push(f);
+          f.when = atOf(d, f) || new Date();
+          if (f.when.getTime() < upTo) filed.push(f);
         });
         filed.sort(function (a, b) { return a.when - b.when; });
         body.innerHTML = '';
@@ -1782,13 +1806,13 @@ import {
         mfix = by;
         draw();
       }, function () {});
-    onSnapshot(query(collection(db, 'reports'), where('person', 'in', CHART_PEOPLE),
+    onReports(query(collection(db, 'reports'), where('person', 'in', CHART_PEOPLE),
                      where('at', '>=', dayStart(addDays(DAY, -41)))),
       function (qs) {
         reps = [];
         qs.forEach(function (d) {
           var x = d.data({ serverTimestamps: 'estimate' });
-          x.when = x.at && x.at.toDate ? x.at.toDate() : new Date();
+          x.when = atOf(d, x) || new Date();
           reps.push(x);
         });
         draw();

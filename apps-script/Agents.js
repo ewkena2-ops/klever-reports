@@ -2355,6 +2355,8 @@ function watch_(waitMs) {
     try { remindWatch_(); } catch (e) { Logger.log('remind: %s', e.message); }
     /* a day whose collections she was asked to fix: closed when her fix is in (Money.js) */
     try { moneyWatch_(); } catch (e) { Logger.log('money watch: %s', e.message); }
+    /* a day a filing was moved into or out of, closed before the move: closed again (Moves.js) */
+    try { movesWatch_(); } catch (e) { Logger.log('moves watch: %s', e.message); }
     /* a day of payments still waiting on Selam: her answers reach it (Receipts.js) */
     try { rcptWatch_(); } catch (e) { Logger.log('receipts watch: %s', e.message); }
     /* the money on each job: once an hour, so a new day moves the plan on (JobMoney.js) */

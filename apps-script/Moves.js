@@ -73,3 +73,29 @@ function movedDaysToRedo_(have) {
   });
   return redo;
 }
+
+/* The ten-minute watch: a day closed before a filing was moved into or out
+   of it is closed again now, not at the next morning — the Chairman sees
+   it the same hour (the user, 17 Oct 2026, on Getachew's Friday). Moves of
+   the last fortnight only. */
+var MOVES_WATCH_DAYS_ = 14;
+function movesWatch_() {
+  var m = moves_(), days = {}, since = Date.now() - MOVES_WATCH_DAYS_ * 864e5;
+  Object.keys(m).forEach(function (id) {
+    var x = m[id];
+    if (!(x.at && x.at.getTime && x.at.getTime() >= since)) return;
+    [x.to, x.from].forEach(function (d) { if (d) days[d] = 1; });
+  });
+  var list = Object.keys(days).sort();
+  if (!list.length) return [];
+  var have = {};
+  ledgersBetween_(list[0], addDays_(list[list.length - 1], 1)).forEach(function (d) { have[d.day] = d; });
+  var redo = movedDaysToRedo_(have), done = [];
+  Object.keys(redo).sort().forEach(function (d) {
+    /* a Sunday whose week is closed and whose day is not: the morning's */
+    if (!days[d] || have[d].dayOpen) return;
+    closeDay_(d);
+    done.push(d);
+  });
+  return done;
+}

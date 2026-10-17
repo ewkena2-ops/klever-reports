@@ -5083,7 +5083,7 @@
      code whose customer is plainly someone else is one to check, like any
      answer that cannot be right: it never stops Send. Without the book (not
      made yet, not readable, no signal) the form is as it was. */
-  var BOOK = null, bookAsked = false;
+  var BOOK = null, BOOK_J = {}, bookAsked = false;
   function loadBook() {
     if (bookAsked || BOOK || !window.FB || !window.FB.codeBook) return;
     bookAsked = true;
@@ -5091,6 +5091,10 @@
       bookAsked = false;
       if (!b || typeof b !== 'object' || (!b.jobs && !b.leads)) return;
       BOOK = b;
+      /* the register keeps a code as written ("KK-081"); the form reads it
+         without the nought (KK-81): look them up the same way */
+      BOOK_J = {};
+      Object.keys(b.jobs || {}).forEach(function (k) { BOOK_J[k.replace(/-0+(?=\d)/, '-')] = b.jobs[k]; });
       paintCodeHints();
       if (report) refresh();
     }, function () { bookAsked = false; });
@@ -5115,7 +5119,7 @@
     }
     return out.slice(0, 3);
   }
-  function bookJob(id) { return BOOK && BOOK.jobs && BOOK.jobs[id] ? BOOK.jobs[id] : null; }
+  function bookJob(id) { return BOOK ? BOOK_J[String(id).replace(/-0+(?=\d)/, '-')] || null : null; }
   function bookLead(id) { return BOOK && BOOK.leads && BOOK.leads[id] ? BOOK.leads[id] : null; }
   function bookNames(e) { return e ? (e.x && e.x.length ? e.x : (e.c ? [e.c] : [])) : []; }
   /* one code, as the book has it, in the language given */

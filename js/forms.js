@@ -8305,7 +8305,14 @@ const SALES_DAILY = {
             {v:'other', en:'Other', am:'ሌላ'}]},
           /* the user, 15 Oct 2026: every payment with its receipt number, and
              Selam, who issues Klever's receipts, confirms each (apps-script/Receipts.js) */
-          {id:'rcpt', en:'Receipt no.', am:'የደረሰኝ ቁጥር', t:'text', must:1},
+          /* 17 Oct 2026, Tsega: "when I am about to send, it takes me to the
+             receipt number" — a payment reported before Selam has issued its
+             receipt has no number yet, and the salespeople were typing "0" or
+             the job code to get past it. One tap says so instead; Selam is
+             still asked about the payment (Receipts.js reads a word with no
+             digit as no number), and "0" or the job code is called out. */
+          {id:'rcpt', en:'Receipt no.', am:'የደረሰኝ ቁጥር', t:'text', must:1, rcptOk:'lc',
+            picks:[{ en:'No receipt yet', am:'ገና ደረሰኝ አልተሰጠም' }]},
           /* the user, 15 Oct 2026: a photo of the customer's slip (bank slip
              or transfer screenshot) in the row; Selam sees it beside the
              payment she confirms, and the Chairman too (/slips, app.js slipCell) */
@@ -9558,6 +9565,16 @@ function oddFigures(report, v) {
                 !/(^|\D)\d{4}(?!\d)/.test(raw) && !/^\s*\d{1,3}\s*$/.test(raw)) {
               out.push({ f: f.id, en: tagEn + '“' + raw + '” is not a code — write the KK code (KK-165), the RBT code, or the 4-digit lead no.',
                          am: tagAm + '«' + raw + '» ኮድ አይደለም — የKK ኮዱን (KK-165)፣ የRBT ኮዱን ወይም ባለ 4 አሃዝ የደንበኛ ቁጥሩን ይጻፉ' });
+            }
+            /* rcptOk: a receipt number that is no number — "0", or the
+               job code of the same row (17 Oct 2026) */
+            if (c.rcptOk) {
+              var rn = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+              var jc = String(r[c.rcptOk] == null ? '' : r[c.rcptOk]).toUpperCase().replace(/[^A-Z0-9]/g, '');
+              if (/\d/.test(raw) && (/^0+$/.test(rn) || (jc && rn === jc))) {
+                out.push({ f: f.id, en: tagEn + '“' + raw + '” is not a receipt number — type the number on Selam’s receipt, or tap “No receipt yet”',
+                           am: tagAm + '«' + raw + '» የደረሰኝ ቁጥር አይደለም — በሰላም ደረሰኝ ላይ ያለውን ቁጥር ይጻፉ፣ ወይም «ገና ደረሰኝ አልተሰጠም»ን ይንኩ' });
+              }
             }
             /* notSame: moved "from" and "to" the same stage is no move */
             if (c.notSame && raw === String(r[c.notSame] == null ? '' : r[c.notSame]).trim()) {

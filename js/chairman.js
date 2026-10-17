@@ -1853,7 +1853,12 @@ import {
       if (!ledgers || !reps) return;
       whoSig = todaySig();
       box.innerHTML = '';
-      box.appendChild(whoChart());
+      /* Klever's own people, then the sister companies on their own card —
+         "this for Klever only; for the others another place beside it"
+         (the user, 17 Oct 2026) */
+      box.appendChild(whoChart(false));
+      var sis = whoChart(true);
+      if (sis) box.appendChild(sis);
       box.appendChild(bankChart());
       box.appendChild(collectChart());
       if (SALES_REPORTS.length) box.appendChild(salesChart());
@@ -1868,30 +1873,45 @@ import {
         ok: 'chgPassOk', bad: 'chgPassBad' }));
     }
 
-    /* ---- who reported: the ledger's closed days, and today so far ---- */
-    function whoChart() {
+    /* ---- who reported: the ledger's closed days, and today so far ----
+       sister: false = Klever's own people; true = those who report for the
+       sister companies (a `company` in PEOPLE), on a card of their own, or
+       null when none of them was due in these days */
+    var CO_NAME = { rovestone: { en: 'Rovestone', am: 'ሮቭስቶን' }, meri: { en: 'Meri', am: 'መሪ' },
+                    realestate: { en: 'Lemi Kura', am: 'ለሚ ኩራ' } };
+    function whoChart(sister) {
       var WORD = { ok: t('chgOn'), late: t('chgLate'), miss: t('chgMiss'), wait: t('chgWait') };
       var RANK = { miss: 4, late: 3, ok: 2, wait: 1 };
       function sOf(status) {
         return status === 'MISSING' ? 'miss' : status === 'LATE' ? 'late' : status === 'On time' ? 'ok'
              : status === 'NOT IN YET' ? 'wait' : null;
       }
+      function mine(l) { var p = personById(l.person); return !!(p && p.company) === sister; }
       var days = ledgers.filter(function (d) { return d.day < DAY && (d.lines || []).length; }).slice(-10);
       var cols = days.map(function (d) {
         return { day: d.day, lines: (d.lines || []).map(function (l) {
           var at = l.at && l.at.toDate ? l.at.toDate() : null;
           return { person: l.person, rid: l.report, report: lineReport(l), s: sOf(l.status), at: at };
-        }).filter(function (l) { return l.s; }) };
+        }).filter(function (l) { return l.s && mine(l); }) };
       });
-      var tc = todayCells();
+      var tc = todayCells().filter(mine);
       if (tc.length) cols.push({ day: DAY, today: true, lines: tc });
 
       var names = shortNames(), seen = {};
       cols.forEach(function (c) { c.lines.forEach(function (l) { seen[l.person] = true; }); });
       var people = PEOPLE.filter(function (p) { return seen[p.id]; });
+      if (sister && !people.length) return null;
+      /* a sister company's row is called by the company — "Meri", not the
+         account's first word — unless two people report for it */
+      var perCo = {};
+      people.forEach(function (p) { if (p.company) perCo[p.company] = (perCo[p.company] || 0) + 1; });
+      function rowName(p) {
+        var co = p.company && CO_NAME[p.company];
+        return co && perCo[p.company] === 1 ? co[lang] || co.en : names[p.id];
+      }
 
       var rows = people.map(function (p) {
-        return { name: names[p.id], cells: cols.map(function (c) {
+        return { name: rowName(p), cells: cols.map(function (c) {
           var mine = c.lines.filter(function (l) { return l.person === p.id; });
           if (!mine.length) return null;
           var worst = mine.reduce(function (a, l) { return RANK[l.s] > RANK[a] ? l.s : a; }, 'wait');
@@ -1926,7 +1946,7 @@ import {
         return [L(people[i]), String(n.ok), String(n.late), String(n.miss)];
       });
       return C.grid({
-        title: t('chgWho'), sub: t('chgWhoSub'), cols: colsOut, rows: rows, caption: cap,
+        title: t(sister ? 'chgWhoSis' : 'chgWhoKl'), sub: t(sister ? 'chgWhoSisSub' : 'chgWhoSub'), cols: colsOut, rows: rows, caption: cap,
         legend: [['ok', '✓', WORD.ok], ['late', '!', WORD.late], ['miss', '✕', WORD.miss], ['wait', '·', WORD.wait], ['split', '', t('chgSplit')]],
         numbers: { title: t('chgNumbers'), head: [t('chgPerson'), '✓ ' + WORD.ok, '! ' + WORD.late, '✕ ' + WORD.miss], rows: tally }
       });

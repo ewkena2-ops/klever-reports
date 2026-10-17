@@ -2689,6 +2689,8 @@
     var person = personById(report.person);
     document.title = L(report) + ' · ' + L(person);
     if (report.built) { renderBuilt(root, person); return; }
+    /* what each lead no., KK and RBT code is (the code book, read once) */
+    loadBook();
 
     setView(null);
     /* A draft belongs to the due day it is for, not the calendar day it was
@@ -2968,6 +2970,13 @@
     wrap.appendChild(el('div', 'replabel', L(f)));
     var body = el('div', 'rep');
     wrap.appendChild(body);
+    /* a row that cannot be right — a code that is someone else's job, a
+       receipt no. of "0" — says so under the list, as a question does under
+       itself (17 Oct 2026: until now only the sent report said it) */
+    var listOdd = el('div', 'hint odd listodd');
+    listOdd.id = 'o_' + f.id;
+    listOdd.hidden = true;
+    wrap.appendChild(listOdd);
 
     if (!Array.isArray(values[f.id])) values[f.id] = [];
     var data = values[f.id];
@@ -3243,9 +3252,18 @@
           /* words to tap under a word box: its usual answers (picks), or the
              codes and names this person filed lately (recentKey) */
           var tapBox = null;
+          /* under a code — a lead no., a KK or an RBT job — what the code
+             book says it is (the user, 17 Oct 2026) */
+          var codeHint = isCodeCol(c) ? el('div', 'codehint') : null;
+          if (codeHint) {
+            codeHint.hidden = true;
+            codeHint.setAttribute('aria-live', 'polite');
+            codeHint.paint = function () { paintCodeHint(codeHint, inp.value); };
+          }
           var onType = function () {
             rowData[c.id] = inp.value;
             if (tapBox) tapBox.hidden = has(inp.value);
+            if (codeHint) codeHint.paint();
             if (card.syncs) card.syncs.forEach(function (fn) { fn(); });
             if (oth) oth.sync(true);
             refresh();
@@ -3253,6 +3271,7 @@
           };
           inp.onchange = inp.oninput = onType;
           cell.appendChild(c.t === 'date' ? dressDate(inp) : inp);
+          if (codeHint) { cell.appendChild(codeHint); codeHint.paint(); }
           if (oth) cell.appendChild(oth);
           if (c.t === 'text' && !c.time && (c.picks || recentKey(f, c))) {
             tapBox = el('div', 'chips mini cellpicks');
@@ -4644,11 +4663,11 @@
      the morning agents read it too. It never stops a report going; it asks
      once, like an empty question, and the sent report says what to check. */
   function oddNow() {
-    if (typeof oddFigures !== 'function') return [];
+    if (typeof oddFigures !== 'function') return bookOdd();
     return oddFigures(report, values).filter(function (o) {
       var f = fieldById(o.f);
       return f && shown(f);
-    });
+    }).concat(bookOdd());
   }
   function oddText(o) { return lang === 'am' ? o.am : o.en; }
   function oddLine(o) {
@@ -5049,6 +5068,167 @@
     if (/^\d{1,3}$/.test(t)) return ['KK-' + Number(t)];
     var c = /^([A-Z]+)-?0*(\d+(?:-\d+)*)/.exec(t);
     return c ? [c[1] + '-' + c[2]] : [];
+  }
+
+  /* ---------------- the code book ----------------
+
+     The user, 17 Oct 2026: "if it's a lead you capture the lead code 0000,
+     KK code, then RBT code — the AI has to realize that and arrange". The
+     register (apps-script/Register.js) keeps every job and lead the reports
+     have named, with its customer, in /register/codes:
+       {jobs: {'KK-212': {c: customer, l: lead no., x: [two or more customers]}},
+        leads: {'0338': {c: customer, j: 'KK-212'}}}
+     Under a code typed in a list the form says what it is — "KK-212 · Mr
+     Eyob · lead 0338", "Lead 0349 · new", "RBT-3375 · Rovestone job" — and a
+     code whose customer is plainly someone else is one to check, like any
+     answer that cannot be right: it never stops Send. Without the book (not
+     made yet, not readable, no signal) the form is as it was. */
+  var BOOK = null, bookAsked = false;
+  function loadBook() {
+    if (bookAsked || BOOK || !window.FB || !window.FB.codeBook) return;
+    bookAsked = true;
+    window.FB.codeBook().then(function (b) {
+      bookAsked = false;
+      if (!b || typeof b !== 'object' || (!b.jobs && !b.leads)) return;
+      BOOK = b;
+      paintCodeHints();
+      if (report) refresh();
+    }, function () { bookAsked = false; });
+  }
+  /* a box that holds a code: the customer's code (4-digit lead no., or the
+     KK code once paid), a job code, or one checked as a code (`codeOk`) */
+  function isCodeCol(c) {
+    return !!c && c.t === 'text' && !c.time && (c.id === 'lc' || c.id === 'code' || !!c.codeOk);
+  }
+  /* the codes in a box, each with its kind: a KK or RBT job ("RB 3375" is
+     RBT too), a 4-digit lead no., a bare 1–3 digits as a KK job, or another
+     lettered code ("SD-12") */
+  function codesIn(v) {
+    var s = String(v == null ? '' : v).trim().replace(/(^|[^a-z0-9])rb(?!t)\W{0,3}(?=\d)/gi, '$1RBT ');
+    if (!s) return [];
+    var kind = function (j) { return /^KK-/.test(j) ? 'kk' : /^RBT-/.test(j) ? 'rbt' : 'other'; };
+    var out = jobCodes(s, false).map(function (j) { return { kind: kind(j), id: j }; });
+    if (!out.length) {
+      var m = /(^|\D)(\d{4})(?!\d)/.exec(s);
+      if (m) out.push({ kind: 'lead', id: m[2] });
+      else out = jobCodes(s, true).map(function (j) { return { kind: kind(j), id: j }; });
+    }
+    return out.slice(0, 3);
+  }
+  function bookJob(id) { return BOOK && BOOK.jobs && BOOK.jobs[id] ? BOOK.jobs[id] : null; }
+  function bookLead(id) { return BOOK && BOOK.leads && BOOK.leads[id] ? BOOK.leads[id] : null; }
+  function bookNames(e) { return e ? (e.x && e.x.length ? e.x : (e.c ? [e.c] : [])) : []; }
+  /* one code, as the book has it, in the language given */
+  function codeLine(k, lg) {
+    var tx = function (key, o) { return tfillIn(lg, key, o || {}); };
+    if (k.kind === 'lead') {
+      var ld = bookLead(k.id), lp = [tx('cbLead', { l: k.id })];
+      if (!ld) lp.push(tx('cbNewLead'));
+      else { if (ld.c) lp.push(ld.c); if (ld.j) lp.push(tx('cbNow', { j: ld.j })); }
+      return lp.join(' · ');
+    }
+    var jb = bookJob(k.id), out = [k.id];
+    if (k.kind === 'rbt') out.push(tx('cbRbt'));
+    if (!jb) { if (k.kind !== 'rbt') out.push(tx('cbNewJob')); return out.join(' · '); }
+    if (jb.x && jb.x.length > 1) out.push(tx('cbTwo', { n: jb.x.length, names: jb.x.join(', ') }));
+    else {
+      if (jb.c) out.push(jb.c);
+      if (jb.l) out.push(tx('cbLeadNo', { l: jb.l }));
+    }
+    return out.join(' · ');
+  }
+  function tfillIn(lg, k, o) {
+    var s = (T[lg] && T[lg][k]) || T.en[k] || k;
+    return s.replace(/\{(\w+)\}/g, function (m, n) { return o[n] != null ? o[n] : m; });
+  }
+  function paintCodeHint(node, v) {
+    var ks = BOOK ? codesIn(v) : [];
+    node.hidden = !ks.length;
+    node.textContent = ks.map(function (k) { return codeLine(k, lang); }).join('\n');
+  }
+  function paintCodeHints() {
+    Array.prototype.forEach.call(document.querySelectorAll('.codehint'), function (n) { if (n.paint) n.paint(); });
+  }
+  /* "Ato Taddesse", "ato tadese", "Mr. Taddesse" are one customer: titles
+     go, and a doubled letter is one (Register.js regName_, with the
+     doubling that Amharic names take in Latin letters) */
+  function custKey(s) {
+    return String(s || '').toLowerCase()
+      .replace(/[.,;:'’"()\[\]\\&_\-–—።፣፤]/g, ' ')
+      .replace(/(^|\s)(ato|a\/to|w\/ro|w\/rt|wro|wrt|weizero|weizerit|dr|eng|mr|mrs|ms|miss|አቶ|አ\/ቶ|ወ\/ሮ|ወ\/ሪት|ዶ\/ር|ኢ\/ር)(?=\s|$)/g, ' ')
+      .replace(/\//g, ' ').replace(/(.)\1+/g, '$1').replace(/\s+/g, ' ').trim();
+  }
+  /* two words a letter or two apart ("Tesfaye" / "Tesfay") — Register.js regNear_ */
+  function wordNear(x, y) {
+    if (x === y) return true;
+    var n = Math.min(x.length, y.length);
+    if (n < 4 || Math.abs(x.length - y.length) > 2) return false;
+    var max = n >= 7 ? 2 : 1, prev = [], cur, i, k, j;
+    for (j = 0; j <= y.length; j++) prev.push(j);
+    for (i = 1; i <= x.length; i++) {
+      cur = [i];
+      for (k = 1; k <= y.length; k++) cur.push(Math.min(prev[k] + 1, cur[k - 1] + 1, prev[k - 1] + (x[i - 1] === y[k - 1] ? 0 : 1)));
+      prev = cur;
+    }
+    return prev[y.length] <= max;
+  }
+  /* true: one customer; false: plainly two; null: cannot tell (a name in
+     Ethiopic beside one in Latin letters, or nothing to compare) */
+  function sameCust(a, b) {
+    var x = custKey(a), y = custKey(b);
+    if (!x || !y) return null;
+    var eth = /[ሀ-፿]/;
+    if (eth.test(x) !== eth.test(y)) return null;
+    var wx = x.split(' ').filter(function (w) { return w.length >= 3; });
+    var wy = y.split(' ').filter(function (w) { return w.length >= 3; });
+    if (!wx.length || !wy.length) return x === y ? true : null;
+    return wy.some(function (w) { return wx.some(function (v) { return wordNear(v, w); }); });
+  }
+  /* the one code the book has for this customer, or '' (none, or several) */
+  function bookCodeFor(cust, not) {
+    var hits = [];
+    Object.keys((BOOK && BOOK.jobs) || {}).forEach(function (id) {
+      if (id !== not && bookNames(BOOK.jobs[id]).some(function (n) { return sameCust(cust, n) === true; })) hits.push(id);
+    });
+    if (hits.length) return hits.length === 1 ? hits[0] : '';
+    Object.keys((BOOK && BOOK.leads) || {}).forEach(function (id) {
+      var e = BOOK.leads[id], to = e.j || id;
+      if (id !== not && to !== not && sameCust(cust, e.c) === true && hits.indexOf(to) === -1) hits.push(to);
+    });
+    return hits.length === 1 ? hits[0] : '';
+  }
+  /* a code in a row whose customer is plainly not the book's */
+  function bookOdd() {
+    if (!BOOK || !report) return [];
+    var out = [];
+    allFields().forEach(function (f) {
+      if (f.t !== 'table' || !f.cols || !shown(f)) return;
+      if (!f.cols.some(function (c) { return c.id === 'cust'; })) return;
+      var codeCols = f.cols.filter(isCodeCol);
+      if (!codeCols.length) return;
+      (Array.isArray(values[f.id]) ? values[f.id] : []).forEach(function (row, i) {
+        if (!row || !has(row.cust)) return;
+        var cust = String(row.cust).trim();
+        codeCols.forEach(function (c) {
+          codesIn(row[c.id]).forEach(function (k) {
+            var e = k.kind === 'lead' ? bookLead(k.id) : bookJob(k.id), names = bookNames(e);
+            if (!names.length) return;
+            var verdict = names.map(function (n) { return sameCust(cust, n); });
+            /* one of them, or any it cannot tell: no question */
+            if (verdict.some(function (v) { return v !== false; })) return;
+            var sug = bookCodeFor(cust, k.id);
+            var key = (k.kind === 'lead' ? 'cbOddLead' : 'cbOddJob') + (sug ? '' : 'No');
+            var fill = function (lg) {
+              /* a lead no. suggested reads "lead 0349" */
+              var s = /^\d{4}$/.test(sug) ? tfillIn(lg, 'cbLeadNo', { l: sug }) : sug;
+              return tfillIn(lg, key, { n: i + 1, code: k.id, who: names.join(' / '), cust: cust, sug: s });
+            };
+            out.push({ f: f.id, en: fill('en'), am: fill('am') });
+          });
+        });
+      });
+    });
+    return out;
   }
   /* a carried row with nothing answered in it yet is only the list itself:
      a draft holding no more than that is no draft */

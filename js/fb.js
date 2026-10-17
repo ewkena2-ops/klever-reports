@@ -96,7 +96,7 @@
      17 Oct 2026: Getachew's Friday report came on Saturday). Read once a page
      load — one person's own, or all of them for the Chairman — and every
      filing handed out below counts at the time it was moved to. */
-  var movesP = {};
+  var movesP = {}, codeBookP = null;
   function movesFor(person) {
     var k = person || '*';
     if (!movesP[k]) movesP[k] = ready.then(function () {
@@ -530,6 +530,19 @@
        or null when there is nothing. */
     /* my filings moved to another day, by filing id: {from, to, asAt, …} */
     myMoves: function () { return ready.then(function () { return user ? movesFor(idOf(user)) : {}; }); },
+
+    /* The code book (apps-script/Register.js, 17 Oct 2026): every KK and RBT
+       job and every lead no. the reports have named, with its customer —
+       {jobs: {'KK-212': {c, l, x}}, leads: {'0338': {c, j}}} — or null.
+       Read once a page load; a refused or failed read is null, and asked
+       again next time. */
+    codeBook: function () {
+      if (!codeBookP) codeBookP = ready.then(function () {
+        if (!db || !user) { codeBookP = null; return null; }
+        return F.getDoc(F.doc(db, 'register', 'codes')).then(function (d) { return d.exists() ? d.data() : null; });
+      })['catch'](function () { codeBookP = null; return null; });
+      return codeBookP;
+    },
 
     myJobAsk: function () {
       return ready.then(function () {

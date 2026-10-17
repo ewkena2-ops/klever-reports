@@ -3,6 +3,13 @@
 const T = {
   en:{
     siteTitle:'Klever Reports',
+    /* a company's own words (Rovestone, 17 Oct 2026): "<key>@<company>" is
+       used in place of <key> on that company's people's pages (app.js t) */
+    'siteTitle@rovestone':'Rovestone Reports',
+    'footSaved@rovestone':'Rovestone · every report you send is filed, and delivered to the Chairman.',
+    'foot@rovestone':'Rovestone · reports go to the Chairman. Nothing is stored on this site.',
+    'chatTitle@rovestone':'Rovestone Chat',
+    'pushIphone@rovestone':'On iPhone: tap Share, then “Add to Home Screen”. Open Rovestone from the home screen and turn notifications on there.',
     signIn:'Sign in',
     connecting:'Connecting…',
 
@@ -994,6 +1001,11 @@ const T = {
     chgWho:'Who reported', chgWhoKl:'Who reported — Klever',
     chgWhoSub:'Each person, each working day. A day shows the worst of that person’s reports. Tap a square to open what they filed.',
     chgWhoCo:'Who reported — {co}',
+    chCoSwitch:'Company',
+    chCoNoneDue:'None of their reports was due in these days.',
+    chCoNote:'Not Klever staff: no fines — reporting only. Their reports go to you.',
+    chCoPeople:'On file: {list}.',
+    chCoNoOne:'No one from this company is on file yet. Send their names and roles and they can be added.',
     chgWhoCoSub:'A sister company: not Klever staff, no fines. Tap a square to open what they filed.',
     chClose:'Close', chgWasDue:'It was due', chgTapBar:'Tap a day to open the report.',
     chgOn:'On time', chgLate:'Late', chgMiss:'Missing', chgWait:'Not due yet', chgSplit:'Two reports that day — each half one of them',
@@ -1055,6 +1067,11 @@ const T = {
   },
   am:{
     siteTitle:'የክሌቨር ሪፖርቶች',
+    'siteTitle@rovestone':'የሮቭስቶን ሪፖርቶች',
+    'footSaved@rovestone':'ሮቭስቶን · የላኩት እያንዳንዱ ሪፖርት ተመዝግቦ ለሊቀመንበሩ ይደርሳል።',
+    'foot@rovestone':'ሮቭስቶን · ሪፖርቶች ለሊቀመንበሩ ይላካሉ። በዚህ ገጽ ላይ ምንም መረጃ አይቀመጥም።',
+    'chatTitle@rovestone':'የሮቭስቶን ውይይት',
+    'pushIphone@rovestone':'በአይፎን፦ «Share»ን ይንኩ፣ ከዚያ «Add to Home Screen»። Rovestoneን ከመነሻ ገጹ ከፍተው እዚያ ማሳወቂያ ያብሩ።',
     signIn:'ግባ',
     connecting:'በመገናኘት ላይ…',
 
@@ -2036,6 +2053,11 @@ const T = {
     chgWho:'ሪፖርት ያደረገው ማን ነው', chgWhoKl:'ሪፖርት ያደረገው ማን ነው — ክሌቨር',
     chgWhoSub:'እያንዳንዱ ሰው፣ እያንዳንዱ የሥራ ቀን። አንድ ቀን የሚያሳየው የዚያን ሰው የከፋውን ሪፖርት ነው። ያቀረቡትን ለመክፈት ካሬውን ይንኩ።',
     chgWhoCo:'ሪፖርት ያደረገው ማን ነው — {co}',
+    chCoSwitch:'ድርጅት',
+    chCoNoneDue:'በእነዚህ ቀናት ምንም ሪፖርት አይጠበቅባቸውም ነበር።',
+    chCoNote:'የክሌቨር ሠራተኞች አይደሉም፤ ቅጣት የለም — ሪፖርት ብቻ። ሪፖርቶቻቸው ለእርስዎ ይደርሳሉ።',
+    chCoPeople:'የተመዘገቡ፦ {list}።',
+    chCoNoOne:'ከዚህ ድርጅት እስካሁን የተመዘገበ ሰው የለም። ስማቸውንና ሥራቸውን ይላኩ፣ ይጨመራሉ።',
     chgWhoCoSub:'እህት ኩባንያ፦ የክሌቨር ሠራተኞች አይደሉም፤ ቅጣት የለም። ያቀረቡትን ለመክፈት ካሬውን ይንኩ።',
     chClose:'ዝጋ', chgWasDue:'የሚደርስበት ጊዜ፦', chgTapBar:'ሪፖርቱን ለመክፈት ቀኑን ይንኩ።',
     chgOn:'በሰዓቱ', chgLate:'ዘግይቷል', chgMiss:'አልቀረበም', chgWait:'ገና ጊዜው አልደረሰም', chgSplit:'በዕለቱ ሁለት ሪፖርቶች — እያንዳንዱ ግማሽ አንዱ',

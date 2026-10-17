@@ -109,6 +109,15 @@ const CHANNEL_DEFS = [
     noReports:1,
     ids:['wude', 'amaha', 'liu'] },
 
+  /* Rovestone's own room (17 Oct 2026: Rovestone has pages of its own —
+     COMPANIES in forms.js). `co`: everyone whose `company` is Rovestone, and
+     the Chairman; Klever's rooms never hold them, and Kidan (Group Finance,
+     company 'group') is not in it. Nobody's report is delivered here. */
+  { id:'rovestone', kind:'team', en:'Rovestone — all staff', am:'ሮቭስቶን — ሁሉም ሠራተኛ',
+    descEn:'Everyone at Rovestone, with the Chairman.',
+    descAm:'የሮቭስቶን ሠራተኞች በሙሉ ከሊቀመንበሩ ጋር።',
+    co:'rovestone', noReports:1 },
+
   { id:'customers', kind:'team', en:'WhatsApp customers', am:'የዋትስአፕ ደንበኞች',
     descEn:'Every customer who writes to Klever’s WhatsApp. Call them back from your phone, and say here who is taking them.',
     descAm:'ወደ ክሌቨር ዋትስአፕ የሚጽፍ እያንዳንዱ ደንበኛ። ከስልክዎ መልሰው ይደውሉ፣ ማን እንደሚይዘው እዚህ ይናገሩ።',
@@ -126,6 +135,11 @@ var CHANNELS = {
       ids = ids.concat(PEOPLE.filter(function (p) { return !p.company; }).map(function (p) { return p.id; }));
     } else if (def.grp) {
       ids = ids.concat(PEOPLE.filter(function (p) { return p.grp === def.grp; })
+                             .map(function (p) { return p.id; }));
+    }
+    /* a company's own room: all its people */
+    if (def.co) {
+      ids = ids.concat(PEOPLE.filter(function (p) { return p.company === def.co; })
                              .map(function (p) { return p.id; }));
     }
     /* a name can only appear once, however many rules put it there, and a

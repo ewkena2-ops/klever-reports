@@ -65,9 +65,47 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
   /* a word not yet in i18n.js shows in English, and failing that as its
      key — never as "undefined" on somebody's screen */
   function t(k) {
-    var s = T[lang][k];
+    /* a company's own word first — "Rovestone Chat" (app.js t, 17 Oct 2026) */
+    var co = chatCo();
+    var s = co !== 'klever' ? T[lang][k + '@' + co] : null;
+    if (s == null) s = T[lang][k];
     if (s == null) s = T.en[k];
     return s == null ? k : s;
+  }
+  /* WHOSE PAGES (app.js adoptBrand, 17 Oct 2026): a Rovestone person's chat
+     carries Rovestone's name; before sign-in, the last company on this phone */
+  function chatCo() {
+    var ok = function (c) { return !!c && typeof COMPANIES !== 'undefined' && !!COMPANIES[c]; };
+    if (me) return me !== CHAIRMAN && typeof companyOf === 'function' ? companyOf(me) : 'klever';
+    var c = null;
+    try { c = localStorage.getItem('klever.co'); } catch (e) {}
+    return ok(c) ? c : 'klever';
+  }
+  function coInfo() {
+    return (typeof COMPANIES !== 'undefined' && COMPANIES[chatCo()]) ||
+           { en: 'Klever', logo: 'assets/logo.png', logoAlt: 'Klever Küche', mark: ['KLEVER', 'KÜCHE'] };
+  }
+  function brandMark() {
+    var b = coInfo();
+    if (b.logo) { var img = new Image(); img.src = b.logo; img.alt = b.logoAlt || b.en; return img; }
+    var w = el('span', 'brandword', b.mark ? b.mark[0] : String(b.en).toUpperCase());
+    w.setAttribute('role', 'img');
+    w.setAttribute('aria-label', b.logoAlt || b.en);
+    return w;
+  }
+  /* the home-screen name, icon and colour follow too (as on the reports pages) */
+  function applyBrand() {
+    var co = chatCo();
+    try { document.body.setAttribute('data-co', co); } catch (e) {}
+    [['link[rel="manifest"]', 'href', 'co-manifest-'], ['link[rel="apple-touch-icon"]', 'href', 'co-icon180-'],
+     ['link[rel="icon"][type="image/svg+xml"]', 'href', 'co-iconsvg-'], ['meta[name="theme-color"]', 'content', 'co-theme-']]
+      .forEach(function (x) {
+        var n = document.querySelector(x[0]);
+        if (!n) return;
+        if (n.getAttribute('data-klever') == null) n.setAttribute('data-klever', n.getAttribute(x[1]) || '');
+        var alt = co === 'klever' ? null : document.querySelector('meta[name="' + x[2] + co + '"]');
+        n.setAttribute(x[1], alt ? alt.getAttribute('content') : n.getAttribute('data-klever'));
+      });
   }
   function L(o) { return (lang === 'am' && o.am) ? o.am : o.en; }
   function D(o) { return lang === 'am' ? o.descAm : o.descEn; }
@@ -183,10 +221,10 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
     if (old) old.parentNode.removeChild(old);
 
     var top = el('header', 'top'), inner = el('nav', 'top-in');
-    inner.setAttribute('aria-label', 'Klever');
+    applyBrand();
+    inner.setAttribute('aria-label', coInfo().en);
     var a = el('a'); a.href = 'index.html';
-    var img = new Image(); img.src = 'assets/logo.png';
-    img.alt = 'Klever Küche'; a.appendChild(img);
+    a.appendChild(brandMark());
     inner.appendChild(a);
     inner.appendChild(el('div', 'spacer'));
 
@@ -600,9 +638,9 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
 
     /* the same masthead the reports and the forms open with */
     var lh = el('header', 'lh');
-    var mk = el('div', 'lh-mark');
-    mk.appendChild(el('span', 'lh-k', 'KLEVER'));
-    mk.appendChild(el('span', 'lh-ku', 'KÜCHE'));
+    var mk = el('div', 'lh-mark'), bm = coInfo().mark || ['KLEVER', 'KÜCHE'];
+    mk.appendChild(el('span', 'lh-k', bm[0]));
+    if (bm[1]) mk.appendChild(el('span', 'lh-ku', bm[1]));
     lh.appendChild(mk);
     var dd = new Date();
     var dt = el('div', 'lh-date');
@@ -612,6 +650,7 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
     root.appendChild(lh);
 
     var sal = el('div', 'sal');
+    document.title = t('chatTitle');
     sal.appendChild(el('h1', null, t('chatTitle')));
     sal.appendChild(el('p', null, t('chatPickSub')));
     root.appendChild(sal);

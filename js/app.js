@@ -41,7 +41,58 @@
   var lang = (urlLang === 'am' || urlLang === 'en' ? urlLang
               : store.get(LANG_KEY)) === 'am' ? 'am' : 'en';
 
-  function t(k) { return T[lang][k]; }
+  /* WHOSE PAGES THESE ARE (17 Oct 2026, the user: "for Rovestone we have to
+     prepare the same as Klever — their layout and other things"). A company
+     in forms.js COMPANIES has its own name and logo on its people's screens,
+     its own title and footer; a word in i18n.js may have a company's own
+     version under "<key>@<company>". Before sign-in the brand comes from
+     ?co=rovestone, or the last one on this phone (so the home-screen app
+     opens as theirs); once signed in, from the person — whatever the URL.
+     The Chairman's pages are Klever's. */
+  var CO_KEY = 'klever.co';
+  function coOk(c) { return !!c && typeof COMPANIES !== 'undefined' && !!COMPANIES[c]; }
+  var urlCo = new URLSearchParams(location.search).get('co');
+  if (coOk(urlCo)) store.set(CO_KEY, urlCo);
+  function coBefore() { return coOk(urlCo) ? urlCo : (coOk(store.get(CO_KEY)) ? store.get(CO_KEY) : 'klever'); }
+  var BRAND = coBefore();
+  function brand() {
+    return (typeof COMPANIES !== 'undefined' && COMPANIES[BRAND]) ||
+           { id: 'klever', en: 'Klever', logo: 'assets/logo.png', logoAlt: 'Klever Küche', mark: ['KLEVER', 'KÜCHE'] };
+  }
+  /* who is looking decides: called whenever the bar is drawn */
+  function adoptBrand() {
+    var who = typeof AUTH !== 'undefined' ? AUTH.who() : null;
+    BRAND = !who ? coBefore() : (AUTH.isChairman() || typeof companyOf !== 'function') ? 'klever' : companyOf(who);
+    if (who) store.set(CO_KEY, BRAND);
+    var b = brand();
+    try { document.body.setAttribute('data-co', BRAND); } catch (e) {}
+    /* the home-screen name and icon: the page carries each company's own
+       manifest and icons, stamped, as <meta name="co-…-<company>"> */
+    [['link[rel="manifest"]', 'href', 'co-manifest-'], ['link[rel="apple-touch-icon"]', 'href', 'co-icon180-'],
+     ['link[rel="icon"][type="image/svg+xml"]', 'href', 'co-iconsvg-'], ['meta[name="theme-color"]', 'content', 'co-theme-']]
+      .forEach(function (x) {
+        var n = document.querySelector(x[0]);
+        if (!n) return;
+        if (n.getAttribute('data-klever') == null) n.setAttribute('data-klever', n.getAttribute(x[1]) || '');
+        var alt = BRAND === 'klever' ? null : document.querySelector('meta[name="' + x[2] + BRAND + '"]');
+        n.setAttribute(x[1], alt ? alt.getAttribute('content') : n.getAttribute('data-klever'));
+      });
+    return b;
+  }
+  /* the company's logo, or — until it has one — its name written out */
+  function brandMark(cls, co) {
+    var b = (co && coOk(co) && COMPANIES[co]) || brand();
+    if (b.logo) { var img = new Image(); img.src = b.logo; img.alt = b.logoAlt || b.en; if (cls) img.className = cls; return img; }
+    var w = el('span', 'brandword' + (cls ? ' ' + cls : ''), b.mark ? b.mark[0] : String(b.en).toUpperCase());
+    w.setAttribute('role', 'img');
+    w.setAttribute('aria-label', b.logoAlt || b.en);
+    return w;
+  }
+
+  function t(k) {
+    var own = BRAND !== 'klever' ? T[lang][k + '@' + BRAND] : null;
+    return own != null ? own : T[lang][k];
+  }
   function L(o) { return (lang === 'am' && o.am) ? o.am : o.en; }
 
   /* A personal sign-in link, #key=<password>, signs its owner in with one
@@ -322,10 +373,10 @@
 
   function buildTop() {
     var top = el('header', 'top'), inner = el('nav', 'top-in');
-    inner.setAttribute('aria-label', 'Klever');
+    var b = adoptBrand();
+    inner.setAttribute('aria-label', b.en);
     var a = el('a'); a.href = 'index.html';
-    var img = new Image(); img.src = 'assets/logo.png';
-    img.alt = 'Klever Küche'; a.appendChild(img);
+    a.appendChild(brandMark());
     inner.appendChild(a);
     inner.appendChild(el('div', 'spacer'));
 
@@ -915,9 +966,9 @@
     var a = addis(), d = new Date(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate()), e = toEthiopian(d);
     var head = el('header', 'lh');
 
-    var mark = el('div', 'lh-mark');
-    mark.appendChild(el('span', 'lh-k', 'KLEVER'));
-    mark.appendChild(el('span', 'lh-ku', 'KÜCHE'));
+    var mark = el('div', 'lh-mark'), bm = brand().mark || ['KLEVER', 'KÜCHE'];
+    mark.appendChild(el('span', 'lh-k', bm[0]));
+    if (bm[1]) mark.appendChild(el('span', 'lh-ku', bm[1]));
     head.appendChild(mark);
 
     var dt = el('div', 'lh-date');
@@ -4291,12 +4342,10 @@
     doc.id = 'printdoc';
 
     var head = el('header', 'pd-head');
-    var logo = new Image();
-    logo.src = 'assets/logo.png';
-    logo.alt = 'Klever Küche';
-    logo.className = 'pd-logo';
-    head.appendChild(logo);
-    var kind = el('div', 'pd-kind', t('siteTitle'));
+    /* the company's own letterhead: its logo, or its name until it has one */
+    var pco = typeof companyOf === 'function' ? companyOf(report.person) : BRAND;
+    head.appendChild(brandMark('pd-logo', pco));
+    var kind = el('div', 'pd-kind', coOk(pco) ? L({ en: COMPANIES[pco].titleEn, am: COMPANIES[pco].titleAm }) : t('siteTitle'));
     head.appendChild(kind);
     doc.appendChild(head);
 

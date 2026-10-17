@@ -414,7 +414,9 @@ function loadSchedule_() {
      the check for answers that cannot be right, shared with the form */
   var read = new Function(src.getContentText() + '; return { people: PEOPLE, reports: REPORTS, ' +
                           'odd: typeof oddFigures === "function" ? oddFigures : null, ' +
-                          'holidays: typeof HOLIDAYS !== "undefined" ? HOLIDAYS : [] };');
+                          'holidays: typeof HOLIDAYS !== "undefined" ? HOLIDAYS : [], ' +
+                          /* the companies with pages of their own (Rovestone, 17 Oct 2026) */
+                          'companies: typeof COMPANIES !== "undefined" ? COMPANIES : {} };');
   SCHEDULE_ = read();
   if (!SCHEDULE_.reports || !SCHEDULE_.reports.length) throw new Error('Schedule came back empty');
   return SCHEDULE_;

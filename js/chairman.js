@@ -39,6 +39,19 @@ import {
   var lang = (urlLang === 'am' || urlLang === 'en' ? urlLang
               : store.get(LANG_KEY)) === 'am' ? 'am' : 'en';
 
+  /* WHICH COMPANY THIS PAGE IS ABOUT (17 Oct 2026: Rovestone has pages of
+     its own — COMPANIES in forms.js). Klever's, unless he switched: the
+     switch at the top, ?co=rovestone, or his last choice on this phone.
+     Everyone belongs to one view — their company's when it has pages here,
+     Klever's otherwise (Meri, Lemi Kura and Kidan included). */
+  var CO_SW_KEY = 'klever.chco';
+  function coOk(c) { return !!c && typeof COMPANIES !== 'undefined' && !!COMPANIES[c]; }
+  var urlCo = new URLSearchParams(location.search).get('co');
+  if (coOk(urlCo)) store.set(CO_SW_KEY, urlCo);
+  var CO = coOk(urlCo) ? urlCo : (coOk(store.get(CO_SW_KEY)) ? store.get(CO_SW_KEY) : 'klever');
+  function lensOf(pid) { return typeof companyOf === 'function' ? companyOf(pid) : 'klever'; }
+  function inLens(pid) { return lensOf(pid) === CO; }
+
   /* A word not yet translated shows in English rather than as a blank
      button — i18n.js and this file are published separately. */
   function t(k) { var s = T[lang][k]; return s != null ? s : T.en[k]; }
@@ -183,6 +196,8 @@ import {
     var d = dow(day);
     if (closedDay(day)) return [];
     return REPORTS.filter(function (r) {
+      /* only this view's people: Klever's, or the company switched to */
+      if (!inLens(r.person)) return false;
       /* not before its own start, nor its person's (Agent.js dueOn_, owedOn_) */
       if (r.from && day < r.from) return false;
       /* nor after it was stopped (`until`, Agent.js dueOn_) */
@@ -350,12 +365,79 @@ import {
 
   /* ---------------- the page ---------------- */
 
+  /* "Klever | Rovestone" at the top of his page (17 Oct 2026). A switch
+     reloads: every listener on the page was opened for one company's people. */
+  function coSwitch() {
+    var keys = ['klever'].concat(Object.keys(COMPANIES).filter(function (k) { return k !== 'klever'; }));
+    var box = el('div', 'chco');
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-label', t('chCoSwitch'));
+    keys.forEach(function (k) {
+      var b = el('button', null, L({ en: COMPANIES[k].en, am: COMPANIES[k].am }));
+      b.type = 'button';
+      b.setAttribute('aria-pressed', k === CO ? 'true' : 'false');
+      b.onclick = function () {
+        if (k === CO) return;
+        store.set(CO_SW_KEY, k);
+        var u = new URL(location.href);
+        if (k === 'klever') u.searchParams.delete('co'); else u.searchParams.set('co', k);
+        location.replace(u.toString());
+      };
+      box.appendChild(b);
+    });
+    return box;
+  }
+
+  /* A company's own view — Rovestone's: its people only. What they filed
+     today, who has not, who reported over the last two weeks, what he asked
+     of them. Nothing of Klever's money, factory or fines: they are not
+     Klever staff, and no fines (17 Oct 2026). */
+  function renderCo() {
+    DAY = today();
+    watchDay();
+    var c = COMPANIES[CO];
+    root.innerHTML = '';
+    root.appendChild(el('h1', null, L({ en: c.en, am: c.am })));
+    root.appendChild(coSwitch());
+    root.appendChild(el('p', 'sub', prettyDay(DAY)));
+
+    var tiles = el('div', 'chtiles');
+    var tFiled = tile(t('chFiled'), '—');
+    var tMissing = tile(t('chMissing'), '—');
+    tiles.appendChild(tFiled.box); tiles.appendChild(tMissing.box);
+    root.appendChild(tiles);
+    var ppl = PEOPLE.filter(function (p) { return inLens(p.id); });
+    root.appendChild(el('p', 'codenote chconote', t('chCoNote') + ' ' +
+      (ppl.length ? tfill('chCoPeople', { list: ppl.map(function (p) { return L(p) + ' (' + L({ en: p.roleEn, am: p.roleAm }) + ')'; }).join(', ') })
+                  : t('chCoNoOne'))));
+
+    root.appendChild(el('p', 'eyebrow', t('chGlance')));
+    var charts = el('div', 'chcharts');
+    charts.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(charts);
+
+    root.appendChild(el('p', 'eyebrow', t('chIns')));
+    var ins = el('div', 'chins');
+    root.appendChild(ins);
+
+    root.appendChild(el('p', 'eyebrow', t('chRaw')));
+    var raw = el('div', 'chraw');
+    raw.appendChild(el('p', 'codenote', t('chLoading')));
+    root.appendChild(raw);
+
+    watchInstructions(ins);
+    watchReports(raw, tFiled, tMissing);
+    watchCharts(charts);
+  }
+
   function render() {
+    if (CO !== 'klever') return renderCo();
     DAY = today();
     watchDay();
 
     root.innerHTML = '';
     root.appendChild(el('h1', null, t('chOverview')));
+    root.appendChild(coSwitch());
     root.appendChild(el('p', 'sub', prettyDay(DAY)));
 
     var tiles = el('div', 'chtiles');
@@ -1543,7 +1625,7 @@ import {
       /* and on the days after, this week's weekly reports still not in —
          Friday's on Saturday and Sunday — until the week closes */
       if (sundayOf(DAY) >= WEEK_FROM) REPORTS.forEach(function (r) {
-        if (r.cadence !== 'weekly' || r.built) return;
+        if (r.cadence !== 'weekly' || r.built || !inLens(r.person)) return;
         var dd = addDays(sundayOf(DAY), r.dueDay - 7);
         if (dd >= DAY || (r.until && dd > r.until)) return;
         var w = windowOf(r, dd);
@@ -1566,7 +1648,8 @@ import {
       snap.forEach(function (docu) {
         var x = docu.data({ serverTimestamps: 'estimate' });
         x.when = atOf(docu, x) || new Date();
-        all.push(x);
+        /* only this view's people (Klever's, or the company switched to) */
+        if (inLens(x.person)) all.push(x);
       });
       all.sort(function (a, b) { return a.when - b.when; });
       /* the charts' "today" column is drawn from these same filings */
@@ -1855,11 +1938,19 @@ import {
       if (!ledgers || !reps) return;
       whoSig = todaySig();
       box.innerHTML = '';
+      /* a company with pages of its own (Rovestone): its own view shows its
+         own "who reported", and nothing of Klever's (17 Oct 2026) */
+      if (CO !== 'klever') {
+        box.appendChild(whoChart(CO) || el('p', 'codenote', t('chCoNoneDue')));
+        return;
+      }
       /* Klever's own people, then each sister company on a card of its own —
          "this for Klever only; for the others another place beside it",
-         and "these are all different companies" (the user, 17 Oct 2026) */
+         and "these are all different companies" (the user, 17 Oct 2026);
+         a company with its own view is on its own view */
       box.appendChild(whoChart(null));
       CO_ORDER.forEach(function (co) {
+        if (coOk(co)) return;
         var g = whoChart(co);
         if (g) box.appendChild(g);
       });
@@ -2391,7 +2482,8 @@ import {
     what.maxLength = 1000;
     what.placeholder = t('chInsWhat');
     var to = el('select');
-    (typeof CHAT_ACCOUNTS !== 'undefined' ? CHAT_ACCOUNTS : []).forEach(function (id) {
+    /* only this view's people (Klever's, or the company switched to) */
+    (typeof CHAT_ACCOUNTS !== 'undefined' ? CHAT_ACCOUNTS : []).filter(inLens).forEach(function (id) {
       var o = el('option', null, nameOf(id));
       o.value = id;
       to.appendChild(o);
@@ -2452,7 +2544,7 @@ import {
       qs.forEach(function (d) {
         var x = d.data({ serverTimestamps: 'estimate' });
         x.id = d.id;
-        if (x.status === status) out.push(x);
+        if (x.status === status && inLens(x.to)) out.push(x);
       });
       return out;
     }
@@ -2992,7 +3084,8 @@ import {
     var form = el('div', 'chinsform');
 
     var who = el('select');
-    PEOPLE.forEach(function (p) {
+    /* Klever's rulebook: Klever's people (a company with its own view has no fines, 17 Oct 2026) */
+    PEOPLE.filter(function (p) { return inLens(p.id); }).forEach(function (p) {
       var o = el('option', null, L(p) + ' — ' + (lang === 'am' ? p.roleAm : p.roleEn));
       o.value = p.id;
       who.appendChild(o);

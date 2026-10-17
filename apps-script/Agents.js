@@ -547,6 +547,8 @@ function repeats_(d) {
      running"; a week here is today and the six days before it */
   var days = (d.before || []).filter(function (doc) { return doc.day >= from; }).map(function (doc) {
     return { day: doc.day, lines: (doc.lines || []).filter(function (l) {
+      /* a sister company's people are not Klever's (gather_, 17 Oct 2026) */
+      if (d.coOf && d.coOf[l.person]) return false;
       /* a weekly line sits in its week's Sunday; it was due on its own day */
       return !beforeReadStart_(d, l.dueDay || doc.day);
     }).map(function (l) {
@@ -1725,10 +1727,20 @@ function gather_(c, provisional) {
      handles, not names, and "Liu did not file" is not a sentence the Chairman
      should have to translate. Mahelet is called Liu nowhere except in this
      codebase. */
-  var ledger = c.ledger.map(function (l) {
+  var all = c.ledger.map(function (l) {
     return { person: l.name, id: l.person, report: l.reportName, reportId: l.report,
              due: l.due, status: l.status, amount: l.amount, why: l.why };
   });
+  /* Klever's figures are Klever's (17 Oct 2026, Rovestone's own pages): the
+     people of a sister company (`company` in forms.js — Rovestone, Meri,
+     Lemi Kura) are not in "N of M filed" or the late-and-missing list; their
+     day is one line of its own (`sisters`) and the sister reading reads
+     their filings. */
+  var coOf = {};
+  ((c.schedule && c.schedule.people) || []).forEach(function (p) { if (p.company) coOf[p.id] = p.company; });
+  var ledger = all.filter(function (l) { return !coOf[l.id]; });
+  var sisters = all.filter(function (l) { return coOf[l.id]; })
+    .map(function (l) { return Object.assign({ company: coOf[l.id] }, l); });
   return {
     day: c.day,
     when: dayStart_(c.day),
@@ -1741,6 +1753,8 @@ function gather_(c, provisional) {
     due: c.due,
     names: c.names,
     ledger: ledger,
+    sisters: sisters,
+    coOf: coOf,
     ruleLines: c.ruleLines || [],
     ruleErrors: c.ruleErrors || [],
     weekWaiting: c.weekWaiting || [],
@@ -1945,6 +1959,24 @@ function writeAnalysis_(results, d) {
   if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 3).setValues(rows);
 }
 
+/* The sister companies' day, one line under Klever's figures (17 Oct 2026):
+   "Rovestone: 0 of 1 in · Meri Block Board: 1 of 1 in". No fines — not
+   Klever staff. Empty when none of their reports was due. */
+var SISTER_NAMES_ = { rovestone: 'Rovestone', meri: 'Meri Block Board', realestate: 'Real Estate & Construction (Lemi Kura)' };
+function sisterLine_(d) {
+  var by = {}, order = [];
+  (d.sisters || []).forEach(function (l) {
+    if (!by[l.company]) { by[l.company] = { due: 0, inn: 0 }; order.push(l.company); }
+    by[l.company].due++;
+    if (l.status === 'On time' || l.status === 'LATE') by[l.company].inn++;
+  });
+  if (!order.length) return '';
+  return '<div style="font-size:12.5px;color:#66716d;margin:-8px 0 18px">Sister companies (no fines): ' +
+    order.map(function (co) {
+      return esc_(SISTER_NAMES_[co] || co) + ' ' + by[co].inn + ' of ' + by[co].due + ' in';
+    }).join(' · ') + '</div>';
+}
+
 function mailAnalysis_(results, d) {
   var brief = results.filter(function (r) { return r.id === 'brief'; })[0];
   var decide = results.filter(function (r) { return r.decision; })[0];
@@ -1966,7 +1998,7 @@ function mailAnalysis_(results, d) {
       tile_('FILED', d.ledger.filter(function (l) { return l.status !== 'MISSING'; }).length + ' / ' + d.ledger.length) +
       tile_(d.provisional ? 'NOT IN YET' : 'NOT FILED', String(missing)) +
       tile_(d.provisional ? 'OWED SO FAR' : 'OWED', fmt_(owed) + ' Birr') +
-    '</tr></table>';
+    '</tr></table>' + sisterLine_(d);
 
   if (brief) {
     html += '<div style="background:#f3f4f1;border-left:3px solid #0f5c54;padding:14px 16px;' +
@@ -2168,7 +2200,8 @@ function publishAnalysis_(results, d) {
       dayLabel: d.dayLabel,
       provisional: !!d.provisional,
       ranAt: new Date(),
-      filed: d.filed.length,
+      /* Klever's: a sister company's filings are not in its count (gather_) */
+      filed: d.filed.filter(function (f) { return !(d.coOf && d.coOf[f.person]); }).length,
       due: d.ledger.length,
       owed: d.ledger.reduce(function (a, l) { return a + l.amount; }, 0),
       overdueInstructions: (d.instructions && d.instructions.overdue || []).length,

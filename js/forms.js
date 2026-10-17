@@ -63,8 +63,10 @@ const PEOPLE = [
      approval; until now Kidan had no account, so none of it arrived. Kidan
      files nothing here and has no terms letter. `company` keeps Kidan out of
      Klever's "All staff"; the Group Finance room (js/channels.js) is where
-     the reports land. */
-  { id:'kidan', en:'Kidan', am:'ኪዳን', roleEn:'Group Finance Controller', roleAm:'የቡድኑ ፋይናንስ ተቆጣጣሪ', grp:'groupfinance', company:'rovestone', noLetter:1 },
+     the reports land. 'group', not 'rovestone' (17 Oct 2026): Rovestone now
+     has pages of its own (COMPANIES below), and Kidan is the group's, not
+     Rovestone's — no Rovestone name on Kidan's screen, no Rovestone rooms. */
+  { id:'kidan', en:'Kidan', am:'ኪዳን', roleEn:'Group Finance Controller', roleAm:'የቡድኑ ፋይናንስ ተቆጣጣሪ', grp:'groupfinance', company:'group', noLetter:1 },
   /* The other two companies of the group (6 Oct 2026: "add one person mari
      and one lemi kura"). One account each, reporting the way Frewoyni does
      for Rovestone — daily and weekly, no fines (not Klever staff, no
@@ -103,6 +105,36 @@ const PEOPLE = [
   { id:'hiwot', en:'Hiwot', am:'ህይወት', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
   { id:'bereke', en:'Bereke', am:'በረከ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 }
 ];
+
+/* COMPANIES — the companies of the group that have pages of their own here
+   (17 Oct 2026, the user: "for Rovestone we have to prepare the same as
+   Klever — their layout and other things; I will tell their people, their
+   roles and what they will do"). Someone in PEOPLE with no `company` is
+   Klever's. A company listed here gets its own name and logo on its people's
+   screens, its own room, and its own view on the Chairman's page; Meri Block
+   Board and Real Estate & Construction (one account each) are not listed and
+   stay as they were. Decided for Rovestone, 17 Oct 2026: no fines for now
+   (no terms letters — `fines:false` makes every report of its people
+   reporting-only), only the Chairman reads its reports (`to`), the same
+   report times as Klever. `logo`: a file in assets/ — null until Rovestone's
+   comes, and the name is written out instead (`mark`). js/people.js carries
+   this block too (stamp.py), for the chat page. */
+const COMPANIES = {
+  klever:    { id:'klever', en:'Klever', am:'ክሌቨር', titleEn:'Klever Reports', titleAm:'የክሌቨር ሪፖርቶች',
+               logo:'assets/logo.png', logoAlt:'Klever Küche', mark:['KLEVER', 'KÜCHE'] },
+  rovestone: { id:'rovestone', en:'Rovestone', am:'ሮቭስቶን', titleEn:'Rovestone Reports', titleAm:'የሮቭስቶን ሪፖርቶች',
+               logo:null, logoAlt:'Rovestone', mark:['ROVESTONE', ''], fines:false,
+               toEn:'Chairman', toAm:'ሊቀመንበር', manifest:'rovestone.webmanifest', theme:'#3d3a36' }
+};
+/* the company whose pages a person sees: their `company` when it has pages
+   here, otherwise Klever's (Meri, Lemi Kura and Group Finance included) */
+function companyOf(pid) {
+  for (var i = 0; i < PEOPLE.length; i++) {
+    if (PEOPLE[i].id === pid) return PEOPLE[i].company && COMPANIES[PEOPLE[i].company] ? PEOPLE[i].company : 'klever';
+  }
+  return 'klever';
+}
+/* END COMPANIES */
 
 /* PUBLIC HOLIDAYS — the days Klever is closed besides Sundays (the user, 15
    Oct 2026: "fix in holiday"). On them, as on a Sunday, nothing is owed: no
@@ -9640,5 +9672,18 @@ function oddFigures(report, v) {
       r.penEn = 'No fines — no terms letter yet';
       r.penAm = 'ቅጣት የለም — የውል ደብዳቤ ገና አልተሰጠም';
     }
+  });
+  /* a company with fines:false (Rovestone, 17 Oct 2026): every report of its
+     people is reporting-only — the ledger (Agent.js charge_) reads noFine —
+     and goes to whom the company says, unless the report says otherwise. A
+     Rovestone report added later needs neither line of its own. */
+  REPORTS.forEach(function (r) {
+    var c = COMPANIES[companyOf(r.person)];
+    if (!c || c.id === 'klever') return;
+    if (c.fines === false && !r.noFine) {
+      r.noFine = 1;
+      if (!r.penEn) { r.penEn = 'No fines — reporting only'; r.penAm = 'ቅጣት የለም — ሪፖርት ብቻ'; }
+    }
+    if (!r.toEn && c.toEn) { r.toEn = c.toEn; r.toAm = c.toAm; }
   });
 })();

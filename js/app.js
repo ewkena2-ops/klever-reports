@@ -5558,6 +5558,19 @@
           if (!ok && !firstEmpty) firstEmpty = node;
         }
       }
+      /* a carried list's `want` box — a figure the person may not have yet
+         (Getachew's Birr per job, 17 Oct 2026) — counts as one still empty
+         in each row and is marked like an empty question; unlike `must`,
+         the second tap on Send sends */
+      if (f.carry && f.t === 'table') (f.cols || []).forEach(function (c) {
+        if (!c.want) return;
+        (Array.isArray(values[f.id]) ? values[f.id] : []).forEach(function (row, i) {
+          if (!row || !colOn(c, row)) return;
+          var empty = !has(row[c.id]), n = document.getElementById('c_' + f.id + '_' + i + '_' + c.id);
+          if (empty) { need += 1; if (n && !firstEmpty) firstEmpty = n; }
+          if (n) n.classList.toggle('miss', empty && marking);
+        });
+      });
       if (f.tgt) {
         var h = document.getElementById('h_' + f.id);
         if (h) {
@@ -5919,6 +5932,8 @@
     /* what Send would file, and what it would call unanswered */
     answers: function () { computeAutos(); return answers(); },
     unanswered: function () { return unanswered(); },
+    /* the `must` boxes Send would stop on, by the id of each box */
+    mustGapIds: function () { return mustGaps().map(function (g) { return g.id; }); },
     /* the job codes an answer names (carry) */
     jobCodes: function (v, inCol) { return jobCodes(v, inCol); },
     /* the same answers the forms use, for the pages that draw the company:

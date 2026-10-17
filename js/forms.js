@@ -3,6 +3,8 @@
 
    field keys:  id  en  am  t(type)  i(indent)  tgt(target check)  opt(not required)
                 must(cannot be sent empty — on a question, or on a list's column: every row)
+                want(on a carried list's column: each empty box counts as one still empty and
+                     is marked, but the second tap on Send sends — a figure not known yet)
                 carry(a list whose rows are the job codes of this person's earlier
                       reports still open — {from:['list.col'|'question'|{f, col, when:{col, is|in}}],
                       shut:[same — a later mention that closes the job], close:{col, in:[…]}, days};
@@ -1697,9 +1699,13 @@ const REPORTS = [
             ifCol:'buy', ifNot:['done', 'hold']},
           /* what the job's material came to, once it is all bought: the
              Chairman's net on the job (apps-script/JobMoney.js) */
-          /* `mustFrom`: not required on Thu 15 Oct 2026 (the user: "for today
-             don't ask Getachew the amount — that is why he can't send") */
-          {id:'cost', en:'What did all its material cost, in Birr?', am:'የሥራው ዕቃ በሙሉ ስንት ብር ወጣ?', t:'money', must:1, mustFrom:'2026-10-16',
+          /* `want`, never a `must` (17 Oct 2026). A Birr figure he does not
+             have yet stopped the whole report: no daily from him on 14, 15
+             or 16 Oct, 500 Birr missing each day (the user: "he filled
+             everything in but it shows 1 red"). Empty, it is counted and
+             marked, the second tap sends, and the job is asked again the
+             next day. */
+          {id:'cost', en:'What did all its material cost, in Birr?', am:'የሥራው ዕቃ በሙሉ ስንት ብር ወጣ?', t:'money', want:1,
             ifCol:'buy', ifIn:['done']}
         ]}
     ]},
@@ -1715,7 +1721,9 @@ const REPORTS = [
         carry:{ask:'material', close:{col:'amount'}},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'amount', en:'All its material, in Birr (your best figure)', am:'የሥራው ዕቃ በሙሉ በብር (የሚጠብቁት ዋጋ)', t:'money', must:1, mustFrom:'2026-10-16'}
+          /* not a `must` either (17 Oct 2026, see `cost` above): an empty
+             one comes back tomorrow (JobMoney.js asks until it has one) */
+          {id:'amount', en:'All its material, in Birr (your best figure)', am:'የሥራው ዕቃ በሙሉ በብር (የሚጠብቁት ዋጋ)', t:'money', want:1}
         ]}
     ]},
     { en:'Purchase requests', am:'የግዥ ጥያቄዎች', fields:[

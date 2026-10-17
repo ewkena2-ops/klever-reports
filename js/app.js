@@ -1818,7 +1818,7 @@
       if (!docs) return;
       if (typingIn(wrap, draw)) return;
       var from = atKind === 'gt' ? gateFrom || '9999-12-31'
-                                 : typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-15';
+                                 : typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-19';
       var by = {};
       docs.forEach(function (d) { by[d.day] = d; });
       wrap.innerHTML = '';

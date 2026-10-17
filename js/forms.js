@@ -18,7 +18,8 @@
    tablet (gate.html, apps-script/Gate.js, 14 Oct 2026: "they don't have
    phones"). `worker`: no account and no phone — Amaha says why for them. */
 /* the first day a missing scan is asked about (Attend.js AT_FROM_ is the same) */
-const ATTEND_FROM = '2026-10-15';
+/* moved from Thu 15 Oct to Mon 19 Oct (the user, 17 Oct 2026: "from Monday we start our QR scan — don't ask them if they skipped before") */
+const ATTEND_FROM = '2026-10-19';
 const PEOPLE = [
   { id:'ephrata',  en:'Ephrata Assfa',   am:'ኤፍራታ አስፋ',   roleEn:'Commercial Lead',   roleAm:'የንግድ ኃላፊ', grp:'commercial', scan:1 },
   { id:'liu',      en:'Mahelet Teshome', am:'ማህሌት ተሾመ',   roleEn:'Operations Lead',   roleAm:'የኦፕሬሽን ኃላፊ', grp:'lead', scan:1 },

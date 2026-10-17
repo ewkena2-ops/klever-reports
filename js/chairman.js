@@ -867,7 +867,7 @@ import {
      address set, and the scans that came from another one, with one tap to
      say "that is our WiFi" (the first morning sets it up this way). */
   function watchAttend(into) {
-    var from = typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-15';
+    var from = typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-19';
     /* the Ethiopian month, as each person sees theirs (app.js) */
     var monthStart = window.KLEVER && window.KLEVER.ethMonthStart ? window.KLEVER.ethMonthStart(DAY) : DAY.slice(0, 8) + '01';
     var since = monthStart < from ? from : monthStart;
@@ -906,7 +906,7 @@ import {
     var people = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.scan && !p.company; });
     var by = {};
     st.docs.forEach(function (d) { (by[d.day] = by[d.day] || {})[d.person] = d; });
-    var from = typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-15';
+    var from = typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-19';
 
     /* the WiFi */
     var ips = (st.wifi && st.wifi.ips) || [], ignored = (st.wifi && st.wifi.ignored) || [];

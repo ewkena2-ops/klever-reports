@@ -30,7 +30,7 @@
    (firestore.rules). Read by the person, the Chairman and the ledger.     */
 
 var AT_LATE_AFTER_ = 8 * 60;                 /* 8:00 AM */
-var AT_FROM_ = '2026-10-15';                 /* the first day counted (js/forms.js ATTEND_FROM) */
+var AT_FROM_ = '2026-10-19';                   /* the first day counted (js/forms.js ATTEND_FROM) */
 var AT_PLACE_ = 'office';
 var AT_WHY_ = ['visit', 'sick', 'leave', 'forgot', 'holiday', 'transport', 'other'];
 

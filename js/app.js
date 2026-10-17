@@ -138,6 +138,8 @@
     /* a report that starts on a later day (`from` on the report) is owed by
        nobody before it — the board check, added at 6 PM on 12 Oct 2026 */
     if (r.from && ymd < r.from) return false;
+    /* nor after it was stopped (`until`, its last owed day — 17 Oct 2026) */
+    if (r.until && ymd > r.until) return false;
     /* a weekly report made from the daily reports (built:1, js/weekly.js)
        is owed by nobody — the Chairman, 11 Oct 2026 */
     if (r.built) return false;
@@ -294,7 +296,9 @@
   /* Betelhem carries seven forms — list them in the order her day and week run:
      daily before weekly, then by the day and time each is due */
   function reportsFor(pid) {
-    return REPORTS.filter(function (r) { return r.person === pid; }).sort(function (a, b) {
+    /* a stopped report (`until` passed) is no longer theirs to fill */
+    var today = stamp();
+    return REPORTS.filter(function (r) { return r.person === pid && !(r.until && today > r.until); }).sort(function (a, b) {
       var rank = { daily: 0, weekly: 1, monthly: 2 };
       if (a.cadence !== b.cadence) return rank[a.cadence] - rank[b.cadence];
       var ad = a.dueDay == null ? 0 : a.dueDay, bd = b.dueDay == null ? 0 : b.dueDay;
@@ -611,6 +615,8 @@
     REPORTS.forEach(function (r) {
       if (r.cadence !== 'weekly' || r.built || (pid && r.person !== pid) || list.indexOf(r) !== -1) return;
       var pd = periodNow(r);
+      /* not a stopped report's week (`until`, 17 Oct 2026) */
+      if (r.until && pd.day > r.until) return;
       if (pd.state === 'late' && pd.day !== d && !filingFor(r, pd.day)) late.push(r);
     });
     return { all: list, late: late, next: soon, mins: soon ? soonMins : null, sent: sent };

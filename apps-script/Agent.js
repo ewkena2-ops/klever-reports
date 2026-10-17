@@ -435,6 +435,8 @@ function dueOn_(schedule, day) {
   return schedule.reports.filter(function (r) {
     /* a report that starts on a later day (`from` on the report) */
     if (r.from && day < r.from) return false;
+    /* nor after it was stopped (`until`: its last owed day, 17 Oct 2026) */
+    if (r.until && day > r.until) return false;
     if (r.cadence === 'daily') return !(r.skipDays && r.skipDays.indexOf(dow) !== -1);
     if (r.cadence === 'weekly') return r.dueDay === dow;
     if (r.cadence === 'monthly') return first;
@@ -841,6 +843,8 @@ function owedOn_(schedule, day) {
   (schedule.people || []).forEach(function (p) { if (p.from) from[p.id] = p.from; });
   var started = function (r) {
     var due = r.cadence === 'weekly' && dow_(day) === 0 ? dueInWeek_(r, day) : day;
+    /* a stopped report: not owed for a week whose due day is past `until` */
+    if (r.until && due > r.until) return false;
     return !from[r.person] || due >= from[r.person];
   };
   if (dow_(day) === 0) {

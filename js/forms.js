@@ -4276,8 +4276,13 @@ const REPORTS = [
 
 /* ============= EPHRATA — 4-WEEK ROLLING SALES PROJECTION ============= */
 {
-  /* Amendment 1, 17 September 2026 moved this back from Monday 10:00 AM. */
-  id:'ephrata-projection', person:'ephrata', cadence:'weekly', dueTime:'17:00', dueDay:6,
+  /* Amendment 1, 17 September 2026 moved this back from Monday 10:00 AM.
+     STOPPED 17 Oct 2026 (the user: "remove 4 week rolling sales projection"):
+     `until` is the last day it was owed — Sat 17 Oct and after, nobody owes
+     it and it is off her page. It stays here so the days it was owed, and
+     what she filed, still open. (The 12,000,000 Birr four-week line is not
+     this report: it reads her weekly summary, made from her dailies.) */
+  id:'ephrata-projection', person:'ephrata', cadence:'weekly', dueTime:'17:00', dueDay:6, until:'2026-10-16',
   en:'4-Week Rolling Sales Projection', am:'የ4 ሳምንት የሽያጭ ትንበያ',
   toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
   dueEn:'Saturday 5:00 PM', dueAm:'ቅዳሜ ከቀኑ 11፡00 (5:00 PM)',

@@ -331,7 +331,8 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
     out.answers = askAnswers_(r, f.fields || {});
     return out;
   });
-  var notFiled = P.schedule.reports.filter(function (r) { return !latest[r.id]; })
+  /* a stopped report (`until` passed) is not "not filed" */
+  var notFiled = P.schedule.reports.filter(function (r) { return !latest[r.id] && !(r.until && day > r.until); })
     .map(function (r) { return r.en + ' (' + (P.names[r.person] || r.person) + ')'; });
 
   function series(reportId, field) {

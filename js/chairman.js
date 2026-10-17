@@ -185,7 +185,9 @@ import {
     return REPORTS.filter(function (r) {
       /* not before its own start, nor its person's (Agent.js dueOn_, owedOn_) */
       if (r.from && day < r.from) return false;
-      var who = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.id === r.person; })[0];
+      /* nor after it was stopped (`until`, Agent.js dueOn_) */
+      if (r.until && day > r.until) return false;
+      var who =(typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.id === r.person; })[0];
       if (who && who.from && day < who.from) return false;
       if (r.cadence === 'daily') return !(r.skipDays && r.skipDays.indexOf(d) !== -1);
       /* made from the daily reports on Sunday (built:1): owed by nobody */
@@ -1543,7 +1545,7 @@ import {
       if (sundayOf(DAY) >= WEEK_FROM) REPORTS.forEach(function (r) {
         if (r.cadence !== 'weekly' || r.built) return;
         var dd = addDays(sundayOf(DAY), r.dueDay - 7);
-        if (dd >= DAY) return;
+        if (dd >= DAY || (r.until && dd > r.until)) return;
         var w = windowOf(r, dd);
         if (now >= w.to) return;
         var hit = all.some(function (f) {

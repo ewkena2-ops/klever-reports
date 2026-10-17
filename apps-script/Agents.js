@@ -1657,9 +1657,12 @@ function catchUp_(day) {
   ledgersBetween_(from, day).forEach(function (d) { have[d.day] = d; });
   var schedule = loadSchedule_();
   var done = [];
+  /* a day closed before a filing was moved into it or out of it (Moves.js) */
+  var redo = typeof movedDaysToRedo_ === 'function' ? movedDaysToRedo_(have) : {};
   for (var d = from; d < day; d = addDays_(d, 1)) {
     /* a Sunday whose week was closed at 9 PM and whose day was never finished */
     if (have[d] && have[d].dayOpen) { closeDay_(d, { part: 'day', doc: have[d] }); done.push(d); continue; }
+    if (have[d] && redo[d]) { closeDay_(d); done.push(d); continue; }
     if (have[d] || !owedOn_(schedule, d).length) continue;
     closeDay_(d);
     done.push(d);

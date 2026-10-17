@@ -628,6 +628,9 @@ function fsQuery_(collection, where, orderBy) {
       size = FS_PAGE_;
     }
   }
+  /* a filing the Chairman moved to another day counts there, wherever it is
+     read (Moves.js) — before her fixes, which go by the day */
+  if (collection === 'reports' && typeof movePatch_ === 'function') movePatch_(out);
   /* Ephrata's collections as she fixed them, wherever her reports are read (Money.js) */
   if (collection === 'reports' && typeof moneyPatch_ === 'function') moneyPatch_(out);
   return out;
@@ -653,10 +656,18 @@ function fsPut_(path, obj) {
 /* Every report filed from the start of one day to the start of another,
    oldest first. */
 function filedBetween_(fromDay, toDay) {
-  return fsQuery_('reports', [
+  var from = dayStart_(fromDay).getTime(), to = dayStart_(toDay).getTime();
+  var got = fsQuery_('reports', [
     ['at', 'GREATER_THAN_OR_EQUAL', dayStart_(fromDay)],
     ['at', 'LESS_THAN', dayStart_(toDay)]
-  ], 'at').map(function (f) {
+  ], 'at');
+  /* a filing moved to these days from outside them comes in; one moved out
+     of them goes (Moves.js) */
+  if (typeof movedInto_ === 'function') got = got.concat(movedInto_(from, to, got));
+  return got.filter(function (f) {
+    var t = f.at && f.at.getTime ? f.at.getTime() : NaN;
+    return !(t < from || t >= to);
+  }).sort(function (a, b) { return a.at.getTime() - b.at.getTime(); }).map(function (f) {
     return {
       person: f.person, report: f.report, by: f.by,
       at: f.at, day: dayOf_(f.at),

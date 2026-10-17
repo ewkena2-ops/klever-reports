@@ -92,6 +92,29 @@
   }
   function timeOf(v) { return v && v.toDate ? v.toDate() : new Date(Date.now() + (window.KLEVER_SKEW || 0)); }
 
+  /* A filing the Chairman moved to another day (/moves, apps-script/Moves.js,
+     17 Oct 2026: Getachew's Friday report came on Saturday). Read once a page
+     load — one person's own, or all of them for the Chairman — and every
+     filing handed out below counts at the time it was moved to. */
+  var movesP = {};
+  function movesFor(person) {
+    var k = person || '*';
+    if (!movesP[k]) movesP[k] = ready.then(function () {
+      if (!db || !user) return {};
+      var q = person ? F.query(F.collection(db, 'moves'), F.where('person', '==', person)) : F.collection(db, 'moves');
+      return F.getDocs(q).then(function (snap) {
+        var m = {};
+        snap.forEach(function (d) { var x = d.data(); if (x && x.asAt && x.asAt.toDate) m[d.id] = x; });
+        return m;
+      });
+    })['catch'](function () { delete movesP[k]; return {}; });
+    return movesP[k];
+  }
+  function movedAt(m, id, x, at) {
+    var mv = m && m[id];
+    return mv && mv.person === x.person && mv.report === x.report ? mv.asAt.toDate() : at;
+  }
+
   /* what one person adding faces may do, with their own sign-in */
   function faceSession(dbx, u, end) {
     return {
@@ -201,10 +224,13 @@
           var out = [];
           snap.forEach(function (d) {
             var x = d.data({ serverTimestamps: 'estimate' });
-            out.push({ report: x.report, person: x.person, by: x.by, at: timeOf(x.at),
+            out.push({ id: d.id, report: x.report, person: x.person, by: x.by, at: timeOf(x.at),
                        pending: d.metadata.hasPendingWrites });
           });
-          cb(out);
+          movesFor(person).then(function (m) {
+            out.forEach(function (f) { f.at = movedAt(m, f.id, f, f.at); });
+            cb(out);
+          });
         }, function () { /* no answer is not "nothing sent": leave the list as it is */ });
       });
     },
@@ -221,12 +247,12 @@
         if (!db) return [];
         var q = F.query(F.collection(db, 'reports'),
                         F.where('person', '==', person), F.where('at', '>=', since));
-        return F.getDocs(q).then(function (snap) {
-          var out = [];
-          snap.forEach(function (d) {
+        return Promise.all([F.getDocs(q), movesFor(person)]).then(function (got) {
+          var out = [], m = got[1];
+          got[0].forEach(function (d) {
             var x = d.data({ serverTimestamps: 'estimate' });
             out.push({ report: x.report, person: x.person,
-                       at: timeOf(x.at).getTime(), values: x.values || {} });
+                       at: movedAt(m, d.id, x, timeOf(x.at)).getTime(), values: x.values || {} });
           });
           return out;
         });
@@ -502,6 +528,9 @@
     /* The jobs the script asks me about (apps-script/JobMoney.js — the
        money on each job, 14 Oct 2026): {to, kind, items:[{code, cust, m2}]},
        or null when there is nothing. */
+    /* my filings moved to another day, by filing id: {from, to, asAt, …} */
+    myMoves: function () { return ready.then(function () { return user ? movesFor(idOf(user)) : {}; }); },
+
     myJobAsk: function () {
       return ready.then(function () {
         if (!db || !user) return null;

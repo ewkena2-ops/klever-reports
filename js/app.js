@@ -2708,6 +2708,23 @@
        them with today's gap. */
     var sentAt = sentCopy && sentCopy.at ? (sentCopy.srv ? sentCopy.at : sentCopy.at + SKEW) : null;
     if (sentAt && periodAt(report, sentAt).day !== pd0.day) { sentCopy = null; sentAt = null; }
+    /* nor one whose send the Chairman moved to another day (/moves, 17 Oct
+       2026: Getachew's Friday report, sent on Saturday, counts for Friday) —
+       the form opens again to be filled for today */
+    if (sentCopy && window.FB && FB.myMoves) {
+      var keptKey = sentKeyOf(draftKey), keptDraft = draftKey, keptFor = pd0.day, keptRep = report.id, keptOpen = Date.now();
+      FB.myMoves().then(function (m) {
+        var off = Object.keys(m || {}).some(function (id) { return m[id].report === keptRep && m[id].from === keptFor; });
+        if (!off) return;
+        try { localStorage.removeItem(keptKey); } catch (e) {}
+        /* just opened (nothing typed yet): open it again, empty — the draft
+           saved on opening is that copy, so it goes too */
+        if (report && report.id === keptRep && !sending && Date.now() - keptOpen < 8000) {
+          try { localStorage.removeItem(keptDraft); } catch (e) {}
+          location.reload();
+        }
+      })['catch'](function () {});
+    }
     sentBefore = sentAt;
     /* an empty draft (the form was only opened) does not hide a real one */
     if (!values || typeof values !== 'object' || !hasContent(values)) {

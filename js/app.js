@@ -5047,13 +5047,24 @@
      "K.K.165, k.k 155", "RBT 3375"; in a job-code column a bare number is a
      KK job ("167") and any other code keeps its letters ("SD-12"). The same
      job written two ways is one row (KK-081 and kk81). */
-  function jobCodes(v, inCol) {
+  /* `parts`: keep a part's letter — one job split in parts, "KK165A",
+     "kk 165 b", "KK-165-B" are KK-165A / KK-165B (the user, 17 Oct 2026).
+     Only the code book asks for it: a carried row stays known by its job
+     (KK-165), as it always was. A letter set apart by a space is a part only
+     when no word follows it ("KK165 a delivery" is KK-165); one written on
+     the number or after a hyphen always is. */
+  function jobCodes(v, inCol, parts) {
     var s = String(v == null ? '' : v), out = [];
     function put(c) { if (c && out.indexOf(c) === -1) out.push(c); }
     var re = /(^|[^a-z0-9])(k(?:\W{0,3}k)+|rbt)\W{0,3}0*(\d{1,5})(?!\d)/gi, m;
     while ((m = re.exec(s))) {
-      var pre = /^k/i.test(m[2]) ? 'KK' : 'RBT';
-      put(pre + '-' + Number(m[3]));
+      var pre = /^k/i.test(m[2]) ? 'KK' : 'RBT', letter = '';
+      if (parts) {
+        var after = s.slice(re.lastIndex);
+        var pm = /^\s?-\s?([a-z])(?![a-z])|^([a-z])(?![a-z])/i.exec(after) || /^\s+([a-z])(?![a-z])(?!\s+[a-z])/i.exec(after);
+        if (pm) { letter = (pm[1] || pm[2]).toUpperCase(); re.lastIndex += pm[0].length; }
+      }
+      put(pre + '-' + Number(m[3]) + letter);
       /* a list runs on after its first code: "K.k=165,155" */
       if (pre !== 'KK') continue;
       var tail = s.slice(re.lastIndex), run = /^\s*(?:[,;\/&+]|and|እና)\s*0*(\d{2,3})(?!\d)/i, n;
@@ -5066,6 +5077,9 @@
     if (out.length || !inCol) return out;
     var t = s.toUpperCase().replace(/[–—]/g, '-').replace(/[^A-Z0-9-]/g, '');
     if (/^\d{1,3}$/.test(t)) return ['KK-' + Number(t)];
+    /* "165 b" in a job column: part B of KK-165 */
+    var bp = parts && /^(\d{1,3})-?([A-Z])$/.exec(t);
+    if (bp) return ['KK-' + Number(bp[1]) + bp[2]];
     var c = /^([A-Z]+)-?0*(\d+(?:-\d+)*)/.exec(t);
     return c ? [c[1] + '-' + c[2]] : [];
   }
@@ -5111,11 +5125,13 @@
     var s = String(v == null ? '' : v).trim().replace(/(^|[^a-z0-9])rb(?!t)\W{0,3}(?=\d)/gi, '$1RBT ');
     if (!s) return [];
     var kind = function (j) { return /^KK-/.test(j) ? 'kk' : /^RBT-/.test(j) ? 'rbt' : 'other'; };
-    var out = jobCodes(s, false).map(function (j) { return { kind: kind(j), id: j }; });
+    /* a part (KK-165B) carries its job (KK-165) as `p` */
+    var one = function (j) { var pm = /^([A-Z]+-\d+(?:-\d+)*)[A-Z]$/.exec(j); return { kind: kind(j), id: j, p: pm ? pm[1] : '' }; };
+    var out = jobCodes(s, false, true).map(one);
     if (!out.length) {
       var m = /(^|\D)(\d{4})(?!\d)/.exec(s);
       if (m) out.push({ kind: 'lead', id: m[2] });
-      else out = jobCodes(s, true).map(function (j) { return { kind: kind(j), id: j }; });
+      else out = jobCodes(s, true, true).map(one);
     }
     return out.slice(0, 3);
   }
@@ -5131,15 +5147,31 @@
       else { if (ld.c) lp.push(ld.c); if (ld.j) lp.push(tx('cbNow', { j: ld.j })); }
       return lp.join(' · ');
     }
-    var jb = bookJob(k.id), out = [k.id];
+    var jb = bookJob(k.id), pj = k.p ? bookJob(k.p) : null, out = [k.id];
     if (k.kind === 'rbt') out.push(tx('cbRbt'));
-    if (!jb) { if (k.kind !== 'rbt') out.push(tx('cbNewJob')); return out.join(' · '); }
-    if (jb.x && jb.x.length > 1) out.push(tx('cbTwo', { n: jb.x.length, names: jb.x.join(', ') }));
+    /* a part of a job (17 Oct 2026): "KK-165B · part of KK-165", or, the
+       register not having seen it yet, "new part of KK-165" */
+    if (k.p && (jb || pj)) out.push(tx(jb ? 'cbPartOf' : 'cbNewPart', { p: k.p }));
+    if (!jb && !pj) { if (k.kind !== 'rbt') out.push(tx('cbNewJob')); return out.join(' · '); }
+    /* a job split in parts says which */
+    if (jb && jb.s && jb.s.length) out.push(tx('cbSplit', { s: jb.s.join(', ') }));
+    /* the customer: the part's own, else its job's */
+    var e = jb && (jb.c || (jb.x && jb.x.length)) ? jb : (pj || jb);
+    if (e.x && e.x.length > 1) out.push(tx('cbTwo', { n: e.x.length, names: e.x.join(', ') }));
     else {
-      if (jb.c) out.push(jb.c);
-      if (jb.l) out.push(tx('cbLeadNo', { l: jb.l }));
+      if (e.c) out.push(e.c);
+      if (e.l) out.push(tx('cbLeadNo', { l: e.l }));
     }
     return out.join(' · ');
+  }
+  /* every customer a job's family is written for: the job, its job if it is
+     a part, its parts if it has them */
+  function familyNames(k) {
+    var jb = bookJob(k.id), names = bookNames(jb).slice();
+    var add = function (e) { bookNames(e).forEach(function (n) { if (names.indexOf(n) === -1) names.push(n); }); };
+    if (k.p) add(bookJob(k.p));
+    if (jb && jb.s) jb.s.forEach(function (s) { add(bookJob(s)); });
+    return names;
   }
   function tfillIn(lg, k, o) {
     var s = (T[lg] && T[lg][k]) || T.en[k] || k;
@@ -5215,7 +5247,8 @@
         var cust = String(row.cust).trim();
         codeCols.forEach(function (c) {
           codesIn(row[c.id]).forEach(function (k) {
-            var e = k.kind === 'lead' ? bookLead(k.id) : bookJob(k.id), names = bookNames(e);
+            /* a job's family (a part and its job) is one customer's */
+            var names = k.kind === 'lead' ? bookNames(bookLead(k.id)) : familyNames(k);
             if (!names.length) return;
             var verdict = names.map(function (n) { return sameCust(cust, n); });
             /* one of them, or any it cannot tell: no question */

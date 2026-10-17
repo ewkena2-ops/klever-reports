@@ -287,6 +287,8 @@ import {
     nm.appendChild(el('span', 'regcode', j.job));
     if (j.cust) nm.appendChild(document.createTextNode(' · ' + j.cust));
     if (j.leadCode) nm.appendChild(el('span', 'regcode regno', ' #' + j.leadCode));
+    /* a part of a job split in parts (KK-165B of KK-165, 17 Oct 2026) */
+    if (j.partOf) nm.appendChild(el('span', 'regcode regno', ' · ' + tf('regPartOf', { job: j.partOf })));
     h.appendChild(nm);
     var wj = where(j);
     h.appendChild(chip(stageText(wj.id), false));

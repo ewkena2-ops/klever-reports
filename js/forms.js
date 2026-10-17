@@ -9560,9 +9560,11 @@ function oddFigures(report, v) {
                          am: tagAm + '«' + raw + '» ስልክ ቁጥር ይመስላል — ባለ 4 አሃዝ የደንበኛ ቁጥሩን (ከከፈሉ በኋላ KK ኮዱን) ይጻፉ' });
             }
             /* codeOk: a project's code — KK-165, RBT 3375 (Rovestone), or the
-               4-digit lead no.; a bare 1–3 digits is a KK job (17 Oct 2026) */
+               4-digit lead no.; a bare 1–3 digits is a KK job (17 Oct 2026); a
+               letter after the number is a part of the job ("KK165A",
+               "kk 165 b", "165 b") */
             if (c.codeOk && !/(^|[^a-z0-9])(k\W{0,3}k|rbt?)\W{0,3}0*\d{1,5}(?!\d)/i.test(raw) &&
-                !/(^|\D)\d{4}(?!\d)/.test(raw) && !/^\s*\d{1,3}\s*$/.test(raw)) {
+                !/(^|\D)\d{4}(?!\d)/.test(raw) && !/^\s*\d{1,3}\s*(-?\s*[a-z])?\s*$/i.test(raw)) {
               out.push({ f: f.id, en: tagEn + '“' + raw + '” is not a code — write the KK code (KK-165), the RBT code, or the 4-digit lead no.',
                          am: tagAm + '«' + raw + '» ኮድ አይደለም — የKK ኮዱን (KK-165)፣ የRBT ኮዱን ወይም ባለ 4 አሃዝ የደንበኛ ቁጥሩን ይጻፉ' });
             }

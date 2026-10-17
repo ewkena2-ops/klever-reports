@@ -40,6 +40,13 @@ function moneyCode_(s) {
   var m = /^KK0*(\d+)$/.exec(s);
   return m ? 'KK' + m[1] : s;
 }
+/* the job a code belongs to, parts and all: "KK165A", "KK165B" and "KK165"
+   are KK165 (one job split in parts — the user, 17 Oct 2026); RBT the same;
+   '' for a lead no. or anything else */
+function moneyFamily_(code) {
+  var m = /^(KK|RBT)0*(\d+)[A-Z]?$/.exec(String(code || ''));
+  return m ? m[1] + Number(m[2]) : '';
+}
 function moneyNum_(v) {
   var s = String(v == null ? '' : v).replace(/[^0-9.\-]/g, '');
   return s === '' || isNaN(Number(s)) ? null : Number(s);
@@ -101,6 +108,14 @@ function moneyCompare_(eph, sales, allIn) {
       if (!hit && s.code) eph.forEach(function (e) {
         if (!hit && !used[e.i] && e.code && ((e.alt && e.alt === s.code) || (s.alt && s.alt === e.code) || (e.alt && e.alt === s.alt))) hit = e;
       });
+      /* then a job and its part — "KK165" on one side, "KK165A" on the
+         other (moneyFamily_; also through a lead no.'s KK code): the same
+         amount first, then any (17 Oct 2026). Keys as typed, as above. */
+      var fam = function (r) { return [moneyFamily_(r.code), moneyFamily_(r.alt)].filter(Boolean); };
+      var sf = s.code ? fam(s) : [];
+      var kin = function (e) { return e.code && fam(e).some(function (x) { return sf.indexOf(x) !== -1; }); };
+      if (!hit && sf.length) eph.forEach(function (e) { if (!hit && !used[e.i] && kin(e) && Math.abs(e.v - s.v) <= MONEY_TOL_) hit = e; });
+      if (!hit && sf.length) eph.forEach(function (e) { if (!hit && !used[e.i] && kin(e)) hit = e; });
       /* then the same amount, where one side wrote no code */
       if (!hit) eph.forEach(function (e) {
         if (!hit && !used[e.i] && (!e.code || !s.code) && Math.abs(e.v - s.v) <= MONEY_TOL_) hit = e;

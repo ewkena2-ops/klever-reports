@@ -168,9 +168,17 @@ function regJob_(s) {
   /* the number, and nothing typed after it: "KK180 be material emete"
      became the job KK-180BEMATERIALEMETE on the AI's task list (11 Oct
      2026). A code with its own parts ("KK-2610-005") keeps them, and so
-     does one letter on its own ("KK165A"), but not the first of a word. */
-  var m = /^([A-Z]+)-?(\d+(?:-\d+)*(?:[A-Z](?![A-Z]))?)/.exec(t);
-  return m ? m[1] + '-' + m[2] : t;
+     does one letter on its own ("KK165A"), but not the first of a word.
+     That letter is a PART of the job — one job split in two, "KK165A",
+     "kk 165 b", "KK-165-B" (the user, 17 Oct 2026: "we may separate one
+     code into multiple sometimes") — and is written KK-165B. */
+  var m = /^([A-Z]+)-?(\d+(?:-\d+)*(?:-?[A-Z](?![A-Z]))?)/.exec(t);
+  return m ? m[1] + '-' + m[2].replace(/-([A-Z])$/, '$1') : t;
+}
+/* the job a part belongs to: KK-165B → KK-165; '' for a job that is not a part */
+function regParent_(job) {
+  var m = /^([A-Z]+-\d+(?:-\d+)*)[A-Z]$/.exec(String(job || ''));
+  return m ? m[1] : '';
 }
 /* Names (as regName_ gives them) in groups: two names are one customer when
    they join through a shared word, directly or through another name
@@ -624,6 +632,14 @@ function regFold_(events, today, names, sellers) {
     if (open && L.quiet > REG_OLD_LEAD_DAYS_) { oldLeads++; return; }
     leadRows.push(L);
   });
+  /* each job's customers as written, kept before the loop below lets them
+     go — a part (KK-165B) is checked against its job's (KK-165); and each
+     job by its code without noughts (KK-081 / KK-81 are one) */
+  var jobNames = {}, jobKeyOf = {};
+  Object.keys(jobs).forEach(function (k) {
+    jobNames[k] = jobs[k].names || {};
+    jobKeyOf[k.replace(/-0+(?=\d)/g, '-')] = k;
+  });
   Object.keys(jobs).forEach(function (k) {
     var J = jobs[k], p = [], notes = [];
     /* the day each step of the board was done, as the reports show it */
@@ -748,6 +764,25 @@ function regFold_(events, today, names, sellers) {
     }
     var cl = Object.keys(J.contractLeads || {});
     if (cl.length > 1) p.push({ code: 'job-two-contracts', text: J.job + ' is on ' + cl.length + ' contracts, with lead nos. ' + cl.join(' and ') });
+    /* A PART of a job (KK-165B of KK-165, 17 Oct 2026) is the same
+       customer's: written for someone else, it says so. Names in two
+       scripts are not compared, as above. */
+    var par = regParent_(J.job);
+    if (par) {
+      J.partOf = jobKeyOf[par.replace(/-0+(?=\d)/g, '-')] || par;
+      var pn = jobNames[J.partOf] || {}, mine = Object.keys(J.names || {}), theirs = Object.keys(pn);
+      var eth = function (x) { return /[ሀ-፿]/.test(x); };
+      var comparable = mine.some(function (a) { return theirs.some(function (b) { return eth(a) === eth(b); }); });
+      var pg = regGroups_(mine.concat(theirs));
+      var joined = pg.some(function (g) {
+        return g.some(function (x) { return mine.indexOf(x) !== -1; }) && g.some(function (x) { return theirs.indexOf(x) !== -1; });
+      });
+      if (comparable && !joined) {
+        p.push({ code: 'part-other-cust', text: J.job + ' is a part of ' + J.partOf + ', but it is written for ' +
+                 mine.map(function (x) { return J.names[x]; }).join(' and ') + ' and ' + J.partOf + ' for ' +
+                 theirs.map(function (x) { return pn[x]; }).join(' and ') });
+      }
+    }
     /* the code book's line for this job: its customer, its lead no., and
        every customer it was written for when that is more than one */
     var cj = {};
@@ -786,6 +821,27 @@ function regFold_(events, today, names, sellers) {
   Object.keys(codes.jobs).forEach(function (j) {
     var l = codes.jobs[j].l;
     if (l && codes.leads[l] && !codes.leads[l].j) codes.leads[l].j = j;
+  });
+  /* PARTS (17 Oct 2026): KK-165A, KK-165B are parts of KK-165 — the part
+     says `p` (its job), the job lists its parts in `s`. A job seen only
+     through its parts gets a line of its own, its customer the parts' when
+     they are one customer. */
+  var bookKey = {}, parts = {};
+  Object.keys(codes.jobs).forEach(function (j) { bookKey[j.replace(/-0+(?=\d)/g, '-')] = j; });
+  Object.keys(codes.jobs).forEach(function (j) {
+    var par = regParent_(j);
+    if (!par) return;
+    par = bookKey[par.replace(/-0+(?=\d)/g, '-')] || par;
+    codes.jobs[j].p = par;
+    (parts[par] = parts[par] || []).push(j);
+  });
+  Object.keys(parts).forEach(function (par) {
+    var e = codes.jobs[par] || (codes.jobs[par] = {});
+    e.s = parts[par].sort();
+    if (!e.c) {
+      var cs = parts[par].map(function (j) { return codes.jobs[j].c; }).filter(Boolean);
+      if (cs.length && regGroups_(cs.map(regName_).filter(Boolean)).length === 1) e.c = cs[0];
+    }
   });
   return { leads: leadRows, jobs: jobRows, oldLeads: oldLeads, oldJobs: oldJobs, codes: codes };
 }

@@ -703,6 +703,9 @@
   }
   function enrolList() {
     if (!session) return;
+    /* the list redraws itself as faces and workers arrive (several times in
+       the first seconds on a real line): the place on the page stays */
+    var keepY = sub === 'list' ? window.scrollY : 0;
     sub = 'list';
     root.innerHTML = '';
     var page = el('div', 'gtenrol');
@@ -719,6 +722,7 @@
         window.FB.signOut().then(function () { setTimeout(start, 300); });
       }));
     }
+    if (window.FB.who() === 'gate') page.appendChild(tabletOut());
     if (engineOk === false) page.appendChild(two('gtNoEngine', null, 'gtnote bad'));
     /* Amaha's own face is the Chairman's to set (firestore.rules) */
     var all = gatePeople().filter(function (p) { return !/^pay-/.test(p.id) && !(session.who === 'amaha' && p.id === 'amaha'); });
@@ -739,28 +743,31 @@
       extra.forEach(function (x) { l2.appendChild(enrolRow({ id: x.id, name: x.name, am: x.name, role: x.role })); });
       page.appendChild(l2);
     }
-    if (window.FB.who() === 'gate') page.appendChild(tabletOut());
     root.appendChild(page);
+    if (keepY) window.scrollTo(0, keepY);
   }
   /* the tablet's own sign-out, behind the Chairman's or Amaha's password — a
      phone signed in as "Gate tablet" to try it had no way back (the user,
      19 Oct 2026: "I am stuck at the gate, I can't sign out"). Two taps; the
-     scans still waiting stay on the tablet and go when it is the gate again. */
+     scans still waiting stay on the tablet and go when it is the gate again.
+     The first tap is kept outside the button: the list redraws under it. */
+  var outArmed = 0, rmArmed = { id: null, until: 0 };
   function tabletOut() {
     var wrap = el('div', 'gtout');
     wrap.appendChild(two('gtTabletOutNote', null, 'gtnote'));
     var b = btn('gtTabletOut', 'gtghost danger', null);
-    var armed = 0;
+    if (Date.now() < outArmed) b.classList.add('armed');
     b.onclick = function () {
       touch();
-      if (!armed) {
-        armed = setTimeout(function () { armed = 0; b.classList.remove('armed'); }, 5000);
+      if (Date.now() >= outArmed) {
+        outArmed = Date.now() + 5000;
         b.classList.add('armed');
+        setTimeout(function () { if (Date.now() >= outArmed) b.classList.remove('armed'); }, 5100);
         if (queue.length) toast('gtTabletOutWaiting', { n: queue.length });
         else toast('gtSure');
         return;
       }
-      clearTimeout(armed);
+      outArmed = 0;
       clearTimeout(idleEnrol);
       b.disabled = true;
       var s = session;
@@ -786,15 +793,17 @@
     acts.appendChild(btn(f ? 'gtAgain' : 'gtAddFace', f ? 'gtghost' : 'gtyes', function () { enrolPerson(p); }));
     if (f) {
       var rm = btn('gtRemove', 'gtghost danger', null);
-      var armed = 0;
+      /* like the tablet's sign-out: the first tap outlives a redraw */
+      if (rmArmed.id === p.id && Date.now() < rmArmed.until) rm.classList.add('armed');
       rm.onclick = function () {
-        if (!armed) {
-          armed = setTimeout(function () { armed = 0; rm.classList.remove('armed'); }, 5000);
+        if (rmArmed.id !== p.id || Date.now() >= rmArmed.until) {
+          rmArmed = { id: p.id, until: Date.now() + 5000 };
           rm.classList.add('armed');
+          setTimeout(function () { if (rmArmed.id !== p.id || Date.now() >= rmArmed.until) rm.classList.remove('armed'); }, 5100);
           toast('gtSure');
           return;
         }
-        clearTimeout(armed);
+        rmArmed = { id: null, until: 0 };
         rm.disabled = true;
         session.deleteFace(p.id).then(function () { setTimeout(enrolList, 300); }, function () { rm.disabled = false; toast('gtSaveFailed'); });
       };

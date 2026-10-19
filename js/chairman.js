@@ -42,14 +42,27 @@ import {
   /* WHICH COMPANY THIS PAGE IS ABOUT (17 Oct 2026: Rovestone has pages of
      its own — COMPANIES in forms.js). Klever's, unless he switched: the
      switch at the top, ?co=rovestone, or his last choice on this phone.
-     Everyone belongs to one view — their company's when it has pages here,
-     Klever's otherwise (Meri, Lemi Kura and Kidan included). */
+     Everyone belongs to one view — their company's, Klever's otherwise
+     (Kidan included).
+     19 Oct 2026, the user: "make the switch for all of it — Meri, Lemi Kura —
+     that's a better idea": every sister company has a view here, not only
+     the ones with pages of their own (COMPANIES gives those their name and
+     logo on their people's screens; Meri and Lemi Kura keep Klever's). */
+  var VIEWS = {
+    klever:     { en: 'Klever', am: 'ክሌቨር' },
+    rovestone:  { en: 'Rovestone', am: 'ሮቭስቶን' },
+    meri:       { en: 'Meri', am: 'መሪ', fullEn: 'Meri Block Board', fullAm: 'መሪ ብሎክ ቦርድ' },
+    realestate: { en: 'Lemi Kura', am: 'ለሚ ኩራ', fullEn: 'Real Estate & Construction (Lemi Kura)', fullAm: 'ሪል እስቴትና ግንባታ (ለሚ ኩራ)' }
+  };
   var CO_SW_KEY = 'klever.chco';
-  function coOk(c) { return !!c && typeof COMPANIES !== 'undefined' && !!COMPANIES[c]; }
+  function coOk(c) { return !!c && Object.prototype.hasOwnProperty.call(VIEWS, c); }
   var urlCo = new URLSearchParams(location.search).get('co');
   if (coOk(urlCo)) store.set(CO_SW_KEY, urlCo);
   var CO = coOk(urlCo) ? urlCo : (coOk(store.get(CO_SW_KEY)) ? store.get(CO_SW_KEY) : 'klever');
-  function lensOf(pid) { return typeof companyOf === 'function' ? companyOf(pid) : 'klever'; }
+  function lensOf(pid) {
+    var p = personById(pid), c = p && p.company;
+    return c && c !== 'klever' && coOk(c) ? c : 'klever';
+  }
   function inLens(pid) { return lensOf(pid) === CO; }
 
   /* A word not yet translated shows in English rather than as a blank
@@ -365,15 +378,16 @@ import {
 
   /* ---------------- the page ---------------- */
 
-  /* "Klever | Rovestone" at the top of his page (17 Oct 2026). A switch
-     reloads: every listener on the page was opened for one company's people. */
+  /* "Klever | Rovestone | Meri | Lemi Kura" at the top of his page (17 and
+     19 Oct 2026). A switch reloads: every listener on the page was opened
+     for one company's people. */
   function coSwitch() {
-    var keys = ['klever'].concat(Object.keys(COMPANIES).filter(function (k) { return k !== 'klever'; }));
+    var keys = Object.keys(VIEWS);
     var box = el('div', 'chco');
     box.setAttribute('role', 'group');
     box.setAttribute('aria-label', t('chCoSwitch'));
     keys.forEach(function (k) {
-      var b = el('button', null, L({ en: COMPANIES[k].en, am: COMPANIES[k].am }));
+      var b = el('button', null, L(VIEWS[k]));
       b.type = 'button';
       b.setAttribute('aria-pressed', k === CO ? 'true' : 'false');
       b.onclick = function () {
@@ -388,16 +402,16 @@ import {
     return box;
   }
 
-  /* A company's own view — Rovestone's: its people only. What they filed
+  /* A company's own view — Rovestone's, Meri's, Lemi Kura's: its people only. What they filed
      today, who has not, who reported over the last two weeks, what he asked
      of them. Nothing of Klever's money, factory or fines: they are not
      Klever staff, and no fines (17 Oct 2026). */
   function renderCo() {
     DAY = today();
     watchDay();
-    var c = COMPANIES[CO];
+    var c = VIEWS[CO];
     root.innerHTML = '';
-    root.appendChild(el('h1', null, L({ en: c.en, am: c.am })));
+    root.appendChild(el('h1', null, L({ en: c.fullEn || c.en, am: c.fullAm || c.am })));
     root.appendChild(coSwitch());
     root.appendChild(el('p', 'sub', prettyDay(DAY)));
 

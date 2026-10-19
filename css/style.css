@@ -150,12 +150,14 @@ h1{
 .langtoggle button[aria-pressed="true"]{background:var(--teal-hi);color:var(--teal-ink)}
 
 /* the Chairman's "Klever | Rovestone" switch, under his page's title (17 Oct 2026) */
-.chco{display:inline-flex;padding:3px;border-radius:12px;background:var(--card);border:1px solid var(--line-2);margin:6px 0 4px;gap:2px;max-width:100%}
+.chco{display:inline-flex;padding:3px;border-radius:12px;background:var(--card);border:1px solid var(--line-2);margin:6px 0 4px;gap:2px;max-width:100%;overflow-x:auto;box-sizing:border-box}
 .chco button{
   font-family:var(--sans);font-size:14px;font-weight:700;letter-spacing:.01em;
-  min-width:44px;min-height:40px;padding:6px 16px;border:0;border-radius:9px;
+  min-width:44px;min-height:40px;padding:6px 14px;border:0;border-radius:9px;white-space:nowrap;flex:0 0 auto;
   background:transparent;color:var(--mut);cursor:pointer;
 }
+/* four companies on a narrow phone: one line, never "Lemi / Kura" (19 Oct 2026) */
+@media (max-width:380px){.chco button{padding:6px 10px}}
 .chco button[aria-pressed="true"]{background:var(--teal-hi);color:var(--teal-ink)}
 body[data-page="chairman"] .codenote.chconote{text-align:left;margin:4px 0 12px;line-height:1.5}
 

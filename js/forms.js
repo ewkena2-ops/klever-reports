@@ -96,6 +96,10 @@ const PEOPLE = [
   /* Yesak approves "production completed" on the card; the user, 19 Oct
      2026: "Yesak has to report about production" */
   { id:'yesak',     en:'Yesak',     am:'ይሳቅ',    roleEn:'Rovestone Production',      roleAm:'የሮቭስቶን ምርት ኃላፊ',      grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  /* Beti signs every QC release on the card ("No delivery without QC
+     release signed by Beti"); the user, 19 Oct 2026: "the QC also has her
+     own report". Not Klever's 'betty' (the finance account). */
+  { id:'beti',      en:'Beti',      am:'ቤቲ',     roleEn:'Rovestone Quality Control', roleAm:'የሮቭስቶን ጥራት ቁጥጥር',     grp:'rovestone', company:'rovestone', from:'2026-10-21' },
 
   /* The 22 production workers, from the September payroll sheet. Ashenafi
      Girma on that sheet is Ashenafi Germa the Site Helper, listed above — he
@@ -8473,6 +8477,64 @@ const RV_PROD = rvDaily('Rovestone Production Daily Report', 'የሮቭስቶን
     ]}
   ]}
 ]);
+const RV_FAULTS = [
+  { v:'size',    en:'Wrong size',           am:'የተሳሳተ መጠን' },
+  { v:'damage',  en:'Damaged',              am:'ተጎድቷል' },
+  { v:'finish',  en:'Poor finish',          am:'አጨራረሱ ደካማ ነው' },
+  { v:'parts',   en:'Parts missing',        am:'ክፍሎች ጎድለዋል' },
+  { v:'colour',  en:'Wrong colour',         am:'የተሳሳተ ቀለም' },
+  { v:'other',   en:'Other',                am:'ሌላ' }
+];
+const RV_QC = rvDaily('Rovestone Quality Control Daily Report', 'የሮቭስቶን የጥራት ቁጥጥር ዕለታዊ ሪፖርት', [
+  { en:'QC checks (stage 12)', am:'የጥራት ፍተሻ (ደረጃ 12)', fields:[
+    {id:'q_checked', en:'Did you check a finished job today?', am:'ዛሬ ያለቀ ሥራ ፈትሸዋል?', t:'yesno', yes:{en:'Jobs checked', am:'ሥራዎች ተፈትሸዋል'}, no:{en:'Nothing checked', am:'የተፈተሸ የለም'}},
+    {id:'q_checked_list', en:'Each job checked', am:'የተፈተሸ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'q_checked', when:'yes'}, cols:[ RV_JOB,
+        {id:'result', en:'Result', am:'ውጤት', t:'choice', must:1, opts:[
+          { v:'pass',  en:'Passed',                    am:'አልፏል' },
+          { v:'small', en:'Passed after small fixes',  am:'በትንሽ ማስተካከያ አልፏል' },
+          { v:'fail',  en:'Failed — sent back',        am:'አላለፈም — ተመልሷል' }
+        ]},
+        {id:'fault', en:'What was wrong', am:'ችግሩ ምን ነበር', t:'choice', opt:1, opts:RV_FAULTS}
+      ]},
+    {id:'q_released', en:'Did you sign a QC release for a job today?', am:'ዛሬ ለሥራ የጥራት ፍተሻ መልቀቂያ ፈርመዋል?', t:'yesno', yes:{en:'Released', am:'ተለቋል'}, no:{en:'None released', am:'የተለቀቀ የለም'}},
+    {id:'q_released_list', en:'Each job released for delivery', am:'ለማስረከብ የተለቀቀ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'q_released', when:'yes'}, cols:[ RV_JOB,
+        {id:'card', en:'Signed on the Job Card', am:'በሥራ ካርዱ ላይ ተፈርሟል', t:'yesno', yes:{en:'Signed', am:'ተፈርሟል'}, no:{en:'Not yet', am:'ገና'}}
+      ]},
+    {id:'q_waiting', en:'Is a finished job waiting for your check?', am:'ፍተሻዎን የሚጠብቅ ያለቀ ሥራ አለ?', t:'yesno', yes:{en:'Jobs are waiting', am:'የሚጠብቁ ሥራዎች አሉ'}, no:{en:'Nothing waiting', am:'የሚጠብቅ የለም'}},
+    {id:'q_waiting_list', en:'Each job waiting', am:'የሚጠብቅ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'q_waiting', when:'yes'}, cols:[ RV_JOB,
+        {id:'since', en:'Waiting since', am:'ከመቼ ጀምሮ', t:'text'}
+      ]}
+  ]},
+  { en:'Delivery without QC', am:'ያለ ጥራት ፍተሻ ማስረከብ', fields:[
+    /* the card's hard stop: no delivery without QC release signed by Beti */
+    {id:'q_noqc', en:'Did any job leave for delivery without your QC release?', am:'ያለ እርስዎ የጥራት ፍተሻ መልቀቂያ ለማስረከብ የወጣ ሥራ አለ?', t:'yesno', yes:{en:'A job left without QC', am:'ያለ ፍተሻ የወጣ ሥራ አለ'}, no:{en:'None', am:'የለም'}},
+    {id:'q_noqc_list', en:'Each job that left without QC', am:'ያለ ፍተሻ የወጣ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'q_noqc', when:'yes'}, cols:[ RV_JOB,
+        {id:'who', en:'Who sent it', am:'የላከው ማን ነው', t:'text'}
+      ]}
+  ]},
+  { en:'Problems', am:'ችግሮች', fields:[
+    {id:'q_problem', en:'Any problem with quality today? (Write the job in the box.)', am:'ዛሬ የጥራት ችግር ነበር? (ሥራውን በሳጥኑ ይጻፉ።)', t:'area', opt:1,
+      picks:[
+        { en:'Nothing',                            am:'ምንም', nil:1 },
+        { en:'The same fault keeps coming back',   am:'ያው ችግር እየተደጋገመ ነው' },
+        { en:'Poor material',                      am:'የቁሳቁስ ጥራት ደካማ ነው' },
+        { en:'A job was rushed to delivery',       am:'ሥራ ለማስረከብ ተጣድፏል' },
+        { en:'No time to check everything',        am:'ሁሉንም ለመፈተሽ ጊዜ አልበቃም' }
+      ]}
+  ].concat(RV_CHAIR)},
+  { en:'Tomorrow', am:'ነገ', fields:[
+    {id:'t_plan', en:'What is the plan for tomorrow?', am:'የነገው ዕቅድ ምንድን ነው?', t:'area', picks:[
+      { en:'Check finished jobs',                  am:'ያለቁ ሥራዎችን መፈተሽ' },
+      { en:'Re-check fixed jobs',                  am:'የተስተካከሉ ሥራዎችን እንደገና መፈተሽ' },
+      { en:'Sign QC releases',                     am:'የጥራት ፍተሻ መልቀቂያ መፈረም' },
+      { en:'Check an installed job on site',       am:'የተገጠመ ሥራን በቦታው መፈተሽ' }
+    ]}
+  ]}
+]);
 const RV_GM = rvDaily('Rovestone General Manager Daily Report', 'የሮቭስቶን ዋና ሥራ አስኪያጅ ዕለታዊ ሪፖርት', [
   { en:'Approvals and holds', am:'ፈቃድና ማቆም', fields:[
     {id:'g_appr', en:'Did you approve a purchase for a job today? (stage 5)', am:'ዛሬ ለሥራ ግዥ አጽድቀዋል? (ደረጃ 5)', t:'yesno', yes:{en:'Approved', am:'አጽድቄያለሁ'}, no:{en:'None today', am:'ዛሬ የለም'}},
@@ -10011,7 +10073,7 @@ function oddFigures(report, v) {
   /* Rovestone's people from its Job Card (19 Oct 2026) — one daily each */
   [['kalkidan', RV_GM], ['marta', RV_SALES], ['fana', RV_SALES], ['rahel', RV_PAY],
    ['dawit', RV_DESIGN], ['tsigea', RV_DESIGN], ['yared-rv', RV_DESIGN], ['sintayehu', RV_DESIGN], ['hana', RV_DESIGN],
-   ['eyosias', RV_BUY], ['anbesu', RV_SITE], ['yesak', RV_PROD]].forEach(function (x) {
+   ['eyosias', RV_BUY], ['anbesu', RV_SITE], ['yesak', RV_PROD], ['beti', RV_QC]].forEach(function (x) {
     var r = copyFor(x[1], x[0]);
     /* owed from their first day only: dueOn reads the report's `from`, not the person's */
     r.from = '2026-10-21';

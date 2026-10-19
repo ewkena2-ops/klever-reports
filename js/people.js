@@ -75,6 +75,10 @@ const PEOPLE = [
   /* Yesak approves "production completed" on the card; the user, 19 Oct
      2026: "Yesak has to report about production" */
   { id:'yesak',     en:'Yesak',     am:'ይሳቅ',    roleEn:'Rovestone Production',      roleAm:'የሮቭስቶን ምርት ኃላፊ',      grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  /* Beti signs every QC release on the card ("No delivery without QC
+     release signed by Beti"); the user, 19 Oct 2026: "the QC also has her
+     own report". Not Klever's 'betty' (the finance account). */
+  { id:'beti',      en:'Beti',      am:'ቤቲ',     roleEn:'Rovestone Quality Control', roleAm:'የሮቭስቶን ጥራት ቁጥጥር',     grp:'rovestone', company:'rovestone', from:'2026-10-21' },
 
   /* The 22 production workers, from the September payroll sheet. Ashenafi
      Girma on that sheet is Ashenafi Germa the Site Helper, listed above — he

@@ -43,7 +43,7 @@ var AUTH = {
 
      A password changed, or a person added? Re-make this map from the
      private list with who_tags.py (kept outside the repository). */
-  WHO: /* WHO-TAGS */ { '00e': ['marta'], '087': ['meri'], '122': ['hana'], '196': ['liu'], '1cf': ['chairman'], '2c0': ['lemikura'], '326': ['ashenafi'], '32f': ['teklweld'], '33f': ['tsega'], '384': ['kalkidan'], '3c3': ['amaha'], '43f': ['yohannis'], '4c4': ['wude'], '4c5': ['sintayehu'], '547': ['ermiyas'], '599': ['yonas'], '5db': ['rahel'], '821': ['biruktayet'], '824': ['yared-rv'], '827': ['ephrata'], '896': ['abrham-g'], '8fb': ['abrham-w'], '90d': ['alemaya'], '963': ['seble'], '9cb': ['yesak'], 'a4f': ['betty'], 'b20': ['kidan'], 'b60': ['elyas'], 'c2e': ['dawit'], 'd5e': ['frewoyni'], 'dc2': ['fana'], 'de6': ['eyosias'], 'f2a': ['getachew'], 'f5e': ['anbesu'], 'fd7': ['tsigea'] },
+  WHO: /* WHO-TAGS */ { '00e': ['marta'], '087': ['meri'], '122': ['hana'], '196': ['liu'], '1cf': ['chairman'], '1d7': ['beti'], '2c0': ['lemikura'], '326': ['ashenafi'], '32f': ['teklweld'], '33f': ['tsega'], '384': ['kalkidan'], '3c3': ['amaha'], '43f': ['yohannis'], '4c4': ['wude'], '4c5': ['sintayehu'], '547': ['ermiyas'], '599': ['yonas'], '5db': ['rahel'], '821': ['biruktayet'], '824': ['yared-rv'], '827': ['ephrata'], '896': ['abrham-g'], '8fb': ['abrham-w'], '90d': ['alemaya'], '963': ['seble'], '9cb': ['yesak'], 'a4f': ['betty'], 'b20': ['kidan'], 'b60': ['elyas'], 'c2e': ['dawit'], 'd5e': ['frewoyni'], 'dc2': ['fana'], 'de6': ['eyosias'], 'f2a': ['getachew'], 'f5e': ['anbesu'], 'fd7': ['tsigea'] },
 
   /* the ids a password could belong to, most likely first */
   whoIs: function (password) {

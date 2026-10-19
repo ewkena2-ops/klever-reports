@@ -34,7 +34,7 @@ const CHAT_ACCOUNTS = [
   /* Rovestone, the sister company (4 Oct 2026); its other people from its
      Job Card (19 Oct 2026) */
   'frewoyni', 'kalkidan', 'marta', 'fana', 'rahel',
-  'dawit', 'tsigea', 'yared-rv', 'sintayehu', 'hana', 'eyosias', 'anbesu', 'yesak',
+  'dawit', 'tsigea', 'yared-rv', 'sintayehu', 'hana', 'eyosias', 'anbesu', 'yesak', 'beti',
   /* Group Finance (6 Oct 2026) */
   'kidan',
   /* Meri Block Board and Real Estate & Construction (Lemi Kura), 6 Oct 2026 */

@@ -46,6 +46,8 @@ service cloud.firestore {
                     'yared-rv', 'sintayehu', 'hana', 'eyosias', 'anbesu',
                     /* Rovestone's production (19 Oct 2026) */
                     'yesak',
+                    /* Rovestone's quality control (19 Oct 2026) */
+                    'beti',
                     /* the factory gate's tablet (gate.html), 14 Oct 2026 —
                        not a person: it reads the faces and posts check-ins */
                     'gate'];

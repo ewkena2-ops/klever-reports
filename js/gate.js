@@ -382,7 +382,10 @@
     K.queue = el('div', 'gtqueue');
     side.appendChild(K.queue);
     screen.appendChild(side);
-    var corner = el('button', 'gtcorner', '⚙');
+    /* a faint gear alone was missed on a phone (19 Oct: "still I don't see
+       sign out"): it says what it is for */
+    var cw = word('gtCornerBtn');
+    var corner = el('button', 'gtcorner', '⚙ ' + cw.am + ' · ' + cw.en);
     corner.type = 'button';
     corner.setAttribute('aria-label', word('gtFacesBtn').en);
     corner.onclick = function () { enrolSignIn(); };
@@ -967,6 +970,18 @@
       .then(function (r) { if (r && r.ok) then(); }, function () {});
   }
 
+  /* gate.html?out=1 opens the Chairman's or Amaha's sign-in at once — the
+     way to the tablet's sign-out without finding the gear; the address loses
+     ?out so the nightly reload does not open it again */
+  function outAsked() {
+    var q;
+    try { q = new URLSearchParams(location.search); } catch (e) { return false; }
+    if (!q.has('out')) return false;
+    q.delete('out');
+    try { history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash); } catch (e) {}
+    return true;
+  }
+
   /* ---------------- start ---------------- */
 
   var stopFaces = null, stopTeam = null;
@@ -1011,6 +1026,7 @@
       if (who === 'gate') {
         kiosk();
         awake();
+        if (outAsked()) enrolSignIn();
       } else {
         var s = window.FB.enrolSelf();
         if (s) enrolStart(s); else signInPage();

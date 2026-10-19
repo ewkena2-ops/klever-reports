@@ -173,6 +173,10 @@ ORDER_DUTIES_.eyosias = { reportsTo: 'kalkidan', duties: [
   'Rovestone purchasing — not Klever staff: ordering each job’s materials after Kalkidan’s approval (stage 6)',
   'chasing materials that have not come'],
   covers: [] };
+ORDER_DUTIES_.yesak = { reportsTo: 'frewoyni', duties: [
+  'Rovestone production — not Klever staff: making each job once production is approved (stage 10)',
+  'approving "production completed" (stage 11) and sending finished jobs to QC; fixing jobs QC sends back'],
+  covers: ['Rovestone’s production workers'] };
 ORDER_DUTIES_.anbesu = { reportsTo: 'frewoyni', duties: [
   'Rovestone delivery and installation — not Klever staff: delivering and installing jobs (stage 14)',
   'the signed Customer Acceptance Form in the Job File (stage 15) — no assembler pay without it'],

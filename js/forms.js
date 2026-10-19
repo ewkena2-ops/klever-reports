@@ -93,6 +93,9 @@ const PEOPLE = [
   { id:'hana',      en:'Hana',      am:'ሐና',     roleEn:'Rovestone Designer',        roleAm:'የሮቭስቶን ዲዛይነር',        grp:'rovestone', company:'rovestone', from:'2026-10-21' },
   { id:'eyosias',   en:'Eyosias',   am:'ኢዮስያስ',  roleEn:'Rovestone Purchasing',      roleAm:'የሮቭስቶን የግዥ ኃላፊ',      grp:'rovestone', company:'rovestone', from:'2026-10-21' },
   { id:'anbesu',    en:'Anbesu',    am:'አንበሱ',   roleEn:'Rovestone Delivery & Installation', roleAm:'የሮቭስቶን ማስረከብና ተከላ', grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  /* Yesak approves "production completed" on the card; the user, 19 Oct
+     2026: "Yesak has to report about production" */
+  { id:'yesak',     en:'Yesak',     am:'ይሳቅ',    roleEn:'Rovestone Production',      roleAm:'የሮቭስቶን ምርት ኃላፊ',      grp:'rovestone', company:'rovestone', from:'2026-10-21' },
 
   /* The 22 production workers, from the September payroll sheet. Ashenafi
      Girma on that sheet is Ashenafi Germa the Site Helper, listed above — he
@@ -7941,6 +7944,25 @@ const REPORTS = [
         ]},
       {id:'w_people', en:'How many people worked for Rovestone today?', am:'ዛሬ ለሮቭስቶን ስንት ሰው ሠራ?', t:'num', opt:1}
     ]},
+    /* the stages she moves on Rovestone's Job Card (Form JC-01) — added 19
+       Oct 2026 with Rovestone's other people; every earlier key unchanged */
+    { en:'The job board (stages 7, 10–13)', am:'የሥራ ሰሌዳ (ደረጃ 7፣ 10–13)', fields:[
+      {id:'b_moved', en:'Did you move a job on the board today?', am:'ዛሬ በሰሌዳው ላይ ሥራ አሸጋግረዋል?', t:'yesno', yes:{en:'Jobs moved', am:'ሥራዎች ተሸጋግረዋል'}, no:{en:'No job moved', am:'የተሸጋገረ ሥራ የለም'}},
+      {id:'b_moved_list', en:'Each job moved', am:'የተሸጋገረ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+        show:{f:'b_moved', when:'yes'}, cols:[
+          /* as RV_JOB, written out: that is declared after REPORTS */
+          {id:'job', en:'Job code (RBT …) or 4-digit lead no.', am:'የሥራ ኮድ (RBT …) ወይም ባለ 4 አሃዝ የደንበኛ ቁጥር', t:'text', must:1, codeOk:1},
+          {id:'stage', en:'Moved to', am:'የተሸጋገረበት ደረጃ', t:'choice', opts:[
+            { v:'s7',  en:'7 · Materials received',     am:'7 · ቁሳቁስ ደርሷል' },
+            { v:'s10', en:'10 · Production approved',   am:'10 · ምርት ጸድቋል' },
+            { v:'s11', en:'11 · Production completed',  am:'11 · ምርት ተጠናቋል' },
+            { v:'s12', en:'12 · QC released',           am:'12 · የጥራት ፍተሻ አልፏል' },
+            { v:'s13', en:'13 · Ready for delivery',    am:'13 · ለማስረከብ ዝግጁ' }
+          ]},
+          /* 7 is approved by Tsigu, 11 by Yesak, 12 signed by Beti */
+          {id:'signed', en:'Approved and signed on the card', am:'በካርዱ ላይ ጸድቆ ተፈርሟል', t:'yesno', yes:{en:'Signed', am:'ተፈርሟል'}, no:{en:'Not signed', am:'አልተፈረመም'}}
+        ]}
+    ]},
     { en:'Orders with Klever', am:'ከክሌቨር ጋር ያሉ ትዕዛዞች', fields:[
       {id:'k_new', en:'Did Rovestone send Klever a new order request today?', am:'ሮቭስቶን ዛሬ ለክሌቨር አዲስ የትዕዛዝ ጥያቄ ልኳል?', t:'yesno', yes:{en:'A new order was sent', am:'አዲስ ትዕዛዝ ተልኳል'}, no:{en:'No new order', am:'አዲስ ትዕዛዝ የለም'}},
       {id:'k_new_list', en:'Which orders?', am:'የትኞቹ ትዕዛዞች?', t:'table', addEn:'Add an order', addAm:'ትዕዛዝ ጨምር',
@@ -8357,7 +8379,9 @@ const RV_SITE = rvDaily('Rovestone Delivery & Installation Daily Report', 'የ�
           { v:'delivered', en:'Delivered',            am:'ደርሷል' },
           { v:'installed', en:'Installed',            am:'ተገጥሟል' },
           { v:'part',      en:'Partly installed',     am:'በከፊል ተገጥሟል' }
-        ]}
+        ]},
+        /* the card's hard stop: no delivery without QC release signed by Beti */
+        {id:'qc', en:'QC release signed (by Beti)', am:'የጥራት ፍተሻ መልቀቂያ ተፈርሟል (በቤቲ)', t:'yesno', yes:{en:'Signed', am:'ተፈርሟል'}, no:{en:'Not signed', am:'አልተፈረመም'}}
       ]},
     {id:'a_acc', en:'Did a customer sign the Customer Acceptance Form today?', am:'ዛሬ ደንበኛ የመረከቢያ ቅጹን ፈርመዋል?', t:'yesno', yes:{en:'Signed', am:'ፈርመዋል'}, no:{en:'None today', am:'ዛሬ የለም'}},
     {id:'a_acc_list', en:'Each signed job', am:'የተፈረመ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
@@ -8383,6 +8407,69 @@ const RV_SITE = rvDaily('Rovestone Delivery & Installation Daily Report', 'የ�
       { en:'Install a job',                        am:'ሥራ መግጠም' },
       { en:'Fix a problem on site',                am:'በቦታው ችግር ማስተካከል' },
       { en:'Get acceptance forms signed',          am:'የመረከቢያ ቅጽ ማስፈረም' }
+    ]}
+  ]}
+]);
+const RV_PROD = rvDaily('Rovestone Production Daily Report', 'የሮቭስቶን የምርት ዕለታዊ ሪፖርት', [
+  { en:'Production (stages 10–11)', am:'ምርት (ደረጃ 10–11)', fields:[
+    {id:'y_start', en:'Did a job start production today?', am:'ዛሬ ምርት የጀመረ ሥራ አለ?', t:'yesno', yes:{en:'Jobs started', am:'ሥራዎች ጀምረዋል'}, no:{en:'None started', am:'የጀመረ የለም'}},
+    {id:'y_start_list', en:'Each job started', am:'የጀመረ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'y_start', when:'yes'}, cols:[ RV_JOB,
+        {id:'what', en:'What it is', am:'ምንድን ነው', t:'choice', opts:RV_ITEMS},
+        {id:'m2', en:'Area (m²)', am:'ስፋት (ሜ²)', t:'num', opt:1}
+      ]},
+    {id:'y_done', en:'Did a job finish production today?', am:'ዛሬ ምርቱ ያለቀ ሥራ አለ?', t:'yesno', yes:{en:'Jobs finished', am:'ሥራዎች አልቀዋል'}, no:{en:'None finished', am:'ያለቀ የለም'}},
+    {id:'y_done_list', en:'Each job finished', am:'ያለቀ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'y_done', when:'yes'}, cols:[ RV_JOB,
+        {id:'m2', en:'Area (m²)', am:'ስፋት (ሜ²)', t:'num', opt:1},
+        {id:'qc', en:'Sent to QC', am:'ለጥራት ፍተሻ ተልኳል', t:'yesno', yes:{en:'Sent', am:'ተልኳል'}, no:{en:'Not yet', am:'ገና'}}
+      ]},
+    {id:'y_jobs', en:'Jobs still in production — where does each stand?', am:'በምርት ላይ ያሉ ሥራዎች — እያንዳንዱ የት ደርሷል?', t:'table', opt:1,
+      addEn:'Add a job', addAm:'ሥራ ጨምር', cols:[ RV_JOB,
+        {id:'stage', en:'Where it stands', am:'ያለበት ደረጃ', t:'choice', opts:[
+          { v:'cut',     en:'Cutting',              am:'መቁረጥ' },
+          { v:'edge',    en:'Edging',               am:'ጠርዝ መለጠፍ' },
+          { v:'drill',   en:'Drilling',             am:'መብሳት' },
+          { v:'assemble', en:'Assembly',            am:'መገጣጠም' },
+          { v:'finish',  en:'Finishing',            am:'ማጠናቀቂያ' },
+          { v:'wait',    en:'Waiting',              am:'እየጠበቀ' }
+        ]},
+        {id:'due', en:'Due', am:'የሚያልቅበት', t:'text'}
+      ]},
+    {id:'y_people', en:'How many people worked in production today?', am:'ዛሬ በምርት ስንት ሰው ሠራ?', t:'num', opt:1}
+  ]},
+  { en:'Quality', am:'ጥራት', fields:[
+    {id:'y_back', en:'Did QC send a job back to be fixed?', am:'የጥራት ፍተሻ ሥራ እንዲስተካከል መልሷል?', t:'yesno', yes:{en:'Sent back', am:'ተመልሷል'}, no:{en:'Nothing sent back', am:'የተመለሰ የለም'}},
+    {id:'y_back_list', en:'Each job sent back', am:'የተመለሰ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'y_back', when:'yes'}, cols:[ RV_JOB,
+        {id:'why', en:'What was wrong', am:'ችግሩ ምን ነበር', t:'choice', opts:[
+          { v:'size',    en:'Wrong size',           am:'የተሳሳተ መጠን' },
+          { v:'damage',  en:'Damaged',              am:'ተጎድቷል' },
+          { v:'finish',  en:'Poor finish',          am:'አጨራረሱ ደካማ ነው' },
+          { v:'parts',   en:'Parts missing',        am:'ክፍሎች ጎድለዋል' },
+          { v:'colour',  en:'Wrong colour',         am:'የተሳሳተ ቀለም' },
+          { v:'other',   en:'Other',                am:'ሌላ' }
+        ]},
+        {id:'fixed', en:'Fixed today', am:'ዛሬ ተስተካክሏል', t:'yesno', yes:{en:'Fixed', am:'ተስተካክሏል'}, no:{en:'Not yet', am:'ገና'}}
+      ]}
+  ]},
+  { en:'Problems', am:'ችግሮች', fields:[
+    {id:'y_problem', en:'What slowed production today? (Write the job in the box.)', am:'ዛሬ ምርቱን ያዘገየው ምንድን ነው? (ሥራውን በሳጥኑ ይጻፉ።)', t:'area', opt:1,
+      picks:[
+        { en:'Nothing',                            am:'ምንም', nil:1 },
+        { en:'Material short or late',             am:'ዕቃ ጎድሏል ወይም ዘግይቷል' },
+        { en:'Machine broke down',                 am:'ማሽን ተበላሸ' },
+        { en:'Workers absent',                     am:'ሠራተኞች ቀርተዋል' },
+        { en:'Power cut',                          am:'መብራት ጠፋ' },
+        { en:'Waiting for a design or a drawing',  am:'ዲዛይን ወይም ንድፍ እየጠበቅን ነው' }
+      ]}
+  ].concat(RV_CHAIR)},
+  { en:'Tomorrow', am:'ነገ', fields:[
+    {id:'t_plan', en:'What is the plan for tomorrow?', am:'የነገው ዕቅድ ምንድን ነው?', t:'area', picks:[
+      { en:'Start a job',                          am:'ሥራ መጀመር' },
+      { en:'Finish a job',                         am:'ሥራ ማጠናቀቅ' },
+      { en:'Fix a job QC sent back',               am:'የጥራት ፍተሻ የመለሰውን ሥራ ማስተካከል' },
+      { en:'Get a job ready for QC',               am:'ሥራ ለጥራት ፍተሻ ማዘጋጀት' }
     ]}
   ]}
 ]);
@@ -9924,7 +10011,7 @@ function oddFigures(report, v) {
   /* Rovestone's people from its Job Card (19 Oct 2026) — one daily each */
   [['kalkidan', RV_GM], ['marta', RV_SALES], ['fana', RV_SALES], ['rahel', RV_PAY],
    ['dawit', RV_DESIGN], ['tsigea', RV_DESIGN], ['yared-rv', RV_DESIGN], ['sintayehu', RV_DESIGN], ['hana', RV_DESIGN],
-   ['eyosias', RV_BUY], ['anbesu', RV_SITE]].forEach(function (x) {
+   ['eyosias', RV_BUY], ['anbesu', RV_SITE], ['yesak', RV_PROD]].forEach(function (x) {
     var r = copyFor(x[1], x[0]);
     /* owed from their first day only: dueOn reads the report's `from`, not the person's */
     r.from = '2026-10-21';

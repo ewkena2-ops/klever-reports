@@ -72,6 +72,9 @@ const PEOPLE = [
   { id:'hana',      en:'Hana',      am:'ሐና',     roleEn:'Rovestone Designer',        roleAm:'የሮቭስቶን ዲዛይነር',        grp:'rovestone', company:'rovestone', from:'2026-10-21' },
   { id:'eyosias',   en:'Eyosias',   am:'ኢዮስያስ',  roleEn:'Rovestone Purchasing',      roleAm:'የሮቭስቶን የግዥ ኃላፊ',      grp:'rovestone', company:'rovestone', from:'2026-10-21' },
   { id:'anbesu',    en:'Anbesu',    am:'አንበሱ',   roleEn:'Rovestone Delivery & Installation', roleAm:'የሮቭስቶን ማስረከብና ተከላ', grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  /* Yesak approves "production completed" on the card; the user, 19 Oct
+     2026: "Yesak has to report about production" */
+  { id:'yesak',     en:'Yesak',     am:'ይሳቅ',    roleEn:'Rovestone Production',      roleAm:'የሮቭስቶን ምርት ኃላፊ',      grp:'rovestone', company:'rovestone', from:'2026-10-21' },
 
   /* The 22 production workers, from the September payroll sheet. Ashenafi
      Girma on that sheet is Ashenafi Germa the Site Helper, listed above — he

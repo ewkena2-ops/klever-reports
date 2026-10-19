@@ -2072,7 +2072,13 @@ import {
 
       var names = shortNames(), seen = {};
       cols.forEach(function (c) { c.lines.forEach(function (l) { seen[l.person] = true; }); });
-      var people = PEOPLE.filter(function (p) { return seen[p.id]; });
+      /* a company's own card lists everyone of it who has a report, also
+         before their first day — the squares say "not due yet" (19 Oct 2026,
+         the user, Rovestone's new people starting 21 Oct: "I only see
+         Frewoyni still") */
+      var people = PEOPLE.filter(function (p) {
+        return seen[p.id] || (co && p.company === co && REPORTS.some(function (r) { return r.person === p.id; }));
+      });
       if (co && !people.length) return null;
       /* an account that reports for a company and has no person's name yet
          ("Reports for Meri Block Board") is called by the company — "Meri",

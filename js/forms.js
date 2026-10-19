@@ -4439,6 +4439,102 @@ const REPORTS = [
   ]
 },
 
+/* ============== EPHRATA — 1-WEEK FORECAST ============== */
+{
+  /* The user, 19 Oct 2026: "for Ephrata add a new report called 1 week
+     forecast — normally she reports every Saturday; tomorrow she reports it
+     as last Saturday's". The near-term, job-by-job version of the four-week
+     projection stopped on 17 Oct: the money she expects next week, payment
+     by payment, and the contracts she expects signed. Owed from Sat 17 Oct;
+     her first one, sent Tue 20 Oct, is moved onto that Saturday (/moves).
+     No fine — no letter sets one for it. */
+  id:'ephrata-forecast', person:'ephrata', cadence:'weekly', dueTime:'17:00', dueDay:6, noFine:1, derived:1, from:'2026-10-17',
+  en:'1-Week Forecast', am:'የ1 ሳምንት ትንበያ',
+  toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
+  dueEn:'Saturday 5:00 PM', dueAm:'ቅዳሜ ከቀኑ 11፡00 (5:00 PM)',
+  penEn:'No fine — not in your letter yet', penAm:'ቅጣት የለም — በደብዳቤዎ ውስጥ ገና የለም',
+  sections:[
+    { en:'Money expected next week', am:'በሚቀጥለው ሳምንት የሚጠበቅ ገንዘብ', fields:[
+      {id:'f_pay', en:'Which payments do you expect next week, Monday to Saturday? (One row a payment.)', am:'ከሰኞ እስከ ቅዳሜ በሚቀጥለው ሳምንት የትኞቹን ክፍያዎች ይጠብቃሉ? (በአንድ ረድፍ አንድ ክፍያ።)', t:'table',
+        addEn:'Add a payment', addAm:'ክፍያ ጨምር', opt:1, cols:[
+          {id:'lc', en:'Code: KK or 4-digit lead no.', am:'ኮድ፦ KK ወይም ባለ 4 አሃዝ የደንበኛ ቁጥር', t:'text', must:1, codeOk:1},
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
+          {id:'kind', en:'Payment', am:'የክፍያ ዓይነት', t:'choice', opts:[
+            { v:'adv',   en:'Advance',        am:'ቅድሚያ ክፍያ' },
+            { v:'fin',   en:'Final payment',  am:'የመጨረሻ ክፍያ' },
+            { v:'other', en:'Other',          am:'ሌላ' }
+          ]},
+          {id:'amount', en:'Amount (Birr)', am:'መጠን (ብር)', t:'money', must:1},
+          {id:'day', en:'Which day', am:'የትኛው ቀን', t:'choice', opts:[
+            { v:'mon', en:'Monday',    am:'ሰኞ' },
+            { v:'tue', en:'Tuesday',   am:'ማክሰኞ' },
+            { v:'wed', en:'Wednesday', am:'ረቡዕ' },
+            { v:'thu', en:'Thursday',  am:'ሐሙስ' },
+            { v:'fri', en:'Friday',    am:'ዓርብ' },
+            { v:'sat', en:'Saturday',  am:'ቅዳሜ' }
+          ]},
+          {id:'conf', en:'How sure', am:'ምን ያህል እርግጠኛ', t:'choice', opts:[
+            { v:'sure',   en:'Sure',      am:'እርግጠኛ' },
+            { v:'likely', en:'Likely',    am:'ሊሆን ይችላል' },
+            { v:'maybe',  en:'Not sure',  am:'እርግጠኛ አይደለሁም' }
+          ]}
+        ]},
+      {id:'f_adv', en:'Advances expected', am:'የሚጠበቅ ቅድሚያ ክፍያ', t:'money',
+        auto:{sum:'f_pay.amount', when:{col:'kind', is:'adv'}, orZero:1}, sumEn:'advances', sumAm:'ቅድሚያ ክፍያ'},
+      {id:'f_fin', en:'Final payments expected', am:'የሚጠበቅ የመጨረሻ ክፍያ', t:'money',
+        auto:{sum:'f_pay.amount', when:{col:'kind', is:'fin'}, orZero:1}, sumEn:'final payments', sumAm:'የመጨረሻ ክፍያ'},
+      {id:'f_total', en:'Total expected next week', am:'በሚቀጥለው ሳምንት በአጠቃላይ የሚጠበቅ', t:'money',
+        auto:{sum:'f_pay.amount', orZero:1}, sumEn:'expected', sumAm:'የሚጠበቅ'},
+      {id:'f_sure', en:'Of it, sure', am:'ከዚህ ውስጥ እርግጠኛ የሆነው', t:'money',
+        auto:{sum:'f_pay.amount', when:{col:'conf', is:'sure'}, orZero:1}, sumEn:'sure', sumAm:'እርግጠኛ'}
+    ]},
+    { en:'Contracts expected next week', am:'በሚቀጥለው ሳምንት የሚጠበቁ ውሎች', fields:[
+      {id:'f_sign', en:'Which customers do you expect to sign next week? (One row a customer.)', am:'በሚቀጥለው ሳምንት የትኞቹ ደንበኞች ይፈርማሉ ብለው ይጠብቃሉ? (በአንድ ረድፍ አንድ ደንበኛ።)', t:'table',
+        addEn:'Add a customer', addAm:'ደንበኛ ጨምር', opt:1, cols:[
+          {id:'lc', en:'Code: 4-digit lead no.', am:'ኮድ፦ ባለ 4 አሃዝ የደንበኛ ቁጥር', t:'text', codeOk:1},
+          {id:'cust', en:'Customer', am:'ደንበኛ', t:'text', must:1},
+          {id:'val', en:'Contract value (Birr)', am:'የውል ዋጋ (ብር)', t:'money'},
+          {id:'conf', en:'How sure', am:'ምን ያህል እርግጠኛ', t:'choice', opts:[
+            { v:'sure',   en:'Sure',      am:'እርግጠኛ' },
+            { v:'likely', en:'Likely',    am:'ሊሆን ይችላል' },
+            { v:'maybe',  en:'Not sure',  am:'እርግጠኛ አይደለሁም' }
+          ]}
+        ]},
+      {id:'f_sign_n', en:'Contracts expected', am:'የሚጠበቁ ውሎች', t:'num',
+        auto:{rows:'f_sign'}, sumEn:'contracts', sumAm:'ውሎች'},
+      {id:'f_sign_val', en:'Their value', am:'ዋጋቸው', t:'money',
+        auto:{sum:'f_sign.val', orZero:1}, sumEn:'to sign', sumAm:'የሚፈረም'}
+    ]},
+    { en:'Last week and risks', am:'ያለፈው ሳምንትና ስጋቶች', fields:[
+      {id:'f_last', en:'Did last week’s forecast come true? (Write who did not pay or sign, and why, in the box.)', am:'ያለፈው ሳምንት ትንበያ ተሳክቷል? (ያልከፈለውን ወይም ያልፈረመውን እና ለምን እንደሆነ በሳጥኑ ይጻፉ።)', t:'area', opt:1,
+        picks:[
+          { en:'This is the first forecast',              am:'ይህ የመጀመሪያው ትንበያ ነው', nil:1 },
+          { en:'All of it came in',                       am:'ሁሉም ገብቷል' },
+          { en:'Some paid late',                          am:'አንዳንዶቹ ዘግይተው ከፈሉ' },
+          { en:'A customer did not pay',                  am:'ደንበኛ አልከፈለም' },
+          { en:'A customer did not sign',                 am:'ደንበኛ አልፈረመም' },
+          { en:'A customer asked for more time',          am:'ደንበኛ ተጨማሪ ጊዜ ጠየቀ' }
+        ]},
+      {id:'f_risk', en:'What could stop next week’s money? (Write the customer in the box.)', am:'የሚቀጥለውን ሳምንት ገንዘብ ምን ሊያስቀረው ይችላል? (ደንበኛውን በሳጥኑ ይጻፉ።)', t:'area', opt:1,
+        picks:[
+          { en:'Nothing',                                 am:'ምንም', nil:1 },
+          { en:'A customer may delay',                    am:'ደንበኛ ሊያዘገይ ይችላል' },
+          { en:'A job may not be ready for its final payment', am:'ሥራ ለመጨረሻ ክፍያ ዝግጁ ላይሆን ይችላል' },
+          { en:'Waiting for a design or a quotation',     am:'ዲዛይን ወይም ፕሮፎርማ እየጠበቅን ነው' },
+          { en:'A disagreement on the price',             am:'በዋጋ ላይ አለመግባባት' }
+        ]},
+      {id:'f_chair', en:'Do you need anything from the Chairman to bring this money in?', am:'ይህን ገንዘብ ለማስገባት ከሊቀመንበሩ የሚያስፈልግዎ ነገር አለ?', t:'yesno', yes:{en:'I need something', am:'ያስፈልገኛል'}, no:{en:'Nothing needed', am:'አያስፈልገኝም'}},
+      {id:'f_chair_what', en:'What do you need? (Write the customer and by when in the box.)', am:'ምን ያስፈልግዎታል? (ደንበኛውንና እስከ መቼ እንደሆነ በሳጥኑ ይጻፉ።)', t:'area',
+        picks:[
+          { en:'Approve a discount',                      am:'ቅናሽ ማጽደቅ' },
+          { en:'Call the customer',                       am:'ደንበኛውን መደወል' },
+          { en:'Speed up a job in the factory',           am:'በፋብሪካው ሥራን ማፋጠን' },
+          { en:'Decide a price',                          am:'ዋጋ መወሰን' }
+        ], show:{f:'f_chair', when:'yes'}}
+    ]}
+  ]
+},
+
 /* ============== EPHRATA — DAILY BOARD CHECK ============== */
 /* The Chairman, 12 Oct 2026: "give that to Ephrata" — the Kanban Board
    Verification. The 15-column Job Tracking Board of the Implementation

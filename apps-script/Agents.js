@@ -1060,7 +1060,8 @@ var AGENTS = [
       'in today_actions, in that order, and only those.' },
 
 { id:'commercial', en:'Sales and commercial', am:'ሽያጭና ንግድ',
-  said:['ephrata-daily', 'tsega-sales-daily', 'biruktayet-sales-daily', 'ephrata-weekly', 'ephrata-projection'],
+  said:['ephrata-daily', 'tsega-sales-daily', 'biruktayet-sales-daily', 'ephrata-weekly', 'ephrata-projection',
+        /* her 1-week forecast, from 17 Oct 2026 */ 'ephrata-forecast'],
   facts: function (d) {
     var ephrata = vals_(d.filed, 'ephrata-daily');
     var tsega = vals_(d.filed, 'tsega-sales-daily');

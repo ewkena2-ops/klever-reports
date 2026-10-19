@@ -9925,7 +9925,10 @@ function oddFigures(report, v) {
   [['kalkidan', RV_GM], ['marta', RV_SALES], ['fana', RV_SALES], ['rahel', RV_PAY],
    ['dawit', RV_DESIGN], ['tsigea', RV_DESIGN], ['yared-rv', RV_DESIGN], ['sintayehu', RV_DESIGN], ['hana', RV_DESIGN],
    ['eyosias', RV_BUY], ['anbesu', RV_SITE]].forEach(function (x) {
-    REPORTS.push(copyFor(x[1], x[0]));
+    var r = copyFor(x[1], x[0]);
+    /* owed from their first day only: dueOn reads the report's `from`, not the person's */
+    r.from = '2026-10-21';
+    REPORTS.push(r);
   });
   /* someone with no terms letter yet reports, and is fined for nothing */
   REPORTS.forEach(function (r) {

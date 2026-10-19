@@ -145,7 +145,38 @@ ORDER_DUTIES_.frewoyni = { reportsTo: null, duties: [
   'sending Klever Rovestone’s order requests: job, material codes, m², completion date, delivery site, drawings',
   'Rovestone’s side of an order: accepting Klever’s internal price, receiving deliveries, its own installers',
   'what Rovestone owes Klever, and paying it (50% before production, 50% on delivery)'],
-  covers: ['Rovestone’s staff', 'Kalkidan (Rovestone General Manager, no account)'] };
+  covers: ['Rovestone’s staff'] };
+/* Rovestone's people from its Job Card, Form JC-01 (19 Oct 2026): who moves
+   which of the sixteen stages. Not Klever staff, no letters, no fines. */
+ORDER_DUTIES_.kalkidan = { reportsTo: null, duties: [
+  'Rovestone’s General Manager — not Klever staff',
+  'approving each job’s purchase (stage 5) before materials are ordered',
+  'putting a Rovestone job on hold — only Kalkidan may'],
+  covers: ['Rovestone’s staff'] };
+['marta', 'fana'].forEach(function (id) {
+  ORDER_DUTIES_[id] = { reportsTo: 'kalkidan', duties: [
+    'Rovestone sales — not Klever staff: new customers and leads (stage 1), quotations, booking the measurement',
+    'after-sales follow-up once a job is accepted (stage 16)'],
+    covers: [] };
+});
+ORDER_DUTIES_.rahel = { reportsTo: 'kalkidan', duties: [
+  'Rovestone’s customer payments — not Klever staff: the 50% advance (stage 2)',
+  'asking for and receiving the final 100% payment (stages 8–9), with receipts; telling Kidan to confirm it before production'],
+  covers: [] };
+['dawit', 'tsigea', 'yared-rv', 'sintayehu', 'hana'].forEach(function (id) {
+  ORDER_DUTIES_[id] = { reportsTo: 'kalkidan', duties: [
+    'Rovestone design — not Klever staff: the final measurement (stage 3)',
+    'the customer’s material and colour selection, signed (stage 4)'],
+    covers: [] };
+});
+ORDER_DUTIES_.eyosias = { reportsTo: 'kalkidan', duties: [
+  'Rovestone purchasing — not Klever staff: ordering each job’s materials after Kalkidan’s approval (stage 6)',
+  'chasing materials that have not come'],
+  covers: [] };
+ORDER_DUTIES_.anbesu = { reportsTo: 'frewoyni', duties: [
+  'Rovestone delivery and installation — not Klever staff: delivering and installing jobs (stage 14)',
+  'the signed Customer Acceptance Form in the Job File (stage 15) — no assembler pay without it'],
+  covers: [] };
 
 /* Group Finance, over Klever and Rovestone (6 Oct 2026). From Klever's own
    letters: payments over 50,000 Birr go to Kidan for approval, and Selam,

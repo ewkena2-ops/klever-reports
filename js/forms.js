@@ -76,6 +76,23 @@ const PEOPLE = [
   { id:'meri', en:'Meri Block Board', am:'መሪ ብሎክ ቦርድ', roleEn:'Reports for Meri Block Board', roleAm:'ለመሪ ብሎክ ቦርድ ሪፖርት የሚያቀርቡ', grp:'meri', company:'meri', from:'2026-10-07', noLetter:1 },
   { id:'lemikura', en:'Lemi Kura', am:'ለሚ ኩራ', roleEn:'Reports for Real Estate & Construction (Lemi Kura)', roleAm:'ለሪል እስቴትና ግንባታ (ለሚ ኩራ) ሪፖርት የሚያቀርቡ', grp:'realestate', company:'realestate', from:'2026-10-07', noLetter:1 },
   { id:'frewoyni', en:'Frewoyni', am:'ፍሬወይኒ', roleEn:'Rovestone Operations Lead', roleAm:'የሮቭስቶን ኦፕሬሽን ኃላፊ', grp:'rovestone', company:'rovestone', from:'2026-10-05' },
+  /* Rovestone's other people, from its Job Card (Form JC-01, 29 Sep 2026) —
+     who moves which of the sixteen stages (19 Oct 2026, the user: "why is
+     Rovestone only Frewoyni — here there are others"). First names only, as
+     on the card. Reports counted from Wed 21 Oct. Tsigu, Yesak and Beti sign
+     approvals on the card; they wait until their jobs are known. 'yared-rv':
+     Klever's factory already has a 'yared'. */
+  { id:'kalkidan',  en:'Kalkidan',  am:'ቃልኪዳን',  roleEn:'Rovestone General Manager', roleAm:'የሮቭስቶን ዋና ሥራ አስኪያጅ', grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'marta',     en:'Marta',     am:'ማርታ',    roleEn:'Rovestone Salesperson',     roleAm:'የሮቭስቶን የሽያጭ ባለሙያ',   grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'fana',      en:'Fana',      am:'ፋና',     roleEn:'Rovestone Salesperson',     roleAm:'የሮቭስቶን የሽያጭ ባለሙያ',   grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'rahel',     en:'Rahel',     am:'ራሔል',    roleEn:'Rovestone Payments',        roleAm:'የሮቭስቶን ክፍያ ኃላፊ',      grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'dawit',     en:'Dawit',     am:'ዳዊት',    roleEn:'Rovestone Designer',        roleAm:'የሮቭስቶን ዲዛይነር',        grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'tsigea',    en:'Tsigea',    am:'ፅጌ',     roleEn:'Rovestone Designer',        roleAm:'የሮቭስቶን ዲዛይነር',        grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'yared-rv',  en:'Yared',     am:'ያሬድ',    roleEn:'Rovestone Designer',        roleAm:'የሮቭስቶን ዲዛይነር',        grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'sintayehu', en:'Sintayehu', am:'ስንታየሁ',  roleEn:'Rovestone Designer',        roleAm:'የሮቭስቶን ዲዛይነር',        grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'hana',      en:'Hana',      am:'ሐና',     roleEn:'Rovestone Designer',        roleAm:'የሮቭስቶን ዲዛይነር',        grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'eyosias',   en:'Eyosias',   am:'ኢዮስያስ',  roleEn:'Rovestone Purchasing',      roleAm:'የሮቭስቶን የግዥ ኃላፊ',      grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'anbesu',    en:'Anbesu',    am:'አንበሱ',   roleEn:'Rovestone Delivery & Installation', roleAm:'የሮቭስቶን ማስረከብና ተከላ', grp:'rovestone', company:'rovestone', from:'2026-10-21' },
 
   /* The 22 production workers, from the September payroll sheet. Ashenafi
      Girma on that sheet is Ashenafi Germa the Site Helper, listed above — he
@@ -8155,8 +8172,247 @@ function sisterReports(pid, co, coAm) {
   return [daily, weekly];
 }
 
+/* ---------------- Rovestone's people (19 Oct 2026) ----------------
+   One short daily report for each kind of job on Rovestone's Job Card
+   (Form JC-01): what each person moves on the job board. Taps first, the
+   job code in a box (RBT …, or the 4-digit lead no.). Their own forms, not
+   copies of Klever's: Klever's sales chart, register and money checks read
+   Klever's report ids and fields, and Rovestone's jobs and money are kept
+   apart. No fines and to the Chairman — the company's defaults (COMPANIES). */
+const RV_JOB = { id:'job', en:'Job code (RBT …) or 4-digit lead no.', am:'የሥራ ኮድ (RBT …) ወይም ባለ 4 አሃዝ የደንበኛ ቁጥር', t:'text', must:1, codeOk:1 };
+const RV_CUST = { id:'cust', en:'Customer', am:'ደንበኛ', t:'text' };
+const RV_ITEMS = [
+  { v:'kitchen_modern', en:'Modern kitchen',      am:'ዘመናዊ ኪችን' },
+  { v:'kitchen_trad',   en:'Traditional kitchen', am:'ባህላዊ ኪችን' },
+  { v:'closet',         en:'Master closet',       am:'ማስተር ክሎዜት' },
+  { v:'wardrobe',       en:'Wardrobe',            am:'ቁም ሣጥን' },
+  { v:'shoe',           en:'Shoe rack',           am:'የጫማ መደርደሪያ' },
+  { v:'shelf',          en:'Open shelf',          am:'ክፍት መደርደሪያ' },
+  { v:'laundry',        en:'Laundry',             am:'የልብስ ማጠቢያ ክፍል' },
+  { v:'other',          en:'Other',               am:'ሌላ' }
+];
+const RV_CHAIR = [
+  {id:'p_chair', en:'Do you need a decision from the Chairman?', am:'የሊቀመንበሩ ውሳኔ ያስፈልግዎታል?', t:'yesno', yes:{en:'I need a decision', am:'ውሳኔ ያስፈልገኛል'}, no:{en:'No decision needed', am:'ውሳኔ አያስፈልገኝም'}},
+  {id:'p_chair_what', en:'What should the Chairman decide? (Write the job and by when in the box.)', am:'ሊቀመንበሩ ምን እንዲወስኑ ይፈልጋሉ? (ሥራውንና እስከ መቼ እንደሆነ በሳጥኑ ይጻፉ።)', t:'area',
+    picks:[
+      { en:'Approve a payment',                  am:'ክፍያ ማጽደቅ' },
+      { en:'A price or a discount',              am:'ዋጋ ወይም ቅናሽ' },
+      { en:'Which job comes first',              am:'የትኛው ሥራ እንደሚቀድም' },
+      { en:'A customer complaint',               am:'የደንበኛ ቅሬታ' },
+      { en:'Workers or hiring',                  am:'ሠራተኛ ወይም ቅጥር' }
+    ], show:{f:'p_chair', when:'yes'}}
+];
+function rvDaily(en, am, sections) {
+  return { id:'daily', cadence:'daily', dueTime:'17:30', en:en, am:am,
+           dueEn:'5:30 PM every working day', dueAm:'በየሥራ ቀኑ ከቀኑ 11፡30 (5:30 PM)', sections:sections };
+}
+const RV_SALES = rvDaily('Rovestone Sales Daily Report', 'የሮቭስቶን የሽያጭ ዕለታዊ ሪፖርት', [
+  { en:'New customers (stage 1)', am:'አዲስ ደንበኞች (ደረጃ 1)', fields:[
+    {id:'s_new', en:'Did a new customer come to you today?', am:'ዛሬ አዲስ ደንበኛ መጣልዎት?', t:'yesno', yes:{en:'New customers came', am:'አዲስ ደንበኞች መጥተዋል'}, no:{en:'No new customer', am:'አዲስ ደንበኛ የለም'}},
+    {id:'s_new_list', en:'Each new customer', am:'እያንዳንዱ አዲስ ደንበኛ', t:'table', addEn:'Add a customer', addAm:'ደንበኛ ጨምር',
+      show:{f:'s_new', when:'yes'}, cols:[
+        {id:'cust', en:'Customer', am:'ደንበኛ', t:'text', must:1},
+        {id:'phone', en:'Phone', am:'ስልክ', t:'text'},
+        {id:'want', en:'What they want', am:'የሚፈልጉት', t:'choice', opts:RV_ITEMS},
+        {id:'next', en:'Next step', am:'ቀጣይ እርምጃ', t:'choice', opts:[
+          { v:'quote',   en:'Send the quotation',  am:'ዋጋ መላክ' },
+          { v:'measure', en:'Book the measurement', am:'ልኬት መያዝ' },
+          { v:'call',    en:'Call back',           am:'መልሶ መደወል' },
+          { v:'advance', en:'Collect the advance', am:'ቅድሚያ ክፍያ መቀበል' }
+        ]}
+      ]}
+  ]},
+  { en:'After-sales (stage 16)', am:'ከሽያጭ በኋላ (ደረጃ 16)', fields:[
+    {id:'s_after', en:'Did you call or visit a customer after delivery today?', am:'ዛሬ ከማስረከብ በኋላ ደንበኛ ደውለው ወይም ጎብኝተው ነበር?', t:'yesno', yes:{en:'Followed up', am:'ተከታትያለሁ'}, no:{en:'No follow-up today', am:'ዛሬ ክትትል የለም'}},
+    {id:'s_after_list', en:'Each customer you followed up', am:'የተከታተሉት እያንዳንዱ ደንበኛ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'s_after', when:'yes'}, cols:[ RV_JOB, RV_CUST,
+        {id:'how', en:'How it went', am:'እንዴት ነበር', t:'choice', opts:[
+          { v:'happy',  en:'Happy',                am:'ደስተኛ ናቸው' },
+          { v:'fix',    en:'A small fix needed',   am:'ትንሽ ማስተካከያ ያስፈልጋል' },
+          { v:'unhappy', en:'Unhappy — a complaint', am:'ደስተኛ አይደሉም — ቅሬታ አለ' }
+        ]}
+      ]}
+  ]},
+  { en:'Problems', am:'ችግሮች', fields:[
+    {id:'p_problem', en:'Is anything holding up a sale? (Write the customer in the box.)', am:'ሽያጭ ያዘገየ ነገር አለ? (ደንበኛውን በሳጥኑ ይጻፉ።)', t:'area', opt:1,
+      picks:[
+        { en:'Nothing',                            am:'ምንም', nil:1 },
+        { en:'Price too high for the customer',    am:'ዋጋው ለደንበኛው ከፍ ብሏል' },
+        { en:'Waiting for a designer',             am:'ዲዛይነር እየጠበቅን ነው' },
+        { en:'Customer not answering',             am:'ደንበኛው ስልክ አያነሱም' },
+        { en:'Customer not ready yet',             am:'ደንበኛው ገና ዝግጁ አይደሉም' }
+      ]}
+  ].concat(RV_CHAIR)},
+  { en:'Tomorrow', am:'ነገ', fields:[
+    {id:'t_plan', en:'What is the plan for tomorrow?', am:'የነገው ዕቅድ ምንድን ነው?', t:'area', picks:[
+      { en:'Call customers',                       am:'ለደንበኞች መደወል' },
+      { en:'Send quotations',                      am:'ዋጋ መላክ' },
+      { en:'Visit a site with a designer',         am:'ከዲዛይነር ጋር ቦታ መጎብኘት' },
+      { en:'Collect an advance',                   am:'ቅድሚያ ክፍያ መቀበል' },
+      { en:'After-sales calls',                    am:'ከሽያጭ በኋላ ጥሪዎች' }
+    ]}
+  ]}
+]);
+const RV_DESIGN = rvDaily('Rovestone Design Daily Report', 'የሮቭስቶን የዲዛይን ዕለታዊ ሪፖርት', [
+  { en:'Measurement and materials (stages 3–4)', am:'ልኬትና ቁሳቁስ (ደረጃ 3–4)', fields:[
+    {id:'d_meas', en:'Did you do a final measurement today?', am:'ዛሬ የመጨረሻ ልኬት ወስደዋል?', t:'yesno', yes:{en:'Measured', am:'ልኬት ወስጃለሁ'}, no:{en:'No measurement today', am:'ዛሬ ልኬት የለም'}},
+    {id:'d_meas_list', en:'Each job you measured', am:'የለኩት እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'d_meas', when:'yes'}, cols:[ RV_JOB, RV_CUST,
+        {id:'m2', en:'Area (m²)', am:'ስፋት (ሜ²)', t:'num', opt:1}
+      ]},
+    {id:'d_mat', en:'Did a customer finish choosing materials and colours today?', am:'ዛሬ ደንበኛ ቁሳቁስና ቀለም መርጦ ጨርሷል?', t:'yesno', yes:{en:'Materials chosen', am:'ቁሳቁስ ተመርጧል'}, no:{en:'None today', am:'ዛሬ የለም'}},
+    {id:'d_mat_list', en:'Each job whose materials were chosen', am:'ቁሳቁሱ የተመረጠለት እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'d_mat', when:'yes'}, cols:[ RV_JOB, RV_CUST,
+        {id:'signed', en:'Customer signed the selection', am:'ደንበኛው ምርጫውን ፈርመዋል', t:'yesno', yes:{en:'Signed', am:'ፈርመዋል'}, no:{en:'Not signed yet', am:'ገና አልፈረሙም'}}
+      ]}
+  ]},
+  { en:'Problems', am:'ችግሮች', fields:[
+    {id:'d_wait', en:'Is any of your jobs stuck? (Write the job in the box.)', am:'ከሥራዎችዎ የቆመ አለ? (ሥራውን በሳጥኑ ይጻፉ።)', t:'area', opt:1,
+      picks:[
+        { en:'Nothing',                            am:'ምንም', nil:1 },
+        { en:'Waiting for the customer',           am:'ደንበኛውን እየጠበቅሁ ነው' },
+        { en:'Waiting for the advance',            am:'ቅድሚያ ክፍያውን እየጠበቅሁ ነው' },
+        { en:'Site not ready to measure',          am:'ቦታው ለልኬት ዝግጁ አይደለም' },
+        { en:'Waiting for a price or a material',  am:'ዋጋ ወይም ቁሳቁስ እየጠበቅሁ ነው' }
+      ]}
+  ].concat(RV_CHAIR)},
+  { en:'Tomorrow', am:'ነገ', fields:[
+    {id:'t_plan', en:'What is the plan for tomorrow?', am:'የነገው ዕቅድ ምንድን ነው?', t:'area', picks:[
+      { en:'Measure a site',                       am:'ቦታ መለካት' },
+      { en:'Finish a design',                      am:'ዲዛይን መጨረስ' },
+      { en:'Material selection with a customer',   am:'ከደንበኛ ጋር ቁሳቁስ መምረጥ' },
+      { en:'Visit a site',                         am:'ቦታ መጎብኘት' }
+    ]}
+  ]}
+]);
+const RV_PAY = rvDaily('Rovestone Payments Daily Report', 'የሮቭስቶን የክፍያ ዕለታዊ ሪፖርት', [
+  { en:'Advances (stage 2)', am:'ቅድሚያ ክፍያ (ደረጃ 2)', fields:[
+    {id:'r_adv', en:'Did a customer pay the 50% advance today?', am:'ዛሬ ደንበኛ 50% ቅድሚያ ከፍሏል?', t:'yesno', yes:{en:'Advances came in', am:'ቅድሚያ ገብቷል'}, no:{en:'No advance today', am:'ዛሬ ቅድሚያ የለም'}},
+    {id:'r_adv_list', en:'Each advance', am:'እያንዳንዱ ቅድሚያ ክፍያ', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
+      show:{f:'r_adv', when:'yes'}, cols:[ RV_JOB, RV_CUST,
+        {id:'amount', en:'Amount (Birr)', am:'መጠን (ብር)', t:'money', must:1},
+        {id:'receipt', en:'Receipt no.', am:'የደረሰኝ ቁጥር', t:'text'}
+      ]}
+  ]},
+  { en:'Final payments (stages 8–9)', am:'የመጨረሻ ክፍያ (ደረጃ 8–9)', fields:[
+    {id:'r_req', en:'Did you ask a customer for the final payment today?', am:'ዛሬ ደንበኛ የመጨረሻ ክፍያ እንዲከፍል ጠይቀዋል?', t:'yesno', yes:{en:'Asked', am:'ጠይቄያለሁ'}, no:{en:'Not today', am:'ዛሬ አልጠየቅሁም'}},
+    {id:'r_req_list', en:'Each final payment asked for', am:'የተጠየቀ እያንዳንዱ የመጨረሻ ክፍያ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'r_req', when:'yes'}, cols:[ RV_JOB, RV_CUST,
+        {id:'amount', en:'Amount (Birr)', am:'መጠን (ብር)', t:'money'}
+      ]},
+    {id:'r_fin', en:'Did a customer pay the final payment today?', am:'ዛሬ ደንበኛ የመጨረሻ ክፍያውን ከፍሏል?', t:'yesno', yes:{en:'Final payments came in', am:'የመጨረሻ ክፍያ ገብቷል'}, no:{en:'None today', am:'ዛሬ የለም'}},
+    {id:'r_fin_list', en:'Each final payment', am:'እያንዳንዱ የመጨረሻ ክፍያ', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
+      show:{f:'r_fin', when:'yes'}, cols:[ RV_JOB, RV_CUST,
+        {id:'amount', en:'Amount (Birr)', am:'መጠን (ብር)', t:'money', must:1},
+        {id:'receipt', en:'Receipt no.', am:'የደረሰኝ ቁጥር', t:'text'},
+        /* the card's hard stop: no production before Kidan confirms the 100% */
+        {id:'kidan', en:'Kidan told, to confirm it', am:'ለማረጋገጥ ለኪዳን ተነግሯል', t:'yesno', yes:{en:'Told', am:'ተነግሯል'}, no:{en:'Not yet', am:'ገና'}}
+      ]}
+  ]},
+  { en:'Problems', am:'ችግሮች', fields:[
+    {id:'r_problem', en:'Any problem with a payment? (Write the job in the box.)', am:'በክፍያ ላይ ችግር አለ? (ሥራውን በሳጥኑ ይጻፉ።)', t:'area', opt:1,
+      picks:[
+        { en:'Nothing',                            am:'ምንም', nil:1 },
+        { en:'Customer asked for more time',       am:'ደንበኛው ተጨማሪ ጊዜ ጠየቁ' },
+        { en:'Transfer or cheque not cleared',     am:'ዝውውሩ ወይም ቼኩ አልተረጋገጠም' },
+        { en:'Amount differs from the quotation',  am:'መጠኑ ከዋጋው ይለያል' },
+        { en:'No receipt given',                   am:'ደረሰኝ አልተሰጠም' }
+      ]}
+  ].concat(RV_CHAIR)}
+]);
+const RV_BUY = rvDaily('Rovestone Purchasing Daily Report', 'የሮቭስቶን የግዥ ዕለታዊ ሪፖርት', [
+  { en:'Materials ordered (stage 6)', am:'የታዘዘ ቁሳቁስ (ደረጃ 6)', fields:[
+    {id:'e_ord', en:'Did you order materials for a job today?', am:'ዛሬ ለሥራ ቁሳቁስ አዝዘዋል?', t:'yesno', yes:{en:'Ordered', am:'አዝዣለሁ'}, no:{en:'Nothing ordered today', am:'ዛሬ ምንም አላዘዝኩም'}},
+    {id:'e_ord_list', en:'Each order', am:'እያንዳንዱ ትዕዛዝ', t:'table', addEn:'Add an order', addAm:'ትዕዛዝ ጨምር',
+      show:{f:'e_ord', when:'yes'}, cols:[ RV_JOB,
+        {id:'what', en:'What', am:'ምን', t:'text', must:1},
+        {id:'supplier', en:'Supplier', am:'አቅራቢ', t:'text'},
+        {id:'amount', en:'Amount (Birr)', am:'መጠን (ብር)', t:'money'},
+        {id:'comes', en:'When it comes', am:'መቼ ይደርሳል', t:'text'}
+      ]},
+    {id:'e_wait', en:'Is a job waiting for materials that have not come?', am:'ያልደረሰ ቁሳቁስ የሚጠብቅ ሥራ አለ?', t:'yesno', yes:{en:'Jobs are waiting', am:'የሚጠብቁ ሥራዎች አሉ'}, no:{en:'Nothing waiting', am:'የሚጠብቅ የለም'}},
+    {id:'e_wait_list', en:'Each job waiting', am:'የሚጠብቅ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'e_wait', when:'yes'}, cols:[ RV_JOB,
+        {id:'what', en:'What is missing', am:'የጎደለው', t:'text'},
+        {id:'since', en:'Ordered on', am:'የታዘዘበት ቀን', t:'text'}
+      ]}
+  ]},
+  { en:'Problems', am:'ችግሮች', fields:[
+    {id:'e_problem', en:'Any problem with buying? (Write the job in the box.)', am:'በግዥ ላይ ችግር አለ? (ሥራውን በሳጥኑ ይጻፉ።)', t:'area', opt:1,
+      picks:[
+        { en:'Nothing',                            am:'ምንም', nil:1 },
+        { en:'Not in the market',                  am:'ገበያ ላይ የለም' },
+        { en:'Price went up',                      am:'ዋጋ ጨምሯል' },
+        { en:'No purchase approval yet',           am:'የግዥ ፈቃድ ገና አልተሰጠም' },
+        { en:'Supplier late',                      am:'አቅራቢው ዘግይቷል' }
+      ]}
+  ].concat(RV_CHAIR)}
+]);
+const RV_SITE = rvDaily('Rovestone Delivery & Installation Daily Report', 'የሮቭስቶን የማስረከብና ተከላ ዕለታዊ ሪፖርት', [
+  { en:'Delivered and installed (stages 14–15)', am:'የደረሰና የተገጠመ (ደረጃ 14–15)', fields:[
+    {id:'a_inst', en:'Did you deliver or install a job today?', am:'ዛሬ ሥራ አስረክበዋል ወይም ገጥመዋል?', t:'yesno', yes:{en:'Delivered or installed', am:'አስረክቤያለሁ ወይም ገጥሜያለሁ'}, no:{en:'None today', am:'ዛሬ የለም'}},
+    {id:'a_inst_list', en:'Each job', am:'እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'a_inst', when:'yes'}, cols:[ RV_JOB, RV_CUST,
+        {id:'done', en:'What was done', am:'የተሠራው', t:'choice', opts:[
+          { v:'delivered', en:'Delivered',            am:'ደርሷል' },
+          { v:'installed', en:'Installed',            am:'ተገጥሟል' },
+          { v:'part',      en:'Partly installed',     am:'በከፊል ተገጥሟል' }
+        ]}
+      ]},
+    {id:'a_acc', en:'Did a customer sign the Customer Acceptance Form today?', am:'ዛሬ ደንበኛ የመረከቢያ ቅጹን ፈርመዋል?', t:'yesno', yes:{en:'Signed', am:'ፈርመዋል'}, no:{en:'None today', am:'ዛሬ የለም'}},
+    {id:'a_acc_list', en:'Each signed job', am:'የተፈረመ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'a_acc', when:'yes'}, cols:[ RV_JOB, RV_CUST,
+        /* the card's hard stop: no assembler pay without the paper form in the Job File */
+        {id:'file', en:'The paper form is in the Job File', am:'የወረቀቱ ቅጽ በሥራው ፋይል ውስጥ ገብቷል', t:'yesno', yes:{en:'In the file', am:'በፋይሉ ውስጥ ነው'}, no:{en:'Not yet', am:'ገና'}}
+      ]}
+  ]},
+  { en:'Problems', am:'ችግሮች', fields:[
+    {id:'a_problem', en:'Any problem on site? (Write the job in the box.)', am:'በሥራ ቦታ ችግር ነበር? (ሥራውን በሳጥኑ ይጻፉ።)', t:'area', opt:1,
+      picks:[
+        { en:'Nothing',                            am:'ምንም', nil:1 },
+        { en:'Parts missing',                      am:'ክፍሎች ጎድለዋል' },
+        { en:'Damaged on the way',                 am:'በመንገድ ተጎድቷል' },
+        { en:'Wrong size',                         am:'የተሳሳተ መጠን' },
+        { en:'Customer or site not ready',         am:'ደንበኛው ወይም ቦታው ዝግጁ አይደለም' },
+        { en:'No transport',                       am:'ትራንስፖርት የለም' }
+      ]}
+  ].concat(RV_CHAIR)},
+  { en:'Tomorrow', am:'ነገ', fields:[
+    {id:'t_plan', en:'What is the plan for tomorrow?', am:'የነገው ዕቅድ ምንድን ነው?', t:'area', picks:[
+      { en:'Deliver a job',                        am:'ሥራ ማድረስ' },
+      { en:'Install a job',                        am:'ሥራ መግጠም' },
+      { en:'Fix a problem on site',                am:'በቦታው ችግር ማስተካከል' },
+      { en:'Get acceptance forms signed',          am:'የመረከቢያ ቅጽ ማስፈረም' }
+    ]}
+  ]}
+]);
+const RV_GM = rvDaily('Rovestone General Manager Daily Report', 'የሮቭስቶን ዋና ሥራ አስኪያጅ ዕለታዊ ሪፖርት', [
+  { en:'Approvals and holds', am:'ፈቃድና ማቆም', fields:[
+    {id:'g_appr', en:'Did you approve a purchase for a job today? (stage 5)', am:'ዛሬ ለሥራ ግዥ አጽድቀዋል? (ደረጃ 5)', t:'yesno', yes:{en:'Approved', am:'አጽድቄያለሁ'}, no:{en:'None today', am:'ዛሬ የለም'}},
+    {id:'g_appr_list', en:'Each purchase approved', am:'የጸደቀ እያንዳንዱ ግዥ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'g_appr', when:'yes'}, cols:[ RV_JOB,
+        {id:'amount', en:'Amount (Birr)', am:'መጠን (ብር)', t:'money', opt:1}
+      ]},
+    {id:'g_hold', en:'Did you put a job on hold today?', am:'ዛሬ ሥራ አቁመዋል?', t:'yesno', yes:{en:'A job is on hold', am:'ሥራ ቆሟል'}, no:{en:'No job held', am:'የቆመ ሥራ የለም'}},
+    {id:'g_hold_list', en:'Each job on hold', am:'የቆመ እያንዳንዱ ሥራ', t:'table', addEn:'Add a job', addAm:'ሥራ ጨምር',
+      show:{f:'g_hold', when:'yes'}, cols:[ RV_JOB,
+        {id:'why', en:'Why', am:'ለምን', t:'choice', opts:[
+          { v:'payment',  en:'Payment not in',       am:'ክፍያ አልገባም' },
+          { v:'design',   en:'Design not final',     am:'ዲዛይን አልተጠናቀቀም' },
+          { v:'material', en:'Material missing',     am:'ቁሳቁስ ጎድሏል' },
+          { v:'customer', en:'Customer asked to wait', am:'ደንበኛው እንድንጠብቅ ጠየቁ' },
+          { v:'other',    en:'Other',                am:'ሌላ' }
+        ]}
+      ]}
+  ]},
+  { en:'The day', am:'ቀኑ', fields:[
+    {id:'g_day', en:'How did Rovestone’s day go?', am:'የሮቭስቶን ቀን እንዴት ነበር?', t:'area', picks:SIS_DONE}
+  ].concat(RV_CHAIR)}
+]);
+
 const SALES_DAILY = {
   id:'sales-daily', cadence:'daily', dueTime:'17:00',
+
   en:'Daily Sales Activity Report', am:'ዕለታዊ የሽያጭ እንቅስቃሴ ሪፖርት',
   toEn:'Ephrata', toAm:'ኤፍራታ',
   dueEn:'5:00 PM every working day — Ephrata needs it for her 5:30 PM report',
@@ -9664,6 +9920,12 @@ function oddFigures(report, v) {
   [['meri', 'Meri Block Board', 'መሪ ብሎክ ቦርድ'],
    ['lemikura', 'Real Estate & Construction', 'ሪል እስቴትና ግንባታ']].forEach(function (c) {
     sisterReports(c[0], c[1], c[2]).forEach(function (r) { REPORTS.push(r); });
+  });
+  /* Rovestone's people from its Job Card (19 Oct 2026) — one daily each */
+  [['kalkidan', RV_GM], ['marta', RV_SALES], ['fana', RV_SALES], ['rahel', RV_PAY],
+   ['dawit', RV_DESIGN], ['tsigea', RV_DESIGN], ['yared-rv', RV_DESIGN], ['sintayehu', RV_DESIGN], ['hana', RV_DESIGN],
+   ['eyosias', RV_BUY], ['anbesu', RV_SITE]].forEach(function (x) {
+    REPORTS.push(copyFor(x[1], x[0]));
   });
   /* someone with no terms letter yet reports, and is fined for nothing */
   REPORTS.forEach(function (r) {

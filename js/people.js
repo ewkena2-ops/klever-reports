@@ -55,6 +55,23 @@ const PEOPLE = [
   { id:'meri', en:'Meri Block Board', am:'መሪ ብሎክ ቦርድ', roleEn:'Reports for Meri Block Board', roleAm:'ለመሪ ብሎክ ቦርድ ሪፖርት የሚያቀርቡ', grp:'meri', company:'meri', from:'2026-10-07', noLetter:1 },
   { id:'lemikura', en:'Lemi Kura', am:'ለሚ ኩራ', roleEn:'Reports for Real Estate & Construction (Lemi Kura)', roleAm:'ለሪል እስቴትና ግንባታ (ለሚ ኩራ) ሪፖርት የሚያቀርቡ', grp:'realestate', company:'realestate', from:'2026-10-07', noLetter:1 },
   { id:'frewoyni', en:'Frewoyni', am:'ፍሬወይኒ', roleEn:'Rovestone Operations Lead', roleAm:'የሮቭስቶን ኦፕሬሽን ኃላፊ', grp:'rovestone', company:'rovestone', from:'2026-10-05' },
+  /* Rovestone's other people, from its Job Card (Form JC-01, 29 Sep 2026) —
+     who moves which of the sixteen stages (19 Oct 2026, the user: "why is
+     Rovestone only Frewoyni — here there are others"). First names only, as
+     on the card. Reports counted from Wed 21 Oct. Tsigu, Yesak and Beti sign
+     approvals on the card; they wait until their jobs are known. 'yared-rv':
+     Klever's factory already has a 'yared'. */
+  { id:'kalkidan',  en:'Kalkidan',  am:'ቃልኪዳን',  roleEn:'Rovestone General Manager', roleAm:'የሮቭስቶን ዋና ሥራ አስኪያጅ', grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'marta',     en:'Marta',     am:'ማርታ',    roleEn:'Rovestone Salesperson',     roleAm:'የሮቭስቶን የሽያጭ ባለሙያ',   grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'fana',      en:'Fana',      am:'ፋና',     roleEn:'Rovestone Salesperson',     roleAm:'የሮቭስቶን የሽያጭ ባለሙያ',   grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'rahel',     en:'Rahel',     am:'ራሔል',    roleEn:'Rovestone Payments',        roleAm:'የሮቭስቶን ክፍያ ኃላፊ',      grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'dawit',     en:'Dawit',     am:'ዳዊት',    roleEn:'Rovestone Designer',        roleAm:'የሮቭስቶን ዲዛይነር',        grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'tsigea',    en:'Tsigea',    am:'ፅጌ',     roleEn:'Rovestone Designer',        roleAm:'የሮቭስቶን ዲዛይነር',        grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'yared-rv',  en:'Yared',     am:'ያሬድ',    roleEn:'Rovestone Designer',        roleAm:'የሮቭስቶን ዲዛይነር',        grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'sintayehu', en:'Sintayehu', am:'ስንታየሁ',  roleEn:'Rovestone Designer',        roleAm:'የሮቭስቶን ዲዛይነር',        grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'hana',      en:'Hana',      am:'ሐና',     roleEn:'Rovestone Designer',        roleAm:'የሮቭስቶን ዲዛይነር',        grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'eyosias',   en:'Eyosias',   am:'ኢዮስያስ',  roleEn:'Rovestone Purchasing',      roleAm:'የሮቭስቶን የግዥ ኃላፊ',      grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'anbesu',    en:'Anbesu',    am:'አንበሱ',   roleEn:'Rovestone Delivery & Installation', roleAm:'የሮቭስቶን ማስረከብና ተከላ', grp:'rovestone', company:'rovestone', from:'2026-10-21' },
 
   /* The 22 production workers, from the September payroll sheet. Ashenafi
      Girma on that sheet is Ashenafi Germa the Site Helper, listed above — he

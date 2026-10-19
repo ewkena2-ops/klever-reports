@@ -329,7 +329,8 @@
   }
   var pumping = false, retry = null;
   function pump() {
-    if (pumping || !queue.length || !POST || !window.FB) return;
+    /* only the gate's own sign-in sends scans (signed out, they wait) */
+    if (pumping || !queue.length || !POST || !window.FB || window.FB.who() !== 'gate') return;
     pumping = true;
     var item = queue[0];
     window.FB.token().then(function (tok) {
@@ -738,7 +739,39 @@
       extra.forEach(function (x) { l2.appendChild(enrolRow({ id: x.id, name: x.name, am: x.name, role: x.role })); });
       page.appendChild(l2);
     }
+    if (window.FB.who() === 'gate') page.appendChild(tabletOut());
     root.appendChild(page);
+  }
+  /* the tablet's own sign-out, behind the Chairman's or Amaha's password — a
+     phone signed in as "Gate tablet" to try it had no way back (the user,
+     19 Oct 2026: "I am stuck at the gate, I can't sign out"). Two taps; the
+     scans still waiting stay on the tablet and go when it is the gate again. */
+  function tabletOut() {
+    var wrap = el('div', 'gtout');
+    wrap.appendChild(two('gtTabletOutNote', null, 'gtnote'));
+    var b = btn('gtTabletOut', 'gtghost danger', null);
+    var armed = 0;
+    b.onclick = function () {
+      touch();
+      if (!armed) {
+        armed = setTimeout(function () { armed = 0; b.classList.remove('armed'); }, 5000);
+        b.classList.add('armed');
+        if (queue.length) toast('gtTabletOutWaiting', { n: queue.length });
+        else toast('gtSure');
+        return;
+      }
+      clearTimeout(armed);
+      clearTimeout(idleEnrol);
+      b.disabled = true;
+      var s = session;
+      session = null;
+      if (s) { try { s.end(); } catch (e) {} }
+      /* a fresh page: the camera and the gate's watchers go with the gate's sign-in */
+      window.FB.signOut().then(function () { location.replace('gate.html'); },
+                               function () { b.disabled = false; toast('gtTabletOutFailed'); });
+    };
+    wrap.appendChild(b);
+    return wrap;
   }
   function enrolRow(p) {
     var f = faceOf(p.id);
@@ -888,6 +921,13 @@
     });
     pw.onkeydown = function (e) { if (e.key === 'Enter') go.onclick(); };
     box.appendChild(go);
+    /* someone who is not the gate: their own sign-in is on the home page */
+    var home = el('a', 'gtbtn gtghost gthome');
+    home.href = 'index.html';
+    var hw = word('gtToHome');
+    home.appendChild(el('span', 'gtbam', hw.am));
+    if (hw.en !== hw.am) home.appendChild(el('span', 'gtben', hw.en));
+    box.appendChild(home);
     root.appendChild(box);
   }
   /* An error screen. `retry`: the tablet tries again by itself every minute

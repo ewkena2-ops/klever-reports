@@ -7057,6 +7057,12 @@ const REPORTS = [
           {v:'wip',  en:'On installation — worked on today', am:'ተከላ ላይ ነው — ዛሬ ተሠርቷል'},
           {v:'idle', en:'On installation — no work today',   am:'ተከላ ላይ ነው — ዛሬ አልተሠራም'}
         ]},
+        /* how long the whole job takes, start to finish, job by job (the
+           user, 20 Oct 2026: "ask him how many days the full project takes,
+           for each job" — then "let them choose dates, not say 1 2 3 4"):
+           two dates picked on a calendar */
+        {id:'jstart', en:'Day the whole job started', am:'ሙሉ ሥራው የተጀመረበት ቀን', t:'date'},
+        {id:'jend',   en:'Day the whole job finishes (or finished)', am:'ሙሉ ሥራው የሚያልቅበት (ወይም ያለቀበት) ቀን', t:'date'},
         {id:'m2',    en:'m² installed', am:'የተገጠመ ካሬ ሜትር', t:'num'},
         {id:'start', en:'Start time', am:'የተጀመረበት ሰዓት', t:'text', time:1},
         {id:'fin',   en:'Finish time', am:'የተጠናቀቀበት ሰዓት', t:'text', time:1},

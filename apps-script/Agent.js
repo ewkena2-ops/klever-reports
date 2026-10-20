@@ -415,6 +415,8 @@ function loadSchedule_() {
   var read = new Function(src.getContentText() + '; return { people: PEOPLE, reports: REPORTS, ' +
                           'odd: typeof oddFigures === "function" ? oddFigures : null, ' +
                           'holidays: typeof HOLIDAYS !== "undefined" ? HOLIDAYS : [], ' +
+                          /* days the check-in is not counted (20 Oct 2026) */
+                          'attendOff: typeof ATTEND_OFF !== "undefined" ? ATTEND_OFF : {}, ' +
                           /* the companies with pages of their own (Rovestone, 17 Oct 2026) */
                           'companies: typeof COMPANIES !== "undefined" ? COMPANIES : {} };');
   SCHEDULE_ = read();

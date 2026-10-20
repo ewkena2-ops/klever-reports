@@ -776,6 +776,8 @@
       var s = session;
       session = null;
       if (s) { try { s.end(); } catch (e) {} }
+      /* the tablet's copy of the faces goes with the gate's sign-in */
+      try { localStorage.removeItem(FKEY); } catch (e) {}
       /* a fresh page: the camera and the gate's watchers go with the gate's sign-in */
       window.FB.signOut().then(function () { location.replace('gate.html'); },
                                function () { b.disabled = false; toast('gtTabletOutFailed'); });
@@ -984,7 +986,27 @@
 
   /* ---------------- start ---------------- */
 
-  var stopFaces = null, stopTeam = null;
+  var stopFaces = null, stopTeam = null, facesRetry = null;
+  var FKEY = 'klever.gate.faces';
+  function watchFacesNow() {
+    stopFaces = window.FB.watchFaces(function (list) {
+      if (list === null) {
+        var s0 = stopFaces;
+        stopFaces = null;
+        if (s0) try { s0(); } catch (e) {}
+        clearTimeout(facesRetry);
+        facesRetry = setTimeout(function () { if (!stopFaces) watchFacesNow(); }, 120000);
+        return;
+      }
+      faces = readFaces(list);
+      /* the gate's own copy: names and face numbers, not the pictures */
+      if (window.FB.who() === 'gate') {
+        store(FKEY, list.map(function (f) { return { person: f.person, name: f.name, descr: f.descr }; }));
+      }
+      if (mode === 'enrol' && sub === 'list') enrolList();
+      if (mode === 'kiosk' && sub === 'idle') idleWords();
+    });
+  }
   function start() {
     root.innerHTML = '';
     root.appendChild(two('gtStarting', null, 'gtsub gtwait'));
@@ -1005,14 +1027,16 @@
         if (mode === 'kiosk' && sub === 'idle') idleWords();
       });
     }
-    if (!stopFaces) {
-      stopFaces = window.FB.watchFaces(function (list) {
-        if (list === null) return;
-        faces = readFaces(list);
-        if (mode === 'enrol' && sub === 'list') enrolList();
-        if (mode === 'kiosk' && sub === 'idle') idleWords();
-      });
+    /* The faces are kept on the tablet as well: on 20 Oct 2026 the database
+       had used its free day of reads, the tablet's 3 AM reload could not
+       read them and the gate knew no one until it was reloaded by hand.
+       Now it starts from its own copy, and a watch that fails is started
+       again every two minutes until the faces come. */
+    if (!faces.length && who === 'gate') {
+      var ownCopy = store(FKEY);
+      if (ownCopy && ownCopy.length) faces = readFaces(ownCopy);
     }
+    if (!stopFaces) watchFacesNow();
     (function tryEngine() {
       loadEngine().then(function () {
         if (mode === 'kiosk' && sub === 'idle') idleWords();

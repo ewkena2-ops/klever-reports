@@ -57,6 +57,9 @@ function waPost_(row) {
   try { cfg = waConfig_(); }
   catch (e) { Logger.log('wa config: %s', e.message); return 'refused'; }
   if (!cfg.secret || !waSame_(row.secret, cfg.secret)) return 'refused';
+  /* an office check-in the agent took at the door while this script could
+     not, handed over with its own time (Attend.js, 20 Oct 2026) */
+  if (row.kind === 'wa-attend') return attendPost_(row, String(row.person || ''), true);
   var out;
   if (row.kind === 'wa-chairman') out = waChairman_(row);
   else if (row.kind === 'wa-customer') out = waCustomer_(row);

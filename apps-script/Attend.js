@@ -56,11 +56,35 @@ function atAddr_(ip) {
   return groups.slice(0, 4).map(function (g) { return String(parseInt(g || '0', 16).toString(16)); }).join(':') + '::/64';
 }
 
-/* the office's addresses, as the Chairman set them */
+/* the office's addresses, as the Chairman set them. A read that fails
+   throws: "none set" said while the database was out sent the whole
+   office to "the WiFi is not set up" (20 Oct 2026). */
 function atWifi_() {
-  var d = null;
-  try { d = fsGet_('attendwifi/' + AT_PLACE_); } catch (e) { d = null; }
+  var d = fsGet_('attendwifi/' + AT_PLACE_);
   return ((d && d.ips) || []).map(atAddr_).filter(function (x) { return x; });
+}
+
+/* A day the check-in is not counted (js/forms.js ATTEND_OFF — 20 Oct 2026,
+   the database out until 10 AM): scans are kept, never late; no one is
+   asked why. */
+function atOff_(schedule, day) {
+  var o = (schedule && schedule.attendOff) || {};
+  return o[day] || null;
+}
+
+/* What the WhatsApp agent needs to answer at the door by itself when this
+   script cannot (its database out, 20 Oct 2026): the office's addresses,
+   who scans, the closed days and the days not counted, the next weeks.
+   It goes back with every answer to the agent, which keeps it and never
+   passes it to the phone (app/attend_local.py). */
+function atConf_(schedule, wifi) {
+  var closed = [], off = [], day = todayAddis_();
+  for (var i = 0; i < 45; i++) {
+    var d = addDays_(day, i);
+    if (holiday_(d)) closed.push(d);
+  }
+  Object.keys((schedule && schedule.attendOff) || {}).forEach(function (d) { if (d >= addDays_(day, -3)) off.push(d); });
+  return { wifi: wifi, people: atPeople_(schedule).map(function (p) { return p.id; }), closed: closed, off: off };
 }
 
 /* minutes after midnight, Addis */
@@ -74,19 +98,46 @@ function atClock_(mins) {
 }
 
 /* From doPost: { kind:'attend', secret, ip, place } with the person's own
-   sign-in token, already checked (`poster`). Returns the answer as JSON. */
-function attendPost_(row, poster) {
+   sign-in token, already checked (`poster`). Returns the answer as JSON.
+
+   `queued` (Wa.js 'wa-attend', 20 Oct 2026): a scan the agent checked and
+   kept at the door while this script could not take it — the person
+   (their token has expired by now; the secret says it is the agent's) and
+   the time it was made, `at`. It counts at that time; one made earlier than
+   a scan already here (the person scanned again once the site was back)
+   takes its place. */
+var AT_QUEUE_MAX_MS_ = 3 * 86400000;           /* kept longer by the agent: not taken */
+function attendPost_(row, poster, queued) {
   var cfg;
   try { cfg = waConfig_(); } catch (e) { return JSON.stringify({ ok: false, why: 'unavailable' }); }
   /* only the agent knows the secret, so only the agent says where a scan came from */
   if (!cfg.secret || !waSame_(row.secret, cfg.secret)) return 'refused';
+  try { return attendTake_(row, poster, queued); }
+  catch (e) {
+    /* the database could not be read or written: the agent keeps the scan */
+    Logger.log('attend %s: %s', poster, e.message);
+    return JSON.stringify({ ok: false, why: 'unavailable' });
+  }
+}
+function attendTake_(row, poster, queued) {
   var addr = atAddr_(row.ip);
-  var now = new Date(), day = todayAddis_(), mins = atMinutes_(now);
+  var now = new Date();
+  if (queued) {
+    if (!/^[a-z0-9-]{2,60}$/.test(String(poster || ''))) return JSON.stringify({ ok: false, why: 'unknown' });
+    var at = Number(row.at);
+    if (!isFinite(at) || at > now.getTime() + 10 * 60000 || at < now.getTime() - AT_QUEUE_MAX_MS_) {
+      return JSON.stringify({ ok: false, why: 'stale' });
+    }
+    now = new Date(Math.min(at, now.getTime()));
+  }
+  var day = Utilities.formatDate(now, tz_(), 'yyyy-MM-dd'), mins = atMinutes_(now);
   var schedule = loadSchedule_();
+  var wifi = atWifi_();
+  var conf = atConf_(schedule, wifi);
+  function reply(o) { o.conf = conf; return JSON.stringify(o); }
   var me = (schedule.people || []).filter(function (p) { return p.id === poster; })[0];
   var scans = poster === 'chairman' || (me && me.scan && !me.company);
-  if (!scans) return JSON.stringify({ ok: false, why: 'not-office' });
-  var wifi = atWifi_();
+  if (!scans) return reply({ ok: false, why: 'not-office' });
   var onWifi = !!addr && wifi.indexOf(addr) !== -1;
   if (!onWifi) {
     /* kept, so the Chairman can say "this is Klever's WiFi" */
@@ -96,23 +147,24 @@ function attendPost_(row, poster) {
                                                       hm: atClock_(mins), wifiSet: wifi.length > 0 });
       } catch (e) { Logger.log('attendfail: %s', e.message); }
     }
-    return JSON.stringify({ ok: false, why: wifi.length ? 'not-wifi' : 'no-wifi-set', ip: addr });
+    return reply({ ok: false, why: wifi.length ? 'not-wifi' : 'no-wifi-set', ip: addr });
   }
-  if (poster === 'chairman') return JSON.stringify({ ok: true, chairman: true, ip: addr });
-  if (dow_(day) === 0) return JSON.stringify({ ok: false, why: 'sunday' });
-  if (holiday_(day)) return JSON.stringify({ ok: false, why: 'holiday', name: holiday_(day).en, nameAm: holiday_(day).am || '' });
+  if (poster === 'chairman') return reply({ ok: true, chairman: true, ip: addr });
+  if (dow_(day) === 0) return reply({ ok: false, why: 'sunday' });
+  if (holiday_(day)) return reply({ ok: false, why: 'holiday', name: holiday_(day).en, nameAm: holiday_(day).am || '' });
   var path = 'attend/' + day + '_' + poster;
-  var had = null;
-  try { had = fsGet_(path); } catch (e) { had = null; }
-  if (had && had.scanAt) {
-    return JSON.stringify({ ok: true, already: true, at: had.hm, late: !!had.late, minsLate: had.minsLate || 0 });
+  var had = fsGet_(path);
+  if (had && had.scanAt && !(queued && now.getTime() < new Date(had.scanAt).getTime())) {
+    return reply({ ok: true, already: true, at: had.hm, late: !!had.late, minsLate: had.minsLate || 0 });
   }
-  var late = mins > AT_LATE_AFTER_;
+  var late = mins > AT_LATE_AFTER_ && !atOff_(schedule, day);
   var scan = { person: poster, day: day, place: AT_PLACE_, scanAt: now, hm: atClock_(mins), late: late,
                minsLate: late ? mins - AT_LATE_AFTER_ : 0, ip: addr };
+  /* taken at the door by the agent, handed over later */
+  if (queued) { scan.queued = true; scan.sentAt = new Date(); }
   /* a reason she gave before scanning (forgot, then came) stays */
   if (had) fsUpdate_(path, scan); else fsPut_(path, scan);
-  return JSON.stringify({ ok: true, at: scan.hm, late: late, minsLate: scan.minsLate });
+  return reply({ ok: true, at: scan.hm, late: late, minsLate: scan.minsLate });
 }
 
 /* One day, person by person: on time / late / no scan, and why. The
@@ -172,7 +224,7 @@ function attendFacts_(day) {
   var docs = tryQuery_('attend', [['day', 'GREATER_THAN_OR_EQUAL', monthStart], ['day', 'LESS_THAN_OR_EQUAL', day]], 'day');
   var month = {};
   var days = [];
-  for (var d = monthStart; d <= day; d = addDays_(d, 1)) if (!closed_(d)) days.push(d);
+  for (var d = monthStart; d <= day; d = addDays_(d, 1)) if (!closed_(d) && !atOff_(schedule, d)) days.push(d);
   days.forEach(function (d) {
     attendDay_(schedule, d, docs).forEach(function (r) {
       var m = month[r.id] || (month[r.id] = { name: r.name, on_time: 0, late: 0, no_scan: 0, late_or_missing_days: [] });
@@ -187,6 +239,7 @@ function attendFacts_(day) {
     how: 'Office staff scan the QR at the office door on Klever WiFi when they arrive; late after 8:00 AM. ' +
          'No money is taken for it; a person who did not scan or was late says why on their page.',
     day: day, today: attendDay_(schedule, day, docs),
+    today_not_counted: atOff_(schedule, day) ? 'Not counted today (' + atOff_(schedule, day).en + '): no one is late or missing' : undefined,
     month: AT_ETH_MONTHS_[eth.m - 1] + ' ' + eth.y + ' (Ethiopian calendar), counted from ' + monthStart,
     month_so_far: Object.keys(month).map(function (k) { return month[k]; })
   };

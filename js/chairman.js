@@ -915,6 +915,8 @@ import {
     return id === 'chairman' ? t('atYou') : p ? L(p) : id;
   }
   function atWhyText(why, note) { return (t('atWhy_' + why) || why) + (note ? ' — ' + note : ''); }
+  /* a day the check-in is not counted (js/forms.js ATTEND_OFF, 20 Oct 2026) */
+  function atOffOn(d) { return typeof attendOff === 'function' ? attendOff(d) : null; }
   function drawAttend(into, st, since) {
     into.innerHTML = '';
     var people = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.scan && !p.company; });
@@ -978,6 +980,7 @@ import {
     into.appendChild(el('p', 'skysub', t('atTodayHead') + ' · ' + prettyDay(DAY)));
     if (sunday) into.appendChild(el('p', 'codenote', holidayOn(DAY) ? tfill('atHolidayNote', { name: L(holidayOn(DAY)) }) : t('atSundayNote')));
     else {
+      if (atOffOn(DAY)) into.appendChild(el('p', 'codenote', tfill('atOffNote', { why: L(atOffOn(DAY)) })));
       var counts = { on: 0, late: 0, none: 0 }, list = el('div', 'atlist');
       people.filter(function (p) { return !p.from || p.from <= DAY; }).forEach(function (p) {
         var d = (by[DAY] || {})[p.id] || {};
@@ -997,7 +1000,8 @@ import {
 
     /* this month */
     var days = [];
-    for (var d = since; d <= DAY; d = addDays(d, 1)) if (new Date(d + 'T12:00:00Z').getUTCDay() !== 0) days.push(d);
+    /* not Sundays, holidays, or days not counted (js/forms.js ATTEND_OFF) */
+    for (var d = since; d <= DAY; d = addDays(d, 1)) if (!closedDay(d) && !atOffOn(d)) days.push(d);
     if (!days.length) return;
     var det = el('details', 'chmonth atmonth');
     det.appendChild(el('summary', null, tfill('atMonthEth', { month: window.KLEVER && window.KLEVER.ethMonthName ? window.KLEVER.ethMonthName(DAY) : '', day: prettyDay(since) })));
@@ -1241,6 +1245,7 @@ import {
     into.appendChild(el('p', 'skysub', t('atTodayHead') + ' · ' + prettyDay(DAY) + (counting ? '' : ' · ' + t('atTest'))));
     if (sunday) into.appendChild(el('p', 'codenote', holidayOn(DAY) ? tfill('atHolidayNote', { name: L(holidayOn(DAY)) }) : t('atSundayNote')));
     else {
+      if (atOffOn(DAY)) into.appendChild(el('p', 'codenote', tfill('atOffNote', { why: L(atOffOn(DAY)) })));
       var a = new Date(Date.now() + 3 * 3600000), nowMin = a.getUTCHours() * 60 + a.getUTCMinutes();
       var counts = { on: 0, late: 0, none: 0 }, list = el('div', 'atlist');
       people.forEach(function (p) {
@@ -1270,7 +1275,8 @@ import {
     /* this month, every day with its time */
     var since = monthStart < st.from ? st.from : monthStart;
     var days = [];
-    for (var d = since; d <= DAY; d = addDays(d, 1)) if (new Date(d + 'T12:00:00Z').getUTCDay() !== 0) days.push(d);
+    /* not Sundays, holidays, or days not counted (js/forms.js ATTEND_OFF) */
+    for (var d = since; d <= DAY; d = addDays(d, 1)) if (!closedDay(d) && !atOffOn(d)) days.push(d);
     if (!days.length) return;
     var dayName = window.KLEVER && window.KLEVER.ethDayLabel ? window.KLEVER.ethDayLabel : prettyDay;
     var det = el('details', 'chmonth atmonth');

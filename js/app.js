@@ -1769,10 +1769,13 @@
       return r.json()['catch'](function () { return { ok: false, why: 'unavailable' }; });
     }).then(function (a) {
       if (a.ok && a.chairman) return show('good', t('atChairOk'), tfill_('atAddr', { ip: a.ip || '—' }));
-      if (a.ok && a.already) return show(a.late ? 'late' : 'good', tfill_('atAlready', { at: a.at }));
+      /* `queued`: taken by the check-in server while the site's database was
+         out (20 Oct 2026) — it reaches the person's page once it is back */
+      var saved = a.queued ? t('atSaved') : '';
+      if (a.ok && a.already) return show(a.late ? 'late' : 'good', tfill_('atAlready', { at: a.at }), saved);
       if (a.ok) {
-        return a.late ? show('late', tfill_('atLate', { at: a.at, m: atDur(a.minsLate) }), t('atLateWhy'))
-                      : show('good', tfill_('atOnTime', { at: a.at }));
+        return a.late ? show('late', tfill_('atLate', { at: a.at, m: atDur(a.minsLate) }), saved || t('atLateWhy'))
+                      : show('good', tfill_('atOnTime', { at: a.at }), saved);
       }
       var w = a.why || 'unavailable';
       if (w === 'holiday') return show('bad', tfill_('atHoliday', { name: lang === 'am' && a.nameAm ? a.nameAm : (a.name || '') }));
@@ -1827,7 +1830,7 @@
       var rows = [];
       for (var i = 7; i >= 1; i--) {
         var d = addDays(today, -i);
-        if (d < from || (p.from && d < p.from) || dowOf(d) === 0) continue;
+        if (d < from || (p.from && d < p.from) || dowOf(d) === 0 || atOffOn(d)) continue;
         var x = atReal(by[d]);
         if (x && (x.why || (x.scanAt && !x.late))) continue;
         rows.push(atDay(d, x, false));
@@ -1862,6 +1865,7 @@
       var st, cls, why = '';
       if (dowOf(d) === 0) { st = t('atSundayOff'); cls = 'off'; }
       else if (holidayOn(d)) { st = t('atHolidayOff') + ' · ' + L(holidayOn(d)); cls = 'off'; }
+      else if (atOffOn(d)) { st = (x && x.scanAt ? '✓ ' + x.hm + ' · ' : '') + t('atOffShort') + ' · ' + L(atOffOn(d)); cls = 'off'; }
       else if (x && x.scanAt && !x.late) { st = '✓ ' + x.hm; cls = 'good'; if (!test) n.on++; }
       else if (x && x.scanAt) { st = '! ' + tfill_('atLateShortMine', { at: x.hm, m: atDur(x.minsLate) }); cls = 'late'; if (!test) n.late++; }
       else if (d === today) {
@@ -1901,10 +1905,18 @@
     if (x.face && x.face.at) { y.scanAt = x.face.at; y.hm = x.face.hm; y.late = !!x.face.late; y.minsLate = x.face.minsLate || 0; y.how = 'face'; }
     return y;
   }
+  /* a day the check-in is not counted (js/forms.js ATTEND_OFF, 20 Oct 2026) */
+  function atOffOn(d) { return typeof attendOff === 'function' ? attendOff(d) : null; }
   function atDay(day, x, isToday, nowMin, noAsk) {
     x = atReal(x);
     var box = el('div', 'ins at');
     var label = isToday ? t('atToday') : dayLabel(day);
+    if (atOffOn(day)) {
+      box.className = 'ins at' + (x && x.scanAt ? ' good' : '');
+      box.appendChild(el('div', 'inst', label + ' · ' + (x && x.scanAt ? '✓ ' + x.hm : atT('atScanHow'))));
+      box.appendChild(el('div', 'atsub', tfill_('atOffDay', { why: L(atOffOn(day)) })));
+      return box;
+    }
     if (x && x.scanAt && !x.late) {
       box.className = 'ins at good';
       box.appendChild(el('div', 'inst', label + ' · ' + tfill_('atOnTime', { at: x.hm })));
@@ -2345,6 +2357,7 @@
     if (dowOf(today) === 0) wrap.appendChild(el('p', 'codenote', t('atSundayOff')));
     else if (holidayOn(today)) wrap.appendChild(el('p', 'codenote', t('atHolidayOff') + ' · ' + L(holidayOn(today))));
     else {
+      if (atOffOn(today)) wrap.appendChild(el('p', 'codenote', tfill_('atOffDay', { why: L(atOffOn(today)) })));
       var n = { on: 0, late: 0, none: 0 };
       var list = el('div', 'ins gtlistday');
       people.forEach(function (q) {
@@ -2367,7 +2380,7 @@
         if (notes.length) r.appendChild(el('div', 'atdw', notes.join(' · ')));
         list.appendChild(r);
         if (x0 && x0.how === 'tap' && x0.check === 'open' && q.id !== 'amaha') check(q, today, x0, list);
-        if (counting && q.worker && !(x && x.why) && (cls === 'late' || cls === 'missed')) {
+        if (counting && !atOffOn(today) && q.worker && !(x && x.why) && (cls === 'late' || cls === 'missed')) {
           r.appendChild(askLater(today, cls === 'late', x0, q.id));
         }
       });
@@ -2388,7 +2401,7 @@
           check(q, d, x0, row);
           earlier.appendChild(row);
         }
-        if (!counting || d < st.from || !q.worker || (x && x.why) || (x && x.scanAt && !x.late)) return;
+        if (!counting || d < st.from || atOffOn(d) || !q.worker || (x && x.why) || (x && x.scanAt && !x.late)) return;
         var late = !!(x && x.scanAt);
         var r = el('div', 'ins at ' + (late ? 'late' : 'missing'));
         r.appendChild(el('div', 'inst', dayLabel(d) + ' · ' + L(q) + ' · ' +

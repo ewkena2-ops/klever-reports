@@ -20,6 +20,15 @@
 /* the first day a missing scan is asked about (Attend.js AT_FROM_ is the same) */
 /* moved from Thu 15 Oct to Mon 19 Oct (the user, 17 Oct 2026: "from Monday we start our QR scan — don't ask them if they skipped before") */
 const ATTEND_FROM = '2026-10-19';
+/* Days the check-in is not counted, at the office door or the factory gate:
+   a scan is kept but never late, and no one is asked why (Attend.js atOff_,
+   Gate.js, js/app.js, js/chairman.js). 20 Oct 2026: the database had used
+   its free day of reads and every scan failed until 10 AM — the user:
+   excuse this morning. */
+const ATTEND_OFF = {
+  '2026-10-20': { en: 'the system was down until 10 AM', am: 'ሲስተሙ እስከ ጠዋቱ 4 ሰዓት ተቋርጦ ነበር' }
+};
+function attendOff(ymd) { return ATTEND_OFF[ymd] || null; }
 const PEOPLE = [
   { id:'ephrata',  en:'Ephrata Assfa',   am:'ኤፍራታ አስፋ',   roleEn:'Commercial Lead',   roleAm:'የንግድ ኃላፊ', grp:'commercial', scan:1 },
   { id:'liu',      en:'Mahelet Teshome', am:'ማህሌት ተሾመ',   roleEn:'Operations Lead',   roleAm:'የኦፕሬሽን ኃላፊ', grp:'lead', scan:1 },

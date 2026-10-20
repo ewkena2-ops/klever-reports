@@ -147,7 +147,8 @@ function gatePost_(row, poster) {
   if (p && p.left && day > p.left) return JSON.stringify({ ok: false, why: 'left' });
   var path = 'attend/' + day + '_' + person;
   var how = row.how === 'face' ? 'face' : 'tap';
-  var sunday = closed_(day);            /* or a holiday: recorded, never late */
+  /* or a holiday, or a day not counted (js/forms.js ATTEND_OFF): recorded, never late */
+  var sunday = closed_(day) || !!atOff_(schedule, day);
   var photo = String(row.photo || '');
   var goodPhoto = /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+\/=]+$/.test(photo) && photo.length <= GT_PHOTO_MAX_;
   var had = null;
@@ -206,7 +207,7 @@ function factoryGateFacts_(day) {
   var docs = tryQuery_('attend', [['day', 'GREATER_THAN_OR_EQUAL', monthStart], ['day', 'LESS_THAN_OR_EQUAL', day]], 'day');
   var month = {};
   for (var d = monthStart; d <= day; d = addDays_(d, 1)) {
-    if (closed_(d)) continue;
+    if (closed_(d) || atOff_(schedule, d)) continue;
     attendDay_(schedule, d, docs, people).forEach(function (r) {
       var m = month[r.id] || (month[r.id] = { name: r.name, on_time: 0, late: 0, no_scan: 0, late_or_missing_days: [] });
       if (r.status === 'on time') m.on_time++;
@@ -223,6 +224,7 @@ function factoryGateFacts_(day) {
          'A tapped name (face not recognised) waits until Amaha or the Chairman checks the picture. ' +
          'No money is taken for it; Amaha says why for workers, the heads say it for themselves.',
     day: day, today: attendDay_(schedule, day, docs, people),
+    today_not_counted: atOff_(schedule, day) ? 'Not counted today (' + atOff_(schedule, day).en + '): no one is late or missing' : undefined,
     no_face_added_yet: people.filter(function (p) { return !faced[p.id] && !(p.from && day < p.from) && !(p.left && day > p.left); })
       .map(function (p) { return p.en; }),
     team_changes_14_days: gtTeamChanges_(day),

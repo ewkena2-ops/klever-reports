@@ -473,6 +473,9 @@ import {
     var charts = el('div', 'chcharts');
     charts.appendChild(el('p', 'codenote', t('chLoading')));
     root.appendChild(charts);
+    /* who checked in, under who reported (drawAtGrid) */
+    AT_GRID.box = el('div', 'chatgrid');
+    drawAtGrid();
 
     /* --- what they said they would do, and whether they did (js/promises.js) --- */
     root.appendChild(el('p', 'eyebrow', t('prTitle')));
@@ -892,6 +895,7 @@ import {
       st.docs = [];
       snap.forEach(function (d) { st.docs.push(d.data({ serverTimestamps: 'estimate' })); });
       draw();
+      atGridFeed('office', { docs: st.docs });
     }, failInto(into));
     onSnapshot(query(collection(db, 'attendfail'), where('day', '>=', addDays(DAY, -6))), function (snap) {
       st.fails = [];
@@ -1036,7 +1040,11 @@ import {
     var monthStart = window.KLEVER && window.KLEVER.ethMonthStart ? window.KLEVER.ethMonthStart(DAY) : DAY.slice(0, 8) + '01';
     var st = { docs: null, photos: null, faces: null, from: undefined,
                wk: window.FB && window.FB.watchWorkers ? undefined : null };
-    function draw() { if (st.docs && st.photos && st.faces && st.from !== undefined && st.wk !== undefined) drawGate(into, st, monthStart); }
+    function draw() {
+      if (!(st.docs && st.photos && st.faces && st.from !== undefined && st.wk !== undefined)) return;
+      drawGate(into, st, monthStart);
+      atGridFeed('factory', { docs: st.docs, people: gtPeople(st.faces, st.wk), from: st.from });
+    }
     /* the production team as Amaha keeps it (js/fb.js watchWorkers, 17 Oct 2026) */
     if (window.FB && window.FB.watchWorkers) window.FB.watchWorkers(function (wk) { st.wk = wk; draw(); });
     onSnapshot(query(collection(db, 'attend'), where('day', '>=', monthStart)), function (snap) {
@@ -1058,6 +1066,95 @@ import {
       st.from = d.exists() && d.data().from ? d.data().from : null;
       draw();
     }, failInto(into));
+  }
+  /* WHO CHECKED IN, the month as a grid (the user, 20 Oct 2026: "where can
+     the boss see attendance easily" — he chose the month grid, like "who
+     reported"). At the top of his page, under who reported; fed by the two
+     check-in sections lower down (watchAttend, watchGate), so it reads
+     nothing of its own. One grid for the office, one for the factory gate
+     once he has started counting it. */
+  var AT_GRID = { box: null, office: null, factory: null };
+  var AT_LATE_MIN = 8 * 60;
+  function atGridFeed(kind, data) { AT_GRID[kind] = data; drawAtGrid(); }
+  function drawAtGrid() {
+    var box = AT_GRID.box;
+    if (!box || !window.KleverCharts) return;
+    box.innerHTML = '';
+    var o = AT_GRID.office, f = AT_GRID.factory;
+    if (o) {
+      var office = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.scan && !p.company; })
+        .map(function (p) { return { id: p.id, en: p.en, am: p.am, from: p.from || null, left: p.left || null }; });
+      var g = atGrid('office', o.docs, office, typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-19');
+      if (g) box.appendChild(g);
+    }
+    if (f) {
+      if (f.from && DAY >= f.from) {
+        var ids = {};
+        f.people.forEach(function (p) { ids[p.id] = 1; });
+        var g2 = atGrid('factory', f.docs.filter(function (d) { return d.place === 'factory' || ids[d.person]; }), f.people, f.from);
+        if (g2) box.appendChild(g2);
+      } else box.appendChild(el('p', 'codenote', t('agFactoryNotYet')));
+    }
+  }
+  function atGrid(kind, docs, people, from) {
+    var C = window.KleverCharts;
+    var WORD = { ok: t('agOn'), late: t('agLate'), miss: t('agMiss'), wait: t('agWait') };
+    var K = window.KLEVER || {};
+    var monthStart = K.ethMonthStart ? K.ethMonthStart(DAY) : DAY.slice(0, 8) + '01';
+    var start = monthStart < from ? from : monthStart;
+    var days = [];
+    for (var d = start; d <= DAY; d = addDays(d, 1)) if (!closedDay(d)) days.push(d);
+    if (!days.length) return null;
+    /* on a phone, the last 12 working days; the table under it has the month */
+    var shown = (root && root.clientWidth ? root.clientWidth : window.innerWidth) < 600 ? days.slice(-12) : days;
+    var by = {};
+    (docs || []).forEach(function (x) { (by[x.day] = by[x.day] || {})[x.person] = x; });
+    var a = new Date(Date.now() + 3 * 3600000), nowMin = a.getUTCHours() * 60 + a.getUTCMinutes();
+    var label = K.ethDayLabel || prettyDay;
+    var names = shortNames();
+    function cell(p, day) {
+      if ((p.from && day < p.from) || (p.left && day > p.left)) return null;
+      var raw = (by[day] || {})[p.id];
+      var x = kind === 'factory' ? gtEff(raw) : (raw || {});
+      var off = atOffOn(day), s, words;
+      if (off) { s = 'wait'; words = (x.scanAt ? '✓ ' + x.hm + ' · ' : '') + t('atOffShort'); }
+      else if (x.scanAt) { s = x.late ? 'late' : 'ok'; words = x.late ? tfill('atLateShort', { at: x.hm, m: atDur(x.minsLate) }) : '✓ ' + x.hm; }
+      else if (day === DAY && nowMin <= AT_LATE_MIN && !x.why) { s = 'wait'; words = t('agNotYet'); }
+      else { s = 'miss'; words = t('atNoScanShort'); }
+      var tip = [L(p) + ' · ' + (day === DAY ? t('chgToday') : label(day)), words];
+      if (off) tip.push(tfill('atOffDay', { why: L(off) }));
+      if (x.why) tip.push(kind === 'factory' ? gtWhy(x.why, x.note) : atWhyText(x.why, x.note));
+      else if (s === 'late' || s === 'miss') tip.push(t('atNoReason'));
+      if (raw && raw.check === 'open') tip.push(t('agTapped'));
+      return { s: s, tip: tip };
+    }
+    /* a short name two rows share (Cheru Moshe, Cheru Melaku: "Cheru M.") is
+       given in full */
+    var short = people.map(function (p) { return names[p.id] || String(L(p)).split(' ')[0]; }), twice = {};
+    short.forEach(function (n) { twice[n] = (twice[n] || 0) + 1; });
+    var rows = people.map(function (p, i) {
+      return { name: twice[short[i]] > 1 ? L(p) : short[i], cells: shown.map(function (day) { return cell(p, day); }) };
+    });
+    var cols = shown.map(function (day) {
+      var cs = people.map(function (p) { return cell(p, day); }).filter(Boolean);
+      var inN = cs.filter(function (c) { return c.s === 'ok' || c.s === 'late'; }).length;
+      return { top: WD[lang][dow(day)], bottom: day === DAY ? '•' : String(Number(day.slice(8))), today: day === DAY,
+               tip: [tfill('agDayCount', { n: inN, all: cs.length }), day === DAY ? t('chgToday') : label(day)] };
+    });
+    /* the whole month so far, person by person: the counted days only */
+    var tally = people.map(function (p) {
+      var n = { ok: 0, late: 0, miss: 0 };
+      days.forEach(function (day) { var c = cell(p, day); if (c && n[c.s] != null) n[c.s]++; });
+      return [L(p), String(n.ok), String(n.late), String(n.miss)];
+    });
+    return C.grid({
+      title: t(kind === 'factory' ? 'agFactoryTitle' : 'agOfficeTitle'),
+      sub: tfill(shown.length < days.length ? 'agSubPhone' : 'agSub',
+                 { month: K.ethMonthName ? K.ethMonthName(DAY) : '', day: prettyDay(start) }),
+      cols: cols, rows: rows,
+      legend: [['ok', '✓', WORD.ok], ['late', '!', WORD.late], ['miss', '✕', WORD.miss], ['wait', '·', WORD.wait]],
+      numbers: { title: t('agNumbers'), head: [t('chgPerson'), '✓ ' + WORD.ok, '! ' + WORD.late, '✕ ' + WORD.miss], rows: tally }
+    });
   }
   function gtPeople(faces, wk) {
     var team = window.FB && window.FB.gateTeam ? window.FB.gateTeam(wk)
@@ -2030,6 +2127,8 @@ import {
          and "these are all different companies" (the user, 17 Oct 2026);
          a company with its own view is on its own view */
       box.appendChild(whoChart(null));
+      /* who checked in, the month (drawAtGrid, 20 Oct 2026) */
+      if (AT_GRID.box) box.appendChild(AT_GRID.box);
       CO_ORDER.forEach(function (co) {
         if (coOk(co)) return;
         var g = whoChart(co);

@@ -1569,6 +1569,7 @@ function closeAndRead_(day, warn, caught, by) {
    an hour: a failed close mails him (ran_) and pays the model, so not every
    ten minutes. */
 var MISSED_FROM_ = '07:30';
+var MISSED_RETRIES_ = 3;               /* a failed morning close, tried again at most this often a day */
 function closeMissed_() {
   if (Utilities.formatDate(new Date(), tz_(), 'HH:mm') < MISSED_FROM_) return false;
   var today = todayAddis_();
@@ -1582,22 +1583,36 @@ function closeMissed_() {
      forms.js failure here cannot hold up every look */
   var props = PropertiesService.getScriptProperties();
   var hour = today + 'T' + Utilities.formatDate(new Date(), tz_(), 'HH');
-  if (props.getProperty('MISSED_TRY') === hour) return false;
-  props.setProperty('MISSED_TRY', hour);
+  /* (named MISSED_TRY until 20 Oct 2026; renamed so the change below took
+     effect within the hour it went live) */
+  if (props.getProperty('MISSED_LOOK') === hour) return false;
+  props.setProperty('MISSED_LOOK', hour);
   if (fsGet_('ledger/' + day)) return false;
-  /* the morning run, finished, writes its line on /health/daily — with an
-     error, it has mailed him and tomorrow's catch-up closes the day. Only a
-     run that left no line since 6 AM (stopped, or never started) is the
-     net's; and no line at all is a new system, not a stopped run. */
+  /* the morning run, finished, writes its line on /health/daily. Only a run
+     that left no line since 6 AM (stopped, or never started) is the net's;
+     and no line at all is a new system, not a stopped run.
+     A run that FAILED is tried again too, an hour apart, at most three
+     times a day (20 Oct 2026: the database had used its free day of reads
+     until 10 AM; the 06:44 run failed, and Monday would have waited for
+     Wednesday's morning). Each failed try mails him, so three, not more. */
   var h = fsGet_('health/daily');
-  if (!h || (h.at && h.at.getTime() >= dayStart_(today).getTime() + 6 * 3600 * 1000)) return false;
+  if (!h) return false;
+  var sinceSix = h.at && h.at.getTime() >= dayStart_(today).getTime() + 6 * 3600 * 1000;
+  if (sinceSix) {
+    if (h.ok !== false) return false;
+    var r = String(props.getProperty('MISSED_RETRY') || '').split(':');
+    var tries = r[0] === today ? Number(r[1]) || 0 : 0;
+    if (tries >= MISSED_RETRIES_) return false;
+    props.setProperty('MISSED_RETRY', today + ':' + (tries + 1));
+  }
   if (!owedOn_(loadSchedule_(), day).length) return false;
   ran_('daily', function () {
     var warn = [], caught = [];
     try { caught = catchUp_(day); }
     catch (e) { warn.push('Catching up missed days: ' + e.message); }
     return closeAndRead_(day, warn, caught, ' — closed by the ten-minute watch at ' +
-                         Utilities.formatDate(new Date(), tz_(), 'HH:mm') + '; the morning run did not finish');
+                         Utilities.formatDate(new Date(), tz_(), 'HH:mm') +
+                         (sinceSix ? '; the morning run failed' : '; the morning run did not finish'));
   });
   return true;
 }

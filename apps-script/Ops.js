@@ -10,7 +10,7 @@
    CFO, HR and the legal check (Packs.js weeklyPack_).
 
    WHERE IT COMES FROM
-   - the plan: the 15-Day Production Plan in force this week (liu-plan) —
+   - the plan: the 1-Week Production Plan in force this week (liu-plan) —
      its daily m² (plan_days, Day 1..15 counted Monday to Saturday from
      plan_start; Sundays are not working days) and its queue of jobs with
      start, done, QC and delivery dates (plan_queue)
@@ -34,7 +34,12 @@ var OPS_PLAN_LOOKBACK_ = 21;
 /* a job code the way the register writes it ("kk 102" is KK-102) */
 function opsCode_(s) { return regJob_(s); }
 
-/* The 15-day plan in force this week: the last one filed whose first day is
+/* The working days a plan covers: one week (6) since 21 Oct 2026 (the owner:
+   "15 ... to 1 week"), 15 in a plan filed before — as many as it has rows. */
+var PLAN_DAYS_ = 6;
+function planSpan_(v) { return Math.max(PLAN_DAYS_, rows_(v && v.plan_days).length); }
+
+/* The plan in force this week: the last one filed whose first day is
    on or before the week's last day. One filed for next week starts after it. */
 function opsPlan_(P) {
   var rows = tryQuery_('reports', [['person', 'EQUAL', 'liu'],
@@ -59,7 +64,7 @@ function opsPlan_(P) {
 function opsPlanMaterials_(P, plan) {
   if (!plan) return null;
   var want = rows_(plan.v.plan_mat).filter(function (r) { return r && r.mat && !blank_(r.qty); });
-  if (!want.length) return { note: 'The plan does not say what materials its jobs need (Mahelet’s 15-day plan, “Materials”).' };
+  if (!want.length) return { note: 'The plan does not say what materials its jobs need (Mahelet’s 1-week plan, “Materials”).' };
   /* when each job is due to start, from the queue above it */
   var starts = {};
   rows_(plan.v.plan_queue).forEach(function (q) {
@@ -123,7 +128,7 @@ function opsPlanDays_(P, plan) {
   daysOf_(P, 'amaha-daily').forEach(function (x) { amaha[x.day] = x.v; });
   daysOf_(P, 'liu-daily').forEach(function (x) { liu[x.day] = x.v; });
   var days = [];
-  for (var k = 1; k <= 15; k++) {
+  for (var k = 1, span = planSpan_(plan.v); k <= span; k++) {
     var d = hrWorkday_(plan.start, k);
     if (d < P.start || d > P.end) continue;
     var planned = a_(grid[k - 1] || {}, 'm2');
@@ -311,7 +316,7 @@ function opsFacts_(P, ops) {
   var liu = daysOf_(P, 'liu-daily');
   return {
     week: dayLabel_(P.start) + ' to ' + dayLabel_(P.end),
-    plan_note: plan ? null : 'No 15-Day Production Plan covering this week was filed, so plan against made cannot be judged.',
+    plan_note: plan ? null : 'No 1-Week Production Plan covering this week was filed, so plan against made cannot be judged.',
     plan_against_made: opsPlanDays_(P, plan),
     what_the_plan_needs_and_the_store_has_not: opsPlanMaterials_(P, plan),
     production: {
@@ -365,13 +370,13 @@ function opsRead_(facts, P) {
   if (!facts.plan_against_made && !facts.job_flow.jobs_in_register && !d.days_reported &&
       facts.production.m2_made === null) {
     /* nothing to read, so no model is paid to say so */
-    return 'No 15-day plan, no daily operations reports, no production figures and no jobs in the register ' +
+    return 'No 1-week plan, no daily operations reports, no production figures and no jobs in the register ' +
            'this week, so there is nothing to say about operations yet.';
   }
   if (!brain_().key) return '(No model key set — GEMINI_KEY. The figures are still complete.)';
   var prompt = [
     'You are reading one week of operations at Klever Küche, a kitchen cabinet maker in Addis Ababa:',
-    'from Mahelet’s 15-day production plan through the factory, QC, delivery and installation.',
+    'from Mahelet’s 1-week production plan through the factory, QC, delivery and installation.',
     'The factory target is 40 m² a working day.',
     '',
     'Every number below was calculated in code and is correct. Quote them as given and do no',

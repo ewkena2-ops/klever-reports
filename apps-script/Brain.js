@@ -73,7 +73,7 @@ function brain_() {
 }
 
 /* One request, in the shape the chosen provider expects. */
-function aiRequest_(prompt, maxTokens) {
+function aiRequest_(prompt, maxTokens, quick) {
   var b = brain_();
   if (b.provider === 'claude') {
     return {
@@ -90,9 +90,17 @@ function aiRequest_(prompt, maxTokens) {
     url: 'https://generativelanguage.googleapis.com/v1beta/models/' + b.model +
          ':generateContent?key=' + encodeURIComponent(b.key),
     method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    payload: JSON.stringify(quick && !BRAIN_NO_LEVEL_
+      ? { contents: [{ parts: [{ text: prompt }] }], generationConfig: { thinkingConfig: { thinkingLevel: 'low' } } }
+      : { contents: [{ parts: [{ text: prompt }] }] })
   };
 }
+
+/* `quick`: a WhatsApp answer, where he waits with the phone in his hand —
+   the model thinks less (the owner, 21 Oct 2026: "why the WhatsApp chats is
+   not fast"). A model that does not take a thinking level is asked again
+   without one, and not again this run. */
+var BRAIN_NO_LEVEL_ = false;
 
 /* The text of one reply, whichever provider wrote it. */
 /* A reply that is not a reading: the model did not answer (quota, a 503),
@@ -120,11 +128,19 @@ function aiRead_(res) {
   }
 }
 
-function aiAsk_(prompt, maxTokens) {
-  var r = aiRequest_(prompt, maxTokens);
+function aiAsk_(prompt, maxTokens, quick) {
+  var r = aiRequest_(prompt, maxTokens, quick);
   var url = r.url;
   delete r.url;
-  return aiRead_(UrlFetchApp.fetch(url, r));
+  var res = UrlFetchApp.fetch(url, r);
+  if (quick && brain_().provider !== 'claude' && res.getResponseCode() === 400 &&
+      /thinking/i.test(res.getContentText())) {
+    BRAIN_NO_LEVEL_ = true;
+    r = aiRequest_(prompt, maxTokens, false);
+    delete r.url;
+    res = UrlFetchApp.fetch(url, r);
+  }
+  return aiRead_(res);
 }
 function aiAskAll_(prompts, maxTokens) {
   return UrlFetchApp.fetchAll(prompts.map(function (p) { return aiRequest_(p, maxTokens); })).map(aiRead_);

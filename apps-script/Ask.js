@@ -41,6 +41,7 @@ function fsGet_(path) {
   var res = UrlFetchApp.fetch(fsBase_() + '/documents/' + path, {
     headers: { Authorization: 'Bearer ' + fsToken_() }, muteHttpExceptions: true
   });
+  FS_READS_++;
   if (res.getResponseCode() === 404) return null;
   if (res.getResponseCode() !== 200) {
     throw new Error('Could not read ' + path + ' (HTTP ' + res.getResponseCode() + ')');
@@ -283,11 +284,80 @@ function askFrom_(P, start) {
   });
 }
 
+/* The reports gathered for a question are kept ten minutes (the owner, 21 Oct
+   2026: "why the WhatsApp chats is not fast"). Every message read a month of
+   filings again and fetched the forms afresh: twenty seconds and more each
+   time, and about two thousand of the day's 50,000 reads, the ones the
+   office check-in needs too. A question within ten minutes of the last one
+   uses what was gathered then, unless a report has been filed since (one
+   read finds out) or a bank balance was given (bankSave_ forgets them). The
+   page's Ask, the advisor and WhatsApp share them. Kept gzipped, in parts,
+   because one cache entry holds 100 KB. */
+var ASK_KEEP_S_ = 600;
+var ASK_KEEP_PART_ = 95000;
+var ASK_KEPT_ = false;                  /* this run's answer used what was kept */
+
+function askContext_(day) {
+  var kept = askKept_(day);
+  if (kept) { ASK_KEPT_ = true; return kept; }
+  ASK_KEPT_ = false;
+  var at = new Date();                  /* before reading: a report filed while it reads is new next time */
+  var ctx = askGather_(day);
+  ctx.gathered_at = Utilities.formatDate(at, tz_(), 'HH:mm');
+  askKeep_(day, ctx, at);
+  return ctx;
+}
+
+function askKeep_(day, ctx, at) {
+  try {
+    var s = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(JSON.stringify(ctx), 'application/json')).getBytes());
+    var parts = {}, n = Math.ceil(s.length / ASK_KEEP_PART_);
+    for (var i = 0; i < n; i++) parts['askctx:' + day + ':' + i] = s.substring(i * ASK_KEEP_PART_, (i + 1) * ASK_KEEP_PART_);
+    var c = CacheService.getScriptCache();
+    c.putAll(parts, ASK_KEEP_S_);
+    c.put('askctx:' + day, JSON.stringify({ n: n, at: at.getTime() }), ASK_KEEP_S_);   /* last: says the parts are there */
+  } catch (e) { Logger.log('ask keep: %s', e.message); }   /* not kept: the next question reads again */
+}
+
+function askKept_(day) {
+  try {
+    var c = CacheService.getScriptCache();
+    var head = c.get('askctx:' + day);
+    if (!head) return null;
+    var h = JSON.parse(head);
+    if (askFiledSince_(new Date(h.at))) return null;
+    var keys = [];
+    for (var i = 0; i < h.n; i++) keys.push('askctx:' + day + ':' + i);
+    var got = c.getAll(keys);
+    if (keys.some(function (k) { return !got[k]; })) return null;
+    var bytes = Utilities.base64Decode(keys.map(function (k) { return got[k]; }).join(''));
+    return JSON.parse(Utilities.ungzip(Utilities.newBlob(bytes, 'application/x-gzip')).getDataAsString('UTF-8'));
+  } catch (e) {
+    Logger.log('ask kept: %s', e.message);
+    return null;
+  }
+}
+
+/* A report filed since then: `at` is the server's time (firestore.rules) */
+function askFiledSince_(at) {
+  var rows = fsRun_('reports', {
+    from: [{ collectionId: 'reports' }],
+    where: { fieldFilter: { field: { fieldPath: 'at' }, op: 'GREATER_THAN', value: fsEncode_(at) } },
+    limit: 1
+  });
+  return rows.some(function (r) { return r.document; });
+}
+
+/* A bank balance was given (Bank.js): what was kept is out of date */
+function askForget_() {
+  try { CacheService.getScriptCache().remove('askctx:' + todayAddis_()); } catch (e) {}
+}
+
 /* Everything the answer may draw on. Too much to send, in this order: the
    oldest of the seven days stops being given in full (its lists stay, in
    the month's), down to three; then the month's oldest lists go; then the
    days given in full go down to one. */
-function askContext_(day) {
+function askGather_(day) {
   var monthStart = day.substring(0, 8) + '01';
   var weeksAgo = addDays_(day, -20);
   var P = packData_(monthStart < weeksAgo ? monthStart : weeksAgo, day);

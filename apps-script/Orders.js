@@ -50,7 +50,7 @@ var ORDER_DUTIES_ = {
     'operations as a whole: production, the store, purchasing, quality control, site and logistics',
     'starting production and releasing deliveries — only after Finance clears them',
     'approving material issues from the store, and telling Getachew what to buy',
-    'the 15-day production plan; accepting or rejecting Job Files',
+    'the 1-week production plan; accepting or rejecting Job Files',
     'the 40 m² a day target, waste at most 20%, machine breakdowns',
     'operations messages to customers on WhatsApp',
     'delivery orders, signed with Alex (logistics)'],
@@ -192,7 +192,7 @@ ORDER_DUTIES_.anbesu = { reportsTo: 'frewoyni', duties: [
 ORDER_DUTIES_.kidan = { reportsTo: null, duties: [
   'group finance over Klever and Rovestone — Kidan is the Group Finance Controller, not Klever staff',
   'approving payments over 50,000 Birr that Selam sends up',
-  'reading Selam’s daily, weekly, cash-flow and cash-forecast reports, Mahelet’s 15-day plan and Ephrata’s projection',
+  'reading Selam’s daily, weekly, cash-flow and cash-forecast reports, Mahelet’s 1-week plan and Ephrata’s projection',
   'being told the same day of a cash discrepancy or a posting error'],
   covers: [] };
 

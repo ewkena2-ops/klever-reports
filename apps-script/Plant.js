@@ -36,7 +36,7 @@ function pmGridLabels_(schedule, reportId, fieldId) {
   return out;
 }
 
-/* Mahelet's 15-day plans filed in the weeks up to a day, oldest first —
+/* Mahelet's plans filed in the weeks up to a day, oldest first —
    read once, then each day takes the one in force on it */
 function pmPlans_(from, to) {
   return tryQuery_('reports', [['person', 'EQUAL', 'liu'],
@@ -54,7 +54,7 @@ function pmPlanDay_(plans, day) {
   plans.forEach(function (p) { if (p.start <= day && p.filed <= day) plan = p; });
   if (!plan) return null;
   var k = 0;
-  for (var i = 1; i <= 15; i++) if (hrWorkday_(plan.start, i) === day) { k = i; break; }
+  for (var i = 1, span = planSpan_(plan.v); i <= span; i++) if (hrWorkday_(plan.start, i) === day) { k = i; break; }
   var row = k ? (rows_(plan.v.plan_days)[k - 1] || {}) : {};
   var m2 = k ? a_(row, 'm2') : null;
   /* a day's plan far beyond what the factory makes is a typing slip, not a
@@ -240,14 +240,14 @@ function plantManager_(d) {
   var acts = {};
   var add = function (who, what, why) { (acts[who] = acts[who] || []).push({ do: what, why: why }); };
   if (pT && pT.planned_m2_as_typed !== null) {
-    add(PM_WHO_.lead, 'correct Day ' + pT.day_of_plan + ' of the 15-day plan: ' + fmt_(pT.planned_m2_as_typed) +
+    add(PM_WHO_.lead, 'correct Day ' + pT.day_of_plan + ' of the 1-week plan: ' + fmt_(pT.planned_m2_as_typed) +
         ' m² cannot be right (a full day is about ' + PM_DAY_M2_ + ')', 'as typed in the plan from ' + dayLabel_(pT.plan.start));
     if (pT.jobs) add(PM_WHO_.floor, 'work on ' + pT.jobs, 'Day ' + pT.day_of_plan + ' of Mahelet’s plan; its m² is being corrected');
   } else if (pT && pT.planned_m2 !== null) {
     add(PM_WHO_.floor, 'make ' + pT.planned_m2 + ' m²' + (pT.jobs ? ' on ' + pT.jobs : ''),
         'Day ' + pT.day_of_plan + ' of Mahelet’s plan from ' + dayLabel_(pT.plan.start));
   } else {
-    add(PM_WHO_.lead, 'set today’s m² and jobs', 'no 15-day plan covers ' + dayLabel_(today));
+    add(PM_WHO_.lead, 'set today’s m² and jobs', 'no 1-week plan covers ' + dayLabel_(today));
   }
   late.filter(function (l) { return l.should_be === 'production finished'; }).forEach(function (l) {
     add(PM_WHO_.lead, 'give ' + l.job + ' a new finish date or move it up the queue', 'planned finished by ' + l.by + ', ' + l.days_late + ' days late, now at ' + l.step_now);
@@ -294,7 +294,7 @@ function plantManager_(d) {
       needed_each_remaining_day_m2: known && left > 0 ? Math.ceil(weekLeft / left) : null
     },
     today_plan: pT ? pmTodayPlan_(pT)
-                   : { note: 'No 15-day plan covers ' + dayLabel_(today) + '.' },
+                   : { note: 'No 1-week plan covers ' + dayLabel_(today) + '.' },
     can_today_be_made: {
       machines_down: machines,
       materials_short_yesterday: shortNow,

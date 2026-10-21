@@ -313,6 +313,8 @@ function bankSave_(a) {
   var saved = fsCreateNow_('bank', doc, 'at');
   /* the Chairman's cash flow starts from it (CashFlow.js) */
   try { cashFlowDirty_(); } catch (e) { Logger.log('cash flow: %s', e.message); }
+  /* and the next question reads it, not the reports kept before it (Ask.js) */
+  askForget_();
   return saved;
 }
 

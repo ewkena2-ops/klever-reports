@@ -31,6 +31,21 @@ var WA_DAILY_CAP_ = 150;           /* his messages a day, to protect the credit 
 var WA_HISTORY_MAX_ = 8;           /* earlier turns handed over with a question */
 var WA_SALES_ = ['ephrata', 'tsega', 'biruktayet'];
 
+/* Said in code, at once: a greeting or a thanks read a month of reports and
+   went to the model twice before (the owner, 21 Oct 2026: "why the WhatsApp
+   chats is not fast"). Only the whole message: "hi, how is the bank?" is a
+   question. "ok" after a read-back is still the YES (waIsYes_ comes first). */
+var WA_HELLO_ = /^\s*(hi|hello|hey|hallo|selam|salam|good (morning|afternoon|evening)|ሰላም|ሰላም ነው|ጤና ይስጥልኝ|እንደምን አደሩ|እንደምን ዋሉ|እንደምን አደርክ|እንደምን ዋልክ)\s*[.!]*\s*$/i;
+var WA_THANKS_ = /^\s*(thanks|thank you|thanks a lot|thank you very much|thx|ok|okay|ok thanks|okay thanks|good|great|noted|👍|🙏|አመሰግናለሁ|እሺ|እሺ አመሰግናለሁ|በጣም ጥሩ)\s*[.!]*\s*$/i;
+var WA_HELLO_REPLY_ = 'Hello. Ask me about the reports, the money or the team, or write "brief" for this morning’s brief.\n' +
+                      'ሰላም። ስለ ሪፖርቶቹ፣ ስለ ገንዘቡ ወይም ስለ ሰራተኞቹ ይጠይቁኝ፤ የዛሬውን ማጠቃለያ ለማየት "brief" ብለው ይጻፉ።';
+var WA_THANKS_REPLY_ = 'You are welcome.\nምንም አይደል።';
+/* From the owner's phone only a visit booking or a bank balance is ever
+   done (waDecideOrAnswer_ onlyKinds): with neither in sight, the message is
+   answered without the decision step. */
+var WA_OWNER_ACT_ = /\d|book|visit|measur|appointment|resched|bank|balance|cbe|awash|dashen|abyssinia|zamzam|coop|wegagen|birr|ቀጠሮ|ልኬት|ባንክ|ብር/i;
+var WA_STEPS_ = [];                /* the model calls this message took, for the log */
+
 /* the shared secret and the agent's address, read once every ten minutes */
 function waConfig_() {
   var cache = CacheService.getScriptCache();
@@ -94,11 +109,15 @@ function waChairman_(row) {
      user, 14 Oct 2026: "I give the order from WhatsApp"). It has its own
      waiting slot, so its YES can never confirm what the Chairman left. */
   var slot = chair ? 'WA_PENDING' : 'WA_PENDING_OWNER';
-  var reply, ok = true;
+  var reply, ok = true, how = '', t0 = Date.now();
+  FS_READS_ = 0;
+  WA_STEPS_ = [];
   try {
     var pending = waPendingGet_(slot);
-    if (pending && waIsYes_(text)) reply = waExecute_(pending.actions, slot);
-    else if (pending && waIsNo_(text)) { waPendingClear_(slot); reply = WA_CANCELLED_; }
+    if (pending && waIsYes_(text)) { how = 'yes'; reply = waExecute_(pending.actions, slot); }
+    else if (pending && waIsNo_(text)) { how = 'no'; waPendingClear_(slot); reply = WA_CANCELLED_; }
+    else if (WA_HELLO_.test(text)) { if (pending) waPendingClear_(slot); how = 'hello'; reply = WA_HELLO_REPLY_; }
+    else if (WA_THANKS_.test(text)) { if (pending) waPendingClear_(slot); how = 'thanks'; reply = WA_THANKS_REPLY_; }
     else {
       /* a YES counts only as the very next message after the read-back: an
          "ok" meaning thanks, later, did a proposal he had moved on from (the
@@ -108,11 +127,14 @@ function waChairman_(row) {
          the user, 16 Oct 2026, "I report the bank balance, not Finance" (Bank.js) */
       var bank = bankPropose_(text, chair ? 'chairman' : 'owner');
       if (bank) {
+        how = 'bank';
         if (bank.action) waPendingSet_([bank.action], slot);
         reply = bank.reply;
       }
-      else if (/^\s*(brief|the brief|ብሪፍ|ማጠቃለያ)\s*[.!?]?\s*$/i.test(text)) reply = waLastBrief_();
-      else if (waLooksLikeQuestion_(text)) reply = waAnswer_(text, row.history, row.customers, day, !chair);
+      else if (/^\s*(brief|the brief|ብሪፍ|ማጠቃለያ)\s*[.!?]?\s*$/i.test(text)) { how = 'brief'; reply = waLastBrief_(); }
+      else if (waLooksLikeQuestion_(text) || (!chair && !WA_OWNER_ACT_.test(text))) {
+        reply = waAnswer_(text, row.history, row.customers, day, !chair);
+      }
       else reply = waDecideOrAnswer_(text, row.history, row.customers, day, chair ? null : ['book'], slot);
     }
   } catch (e) {
@@ -121,7 +143,12 @@ function waChairman_(row) {
     reply = WA_SORRY_;
   }
   if (/^\((no answer|could not read)/.test(reply || '')) { ok = false; reply = WA_SORRY_; }
-  waLog_(chair ? 'Chairman' : 'Owner phone (questions only)', text, reply);
+  waLog_(chair ? 'Chairman' : 'Owner phone (questions only)', text, reply, {
+    s: Math.round((Date.now() - t0) / 100) / 10,
+    how: how || WA_STEPS_.join(' + ') || 'other',
+    reads: FS_READS_,
+    kept: WA_STEPS_.indexOf('answer') !== -1 ? (ASK_KEPT_ ? 'yes' : 'no') : ''
+  });
   return { ok: ok, reply: reply };
 }
 
@@ -134,19 +161,22 @@ function waAnswer_(text, history, customers, day, askOnly) {
   var q = turns.length
     ? 'Earlier in this WhatsApp chat, oldest first:\n' + turns.join('\n') + '\n\nHis new message: ' + text
     : text;
+  WA_STEPS_.push('answer');
   var ctx = askContext_(day);
   /* the customers who wrote to the WhatsApp number, as the agent holds them */
   if (customers) ctx.whatsapp_customers = String(customers).substring(0, 20000);
   var prompt = askPrompt_(q, ctx) + '\n\n' + [
     'This answer is sent to his WhatsApp. Plain text: no headings, no tables, no links.',
     'whatsapp_customers is the list of customers who wrote to Klever’s WhatsApp number, from the agent’s',
-    'own records; use it for questions about them.'
+    'own records; use it for questions about them.',
+    'gathered_at is when these reports were read (today, Addis time). If he asks about something that may',
+    'have happened after it, say the reports are as of that time.'
   ].concat(askOnly ? [
     'This phone may only ask questions. If the message asks for something to be done — an instruction, a',
     'cancelled fine, a post to the staff, a bonus — say plainly that only the Chairman can decide from',
     'WhatsApp, and answer any question in it.'
   ] : []).join('\n');
-  return aiAsk_(prompt, 2500);
+  return aiAsk_(prompt, 2500, true);
 }
 
 /* ---------------------------------------------------------------- *
@@ -378,7 +408,8 @@ function waPlan_(text, history, W) {
     turns.length ? 'EARLIER IN THIS CHAT:\n' + turns.join('\n') + '\n' : '',
     'HIS MESSAGE: ' + text
   ].join('\n');
-  var out = aiAsk_(prompt, 1200);
+  WA_STEPS_.push('decision step');
+  var out = aiAsk_(prompt, 1200, true);
   var m = /\{[\s\S]*\}/.exec(String(out || ''));
   if (!m) return null;
   try { return JSON.parse(m[0]); } catch (e) { return null; }
@@ -576,16 +607,23 @@ function waBriefText_(dayLabel, text) {
 }
 
 /* Each question and answer kept on the Sheet, where he can read them back */
-function waLog_(who, text, reply) {
+/* `info`: how long the answer took, the way it went, the reads it cost and
+   whether it used the reports kept from a question just before (21 Oct 2026) */
+var WA_LOG_HEAD_ = ['At', 'From', 'Message', 'Answer', 'Seconds', 'How', 'Reads', 'Reports kept'];
+function waLog_(who, text, reply, info) {
+  info = info || {};
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sh = ss.getSheetByName('WhatsApp');
     if (!sh) {
       sh = ss.insertSheet('WhatsApp');
-      sh.appendRow(['At', 'From', 'Message', 'Answer']);
+      sh.appendRow(WA_LOG_HEAD_);
       sh.setFrozenRows(1);
+    } else if (sh.getLastColumn() < WA_LOG_HEAD_.length) {
+      sh.getRange(1, 1, 1, WA_LOG_HEAD_.length).setValues([WA_LOG_HEAD_]);
     }
-    sh.appendRow([new Date(), who, cell_(String(text)), cell_(String(reply || '').substring(0, 5000))]);
+    sh.appendRow([new Date(), who, cell_(String(text)), cell_(String(reply || '').substring(0, 5000)),
+                  info.s == null ? '' : info.s, info.how || '', info.reads == null ? '' : info.reads, info.kept || '']);
   } catch (e) {
     Logger.log('wa log: %s', e.message);
   }

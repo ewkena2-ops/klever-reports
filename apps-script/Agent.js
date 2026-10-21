@@ -562,6 +562,8 @@ function fsDoc_(doc) {
    EQUAL...). */
 var FS_PAGE_ = 300;            /* filings a page */
 var FS_DOC_MAX_ = 300000;      /* a filing larger than this (as JSON) is set aside and logged */
+/* documents read this run, about: what a WhatsApp answer cost (Wa.js waLog_) */
+var FS_READS_ = 0;
 function fsRun_(collection, q) {
   var res = UrlFetchApp.fetch(fsBase_() + '/documents:runQuery', {
     method: 'post', contentType: 'application/json',
@@ -573,7 +575,10 @@ function fsRun_(collection, q) {
     throw new Error('Could not read ' + collection + ' (HTTP ' + res.getResponseCode() +
                     '): ' + res.getContentText().substring(0, 300));
   }
-  return JSON.parse(res.getContentText());
+  var rows = JSON.parse(res.getContentText());
+  /* a query that finds nothing is billed as one read */
+  FS_READS_ += Math.max(1, (rows || []).filter(function (r) { return r && r.document; }).length);
+  return rows;
 }
 function fsQuery_(collection, where, orderBy) {
   var filters = (where || []).map(function (w) {

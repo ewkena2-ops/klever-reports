@@ -271,7 +271,7 @@ function riskFacts_(P, base, kind, ctx, done) {
   /* deliveries */
   var late = ops && ops.jobs_against_mahelets_dates ? ops.jobs_against_mahelets_dates.delivery_behind_plan.length : null;
   add('deliveries', 'Customers', 'Customers’ kitchens delivered late', 4, late === null ? null : late >= 3 ? 5 : late === 2 ? 4 : late === 1 ? 3 : 1,
-      late === null ? 'no 15-day plan to judge against' : late + ' jobs behind Mahelet’s delivery dates', 'Mahelet, Elyas');
+      late === null ? 'no 1-week plan to judge against' : late + ' jobs behind Mahelet’s delivery dates', 'Mahelet, Elyas');
   /* output */
   var met = ops && ops.plan_against_made ? ops.plan_against_made.plan_met_pct : null;
   add('output', 'Factory', 'The factory makes less than planned', 4, met === null ? null : met < 80 ? 5 : met < 90 ? 4 : met < 100 ? 3 : 1,
@@ -506,7 +506,7 @@ function forecastFacts_(P) {
     output_at_40_a_day: { in_30_days: 40 * wd[30], in_60_days: 40 * wd[60], in_90_days: 40 * wd[90] },
     work_in_hand_m2: plan ? backlog : null, jobs_in_hand: plan ? backlogJobs : null,
     working_days_of_work_in_hand: plan && pace ? Math.round(backlog / pace * 10) / 10 : null,
-    note: plan ? 'work in hand is the m² of the jobs in Mahelet’s queue not yet made' : 'no 15-day plan, so the work in hand is not known'
+    note: plan ? 'work in hand is the m² of the jobs in Mahelet’s queue not yet made' : 'no 1-week plan, so the work in hand is not known'
   };
   return { as_of: dayLabel_(end), cash: cash, sales: sales, production: production };
 }

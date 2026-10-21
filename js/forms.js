@@ -3010,7 +3010,7 @@ const REPORTS = [
           { v:'store', en:'Store and purchasing',   am:'መጋዘንና ግዥ' },
           { v:'cust',  en:'Delivery and customers', am:'ማድረስና ደንበኞች' },
           { v:'wa',    en:'WhatsApp',               am:'ዋትስአፕ' },
-          { v:'plan',  en:'The 15-day plan',        am:'የ15 ቀን ዕቅዱ' }
+          { v:'plan',  en:'The 1-week plan',        am:'የ1 ሳምንት ዕቅዱ' }
         ],
         opts:[
           { v:'qc_fail',   g:'qual',  en:'A job failed QC',                                  am:'የጥራት ፍተሻ ያላለፈ ሥራ ነበር' },
@@ -3022,7 +3022,7 @@ const REPORTS = [
           { v:'wa_comp',   g:'wa',    en:'A customer complained about our messages',         am:'ደንበኛ ስለ መልዕክቶቻችን ቅሬታ አቀረበ' },
           { v:'behind',    g:'plan',  en:'A job is behind the plan',                         am:'ከዕቅዱ ወደኋላ የቀረ ሥራ አለ' },
           { v:'unpaid',    g:'plan',  en:"A job went into the plan without Selam's written payment confirmation", am:'ያለ ሰላም የጽሑፍ የክፍያ ማረጋገጫ ወደ ዕቅዱ የገባ ሥራ አለ' },
-          { v:'plan_late', g:'plan',  en:'The 15-day plan reached the Chairman after Saturday 3:00 PM', am:'የ15 ቀን ዕቅዱ ከቅዳሜ 9፡00 በኋላ ለሊቀመንበሩ ደረሰ' }
+          { v:'plan_late', g:'plan',  en:'The 1-week plan reached the Chairman after Saturday 3:00 PM', am:'የ1 ሳምንት ዕቅዱ ከቅዳሜ 9፡00 በኋላ ለሊቀመንበሩ ደረሰ' }
         ]}
     ]},
     /* Her QC figures stay hers to give: the rulebook pays her on them, and
@@ -3207,10 +3207,10 @@ const REPORTS = [
           { en:'Resolved',                               am:'ተፈቷል' }
         ], show:{f:'wa_comp', when:'pos'}}
     ]},
-    { en:'The 15-day plan', am:'የ15 ቀን ዕቅዱ', fields:[
+    { en:'The 1-week plan', am:'የ1 ሳምንት ዕቅዱ', fields:[
       /* a fine reads it every month (under 90%), so it stays asked */
       {id:'pl_onsched', en:'Of the jobs the plan said would finish this week, how many finished on their day? (finished on the day / due this week)', am:'ዕቅዱ በዚህ ሳምንት ያልቃሉ ካላቸው ሥራዎች ስንቱ በቀናቸው አለቁ? (በቀኑ ያለቁ / በዚህ ሳምንት የሚያልቁ)', t:'ratio'},
-      {id:'pl_sent', en:'Did the 15-day plan reach the Chairman by Saturday 3:00 PM?', am:'የ15 ቀን ዕቅዱ እስከ ቅዳሜ 9፡00 ለሊቀመንበሩ ደርሷል?', t:'yesno', quiet:1, auto:{picked:'w_events', v:'plan_late', flip:1}},
+      {id:'pl_sent', en:'Did the 1-week plan reach the Chairman by Saturday 3:00 PM?', am:'የ1 ሳምንት ዕቅዱ እስከ ቅዳሜ 9፡00 ለሊቀመንበሩ ደርሷል?', t:'yesno', quiet:1, auto:{picked:'w_events', v:'plan_late', flip:1}},
       {id:'pl_sent_why', en:'Why was the plan late? (Write when it reached him in the box.)', am:'ዕቅዱ ለምን ዘገየ? (መቼ እንደደረሳቸው በሳጥኑ ይጻፉ።)', t:'area',
         picks:[
           { en:"Selam's list of paid jobs came late",    am:'የሰላም የተከፈሉ ሥራዎች ዝርዝር ዘገየ' },
@@ -4687,10 +4687,10 @@ const REPORTS = [
   ]
 },
 
-/* ============== MAHELET — 15-DAY PRODUCTION PLAN ============== */
+/* ============== MAHELET — 1-WEEK PRODUCTION PLAN ============== */
 {
   id:'liu-plan', person:'liu', cadence:'weekly', dueTime:'15:00', dueDay:6,
-  en:'15-Day Production Plan', am:'የ15 ቀን የምርት ዕቅድ',
+  en:'1-Week Production Plan', am:'የ1 ሳምንት የምርት ዕቅድ',
   toEn:'Chairman + Kidan', toAm:'ሊቀመንበር + ኪዳን',
   dueEn:'Saturday 3:00 PM', dueAm:'ቅዳሜ ከቀኑ 9፡00 (3:00 PM)',
   penEn:'Late or not sent –5,000 Birr · Incomplete –2,000 Birr · Two weeks without a plan –10,000 Birr',
@@ -4775,9 +4775,11 @@ const REPORTS = [
        worked out from them, under the same keys as before. */
     { en:'Daily production target', am:'የዕለት የምርት ዒላማ', fields:[
       {id:'plan_week', en:'Each working day: which jobs, and how many m² of each?', am:'በየሥራ ቀኑ፦ የትኞቹ ሥራዎች? የእያንዳንዱ ስንት ካሬ ሜትር?',
-       /* 15 working days: Klever works Monday to Saturday (Chairman, 2 Oct 2026) */
+       /* one week: 6 working days, Monday to Saturday (Chairman, 2 Oct 2026). It
+          was 15 working days until 21 Oct 2026 (the owner: "15 ... to 1 week");
+          the readers (Plant.js, Ops.js planSpan_) still read an older plan's 15. */
        t:'grid', dateFrom:'plan_start', workDays:true,
-       rows: Array.from({length:15}, function (_, i) {
+       rows: Array.from({length:6}, function (_, i) {
          return {en:'Day ' + (i+1), am:'ቀን ' + (i+1)};
        }),
        cols:[
@@ -4792,7 +4794,7 @@ const REPORTS = [
       {id:'plan_days', en:'How many m² are planned for each day, and on which jobs?', am:'በየቀኑ ስንት ካሬ ሜትር ታቅዷል? በየትኞቹ ሥራዎች?',
        t:'grid', dateFrom:'plan_start', workDays:true, quiet:1,
        auto:{fold:'plan_week', sum:{m2:['m1', 'n2', 'n3']}, join:{jobs:['k1', 'k2', 'k3']}, keep:{notes:'notes'}},
-       rows: Array.from({length:15}, function (_, i) {
+       rows: Array.from({length:6}, function (_, i) {
          return {en:'Day ' + (i+1), am:'ቀን ' + (i+1)};
        }),
        cols:[

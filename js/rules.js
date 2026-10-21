@@ -138,10 +138,10 @@ const RULES = [
     test:{ at:'week', on:'liu-weekly', count:'liu-weekly.pl_unpaid' } },
 
   { id:'liu-plan-incomplete', who:['liu'], kind:'penalty', birr:2000, per:'event', how:'recorded',
-    en:'15-day production plan incomplete',
-    am:'የ15 ቀን የምርት ዕቅድ ያልተሟላ ነው',
+    en:'1-week production plan incomplete',
+    am:'የ1 ሳምንት የምርት ዕቅድ ያልተሟላ ነው',
     src:'Mahelet’s letter — “15-day production plan incomplete –2,000 Birr”',
-    note:'The letter does not define complete, and the report-lateness code does not charge it.' },
+    note:'The letter does not define complete, and the report-lateness code does not charge it. The plan is one week since 21 Oct 2026 (the owner); the letter still says 15-day.' },
 
   { id:'liu-wa-ops-message-late', who:['liu'], kind:'penalty', birr:200, per:'event', how:'auto',
     en:'Operations message not posted on time',

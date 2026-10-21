@@ -2374,7 +2374,8 @@ import {
         var dayLabel = String(Number(m.slice(8)));
         if (lang === 'am') { dayLabel += '/' + Number(m.slice(5, 7)); monLabel = ''; }
         var tipL = [tfill('chgWeekOf', { day: dayShort(m) }) + (w.kind === 'now' ? ' · ' + t('chgThisWeek') : '')];
-        if (w.kind !== 'next') tipL.push(tfill('cfTipRep', { n: w.reported, m: w.owed }));
+        /* before her list began (16 Oct 2026) nothing was owed — said so, not "0 of 0" */
+        if (w.kind !== 'next') tipL.push(w.owed ? tfill('cfTipRep', { n: w.reported, m: w.owed }) : t('cfTipBefore'));
         tipL.push(t('cfIn') + ': ' + amt(w.in_actual) + (w.in_expected ? ' + ' + amt(w.in_expected) + ' ' + t('cfExpShort') : ''));
         tipL.push(t('cfOut') + ': ' + amt(w.out_actual) + (w.out_expected ? ' + ' + amt(w.out_expected) + ' ' + t('cfExpShort') : ''));
         var by = [];
@@ -2390,8 +2391,8 @@ import {
                  inA: w.in_actual, inE: w.in_expected, outA: w.out_actual, outE: w.out_expected,
                  none: nothing && (w.kind === 'next' || !w.reported), bank: w.bank, bankProj: !!w.bank_projected, tip: tipL,
                  row: [tipL[0] + (w.kind === 'next' ? ' · ' + t('cfExpected') : ''),
-                       !w.reported && w.kind !== 'next' && !w.in_expected ? t('chgNotRep') : amt(w.in_actual + w.in_expected),
-                       !w.reported && w.kind !== 'next' && !w.out_expected ? t('chgNotRep') : amt(w.out_actual + w.out_expected),
+                       !w.reported && w.kind !== 'next' && !w.in_expected ? (w.owed ? t('chgNotRep') : '—') : amt(w.in_actual + w.in_expected),
+                       !w.reported && w.kind !== 'next' && !w.out_expected ? (w.owed ? t('chgNotRep') : '—') : amt(w.out_actual + w.out_expected),
                        w.bank == null ? '—' : (w.bank_projected ? '≈ ' : '') + amt(w.bank)] };
       });
       var status = cf.below_floor ? { kind: 'bad', icon: '▼', text: tfill('cfBelow', { day: dayShort(cf.below_floor.day), v: amt(cf.below_floor.birr) }) }

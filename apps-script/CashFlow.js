@@ -35,11 +35,15 @@
    Arithmetic only, in code; no model. previewCashFlow() writes nothing.  */
 
 var CF_FLOOR_ = 6000000;
+var CF_TX_FROM_ = '2026-10-16';        /* Selam's list of every transaction began (Bank.js): owed from this day */
 var CF_PAST_WEEKS_ = 3;                /* weeks before this one */
 var CF_NEXT_WEEKS_ = 4;                /* weeks after this one */
 var CF_DOC_ = 'cashflow/klever';
 var CF_RUN_KEY_ = 'CASHFLOW_LAST_RUN';
 var CF_DIRTY_KEY_ = 'CASHFLOW_DIRTY';
+/* raised when the way it is worked out changes: the next watch works it out again */
+var CF_VERSION_ = '2';
+var CF_VER_KEY_ = 'CASHFLOW_VERSION';
 var CF_REPORTS_ = /^(betty-daily|ephrata-forecast|getachew-daily)$/;
 var CF_WDAY_ = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5 };
 
@@ -188,7 +192,7 @@ function cfBuild_(o) {
           wk.in_actual += a.into; wk.out_actual += a.out;
           Object.keys(a.inBy).forEach(function (x) { wk.in_by[x] = (wk.in_by[x] || 0) + a.inBy[x]; });
           Object.keys(a.outBy).forEach(function (x) { wk.out_by[x] = (wk.out_by[x] || 0) + a.outBy[x]; });
-        } else if (dd < today && !closed(dd)) { wk.owed++; wk.not_reported.push(dd); }
+        } else if (dd < today && !closed(dd) && dd >= CF_TX_FROM_) { wk.owed++; wk.not_reported.push(dd); }
       }
       (byDay[dd] || []).forEach(function (x) {
         if (x.dir === 'in') wk.in_expected += x.birr; else wk.out_expected += x.birr;
@@ -248,6 +252,7 @@ function cashFlowRun_(dry) {
   fsPut_(CF_DOC_, out);
   var props = PropertiesService.getScriptProperties();
   props.setProperty(CF_RUN_KEY_, String(Date.now()));
+  props.setProperty(CF_VER_KEY_, CF_VERSION_);
   props.deleteProperty(CF_DIRTY_KEY_);
   return out;
 }
@@ -256,7 +261,8 @@ function cashFlowRun_(dry) {
 function cashFlowWatch_() {
   var props = PropertiesService.getScriptProperties();
   var last = Number(props.getProperty(CF_RUN_KEY_) || 0);
-  if (last && !props.getProperty(CF_DIRTY_KEY_) && Utilities.formatDate(new Date(last), tz_(), 'yyyy-MM-dd') === todayAddis_()) return null;
+  if (last && !props.getProperty(CF_DIRTY_KEY_) && props.getProperty(CF_VER_KEY_) === CF_VERSION_ &&
+      Utilities.formatDate(new Date(last), tz_(), 'yyyy-MM-dd') === todayAddis_()) return null;
   return cashFlowRun_();
 }
 /* From runIfNew_ (new filings) and bankSave_ (a balance given): run at the next watch */

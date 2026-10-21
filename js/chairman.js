@@ -932,6 +932,12 @@ import {
     var ips = (st.wifi && st.wifi.ips) || [], ignored = (st.wifi && st.wifi.ignored) || [];
     var wifi = el('div', 'atwifi');
     wifi.appendChild(el('p', ips.length ? 'codenote' : 'pywarn', ips.length ? tfill('atWifiIs', { ip: ips.join(', ') }) : t('atWifiNone')));
+    /* the line's new address, taken by itself — same block as a saved one (Attend.js atOurs_, 21 Oct 2026) */
+    var auto = st.wifi && st.wifi.auto;
+    if (auto && auto.ip && ips.indexOf(auto.ip) !== -1 && auto.day && auto.day >= addDays(DAY, -6)) {
+      wifi.appendChild(el('p', 'codenote atwifiauto', tfill('atWifiAuto', { ip: auto.ip, who: atWho(auto.person),
+        when: (auto.day === DAY ? '' : prettyDay(auto.day) + ' ') + (auto.hm || '') })));
+    }
     ips.forEach(function (ip) {
       var rm = el('button', 'mfpick', tfill('atWifiRemove', { ip: ip }));
       rm.type = 'button';

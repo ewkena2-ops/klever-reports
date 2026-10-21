@@ -59,9 +59,29 @@ function atAddr_(ip) {
 /* the office's addresses, as the Chairman set them. A read that fails
    throws: "none set" said while the database was out sent the whole
    office to "the WiFi is not set up" (20 Oct 2026). */
-function atWifi_() {
+function atWifi_() { return atWifiDoc_().ips; }
+function atWifiDoc_() {
   var d = fsGet_('attendwifi/' + AT_PLACE_);
-  return ((d && d.ips) || []).map(atAddr_).filter(function (x) { return x; });
+  var clean = function (a) { return (a || []).map(atAddr_).filter(function (x) { return x; }); };
+  return { ips: clean(d && d.ips), ignored: clean(d && d.ignored), raw: (d && d.ips) || [] };
+}
+
+/* Klever's: an address saved, or one in the same block as a saved one
+   (the first three numbers — 196.188.33.x). 21 Oct 2026: the line's
+   address changed overnight, .67 → .79, and the whole office was refused
+   until the new one was saved; the user chose to have a new address in the
+   block taken by itself ("option 2"), the Chairman told on his page. An
+   address he said is not ours never is. 'saved' | 'block' | ''. */
+function atBlock_(a) {
+  var m = /^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/.exec(String(a || ''));
+  return m ? m[1] : '';
+}
+function atOurs_(addr, wifi, ignored) {
+  if (!addr) return '';
+  if (wifi.indexOf(addr) !== -1) return 'saved';
+  if ((ignored || []).indexOf(addr) !== -1) return '';
+  var b = atBlock_(addr);
+  return b && wifi.some(function (w) { return atBlock_(w) === b; }) ? 'block' : '';
 }
 
 /* A day the check-in is not counted (js/forms.js ATTEND_OFF — 20 Oct 2026,
@@ -77,14 +97,14 @@ function atOff_(schedule, day) {
    who scans, the closed days and the days not counted, the next weeks.
    It goes back with every answer to the agent, which keeps it and never
    passes it to the phone (app/attend_local.py). */
-function atConf_(schedule, wifi) {
+function atConf_(schedule, wifi, ignored) {
   var closed = [], off = [], day = todayAddis_();
   for (var i = 0; i < 45; i++) {
     var d = addDays_(day, i);
     if (holiday_(d)) closed.push(d);
   }
   Object.keys((schedule && schedule.attendOff) || {}).forEach(function (d) { if (d >= addDays_(day, -3)) off.push(d); });
-  return { wifi: wifi, people: atPeople_(schedule).map(function (p) { return p.id; }), closed: closed, off: off };
+  return { wifi: wifi, ignored: ignored || [], people: atPeople_(schedule).map(function (p) { return p.id; }), closed: closed, off: off };
 }
 
 /* minutes after midnight, Addis */
@@ -132,14 +152,22 @@ function attendTake_(row, poster, queued) {
   }
   var day = Utilities.formatDate(now, tz_(), 'yyyy-MM-dd'), mins = atMinutes_(now);
   var schedule = loadSchedule_();
-  var wifi = atWifi_();
-  var conf = atConf_(schedule, wifi);
+  var w = atWifiDoc_(), wifi = w.ips;
+  var conf = atConf_(schedule, wifi, w.ignored);
   function reply(o) { o.conf = conf; return JSON.stringify(o); }
   var me = (schedule.people || []).filter(function (p) { return p.id === poster; })[0];
   var scans = poster === 'chairman' || (me && me.scan && !me.company);
   if (!scans) return reply({ ok: false, why: 'not-office' });
-  var onWifi = !!addr && wifi.indexOf(addr) !== -1;
-  if (!onWifi) {
+  var ours = atOurs_(addr, wifi, w.ignored);
+  if (ours === 'block') {
+    /* the line's new address: saved, newest first, and said on his page */
+    try {
+      fsUpdate_('attendwifi/' + AT_PLACE_, { ips: [addr].concat(w.raw.filter(function (x) { return atAddr_(x) !== addr; })).slice(0, 4),
+                                            auto: { ip: addr, at: new Date(), person: poster, hm: atClock_(mins), day: day } });
+      conf = atConf_(schedule, [addr].concat(wifi).slice(0, 4), w.ignored);
+    } catch (e) { Logger.log('attend: saving %s: %s', addr, e.message); }
+  }
+  if (!ours) {
     /* kept, so the Chairman can say "this is Klever's WiFi" */
     if (addr) {
       try {
@@ -179,13 +207,13 @@ function attendTake_(row, poster, queued) {
    a watch while the list stays the same. From the watch (Agents.js). */
 function attendFailWatch_() {
   var props = PropertiesService.getScriptProperties();
-  var wifi = atWifi_();
+  var w = atWifiDoc_(), wifi = w.ips;
   var key = wifi.slice().sort().join(',');
   if (!wifi.length || prop_('ATTEND_WIFI_SEEN', '') === key) return { taken: 0 };
   var since = addDays_(todayAddis_(), -3), out = { taken: 0, left: 0 };
   var fails = fsQuery_('attendfail', [['day', 'GREATER_THAN_OR_EQUAL', since]], 'day');
   fails.forEach(function (f) {
-    if (f.counted || !f.person || !f.day || wifi.indexOf(atAddr_(f.ip)) === -1) return;
+    if (f.counted || !f.person || !f.day || !atOurs_(atAddr_(f.ip), wifi, w.ignored)) return;
     var at = f.at && f.at.getTime ? f.at.getTime() : new Date(f.at).getTime();
     var res;
     try { res = JSON.parse(attendTake_({ ip: f.ip, at: at }, f.person, 'wifi')); }

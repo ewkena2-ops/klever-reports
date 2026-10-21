@@ -1251,6 +1251,11 @@ body[data-page="chairman"] .codenote{font-size:12.5px;color:var(--dim);text-alig
 .cg-svg{display:block;overflow:visible;touch-action:pan-y;-webkit-tap-highlight-color:transparent}
 .cg-tick{font:500 10.5px var(--mono);fill:var(--mut)}
 .cg-tick.cg-today{fill:var(--teal-hi);font-weight:600}
+/* the Ethiopian date under the day, and the months on the left (21 Oct 2026) */
+.cg-tick.cg-eth{fill:var(--ink-2)}
+.cg-tick.cg-eth.cg-today{fill:var(--teal-hi)}
+.cg-tick.cg-eth1{font-weight:700;text-decoration:underline}
+.cg-tick.cg-hl{font-family:var(--sans);font-size:10px}
 .cg-name{font:500 12px var(--sans);fill:var(--ink-2)}
 .cg-grid{stroke:var(--line);stroke-width:1}
 .cg-base{stroke:var(--line-3);stroke-width:1}

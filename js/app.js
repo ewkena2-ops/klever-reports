@@ -6517,6 +6517,14 @@
     ethMonthStart: ethMonthStart,
     ethMonthName: ethMonthName,
     ethDayLabel: ethDayLabel,
+    /* a day's Ethiopian date and month, and a Gregorian month short, for
+       the grids' heads (the owner, 21 Oct 2026: "we have to see also
+       Ethiopian date") */
+    ethDay: function (ymd) {
+      var e = ethOf(ymd);
+      return { d: e.d, m: e.m, y: e.y, month: (lang === 'am' ? ETH_MONTHS : ETH_MONTHS_EN)[e.m - 1] };
+    },
+    monShort: monShort,
     dressDate: dressDate,
     /* notifications on this phone, for his page too */
     pushCard: pushCard,

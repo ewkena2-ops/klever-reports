@@ -1146,8 +1146,8 @@ import {
     var cols = shown.map(function (day) {
       var cs = people.map(function (p) { return cell(p, day); }).filter(Boolean);
       var inN = cs.filter(function (c) { return c.s === 'ok' || c.s === 'late'; }).length;
-      return { top: WD[lang][dow(day)], bottom: day === DAY ? '•' : String(Number(day.slice(8))), today: day === DAY,
-               tip: [tfill('agDayCount', { n: inN, all: cs.length }), day === DAY ? t('chgToday') : label(day)] };
+      return { top: WD[lang][dow(day)], bottom: String(Number(day.slice(8))), today: day === DAY,
+               tip: [tfill('agDayCount', { n: inN, all: cs.length }), day === DAY ? t('chgToday') + ' · ' + label(day) : label(day)] };
     });
     /* the whole month so far, person by person: the counted days only */
     var tally = people.map(function (p) {
@@ -1159,11 +1159,36 @@ import {
       title: t(kind === 'factory' ? 'agFactoryTitle' : 'agOfficeTitle'),
       sub: tfill(shown.length < days.length ? 'agSubPhone' : 'agSub',
                  { month: K.ethMonthName ? K.ethMonthName(DAY) : '', day: prettyDay(start) }),
-      cols: cols, rows: rows,
+      cols: cols, rows: rows, headLeft: ethCols(cols, shown),
       legend: [['ok', '✓', WORD.ok], ['late', '!', WORD.late], ['miss', '✕', WORD.miss], ['wait', '·', WORD.wait]],
       numbers: { title: t('agNumbers'), head: [t('chgPerson'), '✓ ' + WORD.ok, '! ' + WORD.late, '✕ ' + WORD.miss], rows: tally }
     });
   }
+  /* THE ETHIOPIAN DATE under each day of a grid (the owner, 21 Oct 2026: "we
+     have to see also Ethiopian date"): the day of the Ethiopian month on a
+     third line, the 1st of a month marked, and on the left the months the
+     two lines count in. Today shows its date too, not only a dot. */
+  function ethCols(cols, days) {
+    var K = window.KLEVER || {};
+    if (!K.ethDay || !K.monShort || !days.length) return null;
+    var g = [], e = [], prev = null;
+    days.forEach(function (d, i) {
+      var ed = K.ethDay(d), gm = K.monShort(Number(d.slice(5, 7)) - 1);
+      cols[i].eth = ed.d;
+      /* the first day shown of a new Ethiopian month (its 1st may be a Sunday) */
+      if (ed.d === 1 || (prev && prev.m !== ed.m)) cols[i].ethFirst = true;
+      if (g.indexOf(gm) === -1) g.push(gm);
+      if (e.indexOf(ed.month) === -1) e.push(ed.month);
+      prev = ed;
+    });
+    /* two months on one line: the later one, as the first day of it is marked */
+    return [g[g.length - 1], e[e.length - 1]];
+  }
+  /* a day as the squares' notes say it: "Fri 29 Meskerem (9 Oct)" */
+  function ethLabel(day) {
+    return window.KLEVER && window.KLEVER.ethDayLabel ? window.KLEVER.ethDayLabel(day) : dayShort(day);
+  }
+
   function gtPeople(faces, wk) {
     var team = window.FB && window.FB.gateTeam ? window.FB.gateTeam(wk)
              : (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.gate && !p.company; });
@@ -2221,7 +2246,7 @@ import {
              Chairman, 14 Oct 2026). */
           var parts = mine.map(function (l) { return l.s; });
           var mixed = parts.some(function (s) { return s !== parts[0]; });
-          return { s: worst, parts: mixed ? parts.slice(0, 3) : null, tip: [L(p) + ' · ' + (c.today ? t('chgToday') : dayShort(c.day))].concat(mine.map(function (l) {
+          return { s: worst, parts: mixed ? parts.slice(0, 3) : null, tip: [L(p) + ' · ' + (c.today ? t('chgToday') : ethLabel(c.day))].concat(mine.map(function (l) {
             return l.report + ' — ' + (l.w || WORD[l.s]) + (l.at ? ', ' + hhmm(l.at) : '');
           })),
             /* a tap opens what they filed that day, in their own words */
@@ -2231,8 +2256,9 @@ import {
       var colsOut = cols.map(function (c) {
         var due = c.lines.filter(function (l) { return l.s !== 'wait'; }).length;
         var ok = c.lines.filter(function (l) { return l.s === 'ok'; }).length;
-        return { top: WD[lang][dow(c.day)], bottom: c.today ? '•' : String(Number(c.day.slice(8))), today: !!c.today,
-                 tip: [tfill('chgOnTimeOf', { ok: ok, due: due }), c.today ? t('chgToday') : dayShort(c.day)] };
+        return ({ top: WD[lang][dow(c.day)], bottom: String(Number(c.day.slice(8))), today: !!c.today,
+                 tip: [tfill('chgOnTimeOf', { ok: ok, due: due }),
+                       (c.today ? t('chgToday') + ' · ' : '') + ethLabel(c.day)] });
       });
       var last = cols.filter(function (c) { return !c.today; }).pop(), cap = null;
       if (last) {
@@ -2248,6 +2274,7 @@ import {
       return C.grid({
         title: co ? tfill('chgWhoCo', { co: CO_NAME[co] ? CO_NAME[co][lang] || CO_NAME[co].en : co }) : t('chgWhoKl'),
         sub: t(co ? 'chgWhoCoSub' : 'chgWhoSub'), cols: colsOut, rows: rows, caption: cap,
+        headLeft: ethCols(colsOut, cols.map(function (c) { return c.day; })),
         legend: [['ok', '✓', WORD.ok], ['late', '!', WORD.late], ['miss', '✕', WORD.miss], ['wait', '·', WORD.wait], ['split', '', t('chgSplit')]],
         numbers: { title: t('chgNumbers'), head: [t('chgPerson'), '✓ ' + WORD.ok, '! ' + WORD.late, '✕ ' + WORD.miss], rows: tally }
       });

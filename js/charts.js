@@ -191,15 +191,23 @@
          phone the two come out the same and the cells stay square. */
       var cw = Math.max(14, Math.min(72, Math.floor((W - nameW - 4) / n) - gap));
       var cell = Math.max(14, Math.min(26, cw));
-      var headH = 30, H = headH + o.rows.length * (cell + gap) + 2;
+      /* a third line: the Ethiopian date under the day (21 Oct 2026), and
+         `headLeft` saying on the left which month each line counts in */
+      var eth = o.cols.some(function (c) { return c.eth != null; });
+      var headH = eth ? 43 : 30, H = headH + o.rows.length * (cell + gap) + 2;
       var svg = sv('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, 'class': 'cg-svg',
                             role: 'group', 'aria-label': o.title });
       wrap.insertBefore(svg, tip.el || wrap.firstChild);
       var x0 = nameW;
+      if (o.headLeft) {
+        stext(svg, 0, 24, o.headLeft[0], 'cg-tick cg-hl');
+        if (eth && o.headLeft[1]) stext(svg, 0, 37, o.headLeft[1], 'cg-tick cg-hl cg-eth');
+      }
       o.cols.forEach(function (c, j) {
         var cx = x0 + j * (cw + gap) + cw / 2;
         stext(svg, cx, 11, c.top, 'cg-tick' + (c.today ? ' cg-today' : ''), 'middle');
         stext(svg, cx, 24, c.bottom, 'cg-tick' + (c.today ? ' cg-today' : ''), 'middle');
+        if (eth && c.eth != null) stext(svg, cx, 37, String(c.eth), 'cg-tick cg-eth' + (c.today ? ' cg-today' : '') + (c.ethFirst ? ' cg-eth1' : ''), 'middle');
         if (c.tip) hit(svg, { x: cx - cw / 2 - 1, y: 0, width: cw + 2, height: headH - 2 }, c.tip, tip, wrap);
       });
       o.rows.forEach(function (r, i) {

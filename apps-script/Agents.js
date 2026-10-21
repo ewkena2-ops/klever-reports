@@ -2398,6 +2398,8 @@ function watch_(waitMs) {
     try { visionWatch_(); } catch (e) { Logger.log('vision: %s', e.message); }
     /* the site photos sent from reports, to his WhatsApp (Wa.js) */
     try { waPhotoWatch_(); } catch (e) { Logger.log('wa photos: %s', e.message); }
+    /* refused office scans from an address since said to be Klever's WiFi: counted (Attend.js) */
+    try { attendFailWatch_(); } catch (e) { Logger.log('attend fails: %s', e.message); }
     /* and an instruction of his that has not reached its person's phone (Push.js) */
     notifyWaiting_();
     /* a report that keeps not coming: its person's phones ring at its `remind` time (Push.js) */

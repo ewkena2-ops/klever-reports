@@ -160,11 +160,43 @@ function attendTake_(row, poster, queued) {
   var late = mins > AT_LATE_AFTER_ && !atOff_(schedule, day);
   var scan = { person: poster, day: day, place: AT_PLACE_, scanAt: now, hm: atClock_(mins), late: late,
                minsLate: late ? mins - AT_LATE_AFTER_ : 0, ip: addr };
-  /* taken at the door by the agent, handed over later */
+  /* taken at the door by the agent, handed over later — or refused at
+     first, its address said to be Klever's since (attendFailWatch_) */
   if (queued) { scan.queued = true; scan.sentAt = new Date(); }
+  if (queued === 'wifi') scan.wifiLater = true;
   /* a reason she gave before scanning (forgot, then came) stays */
   if (had) fsUpdate_(path, scan); else fsPut_(path, scan);
   return reply({ ok: true, at: scan.hm, late: late, minsLate: scan.minsLate });
+}
+
+/* A refused scan counts once its address is Klever's WiFi. 21 Oct 2026:
+   the line's address changed overnight (196.188.33.67 → .79) and the
+   five who scanned on time from 7:33 were refused until the new one was
+   saved; the user: "count refused scans once fixed". So when the list of
+   addresses changes (the Chairman's "This is Klever's WiFi"), the last
+   three days' refused scans from an address now on it are taken as scans
+   at their own time — on time if they were — and marked counted. One read
+   a watch while the list stays the same. From the watch (Agents.js). */
+function attendFailWatch_() {
+  var props = PropertiesService.getScriptProperties();
+  var wifi = atWifi_();
+  var key = wifi.slice().sort().join(',');
+  if (!wifi.length || prop_('ATTEND_WIFI_SEEN', '') === key) return { taken: 0 };
+  var since = addDays_(todayAddis_(), -3), out = { taken: 0, left: 0 };
+  var fails = fsQuery_('attendfail', [['day', 'GREATER_THAN_OR_EQUAL', since]], 'day');
+  fails.forEach(function (f) {
+    if (f.counted || !f.person || !f.day || wifi.indexOf(atAddr_(f.ip)) === -1) return;
+    var at = f.at && f.at.getTime ? f.at.getTime() : new Date(f.at).getTime();
+    var res;
+    try { res = JSON.parse(attendTake_({ ip: f.ip, at: at }, f.person, 'wifi')); }
+    catch (e) { Logger.log('attend fail %s_%s: %s', f.day, f.person, e.message); out.left++; return; }
+    if (res.why === 'unavailable') { out.left++; return; }
+    fsUpdate_('attendfail/' + f.day + '_' + f.person, { counted: new Date(), countedAs: res.ok ? 'scan' : String(res.why || '') });
+    if (res.ok) out.taken++;
+  });
+  /* tried again next watch if any could not be taken */
+  if (!out.left) props.setProperty('ATTEND_WIFI_SEEN', key);
+  return out;
 }
 
 /* One day, person by person: on time / late / no scan, and why. The

@@ -315,6 +315,21 @@ function jobMoneyWatch_() {
   jobMoneyRun_();
 }
 
+/* Once after a change to how job codes are read: the register and the job
+   money built again at the next watch, not at the next report (the owner,
+   21 Oct 2026, "so is it removed or what" — KK-0, Register.js regZero_).
+   Raise CODES_REREAD_V_ to do it again. */
+var CODES_REREAD_KEY_ = 'CODES_REREAD';
+var CODES_REREAD_V_ = '1';
+function codesRereadWatch_() {
+  var p = PropertiesService.getScriptProperties();
+  if (p.getProperty(CODES_REREAD_KEY_) === CODES_REREAD_V_) return false;
+  registerBuild_(todayAddis_(), false);
+  jobMoneyRun_();                       /* after: it reads the register just built */
+  p.setProperty(CODES_REREAD_KEY_, CODES_REREAD_V_);
+  return true;
+}
+
 /* By hand from the editor: what the Chairman's page would show now */
 function previewJobMoney() {
   var b = jobMoneyRun_();

@@ -497,5 +497,91 @@
     return box;
   }
 
-  window.KleverCharts = { grid: grid, columns: columns, line: line, bars: bars, niceMax: niceMax };
+  /* ================= money in and out, week by week ================= */
+
+  /* The Chairman's cash flow (21 Oct 2026, chairman.js flowChart): money in
+     rises above the line, money out falls below it, on one scale of Birr.
+     Solid is what happened; light, with a dashed edge, what is expected —
+     so a week that is half over shows both. A week nobody reported is a
+     grey mark, never a zero. Under each week, the bank at its end ("≈" when
+     it is worked out), red with ✕ under the floor.
+     opts: {title, sub, status, fmt, tick, lab, floor,
+            points:[{top, bottom, title, kind:'past'|'now'|'next', inA, inE, outA, outE, none,
+                     bank|null, bankProj, tip:[...]}],
+            words:{happened, expected, notRep, bank}, legend, caption, capBad, numbers} */
+  function flow(o) {
+    var box = el('section', 'cg cg-flow');
+    head(box, o);
+    var wrap = el('div', 'cg-plot', null, box);
+    var tip = tipFor(wrap);
+    var ups = o.points.map(function (p) { return (p.inA || 0) + (p.inE || 0); });
+    var dns = o.points.map(function (p) { return (p.outA || 0) + (p.outE || 0); });
+
+    sized(wrap, function (W) {
+      Array.prototype.slice.call(wrap.querySelectorAll('svg')).forEach(function (s) { s.remove(); });
+      var H = 236, L = 46, R = 8, T = 20, B = 52;
+      var pw = W - L - R, ph = H - T - B, n = o.points.length;
+      var up = niceMax(Math.max.apply(null, ups.concat([0])) * 1.08), dn = niceMax(Math.max.apply(null, dns.concat([0])) * 1.08);
+      if (!Math.max.apply(null, ups.concat([0]))) up = dn;
+      if (!Math.max.apply(null, dns.concat([0]))) dn = up;
+      /* one scale both ways: a million out is as long as a million in */
+      var unit = ph / (up + dn), y0 = T + up * unit;
+      var svg = sv('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, 'class': 'cg-svg',
+                            role: 'group', 'aria-label': o.title });
+      wrap.insertBefore(svg, wrap.firstChild);
+
+      sv('line', { x1: L, x2: W - R, y1: T, y2: T, 'class': 'cg-grid' }, svg);
+      sv('line', { x1: L, x2: W - R, y1: T + ph, y2: T + ph, 'class': 'cg-grid' }, svg);
+      stext(svg, L - 6, T + 4, '▲ ' + (o.tick || o.fmt)(up), 'cg-tick', 'end');
+      stext(svg, L - 6, y0 + 4, '0', 'cg-tick', 'end');
+      stext(svg, L - 6, T + ph + 4, '▼ ' + (o.tick || o.fmt)(dn), 'cg-tick', 'end');
+
+      var band = pw / n, bw = Math.min(26, Math.max(7, band * 0.56));
+      /* where what happened ends and what is expected begins */
+      var cut = -1;
+      o.points.forEach(function (p, i) { if (p.kind !== 'next') cut = i; });
+      if (cut >= 0 && cut < n - 1) {
+        var cx0 = L + band * (cut + 1);
+        sv('line', { x1: cx0, x2: cx0, y1: T - 14, y2: T + ph, 'class': 'cg-cut' }, svg);
+        stext(svg, cx0 - 6, T - 6, o.words.happened, 'cg-tick cg-side', 'end');
+        stext(svg, cx0 + 6, T - 6, o.words.expected, 'cg-tick cg-side', 'start');
+      }
+      stext(svg, L - 6, H - 6, o.words.bank, 'cg-tick cg-bankk', 'end');
+      sv('line', { x1: L, x2: W - R, y1: y0, y2: y0, 'class': 'cg-base' }, svg);
+
+      o.points.forEach(function (p, i) {
+        var cx = L + band * i + band / 2, x = cx - bw / 2, g = sv('g', null, svg);
+        stext(svg, cx, T + ph + 15, p.top, p.kind === 'now' ? 'cg-tick cg-today' : 'cg-tick', 'middle');
+        if (p.bottom) stext(svg, cx, T + ph + 27, p.bottom, p.kind === 'now' ? 'cg-tick cg-today' : 'cg-tick', 'middle');
+        /* the bank at the week's end: short enough for a phone's column —
+           a worked-out one paler, one under the floor red with ✕ */
+        if (p.bank != null) {
+          var bad = o.floor != null && p.bank < o.floor;
+          stext(svg, cx, H - 6, (bad ? '✕' : '') + (o.bankLab || o.lab || o.tick || o.fmt)(p.bank),
+                'cg-bankv' + (bad ? ' bad' : p.bankProj ? ' proj' : ''), 'middle');
+        }
+        if (p.none) {
+          sv('rect', { x: cx - 5, y: y0 - 1, width: 10, height: 2, rx: 1, 'class': 'cg-none' }, g);
+        } else {
+          var hA = (p.inA || 0) * unit, hE = (p.inE || 0) * unit, dA = (p.outA || 0) * unit, dE = (p.outE || 0) * unit;
+          if (hA > 0) sv('rect', { x: x, y: y0 - hA, width: bw, height: Math.max(1.5, hA), rx: 2, 'class': 'cg-bar is-in' }, g);
+          if (hE > 0) sv('rect', { x: x + 0.5, y: y0 - hA - hE, width: bw - 1, height: Math.max(1.5, hE), rx: 2, 'class': 'cg-bar is-in-exp' }, g);
+          if (dA > 0) sv('rect', { x: x, y: y0, width: bw, height: Math.max(1.5, dA), rx: 2, 'class': 'cg-bar is-out' }, g);
+          if (dE > 0) sv('rect', { x: x + 0.5, y: y0 + dA, width: bw - 1, height: Math.max(1.5, dE), rx: 2, 'class': 'cg-bar is-out-exp' }, g);
+        }
+        hit(g, { x: L + band * i, y: T, width: band, height: ph + 2 }, p.tip || [p.title], tip, wrap,
+            function () { g.classList.add('on'); }, function () { g.classList.remove('on'); });
+      });
+    });
+
+    legend(box, o);
+    /* a caption, or lines of it as [text, bad] — only the line that is bad in red */
+    (Array.isArray(o.caption) ? o.caption : o.caption ? [[o.caption, o.capBad]] : []).forEach(function (c) {
+      el('p', 'cg-cap' + (c[1] ? ' bad' : ''), c[0], box);
+    });
+    if (o.numbers) box.appendChild(table(o.numbers.title, o.numbers.head, o.numbers.rows));
+    return box;
+  }
+
+  window.KleverCharts = { grid: grid, columns: columns, line: line, bars: bars, flow: flow, niceMax: niceMax };
 })();

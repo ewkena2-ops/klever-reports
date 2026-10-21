@@ -2052,6 +2052,14 @@ import {
         ownBank = by;
         draw();
       }, function () {});
+    /* the cash flow, worked out by the script — one document, so one read
+       (apps-script/CashFlow.js; the user, 21 Oct 2026: "Chairman also want
+       to see cashflow"); undefined until it has answered */
+    var cashFlow;
+    onSnapshot(doc(db, 'cashflow', 'klever'), function (d) {
+      cashFlow = d.exists() ? d.data({ serverTimestamps: 'estimate' }) : null;
+      draw();
+    }, function () { cashFlow = null; draw(); });
 
     onSnapshot(query(collection(db, 'ledger'), where('day', '>=', addDays(DAY, -20)), orderBy('day', 'asc')),
       function (qs) {
@@ -2143,6 +2151,7 @@ import {
         if (g) box.appendChild(g);
       });
       box.appendChild(bankChart());
+      if (cashFlow !== undefined) box.appendChild(flowChart(cashFlow));
       box.appendChild(collectChart());
       if (SALES_REPORTS.length) box.appendChild(salesChart());
       box.appendChild(dailyChart({ report: 'amaha-daily', field: 'p_total', title: t('chgProd'), sub: t('chgProdSub'),
@@ -2335,6 +2344,124 @@ import {
                 given: birr(given), diff: birr(Math.abs(diff)) };
       if (Math.abs(diff) < 1) return { text: tfill('chgBankOk', o) };
       return { bad: true, text: tfill(diff > 0 ? 'chgBankMore' : 'chgBankLess', o) };
+    }
+
+    /* ---- cash flow: the weeks as they happened and as expected, the bank
+       at each week's end, and the next seven days item by item. Worked out
+       by apps-script/CashFlow.js; here it is only drawn and said. ---- */
+    function cfKind(dir, v) {
+      if (v === 'unsaid') return t('cfUnsaid');
+      var list = dir === 'in' ? (typeof TX_IN !== 'undefined' ? TX_IN : []) : (typeof TX_OUT !== 'undefined' ? TX_OUT : []);
+      var x = list.filter(function (k) { return k.v === v; })[0];
+      return x ? L(x) : v;
+    }
+    function flowChart(cf) {
+      function add(p, tag, cls, txt) { var e = el(tag, cls, txt); p.appendChild(e); return e; }
+      var wrap = el('div', 'cfwrap');
+      if (!cf || !cf.weeks) {
+        /* not worked out yet (the first watch after it went live) */
+        var s0 = add(wrap, 'section', 'cg'), h0 = add(s0, 'div', 'cg-head');
+        add(h0, 'h3', 'cg-title', t('cfTitle'));
+        add(h0, 'p', 'cg-now none', '– ' + t('cfNone'));
+        return wrap;
+      }
+      var amt = function (v) { return birr(Math.round(v || 0)); };
+      var pts = cf.weeks.map(function (w, i) {
+        var m = w.mon;
+        /* eight weeks on a phone: the Monday's date, the month under it where it starts */
+        var monLabel = i === 0 || m.slice(5, 7) !== cf.weeks[i - 1].mon.slice(5, 7) ? monShort(m) : '';
+        /* in Amharic a month's name is too long for a column: 28/9, as the collections chart writes it */
+        var dayLabel = String(Number(m.slice(8)));
+        if (lang === 'am') { dayLabel += '/' + Number(m.slice(5, 7)); monLabel = ''; }
+        var tipL = [tfill('chgWeekOf', { day: dayShort(m) }) + (w.kind === 'now' ? ' · ' + t('chgThisWeek') : '')];
+        if (w.kind !== 'next') tipL.push(tfill('cfTipRep', { n: w.reported, m: w.owed }));
+        tipL.push(t('cfIn') + ': ' + amt(w.in_actual) + (w.in_expected ? ' + ' + amt(w.in_expected) + ' ' + t('cfExpShort') : ''));
+        tipL.push(t('cfOut') + ': ' + amt(w.out_actual) + (w.out_expected ? ' + ' + amt(w.out_expected) + ' ' + t('cfExpShort') : ''));
+        var by = [];
+        Object.keys(w.in_by || {}).forEach(function (k) { by.push(['in', k, w.in_by[k]]); });
+        Object.keys(w.out_by || {}).forEach(function (k) { by.push(['out', k, w.out_by[k]]); });
+        by.sort(function (a, b) { return b[2] - a[2]; }).slice(0, 3).forEach(function (x) {
+          tipL.push((x[0] === 'in' ? '▲ ' : '▼ ') + cfKind(x[0], x[1]) + ' ' + amt(x[2]));
+        });
+        if (w.bank != null) tipL.push(w.bank_projected ? tfill('cfTipBankEnd', { v: amt(w.bank) })
+                                                       : tfill('cfTipBankGiven', { day: dayShort(w.bank_day), v: amt(w.bank) }));
+        var nothing = !w.in_actual && !w.in_expected && !w.out_actual && !w.out_expected;
+        return { top: dayLabel, bottom: monLabel, kind: w.kind,
+                 inA: w.in_actual, inE: w.in_expected, outA: w.out_actual, outE: w.out_expected,
+                 none: nothing && (w.kind === 'next' || !w.reported), bank: w.bank, bankProj: !!w.bank_projected, tip: tipL,
+                 row: [tipL[0] + (w.kind === 'next' ? ' · ' + t('cfExpected') : ''),
+                       !w.reported && w.kind !== 'next' && !w.in_expected ? t('chgNotRep') : amt(w.in_actual + w.in_expected),
+                       !w.reported && w.kind !== 'next' && !w.out_expected ? t('chgNotRep') : amt(w.out_actual + w.out_expected),
+                       w.bank == null ? '—' : (w.bank_projected ? '≈ ' : '') + amt(w.bank)] };
+      });
+      var status = cf.below_floor ? { kind: 'bad', icon: '▼', text: tfill('cfBelow', { day: dayShort(cf.below_floor.day), v: amt(cf.below_floor.birr) }) }
+        : cf.bank ? { kind: 'good', icon: '✓', text: tfill('cfAbove', { day: dayShort(cf.ahead.to), v: amt(pts.length ? cf.weeks[cf.weeks.length - 1].bank : cf.bank.total) }) }
+        : { kind: 'none', icon: '–', text: t('cfNoBank') };
+      var miss = [];
+      cf.weeks.forEach(function (w, i) {
+        if (w.kind === 'now' || (cf.weeks[i + 1] && cf.weeks[i + 1].kind === 'now')) (w.not_reported || []).forEach(function (d) { miss.push(dayShort(d)); });
+      });
+      var cap = [[cf.in_known_to ? tfill('cfKnownTo', { day: dayShort(cf.in_known_to) }) : t('cfKnownNone'), false]];
+      if (miss.length) cap.push([miss.length <= 3 ? tfill('cfSelamMiss', { days: miss.join(', ') })
+                                                  : tfill('cfSelamMissN', { n: miss.length, from: miss[0], last: miss[miss.length - 1] }), true]);
+      /* "7.4M" — the bank under a phone's narrow column */
+      var bankLab = function (v) {
+        var a = Math.abs(v), s = v < 0 ? '-' : '';
+        return a >= 1e6 ? s + (a >= 1e7 ? Math.round(a / 1e6) : (Math.round(a / 1e5) / 10)) + 'M' : s + Math.round(a / 1000) + 'k';
+      };
+      wrap.appendChild(C.flow({
+        title: t('cfTitle'), sub: t('cfSub'), status: status, points: pts, floor: cf.floor || 6000000,
+        fmt: function (v) { return birr(v) + ' ' + t('unBirr'); }, tick: function (v) { return short(v); },
+        lab: function (v) { return short(v); }, bankLab: bankLab,
+        words: { happened: t('cfHappened'), expected: t('cfExpected'), bank: t('cfBank') },
+        legend: [['is-in', t('cfLegIn'), '▲'], ['is-out', t('cfLegOut'), '▼'], ['is-exp', t('cfLegExp'), '']],
+        caption: cap,
+        numbers: { title: t('chgNumbers'), head: [t('chgWeek'), t('cfIn'), t('cfOut'), t('cfBank')],
+                   rows: pts.map(function (p) { return p.row; }) }
+      }));
+
+      /* the next seven days, item by item */
+      var nx = el('section', 'cg cg-next');
+      var h = add(nx, 'div', 'cg-head');
+      add(h, 'h3', 'cg-title', t('cfNext7'));
+      add(h, 'p', 'cg-sub', t('cfNext7Sub'));
+      var items = cf.next7 || [];
+      if (!items.length) add(nx, 'p', 'cfnote', t('cfNext7None'));
+      var ul = add(nx, 'ul', 'cflist');
+      var KIND = { adv: t('cfAdv'), fin: t('cfFin'), other: t('cfOtherPay') };
+      var SURE = { sure: t('cfSure'), likely: t('cfLikely'), maybe: t('cfMaybe') };
+      items.forEach(function (x) {
+        var li = add(ul, 'li', x.overdue ? 'late' : '');
+        add(li, 'span', 'cfd', x.day === DAY ? t('cfToday') : dayShort(x.day));
+        add(li, 'span', 'cfa ' + x.dir, (x.dir === 'in' ? '+ ' : '− ') + amt(x.birr));
+        var main, sub;
+        if (x.src === 'ephrata') {
+          main = [x.code, x.who].filter(Boolean).join(' · ') || t('cfCustomer');
+          sub = [KIND[x.kind] || t('cfOtherPay'), SURE[x.sure], t('cfFromEph')].filter(Boolean).join(' · ');
+        } else if (x.src === 'loan') {
+          main = x.who; sub = tfill('cfLoanPay', { n: x.what || '' });
+        } else if (x.src === 'credit') {
+          main = x.who || t('cfSupplier');
+          sub = [x.what, x.code, x.overdue ? tfill('cfOverdue', { day: dayShort(x.overdue) }) : t('cfCredit')].filter(Boolean).join(' · ');
+        } else {
+          var mi = Number(String(x.what || '').slice(5, 7)) - 1;
+          main = tfill('cfSalary', { month: (MONTHS[lang === 'am' ? 'am' : 'en'] || [])[mi] || x.what });
+          sub = x.final ? t('cfSalFinal') : t('cfSalAbout');
+        }
+        var w = add(li, 'span', 'cfw', main);
+        add(w, 'small', null, sub);
+      });
+      var nt = cf.notes || {};
+      if (nt.loans_past_date && nt.loans_past_date.n) add(nx, 'p', 'cfnote bad', tfill('cfNoteLoanPast', { n: nt.loans_past_date.n, v: amt(nt.loans_past_date.birr) }));
+      if (nt.credit_no_date && nt.credit_no_date.n) add(nx, 'p', 'cfnote', tfill('cfNoteNoDate', { n: nt.credit_no_date.n, v: amt(nt.credit_no_date.birr) }));
+      if (nt.credit_no_amount) add(nx, 'p', 'cfnote', tfill('cfNoteNoAmount', { n: nt.credit_no_amount }));
+      if (cf.bank && (cf.bank.not_counted || []).length) {
+        add(nx, 'p', 'cfnote', tfill('cfNoteBankGap', { day: dayShort(cf.bank.day), days: cf.bank.not_counted.map(dayShort).join(', ') }));
+      }
+      var when = cf.at && cf.at.toDate ? cf.at.toDate() : null;
+      if (when) add(nx, 'p', 'cfnote', tfill('cfAt', { at: hhmm(when) }));
+      wrap.appendChild(nx);
+      return wrap;
     }
 
     /* ---- collected each week, against the 4,000,000 floor (the Chairman, 13 Oct 2026;

@@ -310,7 +310,10 @@ function bankSave_(a) {
   var r = a.rec;
   var doc = { day: r.day, total: r.total, given: r.given || [], carried: r.carried || {}, by: r.by === 'chairman' ? 'chairman' : 'owner', via: 'whatsapp' };
   BANK_IDS_.forEach(function (id) { doc[id] = r[id] === undefined ? null : r[id]; });
-  return fsCreateNow_('bank', doc, 'at');
+  var saved = fsCreateNow_('bank', doc, 'at');
+  /* the Chairman's cash flow starts from it (CashFlow.js) */
+  try { cashFlowDirty_(); } catch (e) { Logger.log('cash flow: %s', e.message); }
+  return saved;
 }
 
 /* The last balance given in a list of filings, bank by bank — for "Ask your

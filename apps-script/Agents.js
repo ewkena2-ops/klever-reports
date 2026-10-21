@@ -2412,6 +2412,8 @@ function watch_(waitMs) {
     try { rcptWatch_(); } catch (e) { Logger.log('receipts watch: %s', e.message); }
     /* the money on each job: once an hour, so a new day moves the plan on (JobMoney.js) */
     try { jobMoneyWatch_(); } catch (e) { Logger.log('job money watch: %s', e.message); }
+    /* the Chairman's cash flow: once a day, and after a report or a balance it reads (CashFlow.js) */
+    try { cashFlowWatch_(); } catch (e) { Logger.log('cash flow watch: %s', e.message); }
     /* the payroll: this month so far, last month final from the 6th, and
        Selam told of a month the Chairman approved (Payroll.js) */
     try { payrollWatch_(); } catch (e) { Logger.log('payroll watch: %s', e.message); }
@@ -2512,6 +2514,7 @@ function runIfNew_(opt) {
   try { rcptAfter_(fresh); } catch (e) { Logger.log('receipts: %s', e.message); }
   /* a plan, a contract, a material cost or a day's m² in: the money on each job again (JobMoney.js) */
   try { jobMoneyAfter_(fresh); } catch (e) { Logger.log('job money: %s', e.message); }
+  try { cashFlowAfter_(fresh); } catch (e) { Logger.log('cash flow: %s', e.message); }
   if (opt.noRead) return true;
   Logger.log('%s new report(s) since %s.', fresh.length, from.toISOString());
   /* added up until the reading runs: a later look's count replaced the earlier one */

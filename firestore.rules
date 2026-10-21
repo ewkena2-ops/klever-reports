@@ -707,6 +707,12 @@ service cloud.firestore {
       allow create, update: if isLedger();
       allow delete: if false;
     }
+    /* the Chairman's cash flow, worked out by the script (apps-script/CashFlow.js, 21 Oct 2026) */
+    match /cashflow/{id} {
+      allow get, list: if isChairman() || isLedger();
+      allow create, update: if isLedger();
+      allow delete: if false;
+    }
     /* ---------------------------------------------------------------- *
      *  The payroll (apps-script/Payroll.js)                              *
      * ---------------------------------------------------------------- *

@@ -43,7 +43,7 @@ function botDay_(s) {
 function botNum_(s) { var x = Number(String(s == null ? '' : s).replace(/[^0-9.\-]/g, '')); return isNaN(x) ? null : x; }
 function botKk_(s) {
   var j = regJob_(s || '');
-  return /^KK-\d+$/.test(j) ? j : '';
+  return /^KK-\d+$/.test(j) && !regZero_(j) ? j : '';
 }
 function botKkNo_(j) { var m = /^KK-(\d+)$/.exec(j || ''); return m ? Number(m[1]) : null; }
 

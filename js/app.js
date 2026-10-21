@@ -5375,7 +5375,14 @@
      (KK-165), as it always was. A letter set apart by a space is a part only
      when no word follows it ("KK165 a delivery" is KK-165); one written on
      the number or after a hyphen always is. */
+  /* a job numbered 0 is no job: Amaha wrote "0" for "no job today" (Mon 19
+     Oct 2026), it became KK-0, and Getachew and Ephrata were asked for its
+     money (the owner, 21 Oct 2026: "remove it") — Register.js regZero_ */
+  function zeroJob(c) { return /^([A-Z]+-?)?0+[A-Z]?$/.test(String(c || '').toUpperCase().replace(/[\s._=#]+/g, '')); }
   function jobCodes(v, inCol, parts) {
+    return jobCodesAll(v, inCol, parts).filter(function (c) { return !zeroJob(c); });
+  }
+  function jobCodesAll(v, inCol, parts) {
     var s = String(v == null ? '' : v), out = [];
     function put(c) { if (c && out.indexOf(c) === -1) out.push(c); }
     var re = /(^|[^a-z0-9])(k(?:\W{0,3}k)+|rbt)\W{0,3}0*(\d{1,5})(?!\d)/gi, m;
@@ -5500,6 +5507,13 @@
     return s.replace(/\{(\w+)\}/g, function (m, n) { return o[n] != null ? o[n] : m; });
   }
   function paintCodeHint(node, v) {
+    /* "0" is no job (Amaha's "no job today", 19 Oct 2026): accepted — his
+       day of 0 m² needs a row — and said so; it never becomes a job */
+    if (has(v) && zeroJob(v)) {
+      node.hidden = false;
+      node.textContent = t('cbZero');
+      return;
+    }
     var ks = BOOK ? codesIn(v) : [];
     node.hidden = !ks.length;
     node.textContent = ks.map(function (k) { return codeLine(k, lang); }).join('\n');

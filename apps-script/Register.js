@@ -175,6 +175,13 @@ function regJob_(s) {
   var m = /^([A-Z]+)-?(\d+(?:-\d+)*(?:-?[A-Z](?![A-Z]))?)/.exec(t);
   return m ? m[1] + '-' + m[2].replace(/-([A-Z])$/, '$1') : t;
 }
+/* a job numbered 0 is no job: Amaha wrote "0" for "no job today" (Mon 19
+   Oct 2026), it became KK-0 on the register and the Chairman's job money,
+   and Getachew and Ephrata were asked for its money (the owner, 21 Oct 2026:
+   "remove it") — the forms refuse it too (js/app.js zeroJob) */
+function regZero_(job) {
+  return /^([A-Z]+-?)?0+[A-Z]?$/.test(String(job == null ? '' : job).toUpperCase().replace(/[\s._=#]+/g, ''));
+}
 /* the job a part belongs to: KK-165B → KK-165; '' for a job that is not a part */
 function regParent_(job) {
   var m = /^([A-Z]+-\d+(?:-\d+)*)[A-Z]$/.exec(String(job || ''));
@@ -302,6 +309,7 @@ function regEventsOf_(filing) {
            became a job of its own, "after-sales done" (the bug hunt, 15 Oct
            2026) — it joins its lead instead */
         else if (/^\d{4}$/.test(e.job)) { if (!e.lead) e.lead = e.job; delete e.job; }
+        if (e.job && regZero_(e.job)) delete e.job;
       }
       if (!e.cust && !e.job && !e.lead) return;
       out.push(e);
@@ -322,7 +330,7 @@ function regEventsOf_(filing) {
          "K-155" or were missed, and the line never reached its job (the bug
          hunt, 15 Oct 2026) */
       var re = /(^|[^a-z0-9])k(?:\W{0,3}k)+\W{0,3}0*(\d{2,5})(?!\d)/gi, mm, codes = [];
-      while ((mm = re.exec(val))) codes.push('KK-' + Number(mm[2]));
+      while ((mm = re.exec(val))) if (Number(mm[2]) > 0) codes.push('KK-' + Number(mm[2]));
       codes.forEach(function (job) {
         if (named[job]) return;
         named[job] = true;
@@ -855,7 +863,17 @@ function registerBuild_(today, withNote) {
   (schedule.reports || []).forEach(function (r) { if (/-sales-daily$/.test(r.id)) sellers[r.person] = true; });
   var events = [], botCounts = null, botAt = null;
   fsQuery_('regEvents', [], null).forEach(function (d) {
-    (d.events || []).forEach(function (e) { events.push(e); });
+    (d.events || []).forEach(function (e) {
+      /* a job numbered 0 is no job (regZero_): lines kept before 21 Oct
+         2026 still carry KK-0 — read without it, and a line that was only
+         that job is no line */
+      if (e && e.job && regZero_(e.job)) {
+        if (!e.cust && !e.lead) return;
+        e = Object.assign({}, e);
+        delete e.job;
+      }
+      events.push(e);
+    });
     if (d._id === 'bot_feed') { botCounts = d.counts || null; botAt = d.at || null; }
   });
   var R = regFold_(events, today, names, sellers);

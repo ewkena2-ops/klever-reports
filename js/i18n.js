@@ -1001,6 +1001,7 @@ const T = {
     mustFill:'This report cannot be sent until you fill in: {list}.',
     /* the code book under a typed code (app.js, 17 Oct 2026) */
     cbLead:'Lead {l}', cbNewLead:'new', cbNow:'now {j}', cbLeadNo:'lead {l}',
+    cbZero:'0 is no job — this row is not counted as a job',
     cbRbt:'Rovestone job', cbNewJob:'new — not in the register yet', cbTwo:'written for {n} customers: {names}',
     cbPartOf:'part of {p}', cbNewPart:'new part of {p}', cbSplit:'split into {s}',
     cbOddJob:'row {n}: {code} is {who}’s job — is {cust} {sug}?',
@@ -2163,6 +2164,7 @@ const T = {
     sendPartialWarn:'{n} ጥያቄዎች ገና ባዶ ናቸው (በቀይ ተመልክተዋል)። እንዳለ ለመላክ «ላክ»ን እንደገና ይንኩ።',
     mustFill:'ሪፖርቱ አይላክም። መጀመሪያ ይሙሉ፦ {list}።',
     cbLead:'የደንበኛ ቁጥር {l}', cbNewLead:'አዲስ', cbNow:'አሁን {j}', cbLeadNo:'የደንበኛ ቁጥር {l}',
+    cbZero:'0 ሥራ አይደለም — ይህ መስመር እንደ ሥራ አይቆጠርም',
     cbRbt:'የሮቭስቶን ሥራ', cbNewJob:'አዲስ — በመዝገቡ ውስጥ ገና የለም', cbTwo:'ለ{n} ደንበኞች ተጽፏል፦ {names}',
     cbPartOf:'የ{p} ክፍል', cbNewPart:'አዲስ የ{p} ክፍል', cbSplit:'በክፍሎች ተከፍሏል፦ {s}',
     cbOddJob:'ረድፍ {n}፦ {code} የ{who} ሥራ ነው — {cust} {sug} ናቸው?',

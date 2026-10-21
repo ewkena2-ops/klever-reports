@@ -45,12 +45,20 @@ var JM_ASK_MAX_ = 6;               /* jobs asked at a time, so a backlog is not 
 var JM_MIN_BIRR_ = 1000;           /* a job's contract or material under this is a count typed in the
                                       Birr box (his "20" on 12 Oct was sheets), not a figure: asked again */
 var JM_ASKS_ = { contract: 'ephrata', material: 'getachew' };
+/* jobs never to be asked about again: the owner, 21 Oct 2026, "don't ask
+   Getachew about KK164" (he said its buying was done on 19 Oct and gave
+   1,757,900 on 20 Oct) */
+var JM_NO_ASK_ = { contract: [], material: ['KK-164'] };
 var JM_RUN_KEY_ = 'JOBMONEY_LAST_RUN';
 
 /* The job codes an answer names, however typed — the same reading as the
    forms (js/app.js jobCodes): "k.k =165", "kkkk 160", "K.k=165,155",
    "RBT 3375"; in a job-code column a bare number is a KK job. */
 function jmCodes_(v, inCol) {
+  /* a job numbered 0 is no job (Register.js regZero_, 21 Oct 2026) */
+  return jmCodesAll_(v, inCol).filter(function (c) { return !regZero_(c); });
+}
+function jmCodesAll_(v, inCol) {
   var s = String(v == null ? '' : v), out = [];
   function put(c) { if (c && out.indexOf(c) === -1) out.push(c); }
   var re = /(^|[^a-z0-9])(k(?:\W{0,3}k)+|rbt)\W{0,3}0*(\d{1,5})(?!\d)/gi, m;
@@ -246,9 +254,9 @@ function jmBuild_(filings, regRows, today) {
   function rank(r) { return r.first >= today ? '0' + r.first : '1' + (99999999 - Number(String(r.first).replace(/-/g, '') || 0)); }
   var soon = rows.slice().sort(function (a, b) { var x = rank(a), y = rank(b); return x < y ? -1 : x > y ? 1 : 0; });
   var asks = {
-    contract: soon.filter(function (r) { return r.contract === null; }).slice(0, JM_ASK_MAX_)
+    contract: soon.filter(function (r) { return r.contract === null && JM_NO_ASK_.contract.indexOf(r.code) === -1; }).slice(0, JM_ASK_MAX_)
       .map(function (r) { return { code: r.code, cust: r.cust, first: r.first }; }),
-    material: soon.filter(function (r) { return r.material === null; }).slice(0, JM_ASK_MAX_)
+    material: soon.filter(function (r) { return r.material === null && JM_NO_ASK_.material.indexOf(r.code) === -1; }).slice(0, JM_ASK_MAX_)
       .map(function (r) { return { code: r.code, cust: r.cust, first: r.first, m2: r.m2 }; })
   };
   return { plan: plan ? { start: plan.start, filed: plan.filed } : null, rows: rows, asks: asks };

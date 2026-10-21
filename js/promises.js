@@ -49,7 +49,8 @@
       var b = /^\s*(\d{2,3})\s*$/.exec(s);
       if (b) out.push(Number(b[1]));
     }
-    return out;
+    /* a job numbered 0 is no job (the owner, 21 Oct 2026, KK-0) */
+    return out.filter(function (n) { return n > 0; });
   }
   function kk(n) { return 'KK-' + (n < 100 ? ('00' + n).slice(-3) : n); }
 

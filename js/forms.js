@@ -827,7 +827,8 @@ const REPORTS = [
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
-          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
+          /* must, as the salespeople's (21 Oct 2026): a payment does not go without its Birr */
+          {id:'amount', en:'Amount', am:'መጠን', t:'money', must:1},
           {id:'kind', en:'For', am:'የምን', t:'choice', opts:[
             {v:'advance', en:'Advance', am:'ቅድመ ክፍያ'},
             {v:'final', en:'Final payment', am:'የመጨረሻ ክፍያ'},
@@ -8827,9 +8828,11 @@ const SALES_DAILY = {
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Lead no. (4 digits)', am:'የደንበኛ ቁጥር (4 አሃዝ)', t:'text'},
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'value', en:'Contract value', am:'የውል ዋጋ', t:'money'},
+          /* must, both (21 Oct 2026, as the payment's amount): 0 is an answer
+             for an advance not paid yet */
+          {id:'value', en:'Contract value', am:'የውል ዋጋ', t:'money', must:1},
           {id:'margin', en:'Margin per m²', am:'ትርፍ በካሬ ሜትር', t:'money'},
-          {id:'adv', en:'Advance paid', am:'የተከፈለ ቅድመ ክፍያ', t:'money'}
+          {id:'adv', en:'Advance paid', am:'የተከፈለ ቅድመ ክፍያ', t:'money', must:1}
         ]},
       {id:'c_signed', en:'How many contracts did you sign today?', am:'ዛሬ ስንት ውል ተፈረመ?', t:'num',
         auto:{rows:'c_list'}, sumEn:'contracts', sumAm:'ውሎች'},
@@ -8857,7 +8860,8 @@ const SALES_DAILY = {
         cols:[
           {id:'cust', en:'Customer', am:'ደንበኛ', t:'text'},
           {id:'lc', en:'Customer code: 4-digit lead no., or KK code once paid', am:'የደንበኛ ኮድ፦ ባለ 4 አሃዝ ቁጥር፣ ከከፈሉ በኋላ KK ኮድ', t:'text'},
-          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
+          /* must: a payment does not go without its Birr (the owner, 21 Oct 2026 — Biruktayet named KK200's final payment on 20 Oct and left the amount empty, and her week read 0) */
+          {id:'amount', en:'Amount', am:'መጠን', t:'money', must:1},
           {id:'kind', en:'For', am:'የምን', t:'choice', opts:[
             {v:'advance', en:'Advance', am:'ቅድመ ክፍያ'},
             {v:'final', en:'Final payment', am:'የመጨረሻ ክፍያ'},

@@ -28,7 +28,7 @@ var SD_ACTIONS_ = 3;
 var SD_LEAD_ = 'ephrata';
 /* no visits: pre-measurement is Ephrata's, who assigns it (8 Oct 2026) */
 var SD_SALES_F_ = { leads: 'l_total', called: 'r_1hr', quotes: 'q_issued',
-                    contracts: 'c_signed', value: 'c_value', collected: 'k_today', week: 'k_week', unans: 'w_unans',
+                    contracts: 'c_signed', value: 'c_value', collected: 'k_all', week: 'k_week', unans: 'w_unans',
                     quoteList: 'q_list', margin: 'q_margin' };
 var SD_TEAM_ = [
   { id: 'ephrata', report: 'ephrata-daily', target: 4000000,
@@ -52,6 +52,17 @@ function sdHistory_(from, to) {
       if (f.report === m.report && f.at) by[dayOf_(f.at)] = f.values || {};
     });
     out[m.id] = by;
+  });
+  /* what each salesperson brought in, worked out (Money.js salesBroughtIn_,
+     21 Oct 2026): a blank amount taken from Ephrata's list, an advance at a
+     signing counted — `k_all`, read as `collected` */
+  var eph = out[SD_LEAD_] || {};
+  SD_TEAM_.forEach(function (m) {
+    if (m.f !== SD_SALES_F_) return;
+    Object.keys(out[m.id]).forEach(function (d) {
+      var v = out[m.id][d], k = salesBroughtIn_(v, eph[d]);
+      v.k_all = k === null ? '' : String(Math.round(k * 100) / 100);
+    });
   });
   return out;
 }

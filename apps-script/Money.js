@@ -51,14 +51,56 @@ function moneyNum_(v) {
   var s = String(v == null ? '' : v).replace(/[^0-9.\-]/g, '');
   return s === '' || isNaN(Number(s)) ? null : Number(s);
 }
-/* the rows of a payment list that carry an amount, with where they sit in it */
-function moneyRows_(list) {
+/* the rows of a payment list that carry an amount, with where they sit in it;
+   `blanks`: a row with a code and no amount too, with v null — a salesperson
+   who named the payment and left its Birr empty (Biruktayet, KK200 on 20 Oct
+   2026) — so Ephrata's row for it is matched, not asked of her as "extra" */
+function moneyRows_(list, blanks) {
   return (Array.isArray(list) ? list : []).map(function (r, i) {
     var a = r ? moneyNum_(r.amount) : null;
-    if (a === null) return null;
+    if (a === null && !(blanks && r && moneyCode_(r.lc))) return null;
     return { i: i, code: moneyCode_(r.lc), lc: String(r.lc || '').trim(), cust: String(r.cust || '').trim(),
              v: a, kind: String(r.kind || '') };
   }).filter(function (x) { return x; });
+}
+
+/* WHAT A SALESPERSON BROUGHT IN ON A DAY (the owner, 21 Oct 2026: "the AI has
+   to be smart enough, because the employees are not"). Biruktayet's week read
+   0: on Tue 20 Oct she named KK200's final payment and left its Birr empty
+   (Ephrata had it, 438,260.87), and the 207,626 advance of the contract she
+   signed (KK216) sits in her contracts list, not her payments. So: her
+   payments; a payment with no amount takes Ephrata's for the same job that
+   day; and an advance taken at a signing counts, unless the same job is also
+   a payment row that day. null when the day says nothing at all. The
+   Chairman's chart reads the same way (js/chairman.js salesDay). */
+function salesCode_(s) {
+  var c = moneyCode_(s);
+  return /^\d{1,3}$/.test(c) ? 'KK' + Number(c) : c;
+}
+function salesBroughtIn_(v, eph) {
+  if (!v) return null;
+  var total = null, seen = {};
+  var add = function (x) { total = (total || 0) + x; };
+  var ephRows = eph && Array.isArray(eph.collected_list) ? eph.collected_list : [];
+  (Array.isArray(v.k_list) ? v.k_list : []).forEach(function (r) {
+    if (!r) return;
+    var code = salesCode_(r.lc), a = moneyNum_(r.amount);
+    if (code) seen[code] = 1;
+    if (a === null && code) {
+      var e = ephRows.filter(function (x) { return x && salesCode_(x.lc) === code && moneyNum_(x.amount) !== null; })[0];
+      if (e) a = moneyNum_(e.amount);
+    }
+    if (a !== null) add(a);
+  });
+  (Array.isArray(v.c_list) ? v.c_list : []).forEach(function (r) {
+    if (!r) return;
+    var a = moneyNum_(r.adv);
+    if (a === null || a <= 0) return;
+    if (seen[salesCode_(r.code)] || seen[salesCode_(r.lc)]) return;
+    add(a);
+  });
+  if (total === null && !blank_(v.k_today)) total = n_(v.k_today);
+  return total;
 }
 function moneyKeyPart_(r) { return r.code || ('A' + Math.round(r.v)); }
 /* THE CODE BOOK (/register/codes, Register.js, 17 Oct 2026): a 4-digit
@@ -120,6 +162,9 @@ function moneyCompare_(eph, sales, allIn) {
       if (!hit) eph.forEach(function (e) {
         if (!hit && !used[e.i] && (!e.code || !s.code) && Math.abs(e.v - s.v) <= MONEY_TOL_) hit = e;
       });
+      /* a row they named with no amount: Ephrata's is the figure — nothing
+         to ask either way */
+      if (s.v === null) { if (hit) used[hit.i] = true; return; }
       if (hit) {
         used[hit.i] = true;
         if (Math.abs(hit.v - s.v) > MONEY_TOL_) {
@@ -237,7 +282,7 @@ function moneyCheck_(day) {
   if (!eph) return null;
   var sales = {}, n = 0, book = moneyBook_();
   salesReps.forEach(function (r) {
-    if (last[r.id]) { sales[r.person] = moneyLink_(moneyRows_(last[r.id].fields.k_list), book); n++; }
+    if (last[r.id]) { sales[r.person] = moneyLink_(moneyRows_(last[r.id].fields.k_list, true), book); n++; }
   });
   if (!n) return null;
   var allIn = owed.every(function (r) { return !!last[r.id]; });

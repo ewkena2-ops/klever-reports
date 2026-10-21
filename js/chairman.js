@@ -2546,19 +2546,53 @@ import {
         for (var d = a; d <= b; d = addDays(d, 1)) if (dow(d) !== 0) out.push(d);
         return out;
       }
+      /* WHAT THEY BROUGHT IN ON A DAY (the owner, 21 Oct 2026: "the AI has to
+         be smart enough"): their payments; one named with no amount takes
+         Ephrata's for the same job that day; an advance taken at a signing
+         (their contracts list) counts unless the job is a payment row too.
+         The server reads it the same way (Money.js salesBroughtIn_).
+         `coll` is the payments alone — what Ephrata's own total is set beside. */
+      function code(s) {
+        var c = String(s == null ? '' : s).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        var m = /^KK0*(\d+)$/.exec(c);
+        if (m) return 'KK' + m[1];
+        return /^\d{1,3}$/.test(c) ? 'KK' + Number(c) : c;
+      }
+      function salesDay(p, d) {
+        var x = p.by[d];
+        if (!x) return null;
+        var v = null, coll = null, pays = [], seen = {};
+        var ephRows = Array.isArray((eph[d] || {}).collected_list) ? eph[d].collected_list : [];
+        (Array.isArray(x.k_list) ? x.k_list : []).forEach(function (row) {
+          if (!row) return;
+          var c = code(row.lc), a = fig(row.amount), from = '';
+          if (c) seen[c] = 1;
+          if (a == null && c) {
+            var e = ephRows.filter(function (r) { return r && code(r.lc) === c && fig(r.amount) != null; })[0];
+            if (e) { a = fig(e.amount); from = 'eph'; }
+          }
+          if (a == null) return;
+          v = (v || 0) + a; coll = (coll || 0) + a;
+          pays.push({ day: d, code: String(row.lc || '').trim(), cust: String(row.cust || '').trim(), v: a, from: from });
+        });
+        (Array.isArray(x.c_list) ? x.c_list : []).forEach(function (row) {
+          var a = row && fig(row.adv);
+          if (a == null || a <= 0 || seen[code(row.code)] || seen[code(row.lc)]) return;
+          v = (v || 0) + a;
+          pays.push({ day: d, code: String(row.code || row.lc || '').trim(), cust: String(row.cust || '').trim(), v: a, from: 'signing' });
+        });
+        if (v == null) { var k = fig(x.k_today); if (k != null) { v = k; coll = k; } }
+        return { v: v, coll: coll, pays: pays, cn: fig(x.c_signed) || 0, cv: fig(x.c_value) || 0 };
+      }
       function sumFor(p, days) {
         var v = null, pays = [], cn = 0, cv = 0;
         days.forEach(function (d) {
-          var x = p.by[d];
-          if (!x) return;
-          var k = fig(x.k_today);
-          if (k != null) v = (v || 0) + k;
-          (Array.isArray(x.k_list) ? x.k_list : []).forEach(function (row) {
-            var a = row && fig(row.amount);
-            if (a != null) pays.push({ day: d, code: String(row.lc || '').trim(), cust: String(row.cust || '').trim(), v: a });
-          });
-          cn += fig(x.c_signed) || 0;
-          cv += fig(x.c_value) || 0;
+          var r = salesDay(p, d);
+          if (!r) return;
+          if (r.v != null) v = (v || 0) + r.v;
+          pays = pays.concat(r.pays);
+          cn += r.cn;
+          cv += r.cv;
         });
         return { v: v, pays: pays, cn: cn, cv: cv };
       }
@@ -2568,7 +2602,8 @@ import {
           var r = sumFor(p, days);
           if (r.v != null) any = true;
           var tip = r.pays.slice(0, 5).map(function (x) {
-            return [x.code, x.cust, birr(Math.round(x.v))].filter(Boolean).join(' · ');
+            return [x.code, x.cust, birr(Math.round(x.v))].filter(Boolean).join(' · ') +
+                   (x.from === 'eph' ? ' ' + t('chgSalesFromEph') : x.from === 'signing' ? ' ' + t('chgSalesAtSigning') : '');
           });
           if (r.pays.length > 5) tip.push(tfill('chgSalesMore', { n: r.pays.length - 5 }));
           if (r.cn) tip.push(tfill('chgSalesContracts', { n: r.cn, v: birr(Math.round(r.cv)) }));
@@ -2581,7 +2616,9 @@ import {
           var e = fig((eph[d] || {}).collected_today);
           if (e == null) return;
           eSum = (eSum || 0) + e;
-          people.forEach(function (p) { sSum += fig((p.by[d] || {}).k_today) || 0; });
+          /* their payments (a blank one at Ephrata's figure), not the advances
+             at signing, which her total does not hold either */
+          people.forEach(function (p) { var r = salesDay(p, d); sSum += (r && r.coll) || 0; });
         });
         var list = rows.map(function (r) { return r.name + ' ' + (r.v == null ? '–' : birr(Math.round(r.v))); }).join(' · ');
         var short_ = ref && rows.some(function (r) { return r.v == null || r.v < ref.v; });

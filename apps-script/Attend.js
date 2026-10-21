@@ -34,9 +34,14 @@ var AT_FROM_ = '2026-10-19';                   /* the first day counted (js/form
 var AT_PLACE_ = 'office';
 var AT_WHY_ = ['visit', 'sick', 'leave', 'forgot', 'holiday', 'transport', 'other'];
 
-/* the people who scan: `scan` in js/forms.js PEOPLE */
+/* the people who scan: `scan` in js/forms.js PEOPLE — a day there (Elyas
+   and Ashenafi, 21 Oct 2026) is when they start: counted from it, as from
+   their `from` (js/forms.js scanPerson) */
 function atPeople_(schedule) {
-  return ((schedule && schedule.people) || []).filter(function (p) { return p.scan && !p.company; });
+  return ((schedule && schedule.people) || []).filter(function (p) { return p.scan && !p.company; }).map(function (p) {
+    var s = typeof p.scan === 'string' ? p.scan : '';
+    return s && (!p.from || p.from < s) ? Object.assign({}, p, { from: s }) : p;
+  });
 }
 
 /* "1.2.3.4" stays; an IPv6 address becomes its first four groups */

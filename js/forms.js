@@ -29,6 +29,14 @@ const ATTEND_OFF = {
   '2026-10-20': { en: 'the system was down until 10 AM', am: 'ሲስተሙ እስከ ጠዋቱ 4 ሰዓት ተቋርጦ ነበር' }
 };
 function attendOff(ymd) { return ATTEND_OFF[ymd] || null; }
+/* `scan` as a day: someone who starts scanning later than the rest, counted
+   from that day (Elyas and Ashenafi, added 21 Oct 2026 after 8 AM — the
+   user: "add elyas and ashenafi to office scan"; from the next morning).
+   For check-in counting only: their `from` for the rest is unchanged. */
+function scanPerson(p) {
+  var s = p && typeof p.scan === 'string' ? p.scan : '';
+  return s && (!p.from || p.from < s) ? Object.assign({}, p, { from: s }) : p;
+}
 const PEOPLE = [
   { id:'ephrata',  en:'Ephrata Assfa',   am:'ኤፍራታ አስፋ',   roleEn:'Commercial Lead',   roleAm:'የንግድ ኃላፊ', grp:'commercial', scan:1 },
   { id:'liu',      en:'Mahelet Teshome', am:'ማህሌት ተሾመ',   roleEn:'Operations Lead',   roleAm:'የኦፕሬሽን ኃላፊ', grp:'lead', scan:1 },
@@ -43,8 +51,8 @@ const PEOPLE = [
   { id:'alemaya', en:'Alemaya', am:'አለማያ',  roleEn:'Storekeeper',       roleAm:'የመጋዘን ኃላፊ', grp:'finance', gate:1, from:'2026-10-16', noLetter:1 },
   { id:'amaha',      en:'Amaha Temechew',       am:'አማሃ ተመቸው',      roleEn:'Production Supervisor', roleAm:'የምርት ተቆጣጣሪ', grp:'production', gate:1 },
   { id:'wude',       en:'Wude Birhanu',         am:'ውዱ ብርሃኑ',       roleEn:'Quality Control Officer', roleAm:'የጥራት ቁጥጥር ኃላፊ', grp:'production', gate:1 },
-  { id:'elyas',      en:'Elyas Mullatu',        am:'ኤልያስ ሙላቱ',      roleEn:'Site Supervisor',   roleAm:'የተከላ ቦታ ተቆጣጣሪ', grp:'site' },
-  { id:'ashenafi',   en:'Ashenafi Germa',       am:'አሸናፊ ገርማ',      roleEn:'Site Helper',       roleAm:'የተከላ ቦታ ረዳት', grp:'site' },
+  { id:'elyas',      en:'Elyas Mullatu',        am:'ኤልያስ ሙላቱ',      roleEn:'Site Supervisor',   roleAm:'የተከላ ቦታ ተቆጣጣሪ', grp:'site', scan:'2026-10-22' },
+  { id:'ashenafi',   en:'Ashenafi Germa',       am:'አሸናፊ ገርማ',      roleEn:'Site Helper',       roleAm:'የተከላ ቦታ ረዳት', grp:'site', scan:'2026-10-22' },
   { id:'tsega',      en:'Tsega Girma',          am:'ፀጋ ግርማ',        roleEn:'Salesperson',       roleAm:'የሽያጭ ባለሙያ', grp:'commercial', scan:1 },
   { id:'biruktayet', en:'Biruktayet Kassahun',  am:'ብሩክታይት ካሳሁን',   roleEn:'Salesperson',       roleAm:'የሽያጭ ባለሙያ', grp:'commercial', scan:1 },
   { id:'yohannis',   en:'Yohannis Amare Badreg',am:'ዮሐንስ አማረ ባድረግ', roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial', scan:1 },

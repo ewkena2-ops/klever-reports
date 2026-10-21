@@ -923,7 +923,8 @@ import {
   function atOffOn(d) { return typeof attendOff === 'function' ? attendOff(d) : null; }
   function drawAttend(into, st, since) {
     into.innerHTML = '';
-    var people = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.scan && !p.company; });
+    var people = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.scan && !p.company; })
+      .map(function (p) { return typeof scanPerson === 'function' ? scanPerson(p) : p; });
     var by = {};
     st.docs.forEach(function (d) { (by[d.day] = by[d.day] || {})[d.person] = d; });
     var from = typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-19';
@@ -1089,6 +1090,7 @@ import {
     var o = AT_GRID.office, f = AT_GRID.factory;
     if (o) {
       var office = (typeof PEOPLE !== 'undefined' ? PEOPLE : []).filter(function (p) { return p.scan && !p.company; })
+        .map(function (p) { return typeof scanPerson === 'function' ? scanPerson(p) : p; })
         .map(function (p) { return { id: p.id, en: p.en, am: p.am, from: p.from || null, left: p.left || null }; });
       var g = atGrid('office', o.docs, office, typeof ATTEND_FROM === 'string' ? ATTEND_FROM : '2026-10-19');
       if (g) box.appendChild(g);

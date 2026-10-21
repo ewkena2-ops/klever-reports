@@ -1809,6 +1809,8 @@
     if (stopAt) { try { stopAt(); } catch (e) {} stopAt = null; }
     var wrap = el('div', 'atcard');
     if (!p || !(p.scan || p.gate) || AUTH.isChairman() || !window.FB || !window.FB.live() || !window.FB.watchMyAttend) return wrap;
+    /* one who starts scanning later: counted from that day (js/forms.js scanPerson) */
+    if (typeof scanPerson === 'function') p = scanPerson(p);
     atKept = wrap;
     wrap.key = p.id + '|' + stamp();
     atKind = p.gate && !p.scan ? 'gt' : 'at';

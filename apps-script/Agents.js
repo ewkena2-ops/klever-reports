@@ -2413,6 +2413,8 @@ function watch_(waitMs) {
     /* the money on each job: once an hour, so a new day moves the plan on (JobMoney.js) */
     try { jobMoneyWatch_(); } catch (e) { Logger.log('job money watch: %s', e.message); }
     try { codesRereadWatch_(); } catch (e) { Logger.log('codes reread: %s', e.message); }
+    /* Rovestone's reports since 21 Oct, read once into the job tables (Register.js) */
+    try { registerRvWatch_(); } catch (e) { Logger.log('register rv: %s', e.message); }
     /* the Chairman's cash flow: once a day, and after a report or a balance it reads (CashFlow.js) */
     try { cashFlowWatch_(); } catch (e) { Logger.log('cash flow watch: %s', e.message); }
     /* the payroll: this month so far, last month final from the 6th, and

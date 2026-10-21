@@ -101,6 +101,80 @@ var REG_SOURCES_ = [
   { r: 'getachew-daily', f: 'sup_delay_list', k: 'matpending', job: 'code', what: 'item', state: 'now', colour: 'colour' }
 ];
 
+/* ROVESTONE'S OWN REPORTS (22 Oct 2026, the owner: "most RBT status you
+   also get from Rovestone"). Rovestone's people report on its Job Card
+   (Form JC-01) from 21 Oct, each on the stages they move; an RBT job now
+   moves on their word as well as on Klever's (Klever's factory makes some of
+   them). Only RBT jobs are read from these lists (`co`): a KK code there is
+   Klever's to report, and Rovestone's 4-digit numbers are its own leads, not
+   Klever's — unless the reports already know an RBT job of that number
+   ("3313" for RBT-3313, regFold_). Extra keys: `kBy`/`kMap` — the row's
+   answer in that column says which step it is; `set` — the same on every
+   row; `whatMap` — a picked answer in words; `flag` — the list itself is
+   something wrong; `flagIf` — that answer is (`code`: a problem, else a
+   note); `skipIf` — that answer means the step is not done yet. */
+var REG_RV_FAULTS_ = { size: 'Wrong size', damage: 'Damaged', finish: 'Poor finish', parts: 'Parts missing', colour: 'Wrong colour', other: 'Other' };
+var REG_RV_HOLDS_ = { payment: 'Payment not in', design: 'Design not final', material: 'Material missing', customer: 'Customer asked to wait', other: 'Other' };
+var REG_RV_SOURCES_ = [
+  /* Frewoyni moves stages 7 and 10–13 on the board */
+  { r: 'frewoyni-daily', f: 'b_moved_list', job: 'job', kBy: 'stage',
+    kMap: { s7: { k: 'received', label: '7 · Materials received' }, s10: { k: 'production', label: '10 · Production approved' },
+            s11: { k: 'jobdone', label: '11 · Production completed' }, s12: { k: 'qc', ok: 'yes', label: '12 · QC released' },
+            s13: { k: 'ready', label: '13 · Ready for delivery' } },
+    flagIf: { col: 'signed', is: 'no', text: 'Moved on the board without the Job Card signed' } },
+  { r: 'yesak-daily', f: 'y_start_list', k: 'production', job: 'job' },
+  { r: 'yesak-daily', f: 'y_jobs', k: 'production', job: 'job' },
+  { r: 'yesak-daily', f: 'y_done_list', k: 'jobdone', job: 'job' },
+  { r: 'yesak-daily', f: 'y_back_list', k: 'defect', job: 'job', what: 'why', whatMap: REG_RV_FAULTS_ },
+  { r: 'beti-daily', f: 'q_checked_list', k: 'qc', job: 'job', ok: 'result', okMap: { pass: 'yes', small: 'yes', fail: 'no' },
+    what: 'fault', whatMap: REG_RV_FAULTS_ },
+  { r: 'beti-daily', f: 'q_released_list', k: 'qc', job: 'job', set: { ok: 'yes' } },
+  /* finished and waiting for her check: production is completed */
+  { r: 'beti-daily', f: 'q_waiting_list', k: 'jobdone', job: 'job' },
+  { r: 'beti-daily', f: 'q_noqc_list', k: 'flag', job: 'job', who: 'who',
+    flag: { text: 'Left for delivery without Beti’s QC release', code: 'no-qc-release' } },
+  /* delivered to the site is on installation, as Elyas's "on installation" is */
+  { r: 'anbesu-daily', f: 'a_inst_list', job: 'job', cust: 'cust', kBy: 'done',
+    kMap: { delivered: { k: 'site' }, part: { k: 'site' }, installed: { k: 'site', state: 'done' } },
+    flagIf: { col: 'qc', is: 'no', text: 'Delivered without Beti’s QC release signed', code: 'no-qc-release' } },
+  { r: 'anbesu-daily', f: 'a_acc_list', k: 'accepted', job: 'job', cust: 'cust',
+    flagIf: { col: 'file', is: 'no', text: 'Acceptance signed; the paper form is not in the Job File yet (no assembler pay until it is)' } },
+  { r: 'rahel-daily', f: 'r_adv_list', k: 'advance', job: 'job', cust: 'cust', amount: 'amount' },
+  { r: 'rahel-daily', f: 'r_req_list', k: 'finalreq', job: 'job', cust: 'cust', amount: 'amount' },
+  { r: 'rahel-daily', f: 'r_fin_list', k: 'final', job: 'job', cust: 'cust', amount: 'amount',
+    flagIf: { col: 'kidan', is: 'no', text: 'Final payment in; Kidan not yet told to confirm it (no production before she does)', code: 'kidan-not-told' } },
+  { r: 'eyosias-daily', f: 'e_ord_list', k: 'ordered', job: 'job', what: 'what' },
+  { r: 'eyosias-daily', f: 'e_wait_list', k: 'matpending', job: 'job', what: 'what' },
+  /* the purchase approved (stage 5): the materials are as good as asked for */
+  { r: 'kalkidan-daily', f: 'g_appr_list', k: 'request', job: 'job' },
+  { r: 'kalkidan-daily', f: 'g_hold_list', k: 'hold', job: 'job', what: 'why', whatMap: REG_RV_HOLDS_ }
+];
+['dawit', 'tsigea', 'yared-rv', 'sintayehu', 'hana'].forEach(function (p) {
+  REG_RV_SOURCES_.push(
+    { r: p + '-daily', f: 'd_meas_list', k: 'measure', job: 'job', cust: 'cust' },
+    { r: p + '-daily', f: 'd_mat_list', k: 'selection', job: 'job', cust: 'cust',
+      skipIf: { col: 'signed', is: 'no' }, flagIf: { col: 'signed', is: 'no', text: 'Materials chosen; the customer has not signed the selection yet' } });
+});
+['marta', 'fana'].forEach(function (p) {
+  REG_RV_SOURCES_.push(
+    { r: p + '-daily', f: 's_after_list', k: 'followup', job: 'job', cust: 'cust', ok: 'how', okMap: { happy: 'yes', fix: 'yes', unhappy: 'no' },
+      flagIf: { col: 'how', is: 'fix', text: 'After-sales: a small fix is needed' } });
+});
+REG_RV_SOURCES_.forEach(function (s) { s.co = 'rovestone'; REG_SOURCES_.push(s); });
+
+/* whose move each step is on an RBT job, by Rovestone's Job Card */
+var REG_RV_WHO_ = {
+  lead: 'Marta or Fana', visit: 'Marta or Fana', predesign: 'Rovestone designer', quote: 'Marta or Fana',
+  contract: 'Rahel', advance: 'Rahel', measure: 'Rovestone designer', selection: 'Rovestone designer',
+  ordered: 'Eyosias', received: 'Frewoyni', finalreq: 'Rahel', final: 'Rahel', production: 'Frewoyni',
+  made: 'Yesak', qc: 'Beti', ready: 'Frewoyni', delivered: 'Anbesu', installed: 'Anbesu', accepted: 'Anbesu',
+  aftersales: 'Marta or Fana'
+};
+function regRv_(job) { return /^RBT-/.test(String(job || '')); }
+/* the lines that move a job on the board — one after a hold ends it */
+var REG_MOVES_ = ['contract', 'advance', 'measure', 'selection', 'request', 'ordered', 'received', 'finalreq', 'final',
+                  'paidfull', 'production', 'jobdone', 'qc', 'ready', 'delivered', 'site', 'accepted', 'followup'];
+
 /* the steps of a lead, in order */
 var REG_LEAD_STAGES_ = ['lead', 'visit', 'predesign', 'quote', 'contract'];
 
@@ -141,6 +215,12 @@ function regBoardIx_(id) {
 function regStageOf_(ix) {
   var b = REG_BOARD_[ix], nx = REG_BOARD_[ix + 1] || null;
   return { stage: b.id, n: b.n, en: b.en, next: nx ? nx.en : '', nextN: nx ? nx.n : null, nextWho: nx ? nx.who : '' };
+}
+/* the same, for a job: on an RBT job the next move is a Rovestone person's */
+function regStageFor_(ix, job) {
+  var s = regStageOf_(ix), nx = REG_BOARD_[ix + 1];
+  if (regRv_(job) && nx && REG_RV_WHO_[nx.id]) s.nextWho = REG_RV_WHO_[nx.id];
+  return s;
 }
 var REG_STATUSES_ = ['moving', 'hold', 'rework', 'quiet', 'done'];
 
@@ -271,6 +351,22 @@ function regEventsOf_(filing) {
         if (!s.okMap[e.ok]) return;
         e.ok = s.okMap[e.ok];
       }
+      /* the step, by the answer in one column (Rovestone's lists) */
+      var lab = '';
+      if (s.kBy) {
+        var m = s.kMap[row[s.kBy]];
+        if (!m) return;
+        e.k = m.k;
+        if (m.ok) e.ok = m.ok;
+        if (m.state) e.state = m.state;
+        lab = m.label || '';
+      }
+      if (s.set) Object.keys(s.set).forEach(function (x) { e[x] = s.set[x]; });
+      if (s.whatMap && e.what && s.whatMap[e.what]) {
+        var oth = row[s.what + '__other'];
+        e.what = s.whatMap[e.what] === 'Other' && !blank_(oth) ? String(oth).trim().substring(0, 200) : s.whatMap[e.what];
+      }
+      if (s.flag) { e.what = s.flag.text + (e.who ? ' — sent by ' + e.who : ''); e.code = s.flag.code || ''; }
       if (e.colour) e.what = (e.what ? e.what + ' ' : '') + e.colour;
       if (s.whatIs && !e.what) e.what = s.whatIs;
       /* what a defect needs cut again: "Melamine 18mm KKUV-18 ×2" — nothing
@@ -296,6 +392,16 @@ function regEventsOf_(filing) {
         if (!bad.length) return;            /* a site found ready is no news */
         e.what = bad.join(', ');
       }
+      /* Rovestone's lists: RBT jobs only (REG_RV_SOURCES_) — a bare 4-digit
+         number waits for regFold_ to find its RBT job */
+      if (s.co) {
+        var jc = regJob_(e.job || '');
+        delete e.job;
+        if (regRv_(jc)) e.job = jc;
+        else if (/^\d{4}$/.test(jc)) e.rvNum = jc;
+        else return;
+        e.co = s.co;
+      }
       /* a bare number in a job-code column is a job: Elyas wrote "167" and
          "192" for KK-167 and KK-192 and the register held them as jobs of
          their own (the Chairman, 9 Oct 2026). A lead's own four-digit number
@@ -311,8 +417,14 @@ function regEventsOf_(filing) {
         else if (/^\d{4}$/.test(e.job)) { if (!e.lead) e.lead = e.job; delete e.job; }
         if (e.job && regZero_(e.job)) delete e.job;
       }
-      if (!e.cust && !e.job && !e.lead) return;
-      out.push(e);
+      if (!e.cust && !e.job && !e.lead && !e.rvNum) return;
+      if (!(s.skipIf && row[s.skipIf.col] === s.skipIf.is)) out.push(e);
+      /* an answer that is something wrong in itself: a line of its own */
+      if (s.flagIf && row[s.flagIf.col] === s.flagIf.is) {
+        var fe = { k: 'flag', day: day, person: e.person, what: s.flagIf.text + (lab ? ': ' + lab : ''), code: s.flagIf.code || '' };
+        ['job', 'rvNum', 'co'].forEach(function (x) { if (e[x]) fe[x] = e[x]; });
+        out.push(fe);
+      }
     });
   });
   /* what people wrote that names a job by its KK code — "KK-114 is waiting
@@ -331,6 +443,9 @@ function regEventsOf_(filing) {
          hunt, 15 Oct 2026) */
       var re = /(^|[^a-z0-9])k(?:\W{0,3}k)+\W{0,3}0*(\d{2,5})(?!\d)/gi, mm, codes = [];
       while ((mm = re.exec(val))) if (Number(mm[2]) > 0) codes.push('KK-' + Number(mm[2]));
+      /* and an RBT job, Rovestone's ("RBT 3313", "rbt-3313"), 22 Oct 2026 */
+      var rb = /(^|[^a-z0-9])rbt\W{0,3}(\d{3,5})(?!\d)/gi;
+      while ((mm = rb.exec(val))) if (Number(mm[2]) > 0) codes.push('RBT-' + mm[2]);
       codes.forEach(function (job) {
         if (named[job]) return;
         named[job] = true;
@@ -372,6 +487,14 @@ function regFold_(events, today, names, sellers) {
   names = names || {};
   sellers = sellers || {};
   var who = function (p) { return names[p] || p; };
+  /* a Rovestone line that gave only a number ("3313") is the RBT job of
+     that number when the reports know one; otherwise it is one of
+     Rovestone's own leads, which Klever's tables do not hold */
+  var rbt = {}, bare = function (n) { return String(n).replace(/^RBT-/, '').replace(/^0+(?=\d)/, ''); };
+  events.forEach(function (e) { if (e && regRv_(e.job)) rbt[bare(e.job)] = e.job; });
+  events = events.filter(function (e) { return e && (!e.rvNum || rbt[bare(e.rvNum)]); }).map(function (e) {
+    return e.rvNum ? Object.assign({}, e, { job: rbt[bare(e.rvNum)] }) : e;
+  });
   var leads = {}, jobs = {};
   var order = function (k) { var i = REG_LEAD_STAGES_.indexOf(k); return i === -1 ? -1 : i; };
   /* A lead is its 4-digit code wherever one was written; a line with only
@@ -548,6 +671,7 @@ function regFold_(events, today, names, sellers) {
         break;
       case 'matpending':
         J.matPending = { day: e.day, what: e.what || '', expect: e.state || '' };
+        if (e.co) J.matPending.by = who(e.person);
         break;
       case 'defect':
         J.defects.push({ day: e.day, what: e.what || '', by: who(e.person), redo: e.redo || '' });
@@ -573,7 +697,21 @@ function regFold_(events, today, names, sellers) {
       case 'finished':
         J.finished = e.day;
         break;
+      /* Rovestone's (22 Oct 2026): ready for delivery, on Frewoyni's board */
+      case 'ready':
+        if (!J.ready) J.ready = e.day;
+        break;
+      /* on hold, by its General Manager — until a step moves after it */
+      case 'hold':
+        J.rvHold = { day: e.day, what: e.what || '', by: who(e.person) };
+        break;
+      /* an answer that is something wrong (REG_RV_SOURCES_ flag / flagIf) */
+      case 'flag':
+        J.flags = (J.flags || []).filter(function (f) { return f.what !== (e.what || ''); });
+        J.flags.push({ day: e.day, what: e.what || '', code: e.code || '', by: who(e.person) });
+        break;
     }
+    if (REG_MOVES_.indexOf(e.k) !== -1 && !(J.moved && J.moved > e.day)) J.moved = e.day;
   });
   /* what people wrote about a job, by its code — the last six, for the AI */
   said.forEach(function (e) {
@@ -658,13 +796,17 @@ function regFold_(events, today, names, sellers) {
       ordered: J.ordered || J.requested, received: J.received,
       finalreq: J.finalReq || (J.held ? J.held.day : ''), final: finalDay,
       production: J.prodFirst || (J.plan ? J.plan.day : ''), made: J.made, qc: qcDay,
-      ready: qcDay && finalDay ? [qcDay, finalDay].sort()[1] : '',
+      ready: (qcDay && finalDay ? [qcDay, finalDay].sort()[1] : '') || J.ready || '',
       delivered: J.delivered || J.site, installed: J.siteDone, accepted: J.accepted, aftersales: J.followup
     };
     var ix = regBoardIx_('contract');
     REG_BOARD_.forEach(function (b, i) { if (i > ix && ev[b.id]) ix = i; });
-    J.board = regStageOf_(ix);
+    J.board = regStageFor_(ix, J.job);
     J.stageName = REG_BOARD_[ix].id;
+    /* an RBT job is Rovestone's: its money is Rahel's to record, its
+       purchasing Eyosias's (REG_RV_SOURCES_) */
+    var rv = regRv_(J.job), payer = rv ? 'Rahel' : 'Selam';
+    var first = function (s) { return String(s || '').split(' ')[0]; };
     J.steps = {};
     Object.keys(ev).forEach(function (x) { if (ev[x]) J.steps[x] = ev[x]; });
     /* moving, on hold, or back for rework — and why, in the reporter's words */
@@ -690,10 +832,13 @@ function regFold_(events, today, names, sellers) {
     if (J.matPending && !(J.receivedLast && J.receivedLast > J.matPending.day) && !J.made
         && !(J.matDelay && J.matDelay.what === J.matPending.what)) {
       holds.push('Waiting for material: ' + J.matPending.what + (J.matPending.expect ? ', expected ' + J.matPending.expect : '') +
-                 ' (Getachew, ' + pushDay_(J.matPending.day) + ')');
+                 ' (' + (J.matPending.by ? first(J.matPending.by) : 'Getachew') + ', ' + pushDay_(J.matPending.day) + ')');
     }
     if (J.siteFails && !(J.siteLast && J.siteLast > J.siteFails.day)) {
       holds.push('Site not ready: ' + J.siteFails.what + ' (Elyas, ' + pushDay_(J.siteFails.day) + ')');
+    }
+    if (J.rvHold && !(J.moved && J.moved > J.rvHold.day)) {
+      holds.push('On hold' + (J.rvHold.what ? ': ' + J.rvHold.what : '') + ' (' + first(J.rvHold.by) + ', ' + pushDay_(J.rvHold.day) + ')');
     }
     if (J.jfMissing && regDaysBetween_(J.jfMissing.day, today) <= 7) {
       holds.push('Job File incomplete: ' + J.jfMissing.what + ' (' + pushDay_(J.jfMissing.day) + ')');
@@ -709,14 +854,18 @@ function regFold_(events, today, names, sellers) {
     /* its money is known only if its contract or advance is in the reports:
        a job signed before reporting began may well have been paid then */
     var moneyKnown = !!(J.signed || J.advDay);
-    if (!J.signed) notes.push('No contract in the reports — signed before 6 October, or the code is written differently');
-    if (!moneyKnown) notes.push('Its payments before 6 October are not in the reports, so they are not checked');
+    /* Rovestone's reports list no contracts, and began on 21 October */
+    if (rv) { if (!moneyKnown) notes.push('No payment of it in Rahel’s reports yet (Rovestone reports from 21 October)'); }
+    else {
+      if (!J.signed) notes.push('No contract in the reports — signed before 6 October, or the code is written differently');
+      if (!moneyKnown) notes.push('Its payments before 6 October are not in the reports, so they are not checked');
+    }
     if (J.signed && !J.advDay && regWorkingDays_(J.signed, today) > REG_ADVANCE_DAYS_) {
-      p.push({ code: 'no-advance', text: 'Signed ' + pushDay_(J.signed) + '; Selam has recorded no advance' });
+      p.push({ code: 'no-advance', text: 'Signed ' + pushDay_(J.signed) + '; ' + payer + ' has recorded no advance' });
     }
     var cleared = [J.finalDay, J.paidFull].filter(Boolean).sort()[0];
     if (moneyKnown && J.prodFirst && (!cleared || J.prodFirst < cleared)) {
-      p.push({ code: 'prod-before-final', text: 'Production started ' + pushDay_(J.prodFirst) + ' before Selam recorded the final payment' +
+      p.push({ code: 'prod-before-final', text: 'Production started ' + pushDay_(J.prodFirst) + ' before ' + payer + ' recorded the final payment' +
                                                 (cleared ? ' (' + pushDay_(cleared) + ')' : '') });
     }
     /* the journey's gates and clocks (the Implementation Document, section 3) */
@@ -764,6 +913,14 @@ function regFold_(events, today, names, sellers) {
     };
     var openC = J.complaints.filter(function (c) { return !/^(closed|resolved)$/.test(c.state) && !happyAfter(c); });
     if (openC.length) p.push({ code: 'complaint', text: openC.length + ' complaint' + (openC.length > 1 ? 's' : '') + ' open: ' + openC[openC.length - 1].what });
+    /* what Rovestone's own answers say is wrong (REG_RV_SOURCES_): a problem
+       when it breaks the Job Card's hard stops, else a note */
+    (J.flags || []).forEach(function (f) {
+      var t = f.what + ' (' + first(f.by) + ', ' + pushDay_(f.day) + ')';
+      if (f.code) p.push({ code: f.code, text: t }); else notes.push(t);
+    });
+    delete J.flags;
+    delete J.moved;
     /* one KK code, two customers — Ephrata gives the codes by hand */
     var groups = regGroups_(Object.keys(J.names || {}));
     if (groups.length > 1) {
@@ -964,9 +1121,10 @@ function regFacts_(it) {
   var l = it.lead, j = it.job, at = (l && l.at) || {};
   var b = j ? j.board : l.board;
   var steps = {};
+  var rv = !!(j && regRv_(j.job));
   Object.keys(at).forEach(function (k) { steps[k] = at[k]; });
   if (j) Object.keys(j.steps || {}).forEach(function (k) { steps[k] = j.steps[k]; });
-  return {
+  var f = {
     key: it.key,
     customer: (l && l.name) || (j && j.cust) || '',
     lead_no: (l && l.code) || (j && j.leadCode) || '',
@@ -981,6 +1139,8 @@ function regFacts_(it) {
     complaints_open: j ? j.openComplaints || 0 : 0,
     written_about_it: (j && j.said) || []
   };
+  if (rv) f.company = 'Rovestone';
+  return f;
 }
 function regHash_(o) {
   var s = JSON.stringify(o), h = 5381;
@@ -997,6 +1157,11 @@ function regJudgePrompt_(facts, today) {
     REG_BOARD_.map(function (b) { return '  ' + b.id + ': ' + (b.n < 10 ? '0' : '') + b.n + ' ' + b.en + ' — ' + b.who; }).join('\n'),
     'The rules that cannot bend: 50% advance before the final measurement; 100% paid before production;',
     'no delivery without Finance clearance.',
+    'A job whose code starts RBT is Rovestone’s, Klever’s sister company (some are made at Klever’s factory); its',
+    'own people report on it too, and on it whose move each step is: ' +
+      Object.keys(REG_RV_WHO_).map(function (k) { return k + ' ' + REG_RV_WHO_[k]; }).join(', ') + '.',
+    'Rovestone’s Job Card adds: no production before Kidan confirms the 100% payment; no delivery without Beti’s',
+    'QC release.',
     '',
     'For each customer:',
     '- stage: the id of the LAST step the reports show done. by_the_lists.stage is what the lists show; keep it',
@@ -1086,7 +1251,7 @@ function registerJudge_(R, today, all) {
     var x = by[it.key];
     if (!x || !x.stage) return;            /* never read well: the code's reading stands */
     /* old: the facts changed since this reading and the new one failed */
-    var ai = { stage: x.stage, step: regStageOf_(regBoardIx_(x.stage)), status: x.status, why: x.why,
+    var ai = { stage: x.stage, step: regStageFor_(regBoardIx_(x.stage), it.job ? it.job.job : ''), status: x.status, why: x.why,
                next: x.next, who: x.who, at: x.at, model: x.model, old: !!x.failed };
     if (it.lead) it.lead.ai = ai;
     if (it.job) it.job.ai = ai;
@@ -1160,5 +1325,22 @@ function registerBackfill_() {
   all.forEach(function (f) { regStore_(f); });
   registerBuild_(todayAddis_(), false);
   props.setProperty(REGISTER_BACKFILL_KEY_, new Date().toISOString() + ' · ' + all.length + ' reports');
+  return true;
+}
+
+/* Once (22 Oct 2026): the Rovestone reports filed before their lists were
+   read (REG_RV_SOURCES_) — from their first day, 21 Oct — kept again and
+   the tables built, at the next watch. Only those reports are read again. */
+var REGISTER_RV_KEY_ = 'REGISTER_RV_READ';
+function registerRvWatch_() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty(REGISTER_RV_KEY_)) return false;
+  var rv = {};
+  REG_SOURCES_.forEach(function (s) { if (s.co) rv[s.r] = true; });
+  var all = fsQuery_('reports', [['at', 'GREATER_THAN_OR_EQUAL', dayStart_('2026-10-21')]], 'at');
+  var mine = all.filter(function (f) { return rv[f.report]; });
+  mine.forEach(function (f) { regStore_(f); });
+  registerBuild_(todayAddis_(), false);
+  props.setProperty(REGISTER_RV_KEY_, new Date().toISOString() + ' · ' + mine.length + ' reports');
   return true;
 }

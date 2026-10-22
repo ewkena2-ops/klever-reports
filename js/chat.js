@@ -33,7 +33,7 @@ import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   collection, doc, setDoc, addDoc, query, orderBy, limit, startAfter,
   onSnapshot, getDocs, serverTimestamp, terminate, clearIndexedDbPersistence,
-  deleteDoc, waitForPendingWrites
+  deleteDoc, waitForPendingWrites, disableNetwork, enableNetwork
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js?v=906c7b6e';
 
@@ -172,6 +172,8 @@ import { shrinkImage, record, canRecord, clockOf, MAX_SECONDS } from './media.js
     db = initializeFirestore(app, {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
     });
+    /* nobody looking, nothing read (js/quiet.js, 22 Oct 2026) */
+    try { if (window.KLEVER_QUIET) window.KLEVER_QUIET.attach(db, { disableNetwork: disableNetwork, enableNetwork: enableNetwork, waitForPendingWrites: waitForPendingWrites }); } catch (e) {}
   }
 
   /* the signed-in person's Klever id, taken from the account they signed in

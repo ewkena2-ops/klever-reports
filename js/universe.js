@@ -397,7 +397,8 @@ import {
     (function arm() {
       var wait = dayStart(addDays(DAY, 1)).getTime() + 5000 - Date.now();
       setTimeout(function () {
-        if (addisYmd() !== DAY) location.reload(); else arm();
+        /* not in the background: coming into view reloads it (22 Oct 2026) */
+        if (addisYmd() !== DAY) { if (document.visibilityState !== 'hidden') location.reload(); } else arm();
       }, Math.max(wait, 1000));
     })();
     document.addEventListener('visibilitychange', function () {

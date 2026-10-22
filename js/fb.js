@@ -70,6 +70,8 @@
         /* already started by another script on this page */
         db = F.getFirestore(app);
       }
+      /* nobody looking, nothing read (js/quiet.js, 22 Oct 2026) — not on the gate's tablet, which does not load it */
+      try { if (window.KLEVER_QUIET) window.KLEVER_QUIET.attach(db, F); } catch (e) {}
       var first = true;
       F.onAuthStateChanged(auth, function (u) {
         user = u || null;

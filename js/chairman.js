@@ -356,6 +356,10 @@ import {
   }
   function newDay() {
     if (!DAY || today() === DAY) return false;
+    /* not while nobody is looking: a reload reads every view on the page
+       again, and a page in the background at midnight is a few thousand
+       reads for no one (22 Oct 2026) — the page coming into view reloads */
+    if (document.visibilityState === 'hidden') return true;
     if (typing()) {
       if (!dayRetry) dayRetry = setTimeout(function () { dayRetry = null; newDay(); }, 60000);
       return true;

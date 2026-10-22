@@ -97,7 +97,12 @@ function auditFacts_(P, base, kind) {
   }).filter(function (c) { return c.key && c.birr > 0; });
   var crPaid = rdRows_(get, 'cr_paid_list').map(function (x) {
     return { day: x.day, sup: String(x.r.sup || '').trim(), key: key(x.r.sup), birr: n_(x.r.amount), no: String(x.r.chq || '').trim().toUpperCase() };
-  }).filter(function (c) { return c.key && c.birr > 0; });
+  }).concat(rdRows_(get, 'cr_back').filter(function (x) { return x.r.now === 'paid' || x.r.now === 'part'; }).map(function (x) {
+    /* a credit paid on his credit list (23 Oct 2026): in full, what it still
+       owed; in part, what he says was paid */
+    return { day: x.day, sup: String(x.r.sup || '').trim(), key: key(x.r.sup),
+             birr: x.r.now === 'paid' ? n_(x.r.owed) : n_(x.r.amt), no: String(x.r.chq || '').trim().toUpperCase() };
+  })).filter(function (c) { return c.key && c.birr > 0; });
   var orders = rdRows_(get, 'ord_list').map(function (x) { return { day: x.day, key: key(x.r.sup) }; });
   var recs = rdRows_(yor, 'rec_list').map(function (x) { return { day: x.day, key: key(x.r.sup) }; });
 

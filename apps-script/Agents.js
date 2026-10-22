@@ -972,10 +972,21 @@ var AGENTS = [
                          : r.paid === 'credit' ? 'on credit, no cheque yet' + (r.due ? ' — to pay by ' + r.due : '')
                          : 'not said' };
       }),
+      /* worked out from his credit list since 23 Oct 2026 — each credit not
+         yet paid is a row he answers once its pay-by day has come (cr_back) */
       credit_owed_to_suppliers_now: a_(purch, 'cr_owed'),
       credit_paid_back_today: a_(purch, 'cr_paid'),
       credit_past_its_date: a_(purch, 'cr_overdue'),
-      credit_past_its_date_list: rows_(purch.cr_overdue_list),
+      credit_list_today: rows_(purch.cr_back).map(function (r) {
+        return { credit: r.what || '', owed_birr: n_(r.owed) || null, pay_by: r.payby || '',
+                 answer: r.now === 'paid' ? 'paid in full' : r.now === 'part' ? 'part paid' : r.now === 'not' ? 'not paid yet'
+                       : 'not asked yet (not due)', cheque: r.chq || '', paid_now_birr: n_(r.amt) || null,
+                 new_date_to_pay: r.due || '', why_not_paid: r.why || '' };
+      }),
+      credit_past_its_date_list: rows_(purch.cr_overdue_list).concat(rows_(purch.cr_back).filter(function (r) {
+        var by = (r.now === 'not' || r.now === 'part') && r.due ? r.due : r.payby;
+        return r.now !== 'paid' && by && by < d.day;
+      }).map(function (r) { return { sup: r.sup || '', amount: n_(r.owed) || null, due: r.payby || '', why: r.why || '' }; })),
       credit_owed_last_7_days: series_(d, 'getachew-daily', 'cr_owed'),
       margin_floor_birr_per_m2: 6000,
       materials_up_10pct_last_7_days: series_(d, 'getachew-daily', 'p_up'),
@@ -2505,9 +2516,10 @@ function runIfNew_(opt) {
   /* Elyas's or Ephrata's plan for tomorrow in: the route, drafted now (Route.js) */
   try { routeRealtime_(fresh); } catch (e) { Logger.log('route: %s', e.message); }
   /* Getachew's report in: a supplier credit it says is paid has its
-     reminders closed now, not tomorrow morning (Credit.js) */
+     reminders closed now, not tomorrow morning, and his credit list is
+     made again for his next report (Credit.js) */
   if (fresh.some(function (f) { return f.report === 'getachew-daily'; })) {
-    try { creditSettle_(today); } catch (e) { Logger.log('credit settle: %s', e.message); }
+    try { creditAfter_(today); } catch (e) { Logger.log('credit settle: %s', e.message); }
   }
   /* every lead and job they name, into his tables (Register.js) */
   try { registerUpdate_(fresh); } catch (e) { Logger.log('register: %s', e.message); }

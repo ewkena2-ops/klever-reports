@@ -3306,6 +3306,8 @@
     var data = values[f.id];
 
     function rowLabel(i) {
+      /* a credit is its supplier, what is owed and its dates */
+      if (f.carry && f.carry.credit) return creditLabel(data[i] || {}, lang);
       if (f.carry) {
         var code = String((data[i] || {})[f.cols[0].id] || ''), info = CARRY_INFO[code] || {};
         var more = [info.cust, info.m2 ? info.m2 + ' m²' : ''].filter(function (x) { return x; });
@@ -4900,6 +4902,9 @@
     /* `askFrom`: a question not asked before that day (the user, 15 Oct
        2026: Getachew's earlier jobs and job amounts, not that day) */
     if (f.askFrom && addis().toISOString().slice(0, 10) < f.askFrom) return false;
+    /* `once`: asked until an earlier report has answered it — and not while
+       that is unknown (loadCarry), or it could be answered twice */
+    if (f.once && ONCE_DONE[f.id] !== false) return false;
     if (f.carry && f.carry.hideEmpty && !(Array.isArray(values[f.id]) && values[f.id].length)) return false;
     if (!f.show) return true;
     var p = fieldById(f.show.f), w = f.show.when || 'pos';
@@ -4938,6 +4943,8 @@
              user, 15 Oct 2026: Getachew's job amounts, for that day only) */
           if (!c.must || (c.mustFrom && addis().toISOString().slice(0, 10) < c.mustFrom)) return;
           (values[f.id] || []).forEach(function (row, i) {
+            /* `mustDue`: a credit not due yet need not be answered (23 Oct 2026) */
+            if (c.mustDue && !creditDueNow(row)) return;
             if (row && rowHasData(row, f.cols) && colOn(c, row) && !has(row[c.id])) {
               cells.push({ f: f, c: c, row: row, id: 'c_' + f.id + '_' + i + '_' + c.id, n: i + 1 });
             }
@@ -5160,6 +5167,8 @@
   function autoOne(k) {
     if (!k) return NaN;
     if (k.of != null) return num(values[k.of]);
+    /* supplier credit added up from the credit list (23 Oct 2026) */
+    if (k.credit != null) return creditFigure(k.credit);
     /* a yes/no read off a "tap everything that happened" list: yes when one
        of `v` was tapped, no when the list was answered without it, blank
        while the list is unanswered. `flip` is for a question asked the right
@@ -5682,21 +5691,203 @@
   function loadCarry() {
     if (!report) return;
     var cs = allFields().filter(function (f) { return f.carry; });
-    if (!cs.length) return;
+    var os = allFields().filter(function (f) { return f.once; });
+    if (!cs.length && !os.length) return;
     if (!window.FB || !FB.ownReports || !AUTH.who()) return;
-    var days = Math.max.apply(null, cs.map(function (f) { return f.carry.days || 30; }));
+    var days = Math.max.apply(null, cs.map(function (f) { return f.carry.days || 30; }).concat([30]));
     var day = periodNow(report).day || stamp(), was = report.id;
     var asked = cs.some(function (f) { return f.carry.ask; }) && FB.myJobAsk ? FB.myJobAsk()['catch'](function () { return null; }) : Promise.resolve(null);
-    Promise.all([FB.ownReports(report.person, new Date(nowMs() - days * 864e5)), asked]).then(function (got) {
+    var credit = cs.some(function (f) { return f.carry.credit; }) && FB.creditAsk ? FB.creditAsk(report.person)['catch'](function () { return null; }) : Promise.resolve(null);
+    Promise.all([FB.ownReports(report.person, new Date(nowMs() - days * 864e5)), asked, credit]).then(function (got) {
       if (!report || report.id !== was) return;
-      var list = got[0] || [], ask = got[1];
+      var list = got[0] || [], ask = got[1], cask = got[2];
+      /* answered in a report before today's — or, longer ago than the
+         reports read here, as the script says (Credit.js `answered`). A
+         correction of today's own report still asks it. */
+      os.forEach(function (f) {
+        ONCE_DONE[f.id] = list.some(function (d) {
+          return d.report === report.id && ymdOf(addis(d.at)) < day && has((d.values || {})[f.id]);
+        }) || !!(cask && Array.isArray(cask.answered) && cask.answered.indexOf(f.id) !== -1);
+      });
       cs.forEach(function (f) {
-        mergeCarry(f, f.carry.ask ? askOpen(f, ask, list) : carryOpen(f, list, day));
+        if (f.carry.credit) { mergeCredit(f, creditOpen(cask, list, day)); CREDIT_READY = true; }
+        else mergeCarry(f, f.carry.ask ? askOpen(f, ask, list) : carryOpen(f, list, day));
         var w = document.getElementById('w_' + f.id);
         if (w && w.redraw) w.redraw();
       });
       refresh();
     })['catch'](function () {});
+  }
+  var ONCE_DONE = {};
+
+  /* SUPPLIER CREDIT, ONE PURCHASE AT A TIME (carry.credit — the owner, 23
+     Oct 2026: "ask the credit on today's purchase, so later we ask if that
+     credit is paid"). The rows are the script's list of every credit not
+     yet paid (apps-script/Credit.js, /jobask/<person>-credit), each known by
+     `ref`, the filing and the row it was written in; the script reads the
+     answers back by it. A report the script has not read yet counts here
+     too: a credit bought in it is added, one it paid is gone. Without the
+     script's list (not made yet, no signal) the list is made from this
+     person's own reports of the last 30 days. A row keeps what it is owed
+     for beside its answers: ref, sup, code, item, owed (Birr still owed, or
+     null when the amount was never written), amount, payby, bought, old. */
+  var CREDIT_READY = false;
+  function creditItem(it) {
+    if (!it || !it.ref) return null;
+    var owed = it.left == null || it.left === '' || isNaN(Number(it.left)) ? null : Number(it.left);
+    return { ref: String(it.ref), sup: String(it.sup || '').trim(), code: String(it.code || '').trim(),
+             item: String(it.item || '').trim(), owed: owed,
+             amount: it.amount == null || isNaN(Number(it.amount)) ? null : Number(it.amount),
+             payby: /^\d{4}-\d{2}-\d{2}$/.test(String(it.due || '')) ? String(it.due) : '',
+             bought: String(it.day || ''), old: !!it.old };
+  }
+  /* the credits one filing took: its orders on credit, and what it listed
+     as owed from before */
+  function creditsIn(d) {
+    var v = d.values || {}, out = [], day = ymdOf(addis(d.at));
+    (Array.isArray(v.ord_list) ? v.ord_list : []).forEach(function (r, i) {
+      if (r && r.paid === 'credit') out.push(creditItem({ ref: d.id + '-' + i, sup: r.sup, code: r.code, item: r.item,
+        left: has(r.amount) ? num(r.amount) : null, amount: has(r.amount) ? num(r.amount) : null, due: r.due, day: day }));
+    });
+    if (v.cr_old_any === 'yes') (Array.isArray(v.cr_old) ? v.cr_old : []).forEach(function (r, i) {
+      if (r && (has(r.sup) || has(r.amount))) out.push(creditItem({ ref: d.id + '-o' + i, sup: r.sup, code: r.code,
+        left: has(r.amount) ? num(r.amount) : null, amount: has(r.amount) ? num(r.amount) : null, due: r.due, day: day, old: 1 }));
+    });
+    return out.filter(Boolean);
+  }
+  function creditOpen(ask, list, day) {
+    var items = [], since = 0;
+    if (ask && Array.isArray(ask.items)) {
+      items = ask.items.map(creditItem).filter(Boolean);
+      since = ask.at && ask.at.toDate ? ask.at.toDate().getTime() : (Number(new Date(ask.at)) || 0);
+    }
+    /* this person's reports the script had not read, before today's; a day
+       filed twice is the later filing's, as the script takes it */
+    var best = {}, read = {}, alias = {};
+    (list || []).forEach(function (d) {
+      if (d.report !== report.id || !d.id) return;
+      var dd = ymdOf(addis(d.at));
+      if (dd >= day) return;
+      if (!(d.at > since)) { if (!read[dd] || d.at > read[dd].at) read[dd] = d; return; }
+      if (!best[dd] || d.at > best[dd].at) best[dd] = d;
+    });
+    /* a credit is known by the filing that stands for its day: a key given
+       to an earlier filing of that day is the same row of the later one */
+    (list || []).forEach(function (d) {
+      var dd = ymdOf(addis(d.at)), b = best[dd] || read[dd];
+      if (d.report === report.id && d.id && b && b.id !== d.id && d.at < b.at) alias[d.id] = b.id;
+    });
+    var keyOf = function (ref) {
+      var s = String(ref || ''), cut = s.indexOf('-');
+      return cut > 0 && alias[s.slice(0, cut)] ? alias[s.slice(0, cut)] + s.slice(cut) : s;
+    };
+    var answersOf = function (d) {
+      var by = {};
+      (Array.isArray(((d || {}).values || {}).cr_back) ? d.values.cr_back : []).forEach(function (r) { if (r && r.ref) by[keyOf(r.ref)] = r; });
+      return by;
+    };
+    Object.keys(best).sort().forEach(function (dd) {
+      var d = best[dd];
+      /* the script's credits of a day filed again are this filing's now */
+      items = items.filter(function (c) { return c.bought !== dd; });
+      items = items.concat(creditsIn(d).filter(function (c) {
+        return !items.some(function (x) { return x.ref === c.ref; });
+      }));
+      /* a day the script had read once and that was filed again since: its
+         answers are in the script's list already — only what the second
+         filing changed counts, or a part paid would come off twice */
+      var before = read[dd] ? answersOf(read[dd]) : {}, now = answersOf(d);
+      Object.keys(now).forEach(function (ref) {
+        var r = now[ref], p = before[ref];
+        if (p && p.now === 'paid') return;
+        var paidNow = r.now === 'part' && has(r.amt) ? num(r.amt) : 0;
+        if (p && p.now === 'part' && has(p.amt)) paidNow -= num(p.amt);
+        for (var i = 0; i < items.length; i++) {
+          var c = items[i];
+          if (c.ref !== ref) continue;
+          if (r.now === 'paid') { items.splice(i, 1); break; }
+          if (paidNow && c.owed != null) c.owed = Math.max(0, c.owed - paidNow);
+          if ((r.now === 'not' || r.now === 'part') && /^\d{4}-\d{2}-\d{2}$/.test(String(r.due || ''))) c.payby = String(r.due);
+          if (c.owed === 0) items.splice(i, 1);
+          break;
+        }
+      });
+    });
+    /* soonest to pay first; those with no date last, oldest first */
+    return items.sort(function (a, b) {
+      var x = a.payby || '9999', y = b.payby || '9999';
+      return x !== y ? (x < y ? -1 : 1) : (a.bought < b.bought ? -1 : a.bought > b.bought ? 1 : 0);
+    });
+  }
+  /* the open credits into the list: a row already answered stays; one only
+     carried, no longer open, goes; each keeps its facts up to date */
+  function mergeCredit(f, open) {
+    if (!Array.isArray(values[f.id])) values[f.id] = [];
+    var data = values[f.id], refs = open.map(function (c) { return c.ref; });
+    for (var i = data.length - 1; i >= 0; i--) {
+      var r = data[i];
+      if (!r || !r.ref) { data.splice(i, 1); continue; }
+      if (!carryAnswered(f, r) && refs.indexOf(r.ref) === -1) data.splice(i, 1);
+    }
+    open.forEach(function (c) {
+      var row = data.filter(function (r) { return r.ref === c.ref; })[0];
+      if (!row) { row = {}; data.push(row); }
+      ['ref', 'sup', 'code', 'item', 'owed', 'amount', 'payby', 'bought', 'old'].forEach(function (k) { row[k] = c[k]; });
+      row.what = creditLabel(row, lang);
+    });
+    /* in the list's own order */
+    data.sort(function (a, b) {
+      var x = refs.indexOf(a.ref), y = refs.indexOf(b.ref);
+      return (x === -1 ? 1e9 : x) - (y === -1 ? 1e9 : y);
+    });
+  }
+  function creditToday() { return (report && periodNow(report).day) || stamp(); }
+  /* its pay-by day has come — or it has none to wait for */
+  function creditDueNow(r) { return !r || !r.payby || r.payby <= creditToday(); }
+  function creditLabel(r, lg) {
+    var tx = function (k, o) { return tfillIn(lg, k, o || {}); }, out = [];
+    out.push(r.sup || tx('crNoSup'));
+    if (r.owed == null) out.push(tx('crNoAmt'));
+    else if (r.amount != null && r.owed < r.amount) out.push(tx('crLeft', { v: money(r.owed), all: money(r.amount) }));
+    else out.push(tx('crBirr', { v: money(r.owed) }));
+    if (r.code) out.push(r.code);
+    if (r.bought) out.push(tx(r.old ? 'crOld' : 'crBought', { d: dayLabel(r.bought) }));
+    if (!r.payby) out.push(tx('crNoDate'));
+    else {
+      var today = creditToday(), late = Math.round((Date.parse(today) - Date.parse(r.payby)) / 864e5);
+      out.push(tx('crPayBy', { d: dayLabel(r.payby) }) +
+               (late > 1 ? ' — ' + tx('crLate', { n: late }) : late === 1 ? ' — ' + tx('crLate1')
+                : late === 0 ? ' — ' + tx('crToday') : ' — ' + tx('crNotYet')));
+    }
+    return out.join(' · ');
+  }
+  /* what the list adds up to (cr_paid, cr_owed, cr_overdue): paid back
+     today, on the list and off it; still owed — the list less today's
+     payments, plus today's orders on credit and what was listed as owed
+     from before; and how much of that is past its date as it now stands.
+     Blank until the list has been read: blank is not nought. */
+  function creditFigure(kind) {
+    var cf = allFields().filter(function (f) { return f.carry && f.carry.credit; })[0];
+    if (!cf || !CREDIT_READY) return NaN;
+    var today = creditToday(), paid = 0, owed = 0, over = 0;
+    var owe = function (birr, by) { if (isNaN(birr)) return; owed += birr; if (by && by < today) over += birr; };
+    (Array.isArray(values[cf.id]) ? values[cf.id] : []).forEach(function (r) {
+      if (!r || !r.ref) return;
+      var left = r.owed == null || r.owed === '' ? NaN : Number(r.owed);
+      if (r.now === 'paid') { if (!isNaN(left)) paid += left; return; }
+      var by = r.payby;
+      if (r.now === 'part') {
+        var p = num(r.amt);
+        if (!isNaN(p)) { paid += p; if (!isNaN(left)) left = Math.max(0, left - p); }
+      }
+      if ((r.now === 'not' || r.now === 'part') && has(r.due)) by = String(r.due);
+      owe(left, by);
+    });
+    var of = function (id) { var g = fieldById(id); return g && shown(g) && Array.isArray(values[id]) ? values[id] : []; };
+    of('ord_list').forEach(function (r) { if (r && r.paid === 'credit') owe(num(r.amount), r.due); });
+    of('cr_old').forEach(function (r) { if (r) owe(num(r.amount), r.due); });
+    of('cr_paid_list').forEach(function (r) { var x = num(r && r.amount); if (!isNaN(x)) paid += x; });
+    return round(kind === 'paid' ? paid : kind === 'overdue' ? over : owed, 2);
   }
   /* THE SCRIPT'S QUESTIONS (carry.ask — the money on each job, 14 Oct 2026):
      the jobs apps-script/JobMoney.js asks this person about (/jobask/{me}),
@@ -6072,7 +6263,7 @@
     });
     fields.forEach(function (f) {
       var open = shown(f);
-      if ((f.show || (f.carry && f.carry.hideEmpty)) && !f.quiet) {
+      if ((f.show || f.once || (f.carry && f.carry.hideEmpty)) && !f.quiet) {
         var fr = document.getElementById('r_' + f.id) || document.getElementById('w_' + f.id);
         if (fr && fr.hidden === open) {
           fr.hidden = !open;

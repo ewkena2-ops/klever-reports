@@ -8,7 +8,11 @@
                 carry(a list whose rows are the job codes of this person's earlier
                       reports still open — {from:['list.col'|'question'|{f, col, when:{col, is|in}}],
                       shut:[same — a later mention that closes the job], close:{col, in:[…]}, days};
-                      or the jobs the script asks this person about — {ask:'<kind>', close:{col}})
+                      or the jobs the script asks this person about — {ask:'<kind>', close:{col}};
+                      or each supplier credit not yet paid — {credit:1, close:{col, in:[…]}})
+                mustDue(on a credit list's must column: a must only once the credit's
+                        pay-by day has come, or it has none)
+                once(a question asked until one report has answered it, then never again)
    types:       num money pct text area ratio yesno choice
    target:      {op:'gte'|'lte', v:<number>, en:'', am:''}            */
 
@@ -1895,11 +1899,15 @@ const REPORTS = [
           {id:'colour', en:'Colour code', am:'የቀለም ኮድ', t:'colour', of:'item'},
           {id:'qty', en:'How many (sheets, pieces)', am:'ብዛት (ሉህ፣ ቁራጭ)', t:'num'},
           {id:'amount', en:'Cost in Birr', am:'ዋጋ በብር', t:'money'},
-          {id:'paid', en:'Cheque given, or on credit?', am:'ቼክ ተሰጥቷል ወይስ በዱቤ?', t:'choice', opts:[
+          /* a tap every order must have (the owner, 23 Oct 2026: "ask the
+             credit on today's purchase, then later ask if it is paid"): on
+             credit, it is on his credit list from the next report until he
+             says it is paid. Left empty on most orders before. */
+          {id:'paid', en:'Cheque given, or on credit?', am:'ቼክ ተሰጥቷል ወይስ በዱቤ?', t:'choice', must:1, opts:[
             {v:'cheque', en:'Cheque given', am:'ቼክ ተሰጥቷል'},
             {v:'credit', en:'On credit — no cheque yet', am:'በዱቤ — ቼክ ገና አልተሰጠም'}]},
-          {id:'chq', en:'Cheque no., if given', am:'የቼክ ቁጥር (ከተሰጠ)', t:'text'},
-          {id:'due', en:'If on credit: pay by', am:'በዱቤ ከሆነ፦ የሚከፈልበት ቀን', t:'date'},
+          {id:'chq', en:'Cheque no.', am:'የቼክ ቁጥር', t:'text', ifCol:'paid', ifIn:['cheque']},
+          {id:'due', en:'Pay by', am:'የሚከፈልበት ቀን', t:'date', ifCol:'paid', ifIn:['credit']},
           {id:'date', en:'Promised delivery', am:'ቃል የተገባው የመድረሻ ቀን', t:'text'}
         ]},
       {id:'ord_placed', en:'How many orders did you place today?', am:'ዛሬ ስንት ትዕዛዝ ሰጡ?', t:'num',
@@ -1928,7 +1936,54 @@ const REPORTS = [
         auto:{sum:'chq_list.amount'}, sumEn:'in cheques', sumAm:'በቼክ'}
     ]},
     { en:'What we owe, and the papers to Selam', am:'ያለብን ዕዳና ለሰላም የሚደርሱ ሰነዶች', fields:[
-      {id:'cr_owed', en:'How much does Klever owe suppliers on credit right now, in total?', am:'ክሌቨር አሁን ለአቅራቢዎች በዱቤ በጠቅላላ ስንት ብር አለበት?', t:'money', parts:{of:['cr_overdue']}},
+      /* SUPPLIER CREDIT, ONE PURCHASE AT A TIME (the owner, 23 Oct 2026:
+         "every day we don't have to ask the total — we have to ask the credit
+         on today's purchase, so later we ask if that credit is paid"). He was
+         asked the total owed every day and typed 39,950, 512,116, "795!941",
+         369,000, 189,063 — or nothing, four days in ten — and no one could
+         say which supplier it was. Now each order says cheque or credit
+         (ord_list.paid); each credit not yet paid comes back here, one row
+         each, from the script's list (apps-script/Credit.js,
+         /jobask/getachew-credit), until he says it is paid. A row must be
+         answered once its pay-by day has come; before that it is there to
+         see, and a tap says it was paid early. The totals below are added up
+         from it, not asked. */
+      {id:'cr_back', en:'Credit from your earlier reports — is it paid?', am:'ባለፉት ሪፖርቶችዎ የተመዘገበ ዱቤ — ተከፍሏል?', t:'table',
+        carry:{credit:1, close:{col:'now', in:['paid']}},
+        cols:[
+          {id:'what', en:'Credit', am:'ዱቤ', t:'text'},
+          {id:'now', en:'Paid?', am:'ተከፍሏል?', t:'choice', must:1, mustDue:1, opts:[
+            {v:'paid', en:'Paid in full',                am:'ሙሉ በሙሉ ተከፍሏል'},
+            {v:'part', en:'Part paid — some still owed', am:'በከፊል ተከፍሏል — ቀሪ ዕዳ አለ'},
+            {v:'not',  en:'Not paid yet',                am:'ገና አልተከፈለም'}
+          ]},
+          /* `want`: Selam may have written the cheque — empty, it is counted
+             and marked, and the second tap sends */
+          {id:'chq', en:'Cheque no.', am:'የቼክ ቁጥር', t:'text', want:1, ifCol:'now', ifIn:['paid', 'part']},
+          {id:'amt', en:'How much was paid, in Birr?', am:'ስንት ብር ተከፈለ?', t:'money', want:1, ifCol:'now', ifIn:['part']},
+          {id:'due', en:'New date to pay the rest', am:'ቀሪው የሚከፈልበት አዲስ ቀን', t:'date', ifCol:'now', ifIn:['not', 'part']},
+          {id:'why', en:'Why not paid yet?', am:'ለምን ገና አልተከፈለም?', t:'text', picks:COL_NOT_PAID, ifCol:'now', ifIn:['not']}
+        ]},
+      /* what was owed before the list began, written once: from the next
+         report each one is on the list above like any other credit */
+      {id:'cr_old_any', en:'Before this list began, did Klever already owe any supplier on credit? (asked once)', am:'ይህ ዝርዝር ከመጀመሩ በፊት ክሌቨር ለአቅራቢ የዱቤ ዕዳ ነበረበት? (አንድ ጊዜ ብቻ ይጠየቃል)', t:'yesno', once:1,
+        yes:{en:'Yes — I list them', am:'አዎ — እዘረዝራቸዋለሁ'}, no:{en:'No — nothing from before', am:'የለም — ከዚህ በፊት የቀረ የለም'}},
+      {id:'cr_old', en:'Each supplier owed from before — from the next report each one is on your credit list', am:'ከዚህ በፊት ዕዳ ያለበት እያንዳንዱ አቅራቢ — ከሚቀጥለው ሪፖርት ጀምሮ በዱቤ ዝርዝርዎ ላይ ይመጣል', t:'table', addEn:'Add a supplier', addAm:'አቅራቢ ጨምር',
+        show:{f:'cr_old_any', when:'yes'},
+        cols:[
+          {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
+          {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
+          {id:'amount', en:'Owed, in Birr', am:'ዕዳ በብር', t:'money'},
+          {id:'due', en:'Pay by', am:'የሚከፈልበት ቀን', t:'date'}
+        ]},
+      /* added up from the list (app.js creditFigure): what was paid back
+         today, what is still owed — the list, less today's payments, plus
+         today's orders on credit — and how much of it is past its date */
+      {id:'cr_paid', en:'Credit paid back today', am:'ዛሬ የተከፈለ ዱቤ', t:'money', auto:{credit:'paid'}},
+      {id:'cr_owed', en:'What Klever owes suppliers on credit now', am:'ክሌቨር አሁን ለአቅራቢዎች ያለበት የዱቤ ዕዳ', t:'money', auto:{credit:'owed'}, parts:{of:['cr_overdue']}},
+      {id:'cr_overdue', en:'Of it, past the date we promised to pay', am:'ከዚህ ውስጥ ቃል የገባንበት ቀን ያለፈበት', t:'money', auto:{credit:'overdue'},
+        tgt:{op:'lte', v:0, en:'Should be 0 — a supplier owed past the date can stop delivering',
+             am:'ዜሮ መሆን አለበት — ቀኑ ያለፈበት አቅራቢ ዕቃ ማቅረብ ሊያቆም ይችላል'}},
       /* the rulebook reads this every day: 200 Birr for each document that
          was due and did not reach Selam in 24 hours, and the month's ZamZam
          bonus needs all of them on time (js/rules.js getachew-docs-24h,
@@ -1965,8 +2020,10 @@ const REPORTS = [
           { v:'not_told',  g:'sup',   en:'A supplier problem was not told to Mahelet and Selam the same day', am:'የአቅራቢ ችግር በዚያው ቀን ለማህሌትና ለሰላም አልተነገረም' },
           { v:'price',     g:'price', en:'A price went up or down from last time',       am:'ዋጋ ካለፈው ጊዜ ጨመረ ወይም ቀነሰ' },
           { v:'swap',      g:'price', en:'A material was swapped for a cheaper one',     am:'ዕቃ በርካሽ ዕቃ ተተካ' },
-          { v:'paid_back', g:'money', en:'I paid back credit to a supplier',             am:'ለአቅራቢ የዱቤ ዕዳ ከፈልኩ' },
-          { v:'overdue',   g:'money', en:'A supplier is owed past the date we promised', am:'ለመክፈል ቃል የገባንበት ቀን ያለፈበት ዕዳ አለ' },
+          /* a credit on his list is paid on the list (cr_back); this is for
+             one that is not on it. "Owed past the date" is no longer a tap:
+             the list knows each pay-by date (23 Oct 2026). */
+          { v:'paid_back', g:'money', en:'I paid a supplier credit that is not on my credit list', am:'በዱቤ ዝርዝሬ ላይ የሌለ የአቅራቢ ዱቤ ከፈልኩ' },
           { v:'doc_out',   g:'doc',   en:'A purchase document has not reached Selam yet', am:'ለሰላም ገና ያልደረሰ የግዥ ሰነድ አለ' },
           { v:'no_conf',   g:'chq',   en:'A cheque went out before Selam confirmed the money', am:'ሰላም ገንዘቡን ሳታረጋግጥ ቼክ ተሰጠ' },
           { v:'no_match',  g:'chq',   en:'A cheque was not for the approved amount or supplier', am:'ቼክ በጸደቀው መጠን ወይም ለጸደቀው አቅራቢ አልተሰጠም' },
@@ -2089,28 +2146,15 @@ const REPORTS = [
       {id:'p_subok', en:'Did Wude approve it before it was bought?', am:'ከመገዛቱ በፊት ውዱ አጽድቃለች?', t:'yesno', yes:{en:'Wude approved it first', am:'ውዱ ቀድማ ፈቅዳለች'}, no:{en:'Bought without her OK', am:'ያለ ውዱ ፈቃድ ተገዛ'}, opt:1, i:1,
         show:{f:'p_sub', when:'yes'}},
 
-      /* — credit paid back, and credit past its date */
-      {id:'cr_paid_any', en:'Did you pay back any earlier credit today?', am:'ዛሬ ቀድሞ የተወሰደ ዱቤ ከፍለዋል?', t:'yesno', quiet:1, auto:{picked:'g_events', v:'paid_back'}},
+      /* — a credit paid that is not on his credit list (one on it is paid
+         there, cr_back). What is past its date, and why, is the list's now
+         (23 Oct 2026): cr_overdue is added up, cr_overdue_list is gone. */
+      {id:'cr_paid_any', en:'Did you pay a supplier credit that is not on your credit list?', am:'በዱቤ ዝርዝርዎ ላይ የሌለ የአቅራቢ ዱቤ ከፍለዋል?', t:'yesno', quiet:1, auto:{picked:'g_events', v:'paid_back'}},
       {id:'cr_paid_list', en:'Which suppliers were paid, and with which cheque?', am:'የትኞቹ አቅራቢዎች ተከፈላቸው? በየትኛው ቼክ?', t:'table', addEn:'Add a payment', addAm:'ክፍያ ጨምር',
         show:{f:'cr_paid_any', when:'yes'}, cols:[
           {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
           {id:'amount', en:'Amount', am:'መጠን', t:'money'},
           {id:'chq', en:'Cheque no.', am:'የቼክ ቁጥር', t:'text'}
-        ]},
-      {id:'cr_paid', en:'How much earlier credit did you pay back today, by cheque?', am:'ዛሬ ቀድሞ የተወሰደ ዱቤ ስንት ብር በቼክ ተከፈለ?', t:'money',
-        auto:{sum:'cr_paid_list.amount'}, sumEn:'paid back', sumAm:'ተመልሷል'},
-      /* a real 0 on a normal day: the week reads the last one (g_cr_overdue)
-         and the morning agents read it every day */
-      {id:'cr_overdue', en:'How much is owed past the date we promised to pay, in Birr?', am:'ቃል የገባንበት ቀን ያለፈበት ዕዳ ስንት ብር ነው?', t:'money', zero:1,
-        show:{f:'g_events', when:'has', v:'overdue'},
-        tgt:{op:'lte', v:0, en:'Should be 0 — a supplier owed past the date can stop delivering',
-             am:'ዜሮ መሆን አለበት — ቀኑ ያለፈበት አቅራቢ ዕቃ ማቅረብ ሊያቆም ይችላል'}},
-      {id:'cr_overdue_list', en:'Which suppliers are owed past the date, how much, and why not paid?', am:'ቀኑ ያለፈባቸው አቅራቢዎች እነማን ናቸው? ስንት ብር? ለምን አልተከፈለም?', t:'table', addEn:'Add a supplier', addAm:'አቅራቢ ጨምር',
-        show:{f:'cr_overdue', when:'miss'}, cols:[
-          {id:'sup', en:'Supplier', am:'አቅራቢ', t:'text'},
-          {id:'amount', en:'Amount', am:'መጠን', t:'money'},
-          {id:'due', en:'Was due', am:'የሚከፈልበት ቀን', t:'text'},
-          {id:'why', en:'Why not paid', am:'ለምን አልተከፈለም', t:'text', picks:COL_NOT_PAID}
         ]},
 
       /* — a paper not yet with Selam (the count is above, beside doc_24) */

@@ -253,7 +253,9 @@
           var out = [], m = got[1];
           got[0].forEach(function (d) {
             var x = d.data({ serverTimestamps: 'estimate' });
-            out.push({ report: x.report, person: x.person,
+            /* `id`: a supplier credit is known by its filing and row
+               (apps-script/Credit.js, js/app.js creditOpen) */
+            out.push({ id: d.id, report: x.report, person: x.person,
                        at: movedAt(m, d.id, x, timeOf(x.at)).getTime(), values: x.values || {} });
           });
           return out;
@@ -628,6 +630,18 @@
       return ready.then(function () {
         if (!db || !user) return null;
         return F.getDoc(F.doc(db, 'jobask', idOf(user))).then(function (d) {
+          return d.exists() ? d.data() : null;
+        })['catch'](function () { return null; });
+      });
+    },
+    /* every supplier credit of this person's not yet paid, as the script
+       last worked it out (apps-script/Credit.js, 23 Oct 2026) — beside the
+       jobs it asks about, readable by that person (and the Chairman, who
+       may fill the form for them) */
+    creditAsk: function (person) {
+      return ready.then(function () {
+        if (!db || !user) return null;
+        return F.getDoc(F.doc(db, 'jobask', person + '-credit')).then(function (d) {
           return d.exists() ? d.data() : null;
         })['catch'](function () { return null; });
       });

@@ -2303,8 +2303,14 @@ import {
          before their first day — the squares say "not due yet" (19 Oct 2026,
          the user, Rovestone's new people starting 21 Oct: "I only see
          Frewoyni still") */
+      var hasReport = function (p) { return REPORTS.some(function (r) { return r.person === p.id; }); };
       var people = PEOPLE.filter(function (p) {
-        return seen[p.id] || (co && p.company === co && REPORTS.some(function (r) { return r.person === p.id; }));
+        if (seen[p.id]) return true;
+        if (co) return p.company === co && hasReport(p);
+        /* Klever's lists someone whose first day is still to come too, every
+           square "not due yet" (23 Oct 2026, the user, of the designers Nahome
+           and Tesfaye starting Mon 26 Oct: "where are they") */
+        return !p.company && !!p.from && p.from > DAY && hasReport(p);
       });
       if (co && !people.length) return null;
       /* an account that reports for a company and has no person's name yet

@@ -1598,7 +1598,9 @@ function closeMissed_() {
      effect within the hour it went live) */
   if (props.getProperty('MISSED_LOOK') === hour) return false;
   props.setProperty('MISSED_LOOK', hour);
-  if (fsGet_('ledger/' + day)) return false;
+  /* closed — but perhaps never read (readMissed_) */
+  var led = fsGet_('ledger/' + day);
+  if (led) return readMissed_(today, day, led, props);
   /* the morning run, finished, writes its line on /health/daily. Only a run
      that left no line since 6 AM (stopped, or never started) is the net's;
      and no line at all is a new system, not a stopped run.
@@ -1624,6 +1626,52 @@ function closeMissed_() {
     return closeAndRead_(day, warn, caught, ' — closed by the ten-minute watch at ' +
                          Utilities.formatDate(new Date(), tz_(), 'HH:mm') +
                          (sinceSix ? '; the morning run failed' : '; the morning run did not finish'));
+  });
+  return true;
+}
+
+/* Closed, but never read. 23 Oct 2026: the 06:44 run saved Thursday's
+   ledger at 6:45, then the AI's reading went past Google's six minutes — no
+   line on /health/daily, no reading on his page, no email, no WhatsApp
+   brief, his page in red all day — and the net above stood back because the
+   ledger was there. From 7:30, a closed yesterday with no line since 6 AM,
+   or a line that says it failed, is read here in a run of its own, from the
+   closed day's own lines: not closed again, its fines as they were charged.
+   At most three tries a day, as above — each one pays the model. A reading
+   already saved after the close (the run stopped later, on the email or
+   the brief) is not read and mailed a second time; its line is written. */
+function readMissed_(today, day, led, props) {
+  var h = fsGet_('health/daily');
+  if (!h) return false;
+  var sinceSix = h.at && h.at.getTime() >= dayStart_(today).getTime() + 6 * 3600 * 1000;
+  if (sinceSix && h.ok !== false) return false;
+  var closedAt = led.closedAt && led.closedAt.getTime ? led.closedAt : null;
+  var hm = function (t) { return Utilities.formatDate(t, tz_(), 'HH:mm'); };
+  var head = (led.lines || []).length + ' due, ' + fmt_(led.total || 0) + ' Birr in report fines — closed' +
+             (closedAt ? ' at ' + hm(closedAt) : '');
+  var a = fsGet_('analysis/' + day);
+  if (a && !a.provisional && a.ranAt && a.ranAt.getTime && (!closedAt || a.ranAt >= closedAt)) {
+    health_('daily', { ok: true, period: day, warn: [],
+                       note: head + '; read at ' + hm(a.ranAt) + ', the run stopped after the reading' });
+    return false;
+  }
+  var r = String(props.getProperty('MISSED_READ') || '').split(':');
+  var tries = r[0] === today ? Number(r[1]) || 0 : 0;
+  if (tries >= MISSED_RETRIES_) return false;
+  props.setProperty('MISSED_READ', today + ':' + (tries + 1));
+  ran_('daily', function () {
+    var warn = [];
+    try { bonusStanding_(day); }
+    catch (e) { Logger.log('bonus standing: %s', e.message); warn.push('Bonuses so far: ' + e.message); }
+    var c = closeDay_(day, { write: false });
+    c.ledger = led.lines || [];
+    c.ruleLines = led.ruleLines || [];
+    c.ruleErrors = led.ruleErrors || [];
+    (c.warn || []).forEach(function (w) { warn.push(w); });
+    if (c.ledger.length) runOn_(c, false, { warn: warn });
+    return { period: day, warn: warn,
+             note: head + '; read by the ten-minute watch at ' + hm(new Date()) +
+                   (sinceSix ? '; the morning reading failed' : '; the morning run stopped before the reading') };
   });
   return true;
 }

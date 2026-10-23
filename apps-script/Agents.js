@@ -1149,9 +1149,9 @@ var AGENTS = [
 
 { id:'design', en:'Design', am:'ዲዛይን',
   said:['yohannis-design-daily', 'yonas-design-daily', 'abrham-g-design-daily', 'teklweld-design-daily', 'abrham-w-design-daily',
-        'ermiyas-design-daily'],
+        'ermiyas-design-daily', 'nahome-design-daily', 'tesfaye-design-daily'],
   facts: function (d) {
-    var ids = ['yohannis','yonas','abrham-g','teklweld','abrham-w','ermiyas'];
+    var ids = ['yohannis','yonas','abrham-g','teklweld','abrham-w','ermiyas','nahome','tesfaye'];
     var out = { designers: [], filed: 0, missing: [] };
     ids.forEach(function (id) {
       var r = got_(d.filed, id + '-design-daily');

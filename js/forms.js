@@ -72,6 +72,12 @@ const PEOPLE = [
      reports carry no fines and the rulebook tracks his lines at nothing
      until his letter is signed — then take `noLetter` out. */
   { id:'ermiyas',    en:'Ermiyas',              am:'ኤርሚያስ',          roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial', from:'2026-10-07', noLetter:1, scan:1 },
+  /* the seventh and eighth designers, added 23 Oct 2026 (the user: "add new
+     designer called Nahome" … "and also designer Tesefaya"); reports and the
+     office scan from Mon 26 Oct. No surnames and no terms letters yet, so
+     `noLetter`: no fines until they are signed. */
+  { id:'nahome',     en:'Nahome',               am:'ናሆም',            roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial', from:'2026-10-26', noLetter:1, scan:'2026-10-26' },
+  { id:'tesfaye',    en:'Tesfaye',              am:'ተስፋዬ',           roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial', from:'2026-10-26', noLetter:1, scan:'2026-10-26' },
 
   /* Betelhem's assistant. She has no terms letter of her own — everything
      about her is written inside Betelhem's. She is here because she does the
@@ -7376,6 +7382,8 @@ const REPORTS = [
           { en:'Abrham W.',                        am:'አብርሃም ወ.' },
           { en:'Teklweld',                         am:'ተክለወልድ' },
           { en:'Ermiyas',                          am:'ኤርሚያስ' },
+          { en:'Nahome',                           am:'ናሆም' },
+          { en:'Tesfaye',                          am:'ተስፋዬ' },
           { en:'Ephrata (pre-measurement)',        am:'ኤፍራታ (ቅድመ ልኬት)' },
           { en:"The customer's own measurement",   am:'የደንበኛው የራሱ ልኬት' }
         ], show:{f:'site_events', when:'has', v:'meas'}},
@@ -10234,7 +10242,7 @@ function oddFigures(report, v) {
   ['tsega', 'biruktayet'].forEach(function (p) {
     REPORTS.push(copyFor(SALES_DAILY, p), copyFor(SALES_WEEKLY, p));
   });
-  ['yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w', 'ermiyas'].forEach(function (p) {
+  ['yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w', 'ermiyas', 'nahome', 'tesfaye'].forEach(function (p) {
     REPORTS.push(copyFor(DESIGN_DAILY, p), copyFor(DESIGN_WEEKLY, p));
   });
   /* Meri Block Board and Real Estate & Construction (6 Oct 2026) */

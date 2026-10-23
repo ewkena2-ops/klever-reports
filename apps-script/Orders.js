@@ -209,10 +209,10 @@ ORDER_DUTIES_.lemikura = { reportsTo: null, duties: [
   'Real Estate & Construction’s problems, and the decisions it needs from the Chairman'],
   covers: ['Real Estate & Construction’s staff'] };
 
-/* the six designers, one letter (Klever-Designer-Terms; Ermiyas, from 6 Oct
-   2026, has none yet) — a task for "the designer" of a job goes to the one
-   he names */
-['yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w', 'ermiyas'].forEach(function (id) {
+/* the eight designers, one letter (Klever-Designer-Terms; Ermiyas, from 6 Oct
+   2026, and Nahome and Tesfaye, from 26 Oct, have none yet) — a task for "the designer"
+   of a job goes to the one he names */
+['yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w', 'ermiyas', 'nahome', 'tesfaye'].forEach(function (id) {
   ORDER_DUTIES_[id] = { reportsTo: 'ephrata', duties: [
     'the design of their own jobs: pre-measurement visit and video, 3D pre-design and rough quote',
     'final measurement after Selam’s go-ahead; final design with options; the signed Material Selection Form',

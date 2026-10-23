@@ -562,6 +562,7 @@ input.mustgap,textarea.mustgap,select.mustgap{
 .atbig{font-family:var(--serif);font-size:20px;line-height:1.35;color:var(--ink)}
 .atscan.good .atbig{color:var(--teal-hi)}
 .atscan.bad .atbig{color:var(--coral)}
+.atscan .atagain{margin-top:10px;justify-self:start}
 .atsub{font-size:13.5px;color:var(--ink-2);margin-top:6px;line-height:1.45;overflow-wrap:anywhere}
 .atcard{display:block}
 .atask{margin-top:10px;display:grid;gap:8px}

@@ -1761,31 +1761,118 @@
       box.appendChild(el('div', 'atbig', text));
       if (sub) box.appendChild(el('div', 'atsub', sub));
     }
-    window.FB.token().then(function (tok) {
-      if (!tok) throw { why: 'signin' };
-      return fetch(ATTEND_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                 body: JSON.stringify({ idToken: tok }) });
-    }).then(function (r) {
-      return r.json()['catch'](function () { return { ok: false, why: 'unavailable' }; });
-    }).then(function (a) {
-      if (a.ok && a.chairman) return show('good', t('atChairOk'), tfill_('atAddr', { ip: a.ip || '—' }));
+    function button(label, act) {
+      var b = el('button', 'mfpick atagain', label);
+      b.type = 'button';
+      b.onclick = function () { b.disabled = true; act(b); };
+      box.appendChild(b);
+      return b;
+    }
+    function send(loc) {
+      return window.FB.token().then(function (tok) {
+        if (!tok) throw { why: 'signin' };
+        var body = { idToken: tok };
+        if (loc) body.loc = loc;
+        return fetch(ATTEND_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                   body: JSON.stringify(body) });
+      }).then(function (r) {
+        return r.json()['catch'](function () { return { ok: false, why: 'unavailable' }; });
+      });
+    }
+    function failed(e) { show('bad', t(e && e.why === 'signin' ? 'atSignIn' : 'atFailed')); }
+    /* Not on Klever's WiFi: where the phone is. 23 Oct 2026 the office WiFi
+       had no internet and nobody could scan; the user: "mobile data, then you
+       check the location". Asked only off the WiFi, so the WiFi stays one tap. */
+    var placeAsked = false, lastLoc = null;
+    function place() {
+      placeAsked = true;
+      show('wait', t('atLocAsk'), t('atLocAskSub'));
+      atWhere().then(function (loc) {
+        if (loc.err) {
+          show('bad', t(loc.err === 'denied' ? 'atLocDenied' : 'atLocNone'), t('atLocOrWifi'));
+          button(t('atTryAgain'), place);
+          return;
+        }
+        lastLoc = loc;
+        show('wait', t('atChecking'));
+        return send(loc).then(answer);
+      }).then(null, failed);
+    }
+    function answer(a) {
+      var w = a.why || 'unavailable';
+      if (!a.ok && w === 'not-wifi' && !placeAsked) return place();
+      if (a.chairman) return chairAnswer(a, w);
       /* `queued`: taken by the check-in server while the site's database was
          out (20 Oct 2026) — it reaches the person's page once it is back */
       var saved = a.queued ? t('atSaved') : '';
+      var how = a.place ? tfill_('atByPlace', { m: atMetres(a.dist) }) : '';
       if (a.ok && a.already) return show(a.late ? 'late' : 'good', tfill_('atAlready', { at: a.at }), saved);
       if (a.ok) {
-        return a.late ? show('late', tfill_('atLate', { at: a.at, m: atDur(a.minsLate) }), saved || t('atLateWhy'))
-                      : show('good', tfill_('atOnTime', { at: a.at }), saved);
+        return a.late ? show('late', tfill_('atLate', { at: a.at, m: atDur(a.minsLate) }), (how ? how + ' ' : '') + (saved || t('atLateWhy')))
+                      : show('good', tfill_('atOnTime', { at: a.at }), (how ? how + ' ' : '') + saved);
       }
-      var w = a.why || 'unavailable';
       if (w === 'holiday') return show('bad', tfill_('atHoliday', { name: lang === 'am' && a.nameAm ? a.nameAm : (a.name || '') }));
+      if (w === 'far') { show('bad', tfill_('atFar', { m: atMetres(a.dist) }), t('atFarSub')); button(t('atTryAgain'), place); return; }
+      if (w === 'loc-poor') { show('bad', tfill_('atLocPoor', { m: atMetres(a.acc) }), t('atLocPoorSub')); button(t('atTryAgain'), place); return; }
+      if (w === 'no-spot') return show('bad', t('atNoSpot'));
       var msg = { 'not-wifi': 'atNotWifi', 'no-wifi-set': 'atNoWifiSet', sunday: 'atSunday', 'not-office': 'atNotOffice',
                   signin: 'atSignIn' }[w] || 'atFailed';
       show('bad', t(msg), a.ip ? tfill_('atAddr', { ip: a.ip }) : '');
-    }, function (e) {
-      show('bad', t(e && e.why === 'signin' ? 'atSignIn' : 'atFailed'));
-    });
+    }
+    /* the Chairman's own scan says where his phone stands — and, at the
+       office, saves its place for the days the WiFi has no internet */
+    function chairAnswer(a, w) {
+      var addr = tfill_('atAddr', { ip: a.ip || '—' });
+      if (a.ok && !a.place) return show('good', t('atChairOk'), addr);
+      if (a.ok) return show('good', tfill_('atChairNear', { m: atMetres(a.dist) }), addr);
+      if (w === 'loc-poor') { show('bad', tfill_('atLocPoor', { m: atMetres(a.acc) }), t('atLocPoorSub')); button(t('atTryAgain'), place); return; }
+      if (w !== 'far' && w !== 'no-spot') return show('bad', t('atFailed'));
+      show(w === 'far' ? 'bad' : 'wait', w === 'far' ? tfill_('atChairFar', { m: atMetres(a.dist) }) : t('atChairNoSpot'), addr);
+      if (!lastLoc) return;
+      var loc = lastLoc, armed = false;
+      button(t('atSpotSave'), function (b) {
+        if (loc.acc > 100) { show('bad', tfill_('atSpotPoor', { m: atMetres(loc.acc) })); button(t('atTryAgain'), place); return; }
+        if (!armed) { armed = true; b.disabled = false; b.textContent = t('atSure'); return; }
+        window.FB.setAttendSpot(loc, 'chairman-scan').then(function () {
+          show('good', t('atSpotSaved'), tfill_('atSpotSavedSub', { acc: atMetres(loc.acc) }));
+        }, function (e) { show('bad', t('atSetFailed') + ' ' + ((e && e.message) || e)); });
+      });
+    }
+    send().then(answer, failed);
     return box;
+  }
+  /* "35 m", "1.2 km" */
+  function atMetres(m) {
+    m = Math.max(0, Math.round(Number(m) || 0));
+    if (m < 1000) return m + (lang === 'am' ? ' ሜትር' : ' m');
+    return (m / 1000).toFixed(1) + (lang === 'am' ? ' ኪ.ሜ' : ' km');
+  }
+  /* Where the phone is: the best fix in a few seconds — a first fix is often
+     rough — as {lat, lng, acc}, or {err: 'denied' | 'none'}. Done at once
+     within 30 m, at 6 s within 100 m, else the best by 15 s. */
+  function atWhere() {
+    return new Promise(function (done) {
+      var g = navigator.geolocation, best = null, id = null, over = false, t1 = 0, t2 = 0;
+      function end(x) {
+        if (over) return;
+        over = true;
+        clearTimeout(t1); clearTimeout(t2);
+        if (id !== null) { try { g.clearWatch(id); } catch (e) {} }
+        done(x);
+      }
+      if (!g) return done({ err: 'none' });
+      t1 = setTimeout(function () { if (best && best.acc <= 100) end(best); }, 6000);
+      t2 = setTimeout(function () { end(best || { err: 'none' }); }, 15000);
+      try {
+        id = g.watchPosition(function (p) {
+          var c = p.coords, x = { lat: c.latitude, lng: c.longitude, acc: Math.round(c.accuracy || 99999) };
+          if (!best || x.acc < best.acc) best = x;
+          if (best.acc <= 30) end(best);
+        }, function (e) {
+          if (e && e.code === 1) end({ err: 'denied' });
+        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+      } catch (e) { end({ err: 'none' }); }
+    });
   }
 
   /* the person's own days: today, and the working days of the week before
@@ -1933,6 +2020,8 @@
     }
     if (isToday && nowMin <= AT_LATE && !(x && x.why)) {
       box.appendChild(el('div', 'inst', label + ' · ' + atT('atScanHow')));
+      /* the WiFi without internet: mobile data, and the place is checked (23 Oct 2026) */
+      if (atKind === 'at') box.appendChild(el('div', 'atsub', t('atNoNet')));
       return box;
     }
     box.className = 'ins at missing';
@@ -1940,6 +2029,7 @@
     if (x && x.why) box.appendChild(el('div', 'atsub', t('atWhyIs') + ' ' + atWhyText(x.why, x.note)));
     else {
       if (isToday) box.appendChild(el('div', 'atsub', atT('atScanOrSay')));
+      if (isToday && atKind === 'at') box.appendChild(el('div', 'atsub', t('atNoNet')));
       box.appendChild(atAsk(day, false, x));
     }
     return box;
@@ -6708,6 +6798,9 @@
     ethMonthStart: ethMonthStart,
     ethMonthName: ethMonthName,
     ethDayLabel: ethDayLabel,
+    /* where this phone is, for the Chairman's "save the office's place" */
+    atWhere: atWhere,
+    atMetres: atMetres,
     /* a day's Ethiopian date and month, and a Gregorian month short, for
        the grids' heads (the owner, 21 Oct 2026: "we have to see also
        Ethiopian date") */

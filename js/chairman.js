@@ -892,8 +892,8 @@ import {
     /* the Ethiopian month, as each person sees theirs (app.js) */
     var monthStart = window.KLEVER && window.KLEVER.ethMonthStart ? window.KLEVER.ethMonthStart(DAY) : DAY.slice(0, 8) + '01';
     var since = monthStart < from ? from : monthStart;
-    var st = { docs: null, fails: null, wifi: undefined };
-    function draw() { if (st.docs && st.fails && st.wifi !== undefined) drawAttend(into, st, since); }
+    var st = { docs: null, fails: null, wifi: undefined, spot: undefined };
+    function draw() { if (st.docs && st.fails && st.wifi !== undefined && st.spot !== undefined) drawAttend(into, st, since); }
     /* before the first counted day, today's test scans too */
     onSnapshot(query(collection(db, 'attend'), where('day', '>=', since > DAY ? DAY : since)), function (snap) {
       st.docs = [];
@@ -910,6 +910,11 @@ import {
       st.wifi = d.exists() ? d.data({ serverTimestamps: 'estimate' }) : null;
       draw();
     }, failInto(into));
+    /* where the office is, for scans off the WiFi (23 Oct 2026) */
+    onSnapshot(doc(db, 'attendspot', 'office'), function (d) {
+      st.spot = d.exists() ? d.data({ serverTimestamps: 'estimate' }) : null;
+      draw();
+    }, function () { st.spot = null; draw(); });
   }
   /* "14 min", "8 h 23 min" */
   function atDur(m) {
@@ -957,7 +962,14 @@ import {
     Object.keys(tried).sort(function (a, b) { return tried[b].length - tried[a].length; }).forEach(function (ip) {
       var row = el('div', 'atfail');
       var who = tried[ip].sort(function (a, b) { return a.day < b.day ? 1 : -1; })
-        .map(function (f) { return atWho(f.person) + ' ' + (f.day === DAY ? f.hm : prettyDay(f.day) + ' ' + f.hm); });
+        .map(function (f) {
+          var s = atWho(f.person) + ' ' + (f.day === DAY ? f.hm : prettyDay(f.day) + ' ' + f.hm);
+          /* where the phone said it was, and whether a scan counted that day after all */
+          if (f.loc) s += ' (📍 ' + (f.dist !== undefined ? atMetres(f.dist) : '±' + atMetres(f.loc.acc)) + ')';
+          var x = (by[f.day] || {})[f.person];
+          if (x && x.scanAt) s += ' ✓' + (x.how === 'place' ? '📍' : '');
+          return s;
+        });
       row.appendChild(el('div', 'atfailtxt', tfill('atTried', { ip: ip, n: tried[ip].length, who: who.join(', ') })));
       row.appendChild(el('div', 'atfailhow', t(ips.length ? 'atTriedHow' : 'atTriedFirst')));
       var ok = el('button', 'pushbtn atthis', t('atThisWifi'));
@@ -975,6 +987,7 @@ import {
       wifi.appendChild(row);
     });
     into.appendChild(wifi);
+    into.appendChild(atSpotBox(st));
 
     if (DAY < from) {
       /* before the first counted day: the scans so far, as a test — nobody is asked why */
@@ -996,7 +1009,7 @@ import {
     if (sunday) into.appendChild(el('p', 'codenote', holidayOn(DAY) ? tfill('atHolidayNote', { name: L(holidayOn(DAY)) }) : t('atSundayNote')));
     else {
       if (atOffOn(DAY)) into.appendChild(el('p', 'codenote', tfill('atOffNote', { why: L(atOffOn(DAY)) })));
-      var counts = { on: 0, late: 0, none: 0 }, list = el('div', 'atlist');
+      var counts = { on: 0, late: 0, none: 0 }, list = el('div', 'atlist'), byPlace = 0;
       people.filter(function (p) { return !p.from || p.from <= DAY; }).forEach(function (p) {
         var d = (by[DAY] || {})[p.id] || {};
         var r = el('div', 'chf atrow');
@@ -1005,12 +1018,14 @@ import {
         if (d.scanAt && !d.late) { s = '✓ ' + d.hm; cls = 'good'; counts.on++; }
         else if (d.scanAt) { s = tfill('atLateShort', { at: d.hm, m: atDur(d.minsLate) }); cls = 'late'; counts.late++; }
         else { s = t('atNoScanShort'); cls = 'none'; counts.none++; }
+        if (d.scanAt && d.how === 'place') { s += ' 📍'; byPlace++; }
         if (d.why) s += ' · ' + atWhyText(d.why, d.note);
         r.appendChild(el('span', 'chfv at ' + cls, s));
         list.appendChild(r);
       });
       into.appendChild(el('p', 'atcounts', tfill('atCounts', { on: counts.on, late: counts.late, none: counts.none })));
       into.appendChild(list);
+      if (byPlace) into.appendChild(el('p', 'codenote', t('atPlaceLegend')));
     }
 
     /* this month */
@@ -1488,6 +1503,67 @@ import {
   }
   function atSetWifi(ips, ignored) {
     return setDoc(doc(db, 'attendwifi', 'office'), { ips: ips, ignored: ignored || [], setAt: serverTimestamp(), setBy: 'chairman' });
+  }
+  /* "35 m", "1.2 km" (app.js) */
+  function atMetres(m) {
+    if (window.KLEVER && window.KLEVER.atMetres) return window.KLEVER.atMetres(m);
+    return Math.round(Number(m) || 0) + ' m';
+  }
+  function atSetSpot(loc, from) {
+    var x = { lat: loc.lat, lng: loc.lng, acc: Math.min(1000, Math.round(loc.acc)), setAt: serverTimestamp(), setBy: 'chairman' };
+    if (from) x.from = String(from).slice(0, 60);
+    return setDoc(doc(db, 'attendspot', 'office'), x);
+  }
+  /* WHERE THE OFFICE IS (23 Oct 2026: the office WiFi had no internet and
+     nobody could scan; the user: "mobile data, then you check the
+     location"). Off the WiFi a scan counts within 200 m of this place
+     (Attend.js AT_NEAR_M_). He saves it standing at the office, or from a
+     refused scan's place; the refused scans near it then count by
+     themselves at their own time (attendFailWatch_). */
+  function atSpotBox(st) {
+    var box = el('div', 'atwifi atspot'), sp = st.spot;
+    if (sp && typeof sp.lat === 'number') {
+      var at = sp.setAt && sp.setAt.toDate ? sp.setAt.toDate() : null;
+      var when = at ? prettyDay(new Date(at.getTime() + 3 * 3600e3).toISOString().slice(0, 10)) : '';
+      box.appendChild(el('p', 'codenote', tfill('atSpotIs', { when: when, acc: atMetres(sp.acc) })));
+    } else {
+      box.appendChild(el('p', 'pywarn', t('atSpotNone')));
+    }
+    var b = el('button', sp ? 'mfpick' : 'pushbtn', t(sp ? 'atSpotAgain' : 'atSpotSave'));
+    b.type = 'button';
+    var msg = el('p', 'codenote');
+    twoTaps(b, function () {
+      msg.textContent = t('atSpotGetting');
+      if (!window.KLEVER || !window.KLEVER.atWhere) throw new Error('—');
+      return window.KLEVER.atWhere().then(function (loc) {
+        if (loc.err) throw new Error(t(loc.err === 'denied' ? 'atLocDenied' : 'atLocNone'));
+        if (loc.acc > 100) throw new Error(tfill('atSpotPoor', { m: atMetres(loc.acc) }));
+        msg.textContent = '';
+        return atSetSpot(loc, 'chairman-page');
+      }).then(null, function (e) { msg.textContent = ''; throw e; });
+    });
+    box.appendChild(b);
+    box.appendChild(msg);
+    /* not saved yet: a refused scan that said where it was can name it —
+       the most exact one each person gave this week */
+    if (!sp) {
+      var seen = {};
+      st.fails.filter(function (f) { return f.loc && f.loc.acc <= 100 && f.person !== 'chairman'; })
+        .sort(function (a, b) { return a.loc.acc - b.loc.acc; })
+        .forEach(function (f) {
+          if (seen[f.person]) return;
+          seen[f.person] = 1;
+          var r = el('div', 'atfail');
+          r.appendChild(el('div', 'atfailtxt', tfill('atSpotFromScan', { who: atWho(f.person),
+            when: (f.day === DAY ? '' : prettyDay(f.day) + ' ') + (f.hm || ''), acc: atMetres(f.loc.acc) })));
+          var ok = el('button', 'pushbtn atthis', t('atSpotThis'));
+          ok.type = 'button';
+          twoTaps(ok, function () { return atSetSpot(f.loc, f.person + ' ' + f.day); });
+          r.appendChild(ok);
+          box.appendChild(r);
+        });
+    }
+    return box;
   }
   /* a tap asks again; the second does it */
   function twoTaps(b, act) {

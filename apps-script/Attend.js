@@ -89,6 +89,46 @@ function atOurs_(addr, wifi, ignored) {
   return b && wifi.some(function (w) { return atBlock_(w) === b; }) ? 'block' : '';
 }
 
+/* WHEN THE OFFICE WIFI HAS NO INTERNET (23 Oct 2026): nobody could load
+   the page that morning, and when the line came back it was on a new
+   address in another group (196.188.36.x). The user: "mobile data, then you
+   check the location". A phone that is not on Klever's WiFi now sends where
+   it is (js/app.js asks the phone); within AT_NEAR_M_ of the office, the
+   phone sure of its place to AT_ACC_M_, the scan counts — `how: 'place'`.
+   The office's spot is /attendspot/office, which the Chairman saves on his
+   page standing at the office, or from a refused scan's place. A place is
+   never used to save an address: on mobile data many phones share one. */
+var AT_NEAR_M_ = 200;
+var AT_ACC_M_ = 200;
+/* {lat, lng, acc} from the phone, or null */
+function atLoc_(v) {
+  if (!v || typeof v !== 'object') return null;
+  var lat = Number(v.lat), lng = Number(v.lng), acc = Number(v.acc);
+  if (!isFinite(lat) || !isFinite(lng) || !isFinite(acc)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180 || acc < 0 || acc > 100000 || (lat === 0 && lng === 0)) return null;
+  return { lat: Math.round(lat * 1e6) / 1e6, lng: Math.round(lng * 1e6) / 1e6, acc: Math.round(acc) };
+}
+/* the office's spot, as saved; null if none (a failed read throws, as atWifi_) */
+function atSpot_() {
+  var d = fsGet_('attendspot/' + AT_PLACE_);
+  return d ? atLoc_({ lat: d.lat, lng: d.lng, acc: d.acc || 0 }) : null;
+}
+/* metres between two places */
+function atDist_(a, b) {
+  var r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+  var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return Math.round(6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h)));
+}
+/* at the office by place: '' yes, else why not — 'no-spot' | 'loc-poor' | 'far' */
+function atNear_(loc, spot) {
+  if (!spot) return { why: 'no-spot' };
+  var dist = atDist_(loc, spot);
+  if (loc.acc > AT_ACC_M_) return { why: 'loc-poor', dist: dist };
+  if (dist > AT_NEAR_M_) return { why: 'far', dist: dist };
+  return { why: '', dist: dist };
+}
+
 /* A day the check-in is not counted (js/forms.js ATTEND_OFF — 20 Oct 2026,
    the database out until 10 AM): scans are kept, never late; no one is
    asked why. */
@@ -102,14 +142,15 @@ function atOff_(schedule, day) {
    who scans, the closed days and the days not counted, the next weeks.
    It goes back with every answer to the agent, which keeps it and never
    passes it to the phone (app/attend_local.py). */
-function atConf_(schedule, wifi, ignored) {
+function atConf_(schedule, wifi, ignored, spot) {
   var closed = [], off = [], day = todayAddis_();
   for (var i = 0; i < 45; i++) {
     var d = addDays_(day, i);
     if (holiday_(d)) closed.push(d);
   }
   Object.keys((schedule && schedule.attendOff) || {}).forEach(function (d) { if (d >= addDays_(day, -3)) off.push(d); });
-  return { wifi: wifi, ignored: ignored || [], people: atPeople_(schedule).map(function (p) { return p.id; }), closed: closed, off: off };
+  return { wifi: wifi, ignored: ignored || [], people: atPeople_(schedule).map(function (p) { return p.id; }), closed: closed, off: off,
+           spot: spot ? { lat: spot.lat, lng: spot.lng } : null, near: AT_NEAR_M_, acc: AT_ACC_M_ };
 }
 
 /* minutes after midnight, Addis */
@@ -157,8 +198,8 @@ function attendTake_(row, poster, queued) {
   }
   var day = Utilities.formatDate(now, tz_(), 'yyyy-MM-dd'), mins = atMinutes_(now);
   var schedule = loadSchedule_();
-  var w = atWifiDoc_(), wifi = w.ips;
-  var conf = atConf_(schedule, wifi, w.ignored);
+  var w = atWifiDoc_(), wifi = w.ips, spot = atSpot_();
+  var conf = atConf_(schedule, wifi, w.ignored, spot);
   function reply(o) { o.conf = conf; return JSON.stringify(o); }
   var me = (schedule.people || []).filter(function (p) { return p.id === poster; })[0];
   var scans = poster === 'chairman' || (me && me.scan && !me.company);
@@ -169,20 +210,30 @@ function attendTake_(row, poster, queued) {
     try {
       fsUpdate_('attendwifi/' + AT_PLACE_, { ips: [addr].concat(w.raw.filter(function (x) { return atAddr_(x) !== addr; })).slice(0, 4),
                                             auto: { ip: addr, at: new Date(), person: poster, hm: atClock_(mins), day: day } });
-      conf = atConf_(schedule, [addr].concat(wifi).slice(0, 4), w.ignored);
+      conf = atConf_(schedule, [addr].concat(wifi).slice(0, 4), w.ignored, spot);
     } catch (e) { Logger.log('attend: saving %s: %s', addr, e.message); }
   }
-  if (!ours) {
-    /* kept, so the Chairman can say "this is Klever's WiFi" */
-    if (addr) {
-      try {
-        fsPut_('attendfail/' + day + '_' + poster, { person: poster, day: day, ip: addr, at: now,
-                                                      hm: atClock_(mins), wifiSet: wifi.length > 0 });
-      } catch (e) { Logger.log('attendfail: %s', e.message); }
+  /* not on the WiFi: where the phone is, if it said (23 Oct 2026) */
+  var loc = ours ? null : atLoc_(row.loc), near = loc ? atNear_(loc, spot) : null;
+  if (!ours && !(near && !near.why)) {
+    /* kept, so the Chairman can say "this is Klever's WiFi" — or, from its
+       place, "this is the office" */
+    if (addr || loc) {
+      var fail = { person: poster, day: day, ip: addr, at: now, hm: atClock_(mins), wifiSet: wifi.length > 0 };
+      if (loc) { fail.loc = loc; if (near.dist !== undefined) fail.dist = near.dist; }
+      try { fsPut_('attendfail/' + day + '_' + poster, fail); }
+      catch (e) { Logger.log('attendfail: %s', e.message); }
     }
-    return reply({ ok: false, why: wifi.length ? 'not-wifi' : 'no-wifi-set', ip: addr });
+    var no = { ok: false, why: loc ? near.why : (wifi.length ? 'not-wifi' : 'no-wifi-set'), ip: addr };
+    if (loc) { no.acc = loc.acc; if (near.dist !== undefined) no.dist = near.dist; }
+    if (poster === 'chairman') no.chairman = true;
+    return reply(no);
   }
-  if (poster === 'chairman') return reply({ ok: true, chairman: true, ip: addr });
+  if (poster === 'chairman') {
+    var yes = { ok: true, chairman: true, ip: addr };
+    if (near) { yes.place = true; yes.dist = near.dist; yes.acc = loc.acc; }
+    return reply(yes);
+  }
   if (dow_(day) === 0) return reply({ ok: false, why: 'sunday' });
   if (holiday_(day)) return reply({ ok: false, why: 'holiday', name: holiday_(day).en, nameAm: holiday_(day).am || '' });
   var path = 'attend/' + day + '_' + poster;
@@ -193,13 +244,17 @@ function attendTake_(row, poster, queued) {
   var late = mins > AT_LATE_AFTER_ && !atOff_(schedule, day);
   var scan = { person: poster, day: day, place: AT_PLACE_, scanAt: now, hm: atClock_(mins), late: late,
                minsLate: late ? mins - AT_LATE_AFTER_ : 0, ip: addr };
+  /* counted by where the phone was, not the WiFi */
+  if (near) { scan.how = 'place'; scan.dist = near.dist; scan.acc = loc.acc; }
   /* taken at the door by the agent, handed over later — or refused at
-     first, its address said to be Klever's since (attendFailWatch_) */
+     first, its address (or the office's place) saved since (attendFailWatch_) */
   if (queued) { scan.queued = true; scan.sentAt = new Date(); }
   if (queued === 'wifi') scan.wifiLater = true;
   /* a reason she gave before scanning (forgot, then came) stays */
   if (had) fsUpdate_(path, scan); else fsPut_(path, scan);
-  return reply({ ok: true, at: scan.hm, late: late, minsLate: scan.minsLate });
+  var ans = { ok: true, at: scan.hm, late: late, minsLate: scan.minsLate };
+  if (near) { ans.place = true; ans.dist = near.dist; }
+  return reply(ans);
 }
 
 /* A refused scan counts once its address is Klever's WiFi. 21 Oct 2026:
@@ -208,20 +263,25 @@ function attendTake_(row, poster, queued) {
    saved; the user: "count refused scans once fixed". So when the list of
    addresses changes (the Chairman's "This is Klever's WiFi"), the last
    three days' refused scans from an address now on it are taken as scans
-   at their own time — on time if they were — and marked counted. One read
-   a watch while the list stays the same. From the watch (Agents.js). */
+   at their own time — on time if they were — and marked counted. The same
+   when the office's place is saved (23 Oct 2026): a refused scan that said
+   where it was, within reach of it, counts at its own time. Two reads a
+   watch while neither changes. From the watch (Agents.js). */
 function attendFailWatch_() {
   var props = PropertiesService.getScriptProperties();
-  var w = atWifiDoc_(), wifi = w.ips;
-  var key = wifi.slice().sort().join(',');
-  if (!wifi.length || prop_('ATTEND_WIFI_SEEN', '') === key) return { taken: 0 };
+  var w = atWifiDoc_(), wifi = w.ips, spot = atSpot_();
+  var key = wifi.slice().sort().join(',') + (spot ? '|' + spot.lat + ',' + spot.lng : '');
+  if ((!wifi.length && !spot) || prop_('ATTEND_WIFI_SEEN', '') === key) return { taken: 0 };
   var since = addDays_(todayAddis_(), -3), out = { taken: 0, left: 0 };
   var fails = fsQuery_('attendfail', [['day', 'GREATER_THAN_OR_EQUAL', since]], 'day');
   fails.forEach(function (f) {
-    if (f.counted || !f.person || !f.day || !atOurs_(atAddr_(f.ip), wifi, w.ignored)) return;
+    if (f.counted || !f.person || !f.day) return;
+    var byWifi = !!atOurs_(atAddr_(f.ip), wifi, w.ignored);
+    var loc = byWifi ? null : atLoc_(f.loc);
+    if (!byWifi && !(loc && !atNear_(loc, spot).why)) return;
     var at = f.at && f.at.getTime ? f.at.getTime() : new Date(f.at).getTime();
     var res;
-    try { res = JSON.parse(attendTake_({ ip: f.ip, at: at }, f.person, 'wifi')); }
+    try { res = JSON.parse(attendTake_({ ip: f.ip, at: at, loc: loc }, f.person, byWifi ? 'wifi' : 'place')); }
     catch (e) { Logger.log('attend fail %s_%s: %s', f.day, f.person, e.message); out.left++; return; }
     if (res.why === 'unavailable') { out.left++; return; }
     fsUpdate_('attendfail/' + f.day + '_' + f.person, { counted: new Date(), countedAs: res.ok ? 'scan' : String(res.why || '') });
@@ -257,6 +317,7 @@ function attendDay_(schedule, day, docs, people) {
               status: scanned ? (d.late ? 'late' : 'on time') : 'no scan',
               at: scanned ? d.hm || null : null, minutes_late: scanned && d.late ? d.minsLate : 0,
               why: d.why || null, note: d.note || null };
+    if (scanned && d.how === 'place') r.checked_in_by_location_not_wifi = true;
     if (scanned && raw.check === 'open') r.name_tapped_picture_not_checked_yet = true;
     if (raw.check === 'open' && raw.face) r.own_face_also_seen_at = raw.face.hm;
     if (raw.check === 'not') r.tapped_scan_was_someone_else = true;
@@ -302,6 +363,7 @@ function attendFacts_(day) {
   });
   return {
     how: 'Office staff scan the QR at the office door on Klever WiFi when they arrive; late after 8:00 AM. ' +
+         'When the WiFi has no internet they scan on mobile data and the phone location is checked (within ' + AT_NEAR_M_ + ' m of the office). ' +
          'No money is taken for it; a person who did not scan or was late says why on their page.',
     day: day, today: attendDay_(schedule, day, docs),
     today_not_counted: atOff_(schedule, day) ? 'Not counted today (' + atOff_(schedule, day).en + '): no one is late or missing' : undefined,

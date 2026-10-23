@@ -821,6 +821,22 @@ service cloud.firestore {
                                 && request.resource.data.setAt == request.time);
       allow delete: if false;
     }
+    /* where the office is (23 Oct 2026): a scan off the WiFi — its internet
+       down — counts if the phone is near it. Saved by the Chairman, at the
+       office or from a refused scan's place (apps-script/Attend.js). */
+    match /attendspot/{place} {
+      allow get, list: if isChairman() || isLedger();
+      allow create, update: if isLedger()
+                            || (isChairman()
+                                && request.resource.data.keys().hasOnly(['lat', 'lng', 'acc', 'from', 'setAt', 'setBy'])
+                                && request.resource.data.lat is number && request.resource.data.lat >= -90 && request.resource.data.lat <= 90
+                                && request.resource.data.lng is number && request.resource.data.lng >= -180 && request.resource.data.lng <= 180
+                                && request.resource.data.acc is number && request.resource.data.acc >= 0 && request.resource.data.acc <= 1000
+                                && (!('from' in request.resource.data) || (request.resource.data.from is string && request.resource.data.from.size() <= 60))
+                                && request.resource.data.setBy == 'chairman'
+                                && request.resource.data.setAt == request.time);
+      allow delete: if false;
+    }
     /* The faces the gate knows: the numbers that describe a face (a few
        pictures' worth, as text) and one small picture. Read by the gate's
        tablet and by those who add them; added, replaced and removed only by

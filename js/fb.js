@@ -406,6 +406,14 @@
       if (P && P.gate && !P.scan) first.place = 'factory';
       return exists ? F.updateDoc(ref, x) : F.setDoc(ref, Object.assign(first, x));
     },
+    /* The Chairman, at the office: "this is where the office is" — a scan off
+       the WiFi (its internet down, 23 Oct 2026) counts near it (Attend.js) */
+    setAttendSpot: function (loc, from) {
+      if (!db || !user) return Promise.reject(new Error('not signed in'));
+      var x = { lat: loc.lat, lng: loc.lng, acc: Math.min(1000, Math.round(loc.acc)), setAt: F.serverTimestamp(), setBy: 'chairman' };
+      if (from) x.from = String(from).slice(0, 60);
+      return F.setDoc(F.doc(db, 'attendspot', 'office'), x);
+    },
     /* THE FACTORY GATE (gate.html, js/gate.js, apps-script/Gate.js) */
     /* the faces the gate knows: cb([{person, name, descr, photo, n}]), or
        cb(null) when they cannot be read */

@@ -503,13 +503,48 @@ function trend_(xs) {
 
 /* Money in since Monday, from the daily reports themselves. The first live
    run added the week up in the model's head — correctly, that time. */
+/* What came in on one of Ephrata's days: her payments (collected_today, as
+   fixed where she fixed it — Money.js) and the advances taken at that day's
+   signings (contracts_list), a job she listed as a payment too counted once.
+   Until 23 Oct 2026 a week counted the payments alone: since 9 Oct a new
+   contract's advance is filed only in the contracts list, so it was in no
+   weekly figure (the week of 19 Oct showed 988,261; 1,195,884 had come in,
+   KK-216's 207,623 advance left out). Null when the day says neither. */
+function ephMoneyIn_(v) {
+  if (!v) return null;
+  var c = a_(v, 'collected_today'), adv = signAdvance_(v);
+  return c === null && adv === null ? null : (c || 0) + (adv || 0);
+}
+function signAdvance_(v) {
+  var rows = Array.isArray(v.contracts_list) ? v.contracts_list : null;
+  if (!rows || !rows.length) return a_(v, 'advance');
+  var key = function (s) {
+    var c = moneyCode_(s);
+    return /^\d{1,3}$/.test(c) ? 'KK' + Number(c) : c;
+  };
+  var paid = {};
+  (Array.isArray(v.collected_list) ? v.collected_list : []).forEach(function (r) {
+    var k = r && key(r.lc);
+    if (k) paid[k] = true;
+  });
+  var sum = 0;
+  rows.forEach(function (r) {
+    var a = r ? a_(r, 'adv') : null;
+    if (!a || a <= 0) return;
+    if ((r.code && paid[key(r.code)]) || (r.lc && paid[key(r.lc)])) return;
+    sum += a;
+  });
+  return sum;
+}
+
+/* `field` a question's id, or a function of the day's answers (ephMoneyIn_) */
 function sinceMonday_(d, reportId, field) {
   var dow = dow_(d.day);
   var monday = addDays_(d.day, -(dow === 0 ? 6 : dow - 1));
   var by = {}, blankDays = {};
   (d.recent || []).forEach(function (f) {
     if (f.report !== reportId || f.day < monday || f.day > d.day) return;
-    var x = a_(f.fields, field);
+    var x = typeof field === 'function' ? field(f.fields) : a_(f.fields, field);
     /* a day filed with this question blank adds nothing and is said, rather
        than counted as a day on which nothing came in */
     if (x === null) { blankDays[f.day] = true; delete by[f.day]; }
@@ -1101,9 +1136,11 @@ var AGENTS = [
       tsega_filed: !!got_(d.filed, 'tsega-sales-daily'),
       biruktayet_filed: !!got_(d.filed, 'biruktayet-sales-daily'),
       collected_last_7_days: series_(d, 'ephrata-daily', 'collected_today'),
-      collected_since_monday_from_her_daily_reports: sinceMonday_(d, 'ephrata-daily', 'collected_today'),
+      /* payments and the advances taken at signings (ephMoneyIn_, 23 Oct 2026) */
+      advance_at_signings_today: signAdvance_(ephrata || {}),
+      collected_since_monday_from_her_daily_reports: sinceMonday_(d, 'ephrata-daily', ephMoneyIn_),
       left_to_reach_the_4m_floor: Math.max(0, 4000000 -
-        sinceMonday_(d, 'ephrata-daily', 'collected_today').total),
+        sinceMonday_(d, 'ephrata-daily', ephMoneyIn_).total),
       /* Monday to Saturday; the first live run said "tomorrow cannot close
          the gap" on a Thursday, with Friday and Saturday both still to come */
       /* holidays are not working days (15 Oct 2026) */

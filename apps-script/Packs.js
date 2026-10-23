@@ -268,10 +268,13 @@ function daysOf_(P, reportId) {
 /* The total over the days that answered. A day filed with the question
    blank adds nothing, and a week in which nobody answered it at all is null —
    "not reported" — rather than a total of 0 that reads as a week of nothing. */
+/* `field` a question's id, or a function of the day's answers (ephMoneyIn_) */
 function sumOf_(days, field) {
-  var k = days.filter(function (x) { return !blank_(x.v[field]); });
+  var get = typeof field === 'function' ? field
+          : function (v) { return blank_(v[field]) ? null : n_(v[field]); };
+  var k = days.map(function (x) { return get(x.v); }).filter(function (x) { return x !== null; });
   if (!k.length) return null;
-  return k.reduce(function (a, x) { return a + n_(x.v[field]); }, 0);
+  return k.reduce(function (a, x) { return a + x; }, 0);
 }
 function avgOf_(days, field) {
   var k = days.filter(function (x) { return x.v[field] !== '' && x.v[field] != null; });
@@ -388,7 +391,8 @@ function operations_(P) {
       leads: sumOf_(salesDaysOf_(P), 'l_total'),
       contracts: sumOf_(eph, 'contracts'),
       contract_value: sumOf_(eph, 'contract_value'),
-      collected: sumOf_(eph, 'collected_today')
+      /* payments and the advances taken at signings (23 Oct 2026) */
+      collected: sumOf_(eph, ephMoneyIn_)
     },
     money: {
       days_reported: fin.length,

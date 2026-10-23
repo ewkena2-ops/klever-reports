@@ -405,9 +405,12 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
   var notFiled = P.schedule.reports.filter(function (r) { return !latest[r.id] && !(r.until && day > r.until); })
     .map(function (r) { return r.en + ' (' + (P.names[r.person] || r.person) + ')'; });
 
+  /* `field` a question's id, or a function of the day's answers (ephMoneyIn_) */
   function series(reportId, field) {
-    return daysOf_(P, reportId).filter(function (x) { return !blank_(x.v[field]); })
-      .map(function (x) { return { day: x.day, value: n_(x.v[field]) }; });
+    var get = typeof field === 'function' ? field
+            : function (v) { return blank_(v[field]) ? null : n_(v[field]); };
+    return daysOf_(P, reportId).map(function (x) { return { day: x.day, value: get(x.v) }; })
+      .filter(function (x) { return x.value !== null; });
   }
   var weeks = P.packs.filter(function (p) { return p.kind === 'week'; });
   var lastWeek = weeks.length ? weeks[weeks.length - 1] : null;
@@ -444,7 +447,8 @@ function askContextFor_(P, day, from, monthStart, lastMonth, listsMax) {
       money_in: series('betty-daily', 'money_in'),
       money_out: series('betty-daily', 'money_out'),
       cash_in: series('betty-daily', 'cash_in'),
-      collected_by_sales: series('ephrata-daily', 'collected_today'),
+      /* payments and the advances taken at signings (23 Oct 2026) */
+      collected_by_sales: series('ephrata-daily', ephMoneyIn_),
       m2_produced: series('amaha-daily', 'p_total'),
       waste_pct: series('amaha-daily', 'w_pct'),
       factory_present: series('amaha-daily', 'mp_present')

@@ -855,7 +855,8 @@ const REPORTS = [
          judged: the hint says what is still to go, and nothing turns red on
          a Monday; from Thursday, below the line asks who closes the gap. */
       {id:'week_total', en:'How much has come in this week so far?', am:'በዚህ ሳምንት እስካሁን ስንት ብር ገባ?', t:'money',
-        auto:{soFar:'collected_today', fixes:1},
+        /* and the advances taken at the week's signings (adv, 23 Oct 2026) */
+        auto:{soFar:'collected_today', adv:1, fixes:1},
         tgt:{op:'gte', v:3000000, from:4, en:'Commission starts at 3,000,000 Birr/week', am:'ኮሚሽን የሚጀምረው በሳምንት ከ3,000,000 ብር ነው'}},
       {id:'week_gap', en:'Below 3,000,000 Birr. Who will close the gap by Saturday? (Write the customers and amounts in the box.)', am:'ከ3,000,000 ብር በታች ነው። እስከ ቅዳሜ ክፍተቱን የሚሞሉት እነማን ናቸው? (ደንበኞቹንና መጠኑን በሳጥኑ ይጻፉ።)', t:'area',
         picks:[

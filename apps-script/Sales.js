@@ -34,7 +34,9 @@ var SD_TEAM_ = [
   { id: 'ephrata', report: 'ephrata-daily', target: 4000000,
     target_is: 'collected this week — the floor is 4,000,000 Birr; Ephrata’s commission starts at 3,000,000',
     f: { visits: 'visits_done', visitsLate: 'visits_late', quotes: 'quotes_issued',
-         contracts: 'contracts', value: 'contract_value', collected: 'collected_today', week: 'week_total', unans: 'wa_unanswered' } },
+         contracts: 'contracts', value: 'contract_value', collected: 'collected_today', week: 'week_total', unans: 'wa_unanswered',
+         /* her week: payments and the advances taken at signings (23 Oct 2026) */
+         moneyIn: function (v) { return ephMoneyIn_(v); } } },
   { id: 'tsega', report: 'tsega-sales-daily', target: 2000000,
     target_is: 'collected this week, bank-confirmed — the salesperson’s weekly target', f: SD_SALES_F_ },
   { id: 'biruktayet', report: 'biruktayet-sales-daily', target: 2000000,
@@ -66,9 +68,12 @@ function sdHistory_(from, to) {
   });
   return out;
 }
+/* `field` a question's id, or a function of the day's answers (ephMoneyIn_) */
 function sdSum_(byDay, days, field) {
-  var k = days.filter(function (x) { return byDay[x] && !blank_(byDay[x][field]); });
-  return k.length ? k.reduce(function (a, x) { return a + n_(byDay[x][field]); }, 0) : null;
+  var get = typeof field === 'function' ? field
+          : function (v) { return blank_(v[field]) ? null : n_(v[field]); };
+  var k = days.map(function (x) { return byDay[x] ? get(byDay[x]) : null; }).filter(function (x) { return x !== null; });
+  return k.length ? k.reduce(function (a, x) { return a + x; }, 0) : null;
 }
 function sdPairSum_(byDay, days, field) {
   var done = 0, of = 0, n = 0;
@@ -85,7 +90,7 @@ function sdMember_(m, byDay, d, monday, from, left, names) {
   var v = byDay[d.day] || null;
   var allDays = Object.keys(byDay).filter(function (x) { return x >= from && x <= d.day; }).sort();
   var weekDays = allDays.filter(function (x) { return x >= monday; });
-  var collected = sdSum_(byDay, weekDays, f.collected);
+  var collected = sdSum_(byDay, weekDays, f.moneyIn || f.collected);
   var own = null;
   weekDays.forEach(function (x) { var y = a_(byDay[x], f.week); if (y !== null) own = y; });
   var leftBirr = collected === null ? null : Math.max(0, m.target - collected);
@@ -100,7 +105,7 @@ function sdMember_(m, byDay, d, monday, from, left, names) {
       leads: a_(v, f.leads), called_within_24_hours: pair_(v, f.called),
       visits_done: a_(v, f.visits), leads_waiting_over_48h_for_a_visit: a_(v, f.visitsLate),
       quotes: a_(v, f.quotes), contracts: a_(v, f.contracts), contract_value: a_(v, f.value),
-      collected: a_(v, f.collected), whatsapp_answered_late_over_2h: a_(v, f.unans)
+      collected: f.moneyIn ? f.moneyIn(v) : a_(v, f.collected), whatsapp_answered_late_over_2h: a_(v, f.unans)
     } : null,
     week: {
       target: m.target, target_is: m.target_is,

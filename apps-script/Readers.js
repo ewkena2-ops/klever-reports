@@ -54,7 +54,7 @@ function rdSum_(byDay, field, from, to) {
   var tot = 0, n = 0;
   Object.keys(byDay || {}).forEach(function (day) {
     if (day < from || day > to) return;
-    var x = a_(byDay[day], field);
+    var x = typeof field === 'function' ? field(byDay[day]) : a_(byDay[day], field);
     if (x !== null) { tot += x; n++; }
   });
   return n ? tot : null;
@@ -200,7 +200,8 @@ function auditFacts_(P, base, kind) {
   var mismatch = [];
   Object.keys(eph).sort().forEach(function (d) {
     if (!inW(d) || !sel[d]) return;
-    var e = a_(eph[d], 'collected_today'), ai = a_(sel[d], 'adv_in'), fi = a_(sel[d], 'final_in');
+    /* hers with the advances taken at signings: Selam's advances hold those too (23 Oct 2026) */
+    var e = ephMoneyIn_(eph[d]), ai = a_(sel[d], 'adv_in'), fi = a_(sel[d], 'final_in');
     if (e === null || (ai === null && fi === null)) return;
     var s = (ai || 0) + (fi || 0);
     if (Math.abs(e - s) > 1000) mismatch.push({ on: dayLabel_(d), ephrata_collected: e, selam_advances_and_finals: s, difference: e - s });

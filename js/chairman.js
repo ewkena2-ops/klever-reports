@@ -2580,6 +2580,30 @@ import {
 
     /* ---- collected each week, against the 4,000,000 floor (the Chairman, 13 Oct 2026;
        her commission still starts at 3,000,000, js/rules.js) ---- */
+    /* the advances taken at a day's signings (contracts_list), a job she
+       listed as a payment too counted once — a week holds them (23 Oct 2026:
+       since 9 Oct a new contract's advance was in no week; the week of 19 Oct
+       showed 988,261 with 1,195,884 in). js/app.js signAdvance, ephMoneyIn_ */
+    function signAdv(x) {
+      var rows = Array.isArray(x.contracts_list) ? x.contracts_list : null;
+      if (!rows || !rows.length) return fig(x.advance) || 0;
+      var key = function (s) {
+        var c = String(s == null ? '' : s).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        var m = /^KK0*(\d+)$/.exec(c);
+        if (m) return 'KK' + m[1];
+        return /^\d{1,3}$/.test(c) ? 'KK' + Number(c) : c;
+      };
+      var paid = {};
+      (Array.isArray(x.collected_list) ? x.collected_list : []).forEach(function (r) {
+        var k = r && key(r.lc);
+        if (k) paid[k] = true;
+      });
+      return rows.reduce(function (s, r) {
+        var a = r ? fig(r.adv) : null;
+        if (a == null || a <= 0 || (r.code && paid[key(r.code)]) || (r.lc && paid[key(r.lc)])) return s;
+        return s + a;
+      }, 0);
+    }
     function collectChart() {
       var eph = byDay('ephrata-daily'), monday = addDays(DAY, -((dow(DAY) + 6) % 7)), pts = [];
       for (var w = 4; w >= 0; w--) {
@@ -2588,8 +2612,8 @@ import {
           var d = addDays(m, k);
           if (d > DAY) break;
           owed++;
-          var v = fig((eph[d] || {}).collected_today);
-          if (v != null) { sum += v; rep++; }
+          var x = eph[d] || {}, v = fig(x.collected_today), a = signAdv(x);
+          if (v != null || a) { sum += (v || 0) + a; rep++; }
         }
         /* "28 Sep"; in Amharic the month's name is too long for a column,
            so the week is written 28/9 */

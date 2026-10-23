@@ -113,7 +113,7 @@ function budgetFacts_(P) {
   var current = staff.filter(function (p) { var r = tab.byId[p.id] || {}; return !r.left || r.left > to; });
   var payroll = current.reduce(function (a, p) { return a + ((tab.byId[p.id] || {}).wage || 0); }, 0);
   var wagesIn = current.filter(function (p) { return (tab.byId[p.id] || {}).wage; }).length;
-  var collected = rdSum_((rdBy_('ephrata', from, to)['ephrata-daily']) || {}, 'collected_today', from, to);
+  var collected = rdSum_((rdBy_('ephrata', from, to)['ephrata-daily']) || {}, ephMoneyIn_, from, to);
   var ex = function (k) { var x = BUDGET_EXTRA_.filter(function (e) { return e.key === k; })[0]; return b[x.en] !== undefined ? b[x.en] : null; };
   var salesT = ex('sales');
   var spent = sumOrNull_(lines.map(function (l) { return l.spent_so_far; }));

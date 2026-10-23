@@ -6051,8 +6051,38 @@
       });
     }
   }
+  /* The advances taken at a day's signings (contracts_list), a job listed as
+     a payment too counted once. With {soFar, adv:1} the week holds them: since
+     9 Oct 2026 a new contract's advance is filed only in the contracts list,
+     and Ephrata's week counted her payments alone until 23 Oct (the week of
+     19 Oct showed 988,261; 1,195,884 had come in). apps-script ephMoneyIn_
+     reads a day the same way. */
+  function signAdvance(v) {
+    v = v || {};
+    var rows = Array.isArray(v.contracts_list) ? v.contracts_list : null;
+    if (!rows || !rows.length) { var a0 = num(v.advance); return isNaN(a0) ? 0 : a0; }
+    var key = function (s) {
+      var c = String(s == null ? '' : s).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      var m = /^KK0*(\d+)$/.exec(c);
+      if (m) return 'KK' + m[1];
+      return /^\d{1,3}$/.test(c) ? 'KK' + Number(c) : c;
+    };
+    var paid = {};
+    (Array.isArray(v.collected_list) ? v.collected_list : []).forEach(function (r) {
+      var k = r && key(r.lc);
+      if (k) paid[k] = true;
+    });
+    return rows.reduce(function (s, r) {
+      var a = r ? num(r.adv) : NaN;
+      if (isNaN(a) || a <= 0 || (r.code && paid[key(r.code)]) || (r.lc && paid[key(r.lc)])) return s;
+      return s + a;
+    }, 0);
+  }
   function soFarFigure(k) {
-    if (SOFAR === null && !(window.FB && FB.ownReports && AUTH.who())) return num(values[k.soFar]);
+    if (SOFAR === null && !(window.FB && FB.ownReports && AUTH.who())) {
+      var t0 = num(values[k.soFar]), a0 = k.adv ? signAdvance(values) : 0;
+      return isNaN(t0) && !a0 ? NaN : (isNaN(t0) ? 0 : t0) + a0;
+    }
     if (SOFAR === null) return NaN;
     var today = stamp(), mon = mondayOf(today), best = {};
     SOFAR.forEach(function (d) {
@@ -6063,11 +6093,16 @@
     });
     var sum = 0, any = false;
     Object.keys(best).forEach(function (day) {
-      var x = k.fixes && SOFAR_FIX[day] != null ? SOFAR_FIX[day] : num((best[day].values || {})[k.soFar]);
+      var v = best[day].values || {};
+      var x = k.fixes && SOFAR_FIX[day] != null ? SOFAR_FIX[day] : num(v[k.soFar]);
       if (!isNaN(x)) { sum += x; any = true; }
+      var a = k.adv ? signAdvance(v) : 0;
+      if (a) { sum += a; any = true; }
     });
     var tv = num(values[k.soFar]);
     if (!isNaN(tv)) { sum += tv; any = true; }
+    var ta = k.adv ? signAdvance(values) : 0;
+    if (ta) { sum += ta; any = true; }
     return any ? round(sum, 3) : NaN;
   }
   /* a line judged only from a day of the week on (tgt.from: 4 = Thursday):

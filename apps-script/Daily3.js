@@ -95,7 +95,8 @@ function reconcileFacts_(d) {
   recCheck_(c, 'Final payments listed against final payments', 'finals listed', recSum_(sel.final_in_list, 'amount'), 'final payments', a_(sel, 'final_in'), 'Selam');
   recCheck_(c, 'Payments listed against payments approved', 'payments listed', recSum_(sel.pay_list, 'amount'), 'approved', a_(sel, 'pay_value'), 'Selam');
   var ai = a_(sel, 'adv_in'), fi = a_(sel, 'final_in');
-  recCheck_(c, 'Ephrata’s collections against Selam’s money in', 'Ephrata collected', a_(eph, 'collected_today'),
+  /* hers with the advances taken at signings: Selam's advances hold those too (23 Oct 2026) */
+  recCheck_(c, 'Ephrata’s collections against Selam’s money in', 'Ephrata collected', ephMoneyIn_(eph),
             'Selam’s advances + finals', ai === null && fi === null ? null : (ai || 0) + (fi || 0), 'Selam, Ephrata', 1000);
   recCheck_(c, 'Ephrata’s collections listed against her total', 'listed', recSum_(eph.collected_list, 'amount'), 'her total', a_(eph, 'collected_today'), 'Ephrata');
   recCheck_(c, 'ZamZam transfers listed against the total moved', 'transfers listed', recSum_(sel.zz_list, 'amount'), 'moved to ZamZam', a_(sel, 'zz_transfer'), 'Selam');

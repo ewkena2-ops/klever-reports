@@ -28,9 +28,12 @@ const ATTEND_FROM = '2026-10-19';
    a scan is kept but never late, and no one is asked why (Attend.js atOff_,
    Gate.js, js/app.js, js/chairman.js). 20 Oct 2026: the database had used
    its free day of reads and every scan failed until 10 AM — the user:
-   excuse this morning. */
+   excuse this morning. 23 Oct 2026: the office WiFi had no internet in the
+   morning, then came back on a new address — nobody could scan (the user:
+   "don't count today"; the factory gate was not counting yet). */
 const ATTEND_OFF = {
-  '2026-10-20': { en: 'the system was down until 10 AM', am: 'ሲስተሙ እስከ ጠዋቱ 4 ሰዓት ተቋርጦ ነበር' }
+  '2026-10-20': { en: 'the system was down until 10 AM', am: 'ሲስተሙ እስከ ጠዋቱ 4 ሰዓት ተቋርጦ ነበር' },
+  '2026-10-23': { en: 'the office internet was down', am: 'የቢሮው ኢንተርኔት ተቋርጦ ነበር' }
 };
 function attendOff(ymd) { return ATTEND_OFF[ymd] || null; }
 /* `scan` as a day: someone who starts scanning later than the rest, counted

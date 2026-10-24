@@ -1782,25 +1782,44 @@
     function failed(e) { show('bad', t(e && e.why === 'signin' ? 'atSignIn' : 'atFailed')); }
     /* Not on Klever's WiFi: where the phone is. 23 Oct 2026 the office WiFi
        had no internet and nobody could scan; the user: "mobile data, then you
-       check the location". Asked only off the WiFi, so the WiFi stays one tap. */
+       check the location". 24 Oct 2026 the line's address changed again and
+       phones with location blocked could not check in; the user: "let them
+       use any network, mobile data or anything — just get the location". So
+       the phone is asked where it is at once, beside the WiFi check: on the
+       WiFi the scan is done without it; on any other internet the place
+       decides, already found. Blocked: how to allow it, step by step. */
     var placeAsked = false, lastLoc = null;
-    function place() {
+    function place(pending) {
       placeAsked = true;
       show('wait', t('atLocAsk'), t('atLocAskSub'));
-      atWhere().then(function (loc) {
-        if (loc.err) {
-          show('bad', t(loc.err === 'denied' ? 'atLocDenied' : 'atLocNone'), t('atLocOrWifi'));
-          button(t('atTryAgain'), place);
-          return;
-        }
+      (pending && pending.then ? pending : atWhere()).then(function (loc) {
+        if (loc.err) return locHelp(loc.err);
         lastLoc = loc;
         show('wait', t('atChecking'));
         return send(loc).then(answer);
       }).then(null, failed);
     }
+    function again() { place(); }
+    function locHelp(err) {
+      show('bad', t(err === 'denied' ? 'atLocDenied' : 'atLocNone'));
+      var ua = navigator.userAgent || '';
+      /* opened inside a QR app's own browser (Android "wv"), which gives no location: Chrome can */
+      if (/Android/.test(ua) && /; wv\)|FBAN|FBAV|Instagram|Telegram/.test(ua)) {
+        box.appendChild(el('div', 'atsub', t('atHelpApp')));
+        var go = el('a', 'pushbtn atagain', t('atOpenChrome'));
+        go.href = 'intent://' + location.host + location.pathname + '?scan=office#Intent;scheme=https;package=com.android.chrome;end';
+        box.appendChild(go);
+      }
+      box.appendChild(el('div', 'atsub', t('atHelpHead')));
+      var ol = el('ol', 'atsteps');
+      (/iPhone|iPad|iPod/.test(ua) ? ['atHelpI1', 'atHelpI2', 'atHelpBack'] : ['atHelpA1', 'atHelpA2', 'atHelpA3', 'atHelpBack'])
+        .forEach(function (k) { ol.appendChild(el('li', '', t(k))); });
+      box.appendChild(ol);
+      button(t('atTryAgain'), again);
+    }
     function answer(a) {
       var w = a.why || 'unavailable';
-      if (!a.ok && w === 'not-wifi' && !placeAsked) return place();
+      if (!a.ok && (w === 'not-wifi' || w === 'no-wifi-set') && !placeAsked) return place(early);
       if (a.chairman) return chairAnswer(a, w);
       /* `queued`: taken by the check-in server while the site's database was
          out (20 Oct 2026) — it reaches the person's page once it is back */
@@ -1812,8 +1831,8 @@
                       : show('good', tfill_('atOnTime', { at: a.at }), (how ? how + ' ' : '') + saved);
       }
       if (w === 'holiday') return show('bad', tfill_('atHoliday', { name: lang === 'am' && a.nameAm ? a.nameAm : (a.name || '') }));
-      if (w === 'far') { show('bad', tfill_('atFar', { m: atMetres(a.dist) }), t('atFarSub')); button(t('atTryAgain'), place); return; }
-      if (w === 'loc-poor') { show('bad', tfill_('atLocPoor', { m: atMetres(a.acc) }), t('atLocPoorSub')); button(t('atTryAgain'), place); return; }
+      if (w === 'far') { show('bad', tfill_('atFar', { m: atMetres(a.dist) }), t('atFarSub')); button(t('atTryAgain'), again); return; }
+      if (w === 'loc-poor') { show('bad', tfill_('atLocPoor', { m: atMetres(a.acc) }), t('atLocPoorSub')); button(t('atTryAgain'), again); return; }
       if (w === 'no-spot') return show('bad', t('atNoSpot'));
       var msg = { 'not-wifi': 'atNotWifi', 'no-wifi-set': 'atNoWifiSet', sunday: 'atSunday', 'not-office': 'atNotOffice',
                   signin: 'atSignIn' }[w] || 'atFailed';
@@ -1825,19 +1844,20 @@
       var addr = tfill_('atAddr', { ip: a.ip || '—' });
       if (a.ok && !a.place) return show('good', t('atChairOk'), addr);
       if (a.ok) return show('good', tfill_('atChairNear', { m: atMetres(a.dist) }), addr);
-      if (w === 'loc-poor') { show('bad', tfill_('atLocPoor', { m: atMetres(a.acc) }), t('atLocPoorSub')); button(t('atTryAgain'), place); return; }
+      if (w === 'loc-poor') { show('bad', tfill_('atLocPoor', { m: atMetres(a.acc) }), t('atLocPoorSub')); button(t('atTryAgain'), again); return; }
       if (w !== 'far' && w !== 'no-spot') return show('bad', t('atFailed'));
       show(w === 'far' ? 'bad' : 'wait', w === 'far' ? tfill_('atChairFar', { m: atMetres(a.dist) }) : t('atChairNoSpot'), addr);
       if (!lastLoc) return;
       var loc = lastLoc, armed = false;
       button(t('atSpotSave'), function (b) {
-        if (loc.acc > 100) { show('bad', tfill_('atSpotPoor', { m: atMetres(loc.acc) })); button(t('atTryAgain'), place); return; }
+        if (loc.acc > 100) { show('bad', tfill_('atSpotPoor', { m: atMetres(loc.acc) })); button(t('atTryAgain'), again); return; }
         if (!armed) { armed = true; b.disabled = false; b.textContent = t('atSure'); return; }
         window.FB.setAttendSpot(loc, 'chairman-scan').then(function () {
           show('good', t('atSpotSaved'), tfill_('atSpotSavedSub', { acc: atMetres(loc.acc) }));
         }, function (e) { show('bad', t('atSetFailed') + ' ' + ((e && e.message) || e)); });
       });
     }
+    var early = atWhere();
     send().then(answer, failed);
     return box;
   }

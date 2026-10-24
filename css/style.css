@@ -563,6 +563,9 @@ input.mustgap,textarea.mustgap,select.mustgap{
 .atscan.good .atbig{color:var(--teal-hi)}
 .atscan.bad .atbig{color:var(--coral)}
 .atscan .atagain{margin-top:10px;justify-self:start}
+.atscan a.atagain{display:inline-block;text-decoration:none}
+.atsteps{margin:4px 0 0;padding-left:22px;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.atsteps li{margin-top:4px;overflow-wrap:anywhere}
 .atsub{font-size:13.5px;color:var(--ink-2);margin-top:6px;line-height:1.45;overflow-wrap:anywhere}
 .atcard{display:block}
 .atask{margin-top:10px;display:grid;gap:8px}

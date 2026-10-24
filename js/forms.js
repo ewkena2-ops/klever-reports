@@ -8167,7 +8167,7 @@ const REPORTS = [
         cols:rvSiteCols({id:'job', en:'Job code', am:'የሥራ ኮድ', t:'text'})},
       {id:'w_sites', en:'A site not in the list above (add each one)', am:'ከላይ ባለው ዝርዝር ውስጥ የሌለ የሥራ ቦታ (እያንዳንዱን ይጨምሩ)', t:'table',
         addEn:'Add a site', addAm:'የሥራ ቦታ ጨምር', opt:1,
-        cols:rvSiteCols({id:'job', en:'Job code (RBT …) or the customer', am:'የሥራ ኮድ (RBT …) ወይም ደንበኛው', t:'text', must:1, codeOk:1})}
+        cols:rvSiteCols({id:'job', en:'Job code (RBT …) or the customer', am:'የሥራ ኮድ (RBT …) ወይም ደንበኛው', t:'text', must:1, codeOk:1, nameOk:1})}
     ]},
     { en:'Today’s work', am:'የዛሬ ሥራ', fields:[
       {id:'w_done', en:'What did Rovestone get done today?', am:'ሮቭስቶን ዛሬ ምን ሠራ?', t:'area', picks:SIS_DONE},
@@ -10236,7 +10236,10 @@ function oddFigures(report, v) {
                4-digit lead no.; a bare 1–3 digits is a KK job (17 Oct 2026); a
                letter after the number is a part of the job ("KK165A",
                "kk 165 b", "165 b") */
-            if (c.codeOk && !/(^|[^a-z0-9])(k\W{0,3}k|rbt?)\W{0,3}0*\d{1,5}(?!\d)/i.test(raw) &&
+            /* `nameOk`: a customer's name, with no figure in it, may stand
+               there instead ("Ato Getaneh's site", Frewoyni's sites, 24 Oct
+               2026); "RTB 3354" still is asked about */
+            if (c.codeOk && !(c.nameOk && !/\d/.test(raw)) && !/(^|[^a-z0-9])(k\W{0,3}k|rbt?)\W{0,3}0*\d{1,5}(?!\d)/i.test(raw) &&
                 !/(^|\D)\d{4}(?!\d)/.test(raw) && !/^\s*\d{1,3}\s*(-?\s*[a-z])?\s*$/i.test(raw)) {
               out.push({ f: f.id, en: tagEn + '“' + raw + '” is not a code — write the KK code (KK-165), the RBT code, or the 4-digit lead no.',
                          am: tagAm + '«' + raw + '» ኮድ አይደለም — የKK ኮዱን (KK-165)፣ የRBT ኮዱን ወይም ባለ 4 አሃዝ የደንበኛ ቁጥሩን ይጻፉ' });

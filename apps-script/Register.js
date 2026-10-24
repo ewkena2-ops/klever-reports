@@ -149,6 +149,40 @@ var REG_RV_SOURCES_ = [
   { r: 'kalkidan-daily', f: 'g_appr_list', k: 'request', job: 'job' },
   { r: 'kalkidan-daily', f: 'g_hold_list', k: 'hold', job: 'job', what: 'why', whatMap: REG_RV_HOLDS_ }
 ];
+/* HER SITES (24 Oct 2026, the owner, with the 23 sites Frewoyni wrote down
+   by hand for 23 Oct): each row puts the job on site — finished, or handed
+   over to the customer — and a second line says what holds it (`siteHold`,
+   regSiteHold_), until her next word on that site. `sites`: her own word,
+   which alone ends a hold she gave. */
+['w_sites_back', 'w_sites'].forEach(function (f) {
+  REG_RV_SOURCES_.push(
+    { r: 'frewoyni-daily', f: f, job: 'job', kBy: 'state', sites: 1,
+      kMap: { going: { k: 'site' }, stopped: { k: 'site' }, notstart: { k: 'site' },
+              done: { k: 'site', state: 'done' }, handed: { k: 'accepted' } } },
+    { r: 'frewoyni-daily', f: f, k: 'sitehold', job: 'job', siteHold: 1 });
+});
+/* what holds a site, in words — nothing when it is finished, or work goes
+   on (or is still to start) with nothing holding it and nothing written;
+   with words or a day written, those, as a line that holds nothing
+   (state 'info': "installation starts on Monday") */
+function regSiteHold_(row) {
+  var st = String(row.state || ''), why = String(row.why || '');
+  if (['going', 'stopped', 'notstart'].indexOf(st) === -1) return null;
+  var w = function (x) { return blank_(x) ? '' : String(x).trim(); };
+  var parts = w(row.parts), note = w(row.note), oth = w(row.why__other);
+  var head = st === 'stopped' ? 'Stopped on site' : st === 'notstart' ? 'Not started on site' : 'Work going on on site';
+  if (st !== 'stopped' && (!why || why === 'nothing')) {
+    if (!note && !w(row.when)) return null;
+    return { why: '', state: 'info', what: (head + (note ? ' — ' + note : '')).substring(0, 240) };
+  }
+  var what = why === 'parts' ? head + ' — not delivered yet' + (parts ? ': ' + parts : '')
+           : why === 'rework' ? head + ' — rework needed' + (parts ? ': ' + parts : '')
+           : why === 'customer' ? head + ' — held by the customer'
+           : why === 'other' ? head + (oth ? ': ' + oth : '')
+           : head;
+  if (note) what += ' — ' + note;
+  return { why: why === 'nothing' ? '' : why, state: st, what: what.substring(0, 240) };
+}
 ['dawit', 'tsigea', 'yared-rv', 'sintayehu', 'hana'].forEach(function (p) {
   REG_RV_SOURCES_.push(
     { r: p + '-daily', f: 'd_meas_list', k: 'measure', job: 'job', cust: 'cust' },
@@ -377,6 +411,14 @@ function regEventsOf_(filing) {
         var rq = blank_(row.rqty) ? null : n_(row.rqty);
         e.redo = (rm + (rc ? ' ' + rc : '') + (rq ? ' ×' + rq : '')).substring(0, 120);
       }
+      /* a site held up (Frewoyni's sites, 24 Oct 2026): no line when nothing holds it */
+      if (s.siteHold) {
+        var sh = regSiteHold_(row);
+        if (!sh) return;
+        e.why = sh.why; e.state = sh.state; e.what = sh.what;
+        if (regDate_(row.when)) e.date = regDate_(row.when);
+      }
+      if (s.sites) e.sites = 1;
       if (s.next) e.hn = true;            /* this list asks for a next step */
       /* the customer's code: the 4-digit lead no. the salesperson gave, or —
          on a list that is not a contract — the KK code once they have paid */
@@ -616,6 +658,12 @@ function regFold_(events, today, names, sellers) {
         if (e.ok === 'no') J.siteLate = e.day;
         /* finished, in Elyas's own word — a job on site is not yet one */
         if (e.state === 'done' && !J.siteDone) J.siteDone = e.day;
+        /* her next word on the site ends what held it (its own line follows) */
+        if (e.sites && J.siteHold && J.siteHold.day < e.day) J.siteHold = null;
+        break;
+      /* what holds a Rovestone site, in Frewoyni's word (24 Oct 2026) */
+      case 'sitehold':
+        J.siteHold = { day: e.day, why: e.why || '', state: e.state || '', what: e.what || '', date: e.date || '', by: who(e.person) };
         break;
       case 'complaint':
         /* one complaint, reported again as it moves: its latest state wins */
@@ -688,6 +736,7 @@ function regFold_(events, today, names, sellers) {
         break;
       case 'accepted':
         if (!J.accepted) J.accepted = e.day;
+        if (e.sites && J.siteHold && J.siteHold.day < e.day) J.siteHold = null;
         break;
       case 'followup':
         if (!J.followup) J.followup = e.day;
@@ -848,8 +897,18 @@ function regFold_(events, today, names, sellers) {
       holds.push('Production delayed: ' + lastDelay.what + (lastDelay.date ? ', new date ' + pushDay_(lastDelay.date) : '') +
                  ' (Mahelet, ' + pushDay_(lastDelay.day) + ')');
     }
+    /* a Rovestone site held up, in Frewoyni's word (24 Oct 2026): rework is
+       rework; a site where work goes on with a part missing still moves */
+    var along = [];
+    if (J.siteHold) {
+      var sh = J.siteHold;
+      var shTxt = sh.what + (sh.date ? ', expected ' + pushDay_(sh.date) : '') + ' (' + first(sh.by) + ', ' + pushDay_(sh.day) + ')';
+      if (sh.why === 'rework') rework.push(shTxt);
+      else if (sh.state === 'going' || sh.state === 'info') along.push(shTxt);
+      else holds.push(shTxt);
+    }
     J.status = rework.length ? 'rework' : holds.length ? 'hold' : ix >= regBoardIx_('accepted') ? 'done' : 'moving';
-    J.reasons = rework.concat(holds);
+    J.reasons = rework.concat(holds, along);
     J.why = J.reasons[0] || '';
     /* its money is known only if its contract or advance is in the reports:
        a job signed before reporting began may well have been paid then */

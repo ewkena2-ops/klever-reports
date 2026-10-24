@@ -3678,7 +3678,7 @@
           }
           var onType = function () {
             rowData[c.id] = inp.value;
-            if (tapBox) tapBox.hidden = has(inp.value);
+            if (tapBox) { tapBox.hidden = !c.many && has(inp.value); if (tapBox.mark) tapBox.mark(); }
             if (codeHint) codeHint.paint();
             if (card.syncs) card.syncs.forEach(function (fn) { fn(); });
             if (oth) oth.sync(true);
@@ -3691,17 +3691,38 @@
           if (oth) cell.appendChild(oth);
           if (c.t === 'text' && !c.time && (c.picks || recentKey(f, c))) {
             tapBox = el('div', 'chips mini cellpicks');
-            tapBox.hidden = has(inp.value);
+            tapBox.hidden = !c.many && has(inp.value);
+            /* `many` (24 Oct 2026): each tap adds its words to the box, a
+               second tap takes them off — "Face part, Glass" — and the words
+               stay on the screen */
+            var picked = function () { return String(inp.value || '').split(/\s*,\s*/).filter(function (x) { return x; }); };
             var fillTaps = function () {
               var words = c.picks ? c.picks.map(function (p) { return L(p); }) : (RECENT[recentKey(f, c)] || []);
               tapBox.innerHTML = '';
               words.forEach(function (w) {
                 var tb = el('button', 'chip', w);
                 tb.type = 'button';
-                tb.onclick = function () { inp.value = w; onType(); };
+                tb.setAttribute('data-w', w);
+                tb.onclick = function () {
+                  if (c.many) {
+                    var now = picked(), at = now.indexOf(w);
+                    if (at === -1) now.push(w); else now.splice(at, 1);
+                    inp.value = now.join(', ');
+                  } else inp.value = w;
+                  onType();
+                };
                 tapBox.appendChild(tb);
               });
+              if (tapBox.mark) tapBox.mark();
             };
+            if (c.many) {
+              tapBox.mark = function () {
+                var now = picked();
+                Array.prototype.forEach.call(tapBox.children, function (b) {
+                  b.setAttribute('aria-pressed', now.indexOf(b.getAttribute('data-w')) !== -1 ? 'true' : 'false');
+                });
+              };
+            }
             fillTaps();
             if (!c.picks) { tapBox.setAttribute('data-recent', '1'); tapBox.refill = fillTaps; }
             cell.appendChild(tapBox);
@@ -5719,11 +5740,14 @@
   /* what a carried row is known by: its job codes — or, with carry.text, the
      words themselves (a lead's name, 15 Oct 2026) */
   function carryKeys(f, v) {
-    if (f && f.carry && f.carry.text) {
-      var w = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
-      return w ? [w] : [];
-    }
-    return jobCodes(v, true);
+    var c = (f && f.carry) || {};
+    var w = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+    if (c.text) return w ? [w] : [];
+    /* `parts`: a part keeps its letter ("RBT 3364 B" is RBT-3364B); `names`:
+       a site with no code yet ("Ato Getaneh's site") comes back by its words
+       (Frewoyni's sites, 24 Oct 2026) */
+    var ks = jobCodes(v, true, !!c.parts);
+    return !ks.length && c.names && w ? [w] : ks;
   }
   /* the job codes one filing names in a source: 'list.col', a question's
      words, or {f, col, when:{col, is|in}} — only the rows that say so (a job

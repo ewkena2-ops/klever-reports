@@ -164,6 +164,23 @@ function rows_(v) {
   Object.keys(v).forEach(function (k) { out.push(v[k]); });
   return out;
 }
+/* Frewoyni's sites (24 Oct 2026): the list carried from her earlier
+   reports and the new ones, in the words she tapped (picks are filed as
+   codes) */
+function rvSites_(v) {
+  var def = null;
+  try { def = fieldDef_(loadSchedule_(), 'frewoyni-daily', 'w_sites'); } catch (e) { def = null; }
+  var cols = (def && def.cols) || [], out = [];
+  rows_(v.w_sites_back).concat(rows_(v.w_sites)).forEach(function (r) {
+    if (!r || blank_(r.job)) return;
+    var o = { site: String(r.job).trim() };
+    cols.forEach(function (c) {
+      if (c.id !== 'job' && !blank_(r[c.id])) o[c.id] = said_(c, r[c.id]) + otherSaid_(r, c.id);
+    });
+    out.push(o);
+  });
+  return out;
+}
 /* A number from a report that was never filed is not zero, it is unknown.
    n_() cannot tell those apart and will hand a model a confident 0, which it
    will then reason from — "Mahelet recorded zero production" when Mahelet
@@ -1262,6 +1279,7 @@ var AGENTS = [
       filed_today: true,
       from: 'Frewoyni, Rovestone Operations Lead — Rovestone is the sister company under the same Chairman',
       done_today: v.w_done || '',
+      sites: rvSites_(v),
       open_jobs: rows_(v.w_jobs),
       new_orders_to_klever: yes_(v.k_new) ? rows_(v.k_new_list) : [],
       waiting_on_klever: v.k_waiting || '',
@@ -1279,7 +1297,9 @@ var AGENTS = [
   },
   ask:'Read Rovestone’s day. Say what the Chairman must act on: a decision she asked for, an order '+
       'sent to Klever that needs his approval or Klever’s capacity, money owed to Klever, a problem '+
-      'with Klever’s work. If nothing needs him, say so in one line.' },
+      'with Klever’s work. Her sites: which are stopped, and for what — parts not delivered (name the '+
+      'parts), rework, the customer — grouped by what must happen and whose move it is (purchasing, '+
+      'production, delivery). If nothing needs him, say so in one line.' },
 
 /* Meri Block Board and Real Estate & Construction (Lemi Kura), 6 Oct 2026:
    each reports the way Rovestone does; one agent reads both */

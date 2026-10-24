@@ -553,6 +553,48 @@ const SIS_PASSED = [
   { en:'Materials',                        am:'ዕቃ' },
   { en:'Payment',                          am:'ክፍያ' }
 ];
+/* ROVESTONE'S SITES (24 Oct 2026, the owner, with the site report Frewoyni
+   wrote by hand for 23 Oct: 23 sites, one line each — "only the body part
+   has been delivered", "work has stopped due to a paint-part rework",
+   "stopped due to customer-related issues"). The same lines in taps: where
+   the work is, what holds it, which parts, and the day she expects it to
+   move. Read by the register (Register.js REG_RV_SOURCES_) and the Rovestone
+   reader (Agents.js). */
+const RV_SITE_STATE = [
+  { v:'going',    en:'Work going on',                     am:'ሥራው እየተካሄደ ነው' },
+  { v:'stopped',  en:'Work stopped',                      am:'ሥራው ቆሟል' },
+  { v:'notstart', en:'Not started yet',                   am:'ገና አልተጀመረም' },
+  { v:'done',     en:'Finished — not handed over yet',    am:'ተጠናቋል — ገና አልተረከበም' },
+  { v:'handed',   en:'Handed over to the customer',       am:'ደንበኛው ተረክቧል' },
+  { v:'drop',     en:'Take it off my list',               am:'ከዝርዝሬ አውጣው' }
+];
+const RV_SITE_WHY = [
+  { v:'nothing',  en:'Nothing',                           am:'ምንም' },
+  { v:'parts',    en:'Parts not delivered yet',           am:'ዕቃው ገና አልደረሰም' },
+  { v:'rework',   en:'Rework needed',                     am:'ማስተካከያ ያስፈልጋል' },
+  { v:'customer', en:'The customer',                      am:'ደንበኛው' },
+  { v:'other',    en:'Other',                             am:'ሌላ' }
+];
+const RV_SITE_PARTS = [
+  { en:'Body part',      am:'ቦዲ (የካቢኔው አካል)' },
+  { en:'Face part',      am:'ፌስ (የፊት ክፍል)' },
+  { en:'Paint part',     am:'የቀለም ክፍል' },
+  { en:'Glass',          am:'መስታወት' },
+  { en:'Doors',          am:'በሮች' },
+  { en:'Locks',          am:'ቁልፎች' },
+  { en:'Accessories',    am:'አክሰሰሪ' }
+];
+/* one site's row; `job` is the code box — carried rows bring their own */
+function rvSiteCols(job) {
+  return [job,
+    {id:'state', en:'Where is the work?', am:'ሥራው የት ደርሷል?', t:'choice', must:1, opts:RV_SITE_STATE},
+    {id:'why', en:'What is holding it?', am:'ምን ያዘው?', t:'choice', opts:RV_SITE_WHY, ifCol:'state', ifIn:['going', 'stopped', 'notstart']},
+    /* `many`: each tap adds a part (a second tap takes it off) */
+    {id:'parts', en:'Which parts? (tap each one)', am:'የትኞቹ ዕቃዎች? (እያንዳንዱን ይንኩ)', t:'text', many:1, picks:RV_SITE_PARTS, ifCol:'why', ifIn:['parts', 'rework']},
+    {id:'note', en:'Anything to add', am:'የሚጨመር ነገር', t:'text', opt:1},
+    {id:'when', en:'Expected to start, go on again or finish', am:'ይጀመራል፣ ይቀጥላል ወይም ያልቃል ተብሎ የሚጠበቅበት ቀን', t:'date', opt:1}
+  ];
+}
 const COL_NEXT = [
   { en:'Send the quotation',        am:'ፕሮፎርማ መላክ' },
   { en:'Book the measurement',      am:'ልኬት መያዝ' },
@@ -8115,9 +8157,21 @@ const REPORTS = [
        boxes have the usual answers as buttons, with a box under them for the
        job and the date. The morning brief reads every one of these as words,
        as it did; every answer key is as it was. */
+    /* HER SITES (24 Oct 2026, RV_SITE_*): every site she named before comes
+       back each day, until it is handed over or taken off; a site new today
+       goes in the list under it */
+    { en:'Sites', am:'የሥራ ቦታዎች', fields:[
+      {id:'w_sites_back', en:'Your sites from earlier reports — where does each stand today?', am:'ባለፉት ሪፖርቶችዎ የጠቀሷቸው የሥራ ቦታዎች — እያንዳንዱ ዛሬ የት ደርሷል?', t:'table',
+        carry:{from:['w_sites.job'], shut:[{f:'w_sites', col:'job', when:{col:'state', in:['handed', 'drop']}}],
+               close:{col:'state', in:['handed', 'drop']}, days:30, parts:1, names:1, hideEmpty:1},
+        cols:rvSiteCols({id:'job', en:'Job code', am:'የሥራ ኮድ', t:'text'})},
+      {id:'w_sites', en:'A site not in the list above (add each one)', am:'ከላይ ባለው ዝርዝር ውስጥ የሌለ የሥራ ቦታ (እያንዳንዱን ይጨምሩ)', t:'table',
+        addEn:'Add a site', addAm:'የሥራ ቦታ ጨምር', opt:1,
+        cols:rvSiteCols({id:'job', en:'Job code (RBT …) or the customer', am:'የሥራ ኮድ (RBT …) ወይም ደንበኛው', t:'text', must:1, codeOk:1})}
+    ]},
     { en:'Today’s work', am:'የዛሬ ሥራ', fields:[
       {id:'w_done', en:'What did Rovestone get done today?', am:'ሮቭስቶን ዛሬ ምን ሠራ?', t:'area', picks:SIS_DONE},
-      {id:'w_jobs', en:'Which jobs are open, and where does each stand?', am:'ክፍት የሆኑት ሥራዎች የትኞቹ ናቸው? እያንዳንዱ የት ደርሷል?', t:'table',
+      {id:'w_jobs', en:'Other open jobs, not on a site yet — where does each stand?', am:'ሌሎች ክፍት ሥራዎች (ገና ወደ ሥራ ቦታ ያልሄዱ) — እያንዳንዱ የት ደርሷል?', t:'table',
         addEn:'Add a job', addAm:'ሥራ ጨምር', opt:1, cols:[
           {id:'job', en:'Job or site', am:'ሥራ ወይም ቦታ', t:'text'},
           {id:'stage', en:'Where it stands', am:'ያለበት ደረጃ', t:'text', picks:SIS_STAGE},

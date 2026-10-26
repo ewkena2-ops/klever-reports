@@ -635,11 +635,14 @@ function waSendBrief_(results, d) {
     var cfg = waConfig_();
     if (!cfg.url || !cfg.secret) return;
     var b = (results || []).filter(function (r) { return r.id === 'brief'; })[0];
-    if (!b || !b.text || aiFailed_(b.text)) return;
+    var text = b && b.text && !aiFailed_(b.text) ? b.text
+             /* the model did not write the brief: the week's schedule still goes (Week.js) */
+             : (d.weekText && !d.weekInBrief ? d.weekText : '');
+    if (!text) return;
     var res = UrlFetchApp.fetch(cfg.url + '/internal/brief', {
       method: 'post', contentType: 'application/json', muteHttpExceptions: true,
       headers: { 'X-Klever-Secret': cfg.secret },
-      payload: JSON.stringify({ day: d.day, text: waBriefText_(d.dayLabel || d.day, b.text) })
+      payload: JSON.stringify({ day: d.day, text: waBriefText_(d.dayLabel || d.day, text) })
     });
     Logger.log('wa brief: HTTP %s %s', res.getResponseCode(), res.getContentText().substring(0, 200));
   } catch (e) {

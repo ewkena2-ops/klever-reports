@@ -1819,6 +1819,9 @@ function runOn_(c, provisional, opts) {
   var quiet = !!(opts && opts.quiet);
   var d = gather_(c, provisional);
   var results = askAll_(d);
+  /* the week's schedule, and what happened in it, at the end of the brief
+     (Week.js — the user, 26 Oct 2026) */
+  weekIntoBrief_(results, d);
   /* the Sheet copy and the email each fail alone, said in the run's warnings:
      neither may cost the reading on his page (15 Oct 2026) */
   var warn = (opts && opts.warn) || [];
@@ -2136,6 +2139,12 @@ function mailAnalysis_(results, d) {
     html += '<div style="background:#f3f4f1;border-left:3px solid #0f5c54;padding:14px 16px;' +
             'margin-bottom:24px;font-size:14px;line-height:1.65;white-space:pre-wrap">' +
             esc_(brief.text) + '</div>';
+  }
+  /* the week's schedule, when the brief could not carry it (Week.js) */
+  if (d.weekText && !d.weekInBrief) {
+    html += '<div style="background:#f3f4f1;border-left:3px solid #0f5c54;padding:14px 16px;' +
+            'margin-bottom:24px;font-size:13.5px;line-height:1.6;white-space:pre-wrap">' +
+            esc_(d.weekText) + '</div>';
   }
 
   if (decide) {

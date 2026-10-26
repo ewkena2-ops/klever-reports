@@ -1752,6 +1752,7 @@
     try {
       var q = new URLSearchParams(location.search);
       q.delete('scan');
+      q.delete('full');
       history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash);
     } catch (e) {}
     box.appendChild(el('div', 'inst', t('atChecking')));
@@ -1788,11 +1789,18 @@
        the phone is asked where it is at once, beside the WiFi check: on the
        WiFi the scan is done without it; on any other internet the place
        decides, already found. Blocked: how to allow it, step by step. */
-    var placeAsked = false, lastLoc = null;
+    var placeAsked = false, lastLoc = null, waiting = false;
+    /* no fix yet after 10 seconds: say it is still looking (js/where.js) */
+    function still(s) {
+      var sub = waiting && s >= 10 && box.querySelector('.atsub');
+      if (sub) sub.textContent = t('atLocStill');
+    }
     function place(pending) {
       placeAsked = true;
+      waiting = true;
       show('wait', t('atLocAsk'), t('atLocAskSub'));
-      (pending && pending.then ? pending : atWhere()).then(function (loc) {
+      (pending && pending.then ? pending : atWhere(still)).then(function (loc) {
+        waiting = false;
         if (loc.err) return locHelp(loc.err);
         lastLoc = loc;
         show('wait', t('atChecking'));
@@ -1801,7 +1809,7 @@
     }
     function again() { place(); }
     function locHelp(err) {
-      show('bad', t(err === 'denied' ? 'atLocDenied' : 'atLocNone'));
+      show('bad', t(err === 'denied' ? 'atLocDenied' : 'atLocSlow'));
       var ua = navigator.userAgent || '';
       /* opened inside a QR app's own browser (Android "wv"), which gives no location: Chrome can */
       if (/Android/.test(ua) && /; wv\)|FBAN|FBAV|Instagram|Telegram/.test(ua)) {
@@ -1812,7 +1820,7 @@
       }
       box.appendChild(el('div', 'atsub', t('atHelpHead')));
       var ol = el('ol', 'atsteps');
-      (/iPhone|iPad|iPod/.test(ua) ? ['atHelpI1', 'atHelpI2', 'atHelpBack'] : ['atHelpA1', 'atHelpA2', 'atHelpA3', 'atHelpBack'])
+      (/iPhone|iPad|iPod/.test(ua) ? ['atHelpI1', 'atHelpI2', 'atHelpI3', 'atHelpBack'] : ['atHelpA1', 'atHelpA2', 'atHelpA3', 'atHelpBack'])
         .forEach(function (k) { ol.appendChild(el('li', '', t(k))); });
       box.appendChild(ol);
       button(t('atTryAgain'), again);
@@ -1832,7 +1840,7 @@
       }
       if (w === 'holiday') return show('bad', tfill_('atHoliday', { name: lang === 'am' && a.nameAm ? a.nameAm : (a.name || '') }));
       if (w === 'far') { show('bad', tfill_('atFar', { m: atMetres(a.dist) }), t('atFarSub')); button(t('atTryAgain'), again); return; }
-      if (w === 'loc-poor') { show('bad', tfill_('atLocPoor', { m: atMetres(a.acc) }), t('atLocPoorSub')); button(t('atTryAgain'), again); return; }
+      if (w === 'loc-poor') { show('bad', tfill_('atLocPoor', { m: atMetres(a.acc) }), t(/iPhone|iPad|iPod/.test(navigator.userAgent || '') ? 'atLocPoorSubI' : 'atLocPoorSub')); button(t('atTryAgain'), again); return; }
       if (w === 'no-spot') return show('bad', t('atNoSpot'));
       var msg = { 'not-wifi': 'atNotWifi', 'no-wifi-set': 'atNoWifiSet', sunday: 'atSunday', 'not-office': 'atNotOffice',
                   signin: 'atSignIn' }[w] || 'atFailed';
@@ -1857,7 +1865,7 @@
         }, function (e) { show('bad', t('atSetFailed') + ' ' + ((e && e.message) || e)); });
       });
     }
-    var early = atWhere();
+    var early = atWhere(still);
     send().then(answer, failed);
     return box;
   }
@@ -1867,32 +1875,10 @@
     if (m < 1000) return m + (lang === 'am' ? ' ሜትር' : ' m');
     return (m / 1000).toFixed(1) + (lang === 'am' ? ' ኪ.ሜ' : ' km');
   }
-  /* Where the phone is: the best fix in a few seconds — a first fix is often
-     rough — as {lat, lng, acc}, or {err: 'denied' | 'none'}. Done at once
-     within 30 m, at 6 s within 100 m, else the best by 15 s. */
-  function atWhere() {
-    return new Promise(function (done) {
-      var g = navigator.geolocation, best = null, id = null, over = false, t1 = 0, t2 = 0;
-      function end(x) {
-        if (over) return;
-        over = true;
-        clearTimeout(t1); clearTimeout(t2);
-        if (id !== null) { try { g.clearWatch(id); } catch (e) {} }
-        done(x);
-      }
-      if (!g) return done({ err: 'none' });
-      t1 = setTimeout(function () { if (best && best.acc <= 100) end(best); }, 6000);
-      t2 = setTimeout(function () { end(best || { err: 'none' }); }, 15000);
-      try {
-        id = g.watchPosition(function (p) {
-          var c = p.coords, x = { lat: c.latitude, lng: c.longitude, acc: Math.round(c.accuracy || 99999) };
-          if (!best || x.acc < best.acc) best = x;
-          if (best.acc <= 30) end(best);
-        }, function (e) {
-          if (e && e.code === 1) end({ err: 'denied' });
-        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
-      } catch (e) { end({ err: 'none' }); }
-    });
+  /* Where the phone is: js/where.js (shared with the quick scan page,
+     js/scan.js) — {lat, lng, acc} or {err: 'denied' | 'none' | 'slow'} */
+  function atWhere(onWait) {
+    return window.kleverWhere ? window.kleverWhere(onWait) : Promise.resolve({ err: 'none' });
   }
 
   /* the person's own days: today, and the working days of the week before

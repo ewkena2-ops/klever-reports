@@ -2,6 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>
+/* The door QR (?scan=office) goes to the quick check-in page, before anything
+   else here loads (26 Oct 2026: "when they scan, the site has to load
+   faster"). It sends back here, with full=1, whoever it cannot check in alone. */
+(function () {
+  try {
+    var q = new URLSearchParams(location.search);
+    if (/^(office|1)$/.test(q.get('scan') || '') && q.get('full') !== '1') {
+      location.replace('scan.html' + location.search + location.hash);
+      /* and nothing below is read, fetched or run meanwhile */
+      document.write('<plaintext style="display:none">');
+    }
+  } catch (e) {}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Klever Reports</title>
 <meta name="description" content="Daily and weekly reports for the Klever Küche team.">
@@ -24,12 +39,13 @@
 <body data-page="index">
 <main class="wrap" id="app"></main>
 <script src="js/save.js?v=7da0b4e9"></script>
-<script src="js/i18n.js?v=02bc61aa"></script>
+<script src="js/i18n.js?v=8ac376f3"></script>
 <script src="js/forms.js?v=ef4a580c"></script>
 <script src="js/firebase-config.js?v=8a080f41"></script>
 <script src="js/channels.js?v=ff70a8db"></script>
 <script src="js/auth.js?v=def97174"></script>
-<script src="js/app.js?v=947502ac"></script>
+<script src="js/where.js?v=b18f6a59"></script>
+<script src="js/app.js?v=39e48a3d"></script>
 <!-- a module, so it runs after the classic scripts above and before
      DOMContentLoaded — which is exactly when app.js waits on FB.ready -->
 <script src="js/quiet.js?v=aef0a22a"></script>

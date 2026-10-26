@@ -1774,7 +1774,8 @@
         if (!tok) throw { why: 'signin' };
         var body = { idToken: tok };
         if (loc) body.loc = loc;
-        return fetch(ATTEND_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        /* plain text: sent at once, with no "may I?" trip first (26 Oct 2026) */
+        return fetch(ATTEND_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
                                    body: JSON.stringify(body) });
       }).then(function (r) {
         return r.json()['catch'](function () { return { ok: false, why: 'unavailable' }; });

@@ -9,13 +9,46 @@
 <link rel="icon" href="assets/icon.svg?v=9fd7999d" type="image/svg+xml">
 <link rel="icon" href="assets/icon-32.png?v=e7a77e05" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="assets/icon-180.png?v=f7591a12">
+<!-- the servers a scan talks to, connected to while the page loads: on the
+     office line each new connection can take a second (26 Oct 2026) -->
+<link rel="preconnect" href="https://whatsapp-agent-production-bcc8.up.railway.app">
+<link rel="preconnect" href="https://securetoken.googleapis.com">
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=1de8f4d7">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js" crossorigin>
+<!-- the check-in's own few rules from css/style.css, here so the page draws
+     at once instead of waiting for the whole stylesheet -->
 <style>
+  :root{--bg:#060b0a;--card:#0e1816;--field:#0a1311;--line:rgba(255,255,255,.065);--line-2:rgba(255,255,255,.11);
+    --ink:#eef4f1;--ink-2:#c5d2cd;--teal:#2aa58e;--teal-hi:#5fe0c6;--teal-ink:#032019;--teal-bg:rgba(95,224,198,.09);
+    --teal-line:rgba(95,224,198,.30);--gold:#e3b547;--coral:#ee7c61;
+    --sans:"Archivo","Noto Sans Ethiopic",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --serif:"Source Serif 4","Noto Serif Ethiopic",Georgia,serif;--r-s:10px;--r-l:20px;color-scheme:dark}
+  *{box-sizing:border-box}
+  html{background:var(--bg);-webkit-text-size-adjust:100%}
+  body{margin:0;min-height:100vh;background:radial-gradient(120% 50% at 50% -8%,#12221f 0%,rgba(6,11,10,0) 60%),var(--bg);
+    color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
   .scanwrap{max-width:520px;margin:0 auto;padding:24px 16px 40px}
   .scanhead{display:flex;align-items:center;gap:10px;margin-bottom:18px}
   .scanhead img{height:30px;width:auto}
   .scanhead h1{font:700 18px var(--sans);margin:0;color:var(--ink)}
+  .ins{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);padding:16px 16px 14px 20px;margin:0 0 10px;overflow:hidden}
+  .ins::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--teal-hi)}
+  .inst{font-family:var(--serif);font-size:17px;line-height:1.45;color:var(--ink)}
+  .atscan.late::before{background:var(--gold)}
+  .atscan.bad::before{background:var(--coral)}
+  .atbig{font-family:var(--serif);font-size:20px;line-height:1.35;color:var(--ink)}
+  .atscan.good .atbig{color:var(--teal-hi)}
+  .atscan.bad .atbig{color:var(--coral)}
+  .atsub{font-size:13.5px;color:var(--ink-2);margin-top:6px;line-height:1.45;overflow-wrap:anywhere}
+  .atsteps{margin:4px 0 0;padding-left:22px;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+  .atsteps li{margin-top:4px;overflow-wrap:anywhere}
+  .mfpick{min-height:40px;padding:0 12px;border-radius:999px;cursor:pointer;font:600 13px var(--sans);background:var(--field);border:1px solid var(--line-2);color:var(--ink)}
+  .mfpick:active{background:var(--teal-bg)}
+  .atscan .atagain{margin-top:10px}
+  .atscan a.atagain{display:inline-block;text-decoration:none}
+  .pushbtn{margin-top:10px;min-height:44px;padding:0 18px;border-radius:var(--r-s);border:0;font-weight:700;font-size:14px;cursor:pointer;
+    background:linear-gradient(180deg,var(--teal-hi),var(--teal));color:var(--teal-ink)}
   .scanlinks{margin-top:16px;display:flex;flex-wrap:wrap;gap:10px}
   .scanlinks a{display:inline-flex;align-items:center;text-decoration:none}
 </style>
@@ -29,9 +62,9 @@
   <div id="scanbox" class="ins atscan wait"><div class="inst">Checking you in…</div></div>
   <div id="scanlinks" class="scanlinks"></div>
 </main>
-<script src="js/i18n.js?v=8ac376f3"></script>
+<script src="js/scan-text.js?v=e40b87f2"></script>
 <script src="js/firebase-config.js?v=8a080f41"></script>
-<script src="js/where.js?v=b18f6a59"></script>
-<script src="js/scan.js?v=3bc2e102"></script>
+<script src="js/where.js?v=dc69a3d3"></script>
+<script src="js/scan.js?v=0e566696"></script>
 </body>
 </html>

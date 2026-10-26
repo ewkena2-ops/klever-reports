@@ -11,14 +11,18 @@
      · a quick rough fix (Wi-Fi and the mobile network, at most a minute old)
        is asked for beside the precise one, and the better of them wins;
      · the clock starts at the FIRST fix, not at the question: done at once
-       within 30 m, otherwise the best one 4 seconds after the first;
+       within 50 m (the office counts a place to 200 m), otherwise the best
+       one 2.5 seconds after the first;
      · with no fix at all: 'denied' at once when it is refused, else 'slow'
        (or 'none' when the phone says it cannot find one) after 45 seconds.
    `onWait(seconds)` is told every few seconds while nothing has come, so the
    page can say "still looking — stand near a window".                       */
 (function () {
   'use strict';
-  var MS = window.KLEVER_WHERE_MS || { good: 30, after: 4000, all: 45000, tick: 5000 };
+  /* `first`: how long the quick scan page waits for the place before it sends
+     the scan without one (js/scan.js) */
+  var MS = window.KLEVER_WHERE_MS || { good: 50, after: 2500, all: 45000, tick: 5000, first: 2500 };
+  window.KLEVER_WHERE_FIRST = MS.first || 2500;
 
   window.kleverWhere = function (onWait) {
     return new Promise(function (done) {

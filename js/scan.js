@@ -119,11 +119,14 @@
     if (!user) { show('bad', t('atSignIn')); homeLink(t('scanSignInBtn'), fullUrl()); return; }
     if (/^chairman@/i.test(user.email || '')) { location.replace(fullUrl()); return; }
 
+    /* plain text, so the phone sends it straight away: JSON would first ask
+       the server "may I?" — one more trip on a slow line */
+    var tokP = user.getIdToken();        /* fetched now, while the place is found: an old one is renewed over the line */
     function send(loc) {
-      return user.getIdToken().then(function (tok) {
+      return tokP.then(function (tok) {
         var body = { idToken: tok };
         if (loc) body.loc = loc;
-        return fetch(ATTEND_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        return fetch(ATTEND_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body) });
       }).then(function (r) {
         return r.json()['catch'](function () { return { ok: false, why: 'unavailable' }; });
       });
@@ -180,6 +183,19 @@
       show('bad', t(msg), a.ip ? tf('atAddr', { ip: a.ip }) : '');
       if (msg === 'atFailed') button(t('atTryAgain'), function () { location.reload(); });
     }
-    send().then(answer, failed);
+    /* one send, not two: the place goes with the scan when the phone has it
+       within a moment (off the WiFi it decides; on the WiFi it is not
+       needed). No place by then: sent without, and asked for if needed. */
+    var placed = null;
+    early.then(function (loc) { placed = loc; });
+    new Promise(function (go) {
+      if (placed) return go();
+      early.then(go);
+      setTimeout(go, window.KLEVER_WHERE_FIRST || 2500);
+    }).then(function () {
+      var loc = placed && !placed.err ? placed : null;
+      if (loc) placeAsked = true;
+      return send(loc);
+    }).then(answer, failed);
   }, failed);
 })();

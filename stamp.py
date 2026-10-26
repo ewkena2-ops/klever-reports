@@ -17,7 +17,7 @@ import io, hashlib, re, os
 ASSETS = ['css/style.css', 'js/app.js', 'js/i18n.js', 'js/forms.js', 'js/people.js', 'js/auth.js',
           'js/rules.js', 'js/save.js', 'js/channels.js', 'js/firebase-config.js', 'js/chat.js',
           'js/chairman.js', 'js/charts.js', 'js/fb.js', 'js/media.js', 'js/orbit.js', 'js/agents.js', 'js/orbit3d.js',
-          'js/space3d.js', 'js/universe3d.js', 'js/universe.js', 'js/register.js', 'js/promises.js', 'js/weekly.js', 'js/gate.js', 'js/quiet.js', 'js/where.js', 'js/scan.js', 'js/scan-text.js',
+          'js/space3d.js', 'js/universe3d.js', 'js/universe.js', 'js/register.js', 'js/promises.js', 'js/weekly.js', 'js/gate.js', 'js/quiet.js', 'js/where.js', 'js/scan.js', 'js/scan-text.js', 'js/gatelight.js',
           'assets/icon.svg', 'assets/icon-32.png', 'assets/icon-180.png', 'site.webmanifest', 'gate.webmanifest',
           'rovestone.webmanifest', 'assets/rovestone.svg', 'assets/rovestone-180.png']
 PAGES = ['index.html', 'form.html', 'chat.html', 'chairman.html', 'agents.html', 'universe.html', 'register.html', 'gate.html', 'scan.html']

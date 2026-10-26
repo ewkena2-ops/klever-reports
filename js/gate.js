@@ -224,6 +224,8 @@
     return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false })
       .then(function (st) {
         video.srcObject = st;
+        camTrack = st.getVideoTracks ? st.getVideoTracks()[0] : null;
+        camExposure(false);
         var p = video.play();
         return p && p.then ? p['catch'](function () {}) : null;
       })
@@ -262,43 +264,83 @@
     });
     return engine;
   }
+  /* POOR LIGHT (26 Oct 2026, the user: "the face detect on low light — it
+     doesn't even see a face"). How bright the picture is, measured every
+     look (js/gatelight.js); when it is dark the finders look at a
+     brightened copy with lower bars, the strong finder every time the quick
+     one sees nothing, the screen turns white to light the face, and the
+     camera is asked to expose longer where it can. The face numbers are
+     worked out on the brightened copy too; the bar for "it is them" stays
+     where it is — a face not sure enough taps its name. */
+  var camTrack = null, dark = false, lastSrc = null, expoSet = null;
+  function camExposure(dk) {
+    if (!camTrack || !camTrack.getCapabilities || expoSet === dk) return;
+    expoSet = dk;
+    try {
+      var c = camTrack.getCapabilities() || {}, adv = {};
+      if (c.exposureMode && c.exposureMode.indexOf('continuous') !== -1) adv.exposureMode = 'continuous';
+      if (c.exposureCompensation && isFinite(c.exposureCompensation.max)) adv.exposureCompensation = dk ? c.exposureCompensation.max : 0;
+      if (Object.keys(adv).length) camTrack.applyConstraints({ advanced: [adv] })['catch'](function () {});
+    } catch (e) {}
+  }
+  function setDark(dk) {
+    if (dk === dark) return;
+    dark = dk;
+    camExposure(dk);
+    if (K.screen) K.screen.classList.toggle('lamp', dk);
+    if (K.dark) { K.dark.innerHTML = ''; if (dk) K.dark.appendChild(two('gtDark')); }
+  }
+  /* the picture the finders look at: the camera's, or in the dark a brightened copy */
+  function source() {
+    var L = window.kleverLight, m = L ? L.measure(video) : null;
+    setDark(!!(m && m.dark));
+    lastSrc = dark && L ? L.brighten(video, m) : video;
+    return lastSrc;
+  }
+  function srcW() { return (lastSrc && (lastSrc.videoWidth || lastSrc.width)) || (video && video.videoWidth) || 640; }
+  function srcH() { return (lastSrc && (lastSrc.videoHeight || lastSrc.height)) || (video && video.videoHeight) || 480; }
+
   /* Every face in the picture now, with its numbers. Two ways to find a
      face: the small finder is quick but misses a face turned, tilted or in
      poor light (tried on real faces, 14 Oct 2026); the stronger one finds
      those but is slower. At the gate ('fast') the quick one looks every
-     time and the stronger one when it saw nothing, at most every 1.5 s;
-     adding a face, or checking a tapped name's picture ('best'), uses the
-     stronger one. */
+     time and the stronger one when it saw nothing, at most every 1.5 s (in
+     the dark, every time); adding a face, or checking a tapped name's
+     picture ('best'), uses the stronger one. */
   var lastStrong = 0;
   function look(size, how) {
     var fa = window.faceapi;
     if (!fa || !engineOk || !video || !video.videoWidth) return Promise.resolve([]);
+    var src = source();
     var ssd = fa.nets.ssdMobilenetv1;
     var strong = function () {
       lastStrong = Date.now();
-      return Promise.resolve(fa.detectAllFaces(video, new fa.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+      return Promise.resolve(fa.detectAllFaces(src, new fa.SsdMobilenetv1Options({ minConfidence: dark ? 0.3 : 0.5 }))
         .withFaceLandmarks().withFaceDescriptors()).then(function (r) { return r || []; });
     };
     var haveStrong = !!(ssd && ssd.isLoaded && fa.SsdMobilenetv1Options);
     if (how === 'best' && haveStrong) return strong();
-    return Promise.resolve(fa.detectAllFaces(video, new fa.TinyFaceDetectorOptions({ inputSize: size || 320, scoreThreshold: 0.45 }))
+    return Promise.resolve(fa.detectAllFaces(src, new fa.TinyFaceDetectorOptions({ inputSize: dark ? Math.max(size || 320, 416) : (size || 320),
+                                                                                   scoreThreshold: dark ? 0.3 : 0.45 }))
       .withFaceLandmarks().withFaceDescriptors()).then(function (r) {
         r = r || [];
-        if (r.length || !haveStrong || Date.now() - lastStrong < 1500) return r;
+        if (r.length || !haveStrong || (!dark && Date.now() - lastStrong < 1500)) return r;
         return strong();
       });
   }
-  /* a small square picture around a face (or the middle of the picture) */
+  /* a small square picture around a face (or the middle of the picture),
+     from the picture the face was found in — brightened, in the dark, so
+     Amaha can see who it is */
   function snap(box, size) {
     size = size || 200;
-    var vw = video.videoWidth || 640, vh = video.videoHeight || 480, cx, cy, s;
+    var from = lastSrc || video, vw = srcW(), vh = srcH(), cx, cy, s;
     if (box) { cx = box.x + box.width / 2; cy = box.y + box.height / 2; s = Math.max(box.width, box.height) * 1.7; }
     else { cx = vw / 2; cy = vh / 2; s = Math.min(vw, vh); }
     s = Math.min(s, vw, vh);
     var x = Math.max(0, Math.min(vw - s, cx - s / 2)), y = Math.max(0, Math.min(vh - s, cy - s / 2));
     var c = document.createElement('canvas');
     c.width = c.height = size;
-    try { c.getContext('2d').drawImage(video, x, y, s, s, 0, 0, size, size); } catch (e) { return ''; }
+    try { c.getContext('2d').drawImage(from, x, y, s, s, 0, 0, size, size); } catch (e) { return ''; }
     return c.toDataURL('image/jpeg', 0.72);
   }
   function showCamera(into) {
@@ -308,7 +350,7 @@
     if (p && p['catch']) p['catch'](function () {});
   }
   function biggest(found, min) {
-    var vw = (video && video.videoWidth) || 640;
+    var vw = srcW();
     return (found || []).filter(function (f) { return f.detection.box.width / vw >= (min || CLOSE); })
       .sort(function (a, b) { return b.detection.box.width - a.detection.box.width; })[0] || null;
   }
@@ -365,7 +407,7 @@
     mode = 'kiosk';
     sub = 'idle';
     root.innerHTML = '';
-    var screen = el('div', 'gtscreen');
+    var screen = K.screen = el('div', 'gtscreen' + (dark ? ' lamp' : ''));
     var cam = el('div', 'gtcam');
     K.ring = el('div', 'gtring');
     cam.appendChild(K.ring);
@@ -375,6 +417,10 @@
     side.appendChild(K.clock);
     K.say = el('div', 'gtsay');
     side.appendChild(K.say);
+    /* in the dark: come close, the white screen lights the face */
+    K.dark = el('div', 'gtdark');
+    if (dark) K.dark.appendChild(two('gtDark'));
+    side.appendChild(K.dark);
     K.answer = el('div', 'gtanswer');
     side.appendChild(K.answer);
     K.tap = btn('gtTapName', 'gttap', function () { names(); });
@@ -856,7 +902,8 @@
           if (Date.now() - warned > 3000) { warned = Date.now(); toast('gtOneFace'); }
         } else {
           var big = biggest(found, 0.2);
-          if (big && big.detection.score >= 0.55 && Date.now() - last > 700) {
+          /* a surer face to keep — less sure in the dark, where the gate itself lowers its bar */
+          if (big && big.detection.score >= (dark ? 0.4 : 0.55) && Date.now() - last > 700) {
             last = Date.now();
             shots.push({ vec: big.descriptor, photo: shots.length ? '' : snap(big.detection.box, 160) });
             ring.className = 'gtring good';

@@ -222,6 +222,8 @@ const T = {
     /* the factory gate (gate.html, js/gate.js, 14 Oct 2026) */
     gtLook:'Look at the camera',
     gtCloser:'Come a little closer',
+    /* the gate in poor light (js/gatelight.js, 26 Oct 2026) */
+    gtDark:'It is dark — come close; the white screen lights your face',
     gtHold:'Hold still…',
     gtUnknown:'Not recognised — tap your name below',
     gtWelcome:'Welcome',
@@ -1440,6 +1442,7 @@ const T = {
     /* the factory gate (gate.html, js/gate.js, 14 Oct 2026) */
     gtLook:'ካሜራውን ይመልከቱ',
     gtCloser:'ትንሽ ቀረብ ይበሉ',
+    gtDark:'ጨለማ ነው — ይቅረቡ፤ ነጩ ስክሪን ፊትዎን ያበራል',
     gtHold:'ትንሽ ይቆዩ…',
     gtUnknown:'አልታወቁም — ከታች ስምዎን ይንኩ',
     gtWelcome:'እንኳን ደህና መጡ',

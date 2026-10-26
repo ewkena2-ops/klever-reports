@@ -2159,6 +2159,14 @@ body.gatepage{padding:0;overflow-x:hidden}
 .gtsay{font-size:clamp(22px,3.4vw,36px);min-height:2.6em}
 .gtsay.gtUnknown .gtam,.gtsay.gtNoEngine .gtam{color:var(--gold)}
 .gtanswer:empty{display:none}
+/* poor light (26 Oct 2026, js/gatelight.js): the screen turns white around the camera and lights the
+   face, as a phone's front flash does; the words go dark on it */
+.gtscreen.lamp{background:#fff;color:#0b1f1c}
+.gtscreen.lamp .gtcam{box-shadow:0 0 0 14px #fff,0 0 60px 30px rgba(255,255,255,.9)}
+.gtscreen.lamp .gttime2,.gtscreen.lamp .gten{color:#38504b}
+.gtscreen.lamp .gtcorner{background:#eef3f1;color:#0b1f1c}
+.gtdark:empty{display:none}
+.gtdark{font-size:clamp(16px,2.2vw,22px);font-weight:600;color:#a87b00;padding:10px 14px;border-radius:14px;background:#fff6d9}
 .gtresult{display:flex;gap:18px;align-items:center;padding:18px;border-radius:20px;background:var(--card);
   box-shadow:inset 0 0 0 2px var(--teal-line);animation:gtin .25s ease-out}
 .gtresult.late{box-shadow:inset 0 0 0 2px var(--gold);background:var(--gold-bg)}

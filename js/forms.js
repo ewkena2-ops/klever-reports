@@ -1834,7 +1834,9 @@ const REPORTS = [
                close:{col:'buy', in:['done', 'hold']}, days:30},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
-          {id:'buy', en:'Finished buying?', am:'ግዥው ተጠናቋል?', t:'choice', must:1, opts:[
+          /* `mustFrom` (the owner, 27 Oct 2026, 7 PM: "just for today let him
+             send"): his four must boxes may be left empty on 27 Oct only */
+          {id:'buy', en:'Finished buying?', am:'ግዥው ተጠናቋል?', t:'choice', must:1, mustFrom:'2026-10-28', opts:[
             {v:'done',  en:'Yes — everything is bought',            am:'አዎ — ሁሉም ተገዝቷል'},
             {v:'part',  en:'Part bought — the rest still to buy',    am:'ከፊሉ ተገዝቷል — ቀሪው ገና አልተገዛም'},
             {v:'selam', en:'Waiting for Selam — approval or money', am:'ሰላምን እየጠበቅሁ ነው — ማጽደቅ ወይም ገንዘብ'},
@@ -1887,7 +1889,7 @@ const REPORTS = [
           /* what it is for: only a request for a customer's job has a job
              code to give, and only that one is fined without it (the user,
              15 Oct 2026: "he may buy office accessories and other things") */
-          {id:'for', en:'What is it for?', am:'ለምንድነው?', t:'choice', must:1, opts:[
+          {id:'for', en:'What is it for?', am:'ለምንድነው?', t:'choice', must:1, mustFrom:'2026-10-28', opts:[
             {v:'job',     en:'A customer’s job',                         am:'የደንበኛ ሥራ'},
             {v:'stock',   en:'Store stock — no job yet',                 am:'የመጋዘን ክምችት — ገና ለሥራ ያልተመደበ'},
             {v:'factory', en:'The factory — tools, parts, consumables',  am:'ፋብሪካ — መሣሪያ፣ መለዋወጫ፣ ፍጆታ'},
@@ -1955,7 +1957,7 @@ const REPORTS = [
              credit on today's purchase, then later ask if it is paid"): on
              credit, it is on his credit list from the next report until he
              says it is paid. Left empty on most orders before. */
-          {id:'paid', en:'Cheque given, or on credit?', am:'ቼክ ተሰጥቷል ወይስ በዱቤ?', t:'choice', must:1, opts:[
+          {id:'paid', en:'Cheque given, or on credit?', am:'ቼክ ተሰጥቷል ወይስ በዱቤ?', t:'choice', must:1, mustFrom:'2026-10-28', opts:[
             {v:'cheque', en:'Cheque given', am:'ቼክ ተሰጥቷል'},
             {v:'credit', en:'On credit — no cheque yet', am:'በዱቤ — ቼክ ገና አልተሰጠም'}]},
           {id:'chq', en:'Cheque no.', am:'የቼክ ቁጥር', t:'text', ifCol:'paid', ifIn:['cheque']},
@@ -2004,7 +2006,7 @@ const REPORTS = [
         carry:{credit:1, close:{col:'now', in:['paid']}},
         cols:[
           {id:'what', en:'Credit', am:'ዱቤ', t:'text'},
-          {id:'now', en:'Paid?', am:'ተከፍሏል?', t:'choice', must:1, mustDue:1, opts:[
+          {id:'now', en:'Paid?', am:'ተከፍሏል?', t:'choice', must:1, mustDue:1, mustFrom:'2026-10-28', opts:[
             {v:'paid', en:'Paid in full',                am:'ሙሉ በሙሉ ተከፍሏል'},
             {v:'part', en:'Part paid — some still owed', am:'በከፊል ተከፍሏል — ቀሪ ዕዳ አለ'},
             {v:'not',  en:'Not paid yet',                am:'ገና አልተከፈለም'}

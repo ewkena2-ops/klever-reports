@@ -1912,11 +1912,12 @@ import {
   function watchReports(into, tFiled, tMissing) {
     var start = dayStart(DAY).getTime();
     var end = dayStart(addDays(DAY, 1)).getTime();
-    /* a looker asks for her company's people by name, and for ten days —
-       the "who reported" columns are drawn from these same filings */
+    /* a looker asks for her company's people by name, and for two weeks —
+       the "who reported" columns (his ten working days) are drawn from
+       these same filings */
     var q = LOOK
       ? query(collection(db, 'reports'), where('person', 'in', lookPeople()),
-              where('at', '>=', dayStart(addDays(DAY, -10))), orderBy('at', 'asc'))
+              where('at', '>=', dayStart(addDays(DAY, -14))), orderBy('at', 'asc'))
       : query(collection(db, 'reports'),
               where('at', '>=', dayStart(addDays(DAY, -7))), orderBy('at', 'asc'));
 
@@ -2269,13 +2270,14 @@ import {
         return { person: r.person, rid: r.id, report: L(r), s: s, w: open ? t('chNotInYet') : null, at: hit ? hit.when : null };
       });
     }
-    /* a looker's closed days, shaped as the ledger's — the ten before today,
-       from her filings (watchReports reads ten days for her) */
+    /* a looker's closed days, shaped as the ledger's — the two weeks before
+       today, from her filings (watchReports reads two weeks for her); the
+       chart keeps the last ten with anything due, as his does */
     var LEDGER_WORD = { ok: 'On time', late: 'LATE', miss: 'MISSING', wait: 'NOT IN YET' };
     function lookDays() {
       if (!TODAY_FEED.all) return null;
       var out = [];
-      for (var i = 10; i >= 1; i--) {
+      for (var i = 14; i >= 1; i--) {
         var d = addDays(DAY, -i);
         out.push({ day: d, lines: cellsOn(d).map(function (c) {
           var at = c.at;

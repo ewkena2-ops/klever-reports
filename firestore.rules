@@ -75,8 +75,9 @@ service cloud.firestore {
     /* SOMEONE WHO SEES ONE COMPANY AS THE CHAIRMAN DOES (2 Nov 2026, the
        owner: "Frewoyni can see as the Rovestone Chairman sees, but only
        Rovestone"; `looks` in js/forms.js, js/chairman.js lookerOf). Frewoyni
-       reads the reports of Rovestone's people and the instructions given to
-       them — never the ledger, the analysis or anything of Klever's. A
+       reads the reports of Rovestone's people, the days the Chairman moved
+       them to, and the instructions given to them — never the ledger, the
+       analysis or anything of Klever's. A
        Rovestone person added to js/forms.js is added here too, or her page
        is refused: it asks for all of them by name. */
     function looksAt(pid) {
@@ -620,7 +621,9 @@ service cloud.firestore {
        phones count it at `asAt`. The person sees their own. */
     match /moves/{fid} {
       allow get, list: if signedIn()
-                       && (isChairman() || isLedger() || resource.data.person == me());
+                       && (isChairman() || isLedger() || resource.data.person == me()
+                           /* so her days are his (looksAt, 2 Nov 2026) */
+                           || looksAt(resource.data.person));
       allow create: if isChairman()
                     && request.resource.data.keys().hasOnly(
                          ['person','report','from','to','asAt','why','by','at'])

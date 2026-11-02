@@ -312,7 +312,9 @@ import {
      time it was moved to. */
   var MOVES = {}, movesP = null;
   function movesLoaded() {
-    if (!movesP) movesP = getDocs(collection(db, 'moves')).then(function (qs) {
+    /* a looker reads the moves of her company's people only (the rules) */
+    if (!movesP) movesP = getDocs(LOOK ? query(collection(db, 'moves'), where('person', 'in', lookPeople()))
+                                       : collection(db, 'moves')).then(function (qs) {
       qs.forEach(function (d) { var x = d.data(); if (x && x.asAt && x.asAt.toDate) MOVES[d.id] = x; });
     }, function () { movesP = null; });
     return movesP || Promise.resolve();

@@ -424,6 +424,33 @@ function loadSchedule_() {
   return SCHEDULE_;
 }
 
+/* A COMPANY'S OWN COPY OF THE CLOSED DAY (2 Nov 2026, the owner: "from
+   Rovestone, Frewoyni can see as the Rovestone Chairman sees, but only
+   Rovestone"). Someone who looks at one company's side of his page
+   (`looks` in js/forms.js) cannot read the ledger — it carries Klever's
+   fines — so each close writes that company's people's lines apart, at
+   coledger/<company>/days/<day>, and her "who reported" is drawn from them
+   as his is from the ledger: the same squares. Who, which report, when and
+   how it came out; never an amount, a reason or a rule line. Written for
+   every company someone looks at, also with no lines, so a re-run that
+   takes a line away takes it away here too; `any` says the day closed with
+   lines of somebody's, as his chart counts a column. */
+function coLedger_(day, lines, schedule) {
+  var people = (schedule && schedule.people) || [], cos = {};
+  people.forEach(function (p) { if (p.looks && p.looks !== 'klever') cos[p.looks] = true; });
+  Object.keys(cos).forEach(function (co) {
+    var mine = {};
+    people.forEach(function (p) { if (p.company === co) mine[p.id] = true; });
+    var out = (lines || []).filter(function (l) { return mine[l.person]; }).map(function (l) {
+      var o = { person: l.person, report: l.report, reportName: l.reportName || '', due: l.due || '',
+                status: l.status, at: l.at || null };
+      if (l.dueDay) { o.dueDay = l.dueDay; o.week = l.week; }
+      return o;
+    });
+    fsPut_('coledger/' + co + '/days/' + day, { day: day, co: co, lines: out, any: (lines || []).length > 0 });
+  });
+}
+
 /* Everything that was owed on a day, by the rules in each report's own
    entry: daily reports skip the days their letter excuses, weekly ones land
    on their due day, monthly ones on the 1st — or on the 2nd when the 1st is
@@ -978,6 +1005,10 @@ function closeDay_(day, opts) {
       doc.weekClosedAt = part === 'day' && opts.doc.weekClosedAt ? opts.doc.weekClosedAt : new Date();
     }
     fsPut_('ledger/' + day, doc);
+    /* a company's own copy, for whoever looks at it (coLedger_) — never in
+       the way of the day closing */
+    try { coLedger_(day, doc.lines, schedule); }
+    catch (e) { Logger.log('coledger %s: %s %s', day, e.message, where_(e)); }
     /* the Sheet gets each line once: the week's with the week, the rest of
        the Sunday with the rest. The Sheet is his window, not the record: one
        that cannot be written is said, and the reading still runs (15 Oct

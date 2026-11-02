@@ -72,8 +72,9 @@ import {
      rules let her read the reports of Rovestone's people and the
      instructions to them and nothing else, so each query of hers names
      those people (lookPeople) — and the ledger, which carries Klever's
-     fines, is never read: her "who reported" is worked out on the page
-     from the filings, by the same rules as today's column. Who looks is
+     fines, is never read: her "who reported" comes from the company's own
+     copy of each closed day (coledger, apps-script/Agent.js coLedger_),
+     the same lines his comes from. Who looks is
      `looks` on the person (js/forms.js); firestore.rules looksAt() keeps
      the same list of people. */
   function lookerOf(id) {
@@ -1912,12 +1913,10 @@ import {
   function watchReports(into, tFiled, tMissing) {
     var start = dayStart(DAY).getTime();
     var end = dayStart(addDays(DAY, 1)).getTime();
-    /* a looker asks for her company's people by name, and for two weeks —
-       the "who reported" columns (his ten working days) are drawn from
-       these same filings */
+    /* a looker asks for her company's people by name */
     var q = LOOK
       ? query(collection(db, 'reports'), where('person', 'in', lookPeople()),
-              where('at', '>=', dayStart(addDays(DAY, -14))), orderBy('at', 'asc'))
+              where('at', '>=', dayStart(addDays(DAY, -7))), orderBy('at', 'asc'))
       : query(collection(db, 'reports'),
               where('at', '>=', dayStart(addDays(DAY, -7))), orderBy('at', 'asc'));
 
@@ -2176,7 +2175,13 @@ import {
        balance, not Finance") */
     var ownBank = {}, BANK_FROM = '2026-10-16';
     /* a looker (lookerOf) reads none of these: they are Klever's, and the
-       ledger carries its fines — her closed days are lookDays() below */
+       ledger carries its fines — her closed days are her company's own copy */
+    if (LOOK) onSnapshot(query(collection(db, 'coledger', LOOK, 'days'), where('day', '>=', addDays(DAY, -20)), orderBy('day', 'asc')),
+      function (qs) {
+        ledgers = [];
+        qs.forEach(function (d) { ledgers.push(d.data()); });
+        draw();
+      }, failInto(box));
     if (!LOOK) onSnapshot(query(collection(db, 'bank'), where('day', '>=', addDays(DAY, -40))),
       function (qs) {
         var by = {};
@@ -2242,21 +2247,15 @@ import {
     }
 
     /* today, by the ledger's rules, from the filings the page already has */
-    function todayCells() { return cellsOn(DAY); }
-    function cellsOn(day) {
+    function todayCells() {
       var all = TODAY_FEED.all;
       if (!all) return [];
-      var end = dayStart(addDays(day, 1)).getTime(), now = Date.now();
-      return dueOn(day).filter(function (r) {
-        /* a weekly report the script makes from the dailies (Weekly.js) is
-           filed after its day has closed: a closed day of a looker's leaves
-           it out rather than call it missing */
-        return day === DAY || !r.built;
-      }).map(function (r) {
+      var end = dayStart(addDays(DAY, 1)).getTime(), now = Date.now();
+      return dueOn(DAY).map(function (r) {
         /* on time or late is the FIRST filing, as the ledger judges it
            (settle_ in Agent.js): a correction sent after the deadline does
            not turn a report that came in on time into a late one */
-        var from = windowOf(r, day).from, hit = null;
+        var from = windowOf(r, DAY).from, hit = null;
         all.forEach(function (f) {
           var tm = f.when.getTime();
           if (f.report === r.id && f.person === r.person && tm >= from && tm < end &&
@@ -2264,32 +2263,14 @@ import {
         });
         /* a weekly report past its deadline is not in yet — it counts, late,
            until Sunday 9 PM — not missing */
-        var open = !hit && r.cadence === 'weekly' && sundayOf(day) >= WEEK_FROM && sundayOf(day) === sundayOf(DAY) &&
-                   now >= deadline(r, day).getTime();
-        var s = hit ? (isLate(hit) ? 'late' : 'ok') : (now < deadline(r, day).getTime() || open ? 'wait' : 'miss');
+        var open = !hit && r.cadence === 'weekly' && sundayOf(DAY) >= WEEK_FROM && now >= deadline(r, DAY).getTime();
+        var s = hit ? (isLate(hit) ? 'late' : 'ok') : (now < deadline(r, DAY).getTime() || open ? 'wait' : 'miss');
         return { person: r.person, rid: r.id, report: L(r), s: s, w: open ? t('chNotInYet') : null, at: hit ? hit.when : null };
       });
     }
-    /* a looker's closed days, shaped as the ledger's — the two weeks before
-       today, from her filings (watchReports reads two weeks for her); the
-       chart keeps the last ten with anything due, as his does */
-    var LEDGER_WORD = { ok: 'On time', late: 'LATE', miss: 'MISSING', wait: 'NOT IN YET' };
-    function lookDays() {
-      if (!TODAY_FEED.all) return null;
-      var out = [];
-      for (var i = 14; i >= 1; i--) {
-        var d = addDays(DAY, -i);
-        out.push({ day: d, lines: cellsOn(d).map(function (c) {
-          var at = c.at;
-          return { person: c.person, report: c.rid, status: LEDGER_WORD[c.s],
-                   at: at ? { toDate: function () { return at; } } : null };
-        }) });
-      }
-      return out;
-    }
 
     function draw() {
-      if (LOOK) { reps = []; ledgers = lookDays(); }
+      if (LOOK) reps = [];
       if (!ledgers || !reps) return;
       whoSig = todaySig();
       box.innerHTML = '';
@@ -2343,7 +2324,9 @@ import {
              : status === 'NOT IN YET' ? 'wait' : null;
       }
       function mine(l) { var p = personById(l.person); return ((p && p.company) || null) === co; }
-      var days = ledgers.filter(function (d) { return d.day < DAY && (d.lines || []).length; }).slice(-10);
+      /* a company's own copy (a looker's) marks a closed day with none of
+         its lines `any`, so her columns are his (coLedger_) */
+      var days = ledgers.filter(function (d) { return d.day < DAY && ((d.lines || []).length || d.any); }).slice(-10);
       var cols = days.map(function (d) {
         return { day: d.day, lines: (d.lines || []).map(function (l) {
           var at = l.at && l.at.toDate ? l.at.toDate() : null;

@@ -85,6 +85,10 @@ service cloud.firestore {
           && pid in ['frewoyni', 'kalkidan', 'marta', 'fana', 'rahel', 'dawit', 'tsigea',
                      'yared-rv', 'sintayehu', 'hana', 'eyosias', 'anbesu', 'yesak', 'beti'];
     }
+    /* …and that company's own copy of each closed day (coledger, below) */
+    function looksAtCo(co) {
+      return signedIn() && me() == 'frewoyni' && co == 'rovestone';
+    }
 
     /* The penalty ledger's own account. It reads filed reports; the only
        report it files is a weekly summary made from a person's daily reports
@@ -371,6 +375,17 @@ service cloud.firestore {
     match /ledger/{day} {
       allow get, list: if isChairman() || isLedger();
       allow create, update: if isLedger();
+      allow delete: if false;
+    }
+    /* A company's own copy of the closed day (apps-script/Agent.js
+       coLedger_, 2 Nov 2026): its people's lines only — who, which report,
+       when, how it came out; no amount, no reason — for whoever looks at
+       that company (looksAtCo), so her "who reported" is his. The script
+       writes it at each close; the Chairman's account wrote the days
+       before. */
+    match /coledger/{co}/days/{day} {
+      allow get, list: if isChairman() || isLedger() || looksAtCo(co);
+      allow create, update: if isLedger() || isChairman();
       allow delete: if false;
     }
     /* The bank loans (apps-script/Loans.js, 13 Oct 2026): each loan and the

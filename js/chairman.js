@@ -65,6 +65,26 @@ import {
   }
   function inLens(pid) { return lensOf(pid) === CO; }
 
+  /* SOMEONE WHO SEES ONE COMPANY AS HE DOES (2 Nov 2026, the owner: "from
+     Rovestone, Frewoyni can see as the Rovestone Chairman sees, but only
+     Rovestone"). She opens this page on Rovestone's view, to look only: no
+     switch, no instruction given or cancelled, nothing of Klever's. The
+     rules let her read the reports of Rovestone's people and the
+     instructions to them and nothing else, so each query of hers names
+     those people (lookPeople) — and the ledger, which carries Klever's
+     fines, is never read: her "who reported" is worked out on the page
+     from the filings, by the same rules as today's column. Who looks is
+     `looks` on the person (js/forms.js); firestore.rules looksAt() keeps
+     the same list of people. */
+  function lookerOf(id) {
+    var p = id && id !== 'chairman' ? personById(id) : null;
+    return p && p.looks && p.looks !== 'klever' && coOk(p.looks) ? p.looks : null;
+  }
+  var LOOK = null;          /* the company a looker sees; null for him */
+  function lookPeople() {
+    return PEOPLE.filter(function (p) { return p.company === LOOK; }).map(function (p) { return p.id; });
+  }
+
   /* A word not yet translated shows in English rather than as a blank
      button — i18n.js and this file are published separately. */
   function t(k) { var s = T[lang][k]; return s != null ? s : T.en[k]; }
@@ -416,8 +436,9 @@ import {
     var c = VIEWS[CO];
     root.innerHTML = '';
     root.appendChild(el('h1', null, L({ en: c.fullEn || c.en, am: c.fullAm || c.am })));
-    root.appendChild(coSwitch());
+    if (!LOOK) root.appendChild(coSwitch());
     root.appendChild(el('p', 'sub', prettyDay(DAY)));
+    if (LOOK) root.appendChild(el('p', 'codenote chlook', t('chLookOnly')));
 
     var tiles = el('div', 'chtiles');
     var tFiled = tile(t('chFiled'), '—');
@@ -425,7 +446,7 @@ import {
     tiles.appendChild(tFiled.box); tiles.appendChild(tMissing.box);
     root.appendChild(tiles);
     var ppl = PEOPLE.filter(function (p) { return inLens(p.id); });
-    root.appendChild(el('p', 'codenote chconote', t('chCoNote') + ' ' +
+    root.appendChild(el('p', 'codenote chconote', t(LOOK ? 'chLookCoNote' : 'chCoNote') + ' ' +
       (ppl.length ? tfill('chCoPeople', { list: ppl.map(function (p) { return L(p) + ' (' + L({ en: p.roleEn, am: p.roleAm }) + ')'; }).join(', ') })
                   : t('chCoNoOne'))));
 
@@ -434,7 +455,7 @@ import {
     charts.appendChild(el('p', 'codenote', t('chLoading')));
     root.appendChild(charts);
 
-    root.appendChild(el('p', 'eyebrow', t('chIns')));
+    root.appendChild(el('p', 'eyebrow', t(LOOK ? 'chLookIns' : 'chIns')));
     var ins = el('div', 'chins');
     root.appendChild(ins);
 
@@ -1889,8 +1910,13 @@ import {
   function watchReports(into, tFiled, tMissing) {
     var start = dayStart(DAY).getTime();
     var end = dayStart(addDays(DAY, 1)).getTime();
-    var q = query(collection(db, 'reports'),
-                  where('at', '>=', dayStart(addDays(DAY, -7))), orderBy('at', 'asc'));
+    /* a looker asks for her company's people by name, and for ten days —
+       the "who reported" columns are drawn from these same filings */
+    var q = LOOK
+      ? query(collection(db, 'reports'), where('person', 'in', lookPeople()),
+              where('at', '>=', dayStart(addDays(DAY, -10))), orderBy('at', 'asc'))
+      : query(collection(db, 'reports'),
+              where('at', '>=', dayStart(addDays(DAY, -7))), orderBy('at', 'asc'));
 
     var all = null;
     var owedBox = el('div');
@@ -2146,7 +2172,9 @@ import {
        (apps-script/Bank.js — the user, 16 Oct 2026: "I report the bank
        balance, not Finance") */
     var ownBank = {}, BANK_FROM = '2026-10-16';
-    onSnapshot(query(collection(db, 'bank'), where('day', '>=', addDays(DAY, -40))),
+    /* a looker (lookerOf) reads none of these: they are Klever's, and the
+       ledger carries its fines — her closed days are lookDays() below */
+    if (!LOOK) onSnapshot(query(collection(db, 'bank'), where('day', '>=', addDays(DAY, -40))),
       function (qs) {
         var by = {};
         qs.forEach(function (d) {
@@ -2161,18 +2189,18 @@ import {
        (apps-script/CashFlow.js; the user, 21 Oct 2026: "Chairman also want
        to see cashflow"); undefined until it has answered */
     var cashFlow;
-    onSnapshot(doc(db, 'cashflow', 'klever'), function (d) {
+    if (!LOOK) onSnapshot(doc(db, 'cashflow', 'klever'), function (d) {
       cashFlow = d.exists() ? d.data({ serverTimestamps: 'estimate' }) : null;
       draw();
     }, function () { cashFlow = null; draw(); });
 
-    onSnapshot(query(collection(db, 'ledger'), where('day', '>=', addDays(DAY, -20)), orderBy('day', 'asc')),
+    if (!LOOK) onSnapshot(query(collection(db, 'ledger'), where('day', '>=', addDays(DAY, -20)), orderBy('day', 'asc')),
       function (qs) {
         ledgers = [];
         qs.forEach(function (d) { ledgers.push(d.data()); });
         draw();
       }, failInto(box));
-    onSnapshot(query(collection(db, 'fixes'), where('person', '==', 'ephrata')),
+    if (!LOOK) onSnapshot(query(collection(db, 'fixes'), where('person', '==', 'ephrata')),
       function (qs) {
         var by = {};
         qs.forEach(function (d) {
@@ -2183,14 +2211,14 @@ import {
         fixes = by;
         draw();
       }, function () {});
-    onSnapshot(collection(db, 'moneyfix'),
+    if (!LOOK) onSnapshot(collection(db, 'moneyfix'),
       function (qs) {
         var by = {};
         qs.forEach(function (d) { var x = d.data(); if (x.day) by[x.day] = x; });
         mfix = by;
         draw();
       }, function () {});
-    onReports(query(collection(db, 'reports'), where('person', 'in', CHART_PEOPLE),
+    if (!LOOK) onReports(query(collection(db, 'reports'), where('person', 'in', CHART_PEOPLE),
                      where('at', '>=', dayStart(addDays(DAY, -41)))),
       function (qs) {
         reps = [];
@@ -2211,15 +2239,21 @@ import {
     }
 
     /* today, by the ledger's rules, from the filings the page already has */
-    function todayCells() {
+    function todayCells() { return cellsOn(DAY); }
+    function cellsOn(day) {
       var all = TODAY_FEED.all;
       if (!all) return [];
-      var end = dayStart(addDays(DAY, 1)).getTime(), now = Date.now();
-      return dueOn(DAY).map(function (r) {
+      var end = dayStart(addDays(day, 1)).getTime(), now = Date.now();
+      return dueOn(day).filter(function (r) {
+        /* a weekly report the script makes from the dailies (Weekly.js) is
+           filed after its day has closed: a closed day of a looker's leaves
+           it out rather than call it missing */
+        return day === DAY || !r.built;
+      }).map(function (r) {
         /* on time or late is the FIRST filing, as the ledger judges it
            (settle_ in Agent.js): a correction sent after the deadline does
            not turn a report that came in on time into a late one */
-        var from = windowOf(r, DAY).from, hit = null;
+        var from = windowOf(r, day).from, hit = null;
         all.forEach(function (f) {
           var tm = f.when.getTime();
           if (f.report === r.id && f.person === r.person && tm >= from && tm < end &&
@@ -2227,13 +2261,31 @@ import {
         });
         /* a weekly report past its deadline is not in yet — it counts, late,
            until Sunday 9 PM — not missing */
-        var open = !hit && r.cadence === 'weekly' && sundayOf(DAY) >= WEEK_FROM && now >= deadline(r, DAY).getTime();
-        var s = hit ? (isLate(hit) ? 'late' : 'ok') : (now < deadline(r, DAY).getTime() || open ? 'wait' : 'miss');
+        var open = !hit && r.cadence === 'weekly' && sundayOf(day) >= WEEK_FROM && sundayOf(day) === sundayOf(DAY) &&
+                   now >= deadline(r, day).getTime();
+        var s = hit ? (isLate(hit) ? 'late' : 'ok') : (now < deadline(r, day).getTime() || open ? 'wait' : 'miss');
         return { person: r.person, rid: r.id, report: L(r), s: s, w: open ? t('chNotInYet') : null, at: hit ? hit.when : null };
       });
     }
+    /* a looker's closed days, shaped as the ledger's — the ten before today,
+       from her filings (watchReports reads ten days for her) */
+    var LEDGER_WORD = { ok: 'On time', late: 'LATE', miss: 'MISSING', wait: 'NOT IN YET' };
+    function lookDays() {
+      if (!TODAY_FEED.all) return null;
+      var out = [];
+      for (var i = 10; i >= 1; i--) {
+        var d = addDays(DAY, -i);
+        out.push({ day: d, lines: cellsOn(d).map(function (c) {
+          var at = c.at;
+          return { person: c.person, report: c.rid, status: LEDGER_WORD[c.s],
+                   at: at ? { toDate: function () { return at; } } : null };
+        }) });
+      }
+      return out;
+    }
 
     function draw() {
+      if (LOOK) { reps = []; ledgers = lookDays(); }
       if (!ledgers || !reps) return;
       whoSig = todaySig();
       box.innerHTML = '';
@@ -3003,7 +3055,8 @@ import {
     form.appendChild(r1);
     form.appendChild(r2);
     form.appendChild(give);
-    into.appendChild(form);
+    /* a looker gives none (lookerOf) */
+    if (!LOOK) into.appendChild(form);
 
     give.onclick = function () {
       var text = what.value.trim();
@@ -3085,6 +3138,23 @@ import {
       });
     }
     var col = collection(db, 'instructions');
+    if (LOOK) {
+      /* a looker asks once, for her company's people by name — all the
+         rules let her read — and the page sorts them as his three do */
+      onSnapshot(query(col, where('to', 'in', lookPeople())), function (qs) {
+        var from = since.getTime();
+        open = rows(qs, 'open');
+        done = rows(qs, 'done').filter(function (i) { return ms(i.doneAt) >= from; });
+        gone = rows(qs, 'cancelled').filter(function (i) { return ms(i.closedAt) >= from; });
+        got.open = got.done = got.gone = true;
+        draw();
+      }, function (e) {
+        err = e;
+        got.open = got.done = got.gone = true;
+        draw();
+      });
+      return;
+    }
     listen('open', query(col, where('status', '==', 'open')), 'open');
     listen('done', query(col, where('doneAt', '>=', since)), 'done');
     listen('gone', query(col, where('closedAt', '>=', since)), 'cancelled');
@@ -3111,6 +3181,8 @@ import {
       row.appendChild(el('div', 'chinsn', t('chInsSaid') + ': ' + i.note));
     }
 
+    /* a looker cancels and reopens nothing */
+    if (LOOK) return row;
     var act = el('button', 'chmini', i.status === 'open' ? t('chInsCancel') : t('chInsReopen'));
     act.type = 'button';
     function set(status) {
@@ -4470,7 +4542,8 @@ import {
          sign-in card, rather than a message with no way forward. Signing in
          reloads this page, which then opens as his. */
       if (!me && window.KLEVER && window.KLEVER.signIn) { window.KLEVER.signIn(); return; }
-      if (me !== 'chairman') {
+      if (lookerOf(me)) { LOOK = lookerOf(me); CO = LOOK; }
+      if (me !== 'chairman' && !LOOK) {
         root.innerHTML = '';
         root.appendChild(el('h1', null, t('chOverview')));
         root.appendChild(el('p', 'codeerr', t('chOnlyChairman')));

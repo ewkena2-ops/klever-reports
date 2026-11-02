@@ -404,6 +404,9 @@
         navs.unshift(['register.html', 'table', t('regTitle'), here === 'register']);
         navs.unshift(['universe.html', 'galaxy', t('unKicker'), here === 'universe']);
         navs.unshift(['chairman.html', 'day', t('chOverview'), here === 'chairman']);
+      } else if (lookOf()) {
+        /* someone who sees one company's side of his page (`looks`, 2 Nov 2026) */
+        navs.unshift(['chairman.html', 'day', t('chLookNav'), here === 'chairman']);
       }
       navs.forEach(function (n) {
         var fold = n[0] === 'universe.html' || n[0] === 'register.html';
@@ -3007,6 +3010,33 @@
     root.appendChild(foot());
   }
 
+  /* The company someone signed in may look at on the Chairman's page —
+     `looks` on the person (2 Nov 2026, the owner: "Frewoyni can see as the
+     Rovestone Chairman sees, but only Rovestone"; js/chairman.js lookerOf) */
+  function lookOf() {
+    if (AUTH.isChairman() || !AUTH.who()) return null;
+    var p = personById(AUTH.who());
+    return p && p.looks && p.looks !== 'klever' ? p.looks : null;
+  }
+  function lookCard() {
+    var co = lookOf();
+    if (!co) return el('div');
+    var wrap = el('div');
+    wrap.appendChild(el('h2', 'eyebrow', t('chLookNav')));
+    var a = el('a', 'chan chatcard');
+    a.href = 'chairman.html';
+    var ci = el('span', 'chinit');
+    ci.appendChild(icon('day'));
+    a.appendChild(ci);
+    var who = el('span', 'who');
+    who.appendChild(el('span', 'nm', t('chLookNav')));
+    who.appendChild(el('span', 'rl', t('chLookSub')));
+    a.appendChild(who);
+    a.appendChild(el('span', 'arrow', '→'));
+    wrap.appendChild(a);
+    return wrap;
+  }
+
   function renderPersonReports(root, p) {
     setView(function () { renderPersonReports(root, p); });
     document.title = t('siteTitle');
@@ -3033,6 +3063,7 @@
     root.appendChild(instructionsCard());
     root.appendChild(reportsToMeCard());
     root.appendChild(readingsCard());
+    root.appendChild(lookCard());
     if (!AUTH.isChairman()) root.appendChild(pushCard());
 
     var tl = timeline(p.id);

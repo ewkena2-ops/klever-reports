@@ -60,7 +60,11 @@ const PEOPLE = [
      called for its company until he does (rename `en`/`am`; the id stays). */
   { id:'meri', en:'Meri Block Board', am:'መሪ ብሎክ ቦርድ', roleEn:'Reports for Meri Block Board', roleAm:'ለመሪ ብሎክ ቦርድ ሪፖርት የሚያቀርቡ', grp:'meri', company:'meri', from:'2026-10-07', noLetter:1 },
   { id:'lemikura', en:'Lemi Kura', am:'ለሚ ኩራ', roleEn:'Reports for Real Estate & Construction (Lemi Kura)', roleAm:'ለሪል እስቴትና ግንባታ (ለሚ ኩራ) ሪፖርት የሚያቀርቡ', grp:'realestate', company:'realestate', from:'2026-10-07', noLetter:1 },
-  { id:'frewoyni', en:'Frewoyni', am:'ፍሬወይኒ', roleEn:'Rovestone Operations Lead', roleAm:'የሮቭስቶን ኦፕሬሽን ኃላፊ', grp:'rovestone', company:'rovestone', from:'2026-10-05' },
+  /* `looks` (2 Nov 2026, the owner: "Frewoyni can see as the Rovestone
+     Chairman sees, but only Rovestone"): she opens the Chairman's page on
+     that company's view, to look only (js/chairman.js lookerOf; the rules'
+     looksAt() lists the people she may read) */
+  { id:'frewoyni', en:'Frewoyni', am:'ፍሬወይኒ', roleEn:'Rovestone Operations Lead', roleAm:'የሮቭስቶን ኦፕሬሽን ኃላፊ', grp:'rovestone', company:'rovestone', from:'2026-10-05', looks:'rovestone' },
   /* Rovestone's other people, from its Job Card (Form JC-01, 29 Sep 2026) —
      who moves which of the sixteen stages (19 Oct 2026, the user: "why is
      Rovestone only Frewoyni — here there are others"). First names only, as

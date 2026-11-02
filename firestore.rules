@@ -72,6 +72,19 @@ service cloud.firestore {
       return signedIn() && me() == 'chairman';
     }
 
+    /* SOMEONE WHO SEES ONE COMPANY AS THE CHAIRMAN DOES (2 Nov 2026, the
+       owner: "Frewoyni can see as the Rovestone Chairman sees, but only
+       Rovestone"; `looks` in js/forms.js, js/chairman.js lookerOf). Frewoyni
+       reads the reports of Rovestone's people and the instructions given to
+       them — never the ledger, the analysis or anything of Klever's. A
+       Rovestone person added to js/forms.js is added here too, or her page
+       is refused: it asks for all of them by name. */
+    function looksAt(pid) {
+      return signedIn() && me() == 'frewoyni' && pid is string
+          && pid in ['frewoyni', 'kalkidan', 'marta', 'fana', 'rahel', 'dawit', 'tsigea',
+                     'yared-rv', 'sintayehu', 'hana', 'eyosias', 'anbesu', 'yesak', 'beti'];
+    }
+
     /* The penalty ledger's own account. It reads filed reports; the only
        report it files is a weekly summary made from a person's daily reports
        (by 'auto', 11 Oct 2026), and what it writes in chat is listed room by
@@ -268,7 +281,8 @@ service cloud.firestore {
          people one is addressed to read it on their home page) */
       allow get, list: if signedIn()
                        && (isChairman() || isLedger() || resource.data.person == me()
-                           || me() in resource.data.to);
+                           || me() in resource.data.to
+                           || looksAt(resource.data.person));
 
       allow create: if signedIn()
                     /* the ledger reads; it does not report */
@@ -1056,7 +1070,8 @@ service cloud.firestore {
 
     match /instructions/{iid} {
       allow get, list: if isChairman() || isLedger()
-                       || (signedIn() && resource.data.to == me());
+                       || (signedIn() && resource.data.to == me())
+                       || looksAt(resource.data.to);
 
       allow create: if isChairman()
                     && request.resource.data.keys().hasOnly(

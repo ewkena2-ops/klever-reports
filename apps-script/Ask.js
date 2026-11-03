@@ -84,8 +84,10 @@ function answerAsk_(id) {
         out.status = 'failed';
         out.error = 'No model key is set in the script (GEMINI_KEY).';
       } else {
-        var a = advise ? aiAsk_(advisePrompt_(d.q, adviseContext_(day)), 3000)
-                       : aiAsk_(askPrompt_(d.q, askContext_(day)), 2500);   /* room for a week's list */
+        var a = aiJob_(advise ? 'advice' : 'ask', function () {
+          return advise ? aiAsk_(advisePrompt_(d.q, adviseContext_(day)), 3000)
+                        : aiAsk_(askPrompt_(d.q, askContext_(day)), 2500);   /* room for a week's list */
+        });
         if (/^\((no answer|could not read)/.test(a)) {
           out.status = 'failed';
           out.error = a;

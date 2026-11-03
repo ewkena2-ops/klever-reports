@@ -140,10 +140,89 @@ function aiAsk_(prompt, maxTokens, quick) {
     delete r.url;
     res = UrlFetchApp.fetch(url, r);
   }
+  aiMeter_([res]);
   return aiRead_(res);
 }
-function aiAskAll_(prompts, maxTokens) {
-  return UrlFetchApp.fetchAll(prompts.map(function (p) { return aiRequest_(p, maxTokens); })).map(aiRead_);
+function aiAskAll_(prompts, maxTokens, quick) {
+  if (!prompts.length) return [];
+  var res = UrlFetchApp.fetchAll(prompts.map(function (p) { return aiRequest_(p, maxTokens, quick); }));
+  if (quick && brain_().provider !== 'claude' && res.some(function (x) {
+        return x.getResponseCode() === 400 && /thinking/i.test(x.getContentText()); })) {
+    BRAIN_NO_LEVEL_ = true;
+    res = UrlFetchApp.fetchAll(prompts.map(function (p) { return aiRequest_(p, maxTokens, false); }));
+  }
+  aiMeter_(res);
+  return res.map(aiRead_);
+}
+
+/* What the model was paid for, by job, a day at a time (the owner, 3 Nov
+   2026: "the API is up to 4 dollars a day"). Gemini says in each reply how
+   many tokens it read and wrote — its thinking is billed as writing — and
+   they are added up in Script Property AI_USE, the last ten days kept:
+   { day: { job: [calls, read, of them cached, written, of them thinking] } }.
+   AI_JOB_ is the job asking, set where a job starts (ran_, Ask, WhatsApp, …).
+   A count lost when two runs write at once is lost; it is an estimate. */
+var AI_JOB_ = 'other';
+var AI_PRICE_ = { read: 0.75, cached: 0.075, written: 3.75 };   /* US$ per million tokens, gemini-3.8-flash */
+function aiJob_(job, fn) {
+  var was = AI_JOB_;
+  AI_JOB_ = job;
+  try { return fn(); } finally { AI_JOB_ = was; }
+}
+function aiMeter_(responses) {
+  try {
+    var add = [0, 0, 0, 0, 0];
+    responses.forEach(function (res) {
+      if (!res) return;
+      add[0]++;
+      var u = {};
+      try { u = JSON.parse(res.getContentText()).usageMetadata || {}; } catch (e) {}
+      add[1] += u.promptTokenCount || 0;
+      add[2] += u.cachedContentTokenCount || 0;
+      add[3] += (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0);
+      add[4] += u.thoughtsTokenCount || 0;
+    });
+    if (!add[0]) return;
+    var props = PropertiesService.getScriptProperties();
+    var all = {};
+    try { all = JSON.parse(props.getProperty('AI_USE') || '{}'); } catch (e) { all = {}; }
+    var day = todayAddis_();
+    var row = (all[day] = all[day] || {});
+    var job = String(AI_JOB_ || 'other');
+    var was = row[job] || [0, 0, 0, 0, 0];
+    row[job] = was.map(function (n, i) { return n + add[i]; });
+    Object.keys(all).sort().reverse().slice(10).forEach(function (k) { delete all[k]; });
+    props.setProperty('AI_USE', JSON.stringify(all));
+  } catch (e) {
+    Logger.log('ai meter: %s', e.message);
+  }
+}
+function aiDollars_(r) {
+  return ((r[1] - r[2]) * AI_PRICE_.read + r[2] * AI_PRICE_.cached + r[3] * AI_PRICE_.written) / 1e6;
+}
+/* One line for the morning email: what the model cost on a day. */
+function aiUseLine_(day) {
+  var all = {};
+  try { all = JSON.parse(prop_('AI_USE', '') || '{}'); } catch (e) { return ''; }
+  var row = all[day];
+  if (!row) return '';
+  var calls = 0, usd = 0;
+  var parts = Object.keys(row).map(function (job) {
+    var r = row[job];
+    calls += r[0];
+    usd += aiDollars_(r);
+    return { job: job, usd: aiDollars_(r), calls: r[0] };
+  }).sort(function (a, b) { return b.usd - a.usd; });
+  return 'The AI on ' + dayLabel_(day) + ': ' + calls + ' calls, about US$' + usd.toFixed(2) + ' (' +
+    parts.map(function (p) { return p.job + ' ' + p.calls + ' · $' + p.usd.toFixed(2); }).join(', ') + ').';
+}
+/* From the editor: the last ten days, by job. */
+function aiUse() {
+  var all = {};
+  try { all = JSON.parse(prop_('AI_USE', '') || '{}'); } catch (e) {}
+  var out = Object.keys(all).sort().map(aiUseLine_).filter(String).join(String.fromCharCode(10));
+  Logger.log(out || 'Nothing counted yet.');
+  return out;
 }
 
 /* For the emails and the Chairman's page: who read this, and any fallback. */

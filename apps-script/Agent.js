@@ -216,7 +216,7 @@ function ran_(job, fn) {
   var t0 = new Date();
   var out;
   try {
-    out = fn() || {};
+    out = aiJob_(job, fn) || {};   /* the model's tokens counted under this job (Brain.js) */
   } catch (e) {
     /* with where it stopped — the file and line — so a failure can be found
        without the script editor's log (15 Oct 2026) */

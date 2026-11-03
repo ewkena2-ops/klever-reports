@@ -254,7 +254,7 @@ function planOrder_(id) {
         out.error = 'No model key is set in the script (GEMINI_KEY).';
       } else {
         var schedule = loadSchedule_();
-        var reply = aiAsk_(orderPrompt_(d.q, orderContext_(day, schedule)), 2000);
+        var reply = aiJob_('orders', function () { return aiAsk_(orderPrompt_(d.q, orderContext_(day, schedule)), 2000); });
         if (/^\((no answer|could not read)/.test(reply)) {
           out.status = 'failed';
           out.error = reply;

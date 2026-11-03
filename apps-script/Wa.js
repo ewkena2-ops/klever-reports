@@ -176,7 +176,7 @@ function waAnswer_(text, history, customers, day, askOnly) {
     'cancelled fine, a post to the staff, a bonus — say plainly that only the Chairman can decide from',
     'WhatsApp, and answer any question in it.'
   ] : []).join('\n');
-  return aiAsk_(prompt, 2500, true);
+  return aiJob_('whatsapp', function () { return aiAsk_(prompt, 2500, true); });
 }
 
 /* ---------------------------------------------------------------- *
@@ -409,7 +409,7 @@ function waPlan_(text, history, W) {
     'HIS MESSAGE: ' + text
   ].join('\n');
   WA_STEPS_.push('decision step');
-  var out = aiAsk_(prompt, 1200, true);
+  var out = aiJob_('whatsapp', function () { return aiAsk_(prompt, 1200, true); });
   var m = /\{[\s\S]*\}/.exec(String(out || ''));
   if (!m) return null;
   try { return JSON.parse(m[0]); } catch (e) { return null; }

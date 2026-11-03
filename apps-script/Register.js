@@ -1290,7 +1290,8 @@ function registerJudge_(R, today, all) {
     var batches = [];
     for (var i = 0; i < ask.length; i += REG_JUDGE_BATCH_) batches.push(ask.slice(i, i + REG_JUDGE_BATCH_));
     var replies = [];
-    try { replies = aiAskAll_(batches.map(function (bt) { return regJudgePrompt_(bt.map(function (x) { return x.f; }), today); }), 4000); }
+    /* thinking little: it sorts each customer from figures already worked out (cost, 3 Nov 2026) */
+    try { replies = aiJob_('register', function () { return aiAskAll_(batches.map(function (bt) { return regJudgePrompt_(bt.map(function (x) { return x.f; }), today); }), 4000, true); }); }
     catch (e) { Logger.log('register judge: %s', e.message); replies = []; }
     batches.forEach(function (bt, n) {
       var got = regJudgeRead_(replies[n], bt.map(function (x) { return x.f.key; }));

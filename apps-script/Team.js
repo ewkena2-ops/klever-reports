@@ -214,7 +214,7 @@ function teamPlan_(today) {
   if (!ctx.anything) return { written: false, done: true, tasks: 0, note: 'nothing to act on' };
   var b = brain_();
   if (!b.key) return { written: false, done: true, error: 'no model key (GEMINI_KEY)' };
-  var reply = aiAsk_(teamPrompt_(ctx), 4000);
+  var reply = aiJob_('team', function () { return aiAsk_(teamPrompt_(ctx), 4000); });
   if (/^\((no answer|could not read)/.test(reply)) return { written: false, done: false, error: reply };
   var plan = orderPlan_(reply, today, schedule, { max: TEAM_MAX_TASKS_, dflt: today });
   if (plan.error) return { written: false, done: false, error: plan.error };

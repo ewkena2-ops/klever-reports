@@ -62,6 +62,7 @@ function visionAsk_(mime, b64, caption) {
       { inline_data: { mime_type: mime, data: b64 } }
     ] }] })
   });
+  aiJob_('photos', function () { aiMeter_([res]); });
   var t = readReply_(res);
   return visionParse_(t);
 }

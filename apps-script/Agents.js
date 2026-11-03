@@ -1946,8 +1946,25 @@ function askAll_(d) {
     catch (e) { Logger.log('facts %s: %s', a.id, e.message); return { ok: false, err: e.message }; }
   });
   var asked = first.filter(function (a, i) { return facts[i].ok; });
-  /* fourteen at once. One after another would sit near the six-minute limit. */
-  var texts = aiAskAll_(asked.map(function (a) { return promptFor_(a, facts[first.indexOf(a)].f, d); }));
+  /* Mid-day, the cost (the owner, 3 Nov 2026: "the API is up to 4 dollars a
+     day"). Every new report set off all twenty-five readers, each thinking
+     at length — half of what was paid was that thinking. So a look at today
+     so far thinks little, and a reader whose own figures are the same as at
+     the last look keeps what it said then: only the readers a new report
+     touched are asked again. The morning's reading of the closed day is
+     asked whole, and thinks as before. */
+  var quick = !!d.provisional;
+  var kept = quick ? reuseGet_(d.day) : {}, hash = {};
+  var again = asked.filter(function (a) {
+    hash[a.id] = regHash_(promptFor_(a, facts[first.indexOf(a)].f, d, true));
+    return !reused_(kept[a.id], hash[a.id]);
+  });
+  /* all at once. One after another would sit near the six-minute limit. */
+  var fresh = aiAskAll_(again.map(function (a) { return promptFor_(a, facts[first.indexOf(a)].f, d); }), undefined, quick);
+  var texts = asked.map(function (a) {
+    var i = again.indexOf(a);
+    return i < 0 ? kept[a.id].t : fresh[i];
+  });
   first.forEach(function (a, i) {
     if (!facts[i].ok) {
       out.push({ id:a.id, en:a.en, am:a.am, facts:{ error: facts[i].err },
@@ -1961,8 +1978,11 @@ function askAll_(d) {
      in that order and not at the same time */
   var decide = AGENTS.filter(function (a) { return a.id === 'decide'; })[0];
   if (decide) {
-    out.push({ id:decide.id, en:decide.en, am:decide.am, facts:{},
-               text:aiAsk_(promptFor_(decide, decide.facts(d), d)), decision:true });
+    var df = decide.facts(d);
+    hash[decide.id] = regHash_(promptFor_(decide, df, d, true));
+    out.push({ id:decide.id, en:decide.en, am:decide.am, facts:{}, decision:true,
+               text:reused_(kept[decide.id], hash[decide.id]) ? kept[decide.id].t
+                                                            : aiAsk_(promptFor_(decide, df, d), undefined, quick) });
   }
 
   /* the brief reads everything above it — the readings that came, not the errors */
@@ -1970,14 +1990,42 @@ function askAll_(d) {
   if (brief) {
     var digest = out.filter(function (r) { return !aiFailed_(r.text); })
       .map(function (r) { return '## ' + r.en + '\n' + r.text; }).join('\n\n');
+    var bf = brief.facts(d);
+    hash[brief.id] = regHash_(promptFor_(brief, bf, d, true) + '\n\n' + digest);
     out.push({ id:brief.id, en:brief.en, am:brief.am, facts:{}, last:true,
-               text:aiAsk_(promptFor_(brief, brief.facts(d), d) + '\n\n' + digest, 2000) });
+               text:reused_(kept[brief.id], hash[brief.id]) ? kept[brief.id].t
+                                                          : aiAsk_(promptFor_(brief, bf, d) + '\n\n' + digest, 2000, quick) });
   }
   out.forEach(function (r) { r.failed = aiFailed_(r.text); });
+  if (quick) reusePut_(d.day, out, hash);
   return out;
 }
 
-function promptFor_(agent, facts, d) {
+/* What each reader said at the last look at today, with the figures it was
+   given then (as a hash), kept six hours. A reading that failed is never
+   kept: it is asked again. */
+function reused_(k, h) {
+  return !!(k && k.h === h && k.t && !aiFailed_(k.t));
+}
+function reuseGet_(day) {
+  try {
+    var t = CacheService.getScriptCache().get('reuse:' + day);
+    return t ? JSON.parse(t) : {};
+  } catch (e) { return {}; }
+}
+function reusePut_(day, out, hash) {
+  var keep = {};
+  out.forEach(function (r) {
+    if (hash[r.id] && !r.failed) keep[r.id] = { h: hash[r.id], t: r.text };
+  });
+  try { CacheService.getScriptCache().put('reuse:' + day, JSON.stringify(keep), 21600); }
+  catch (e) { Logger.log('reuse keep: %s', e.message); }
+}
+
+/* `forHash`: the prompt without the lines every new report changes (who is
+   in so far, who left blanks) — what tells whether this reader's own
+   figures moved since the last look. */
+function promptFor_(agent, facts, d, forHash) {
   return [
     'You are one of fifteen analysts reading a single day at Klever Küche, a kitchen',
     'cabinet manufacturer in Addis Ababa. Prices are in Birr; the production target is',
@@ -2014,10 +2062,11 @@ function promptFor_(agent, facts, d) {
     'YOUR QUESTION: ' + agent.ask,
     '',
     '--- ' + d.dayLabel + (d.provisional ? ' — SO FAR TODAY, the day is not over' : '') + ' ---',
+    forHash ? '' :
     d.provisional ? soFar_(d)
                   : 'Reports that were due today and never arrived: ' +
                     (notFiled_(d).join('; ') || 'none — everything was filed'),
-    'Reports that came in with questions left blank: ' +
+    forHash ? '' : 'Reports that came in with questions left blank: ' +
       (leftBlank_(d).join('; ') || 'none'),
     oddBlock_(d),
     '',
@@ -2254,7 +2303,7 @@ function mailAnalysis_(results, d) {
           'arithmetic. Penalty amounts come from each person’s signed letter, and a charge ' +
           'can be cancelled from your page with a reason. ' + esc_(brainLine_()) +
           (d.provisional ? ' This was a mid-day run: the day closes at midnight and the ' +
-                           'charges are settled in the morning.' : '') +
+                           'charges are settled in the morning.' : ' ' + esc_(aiUseLine_(d.day))) +
           '</p></div>';
 
   MailApp.sendEmail({

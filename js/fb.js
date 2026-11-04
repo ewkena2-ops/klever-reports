@@ -156,6 +156,27 @@
       });
     },
 
+    /* A sign-in typed or by card, a sign-out tapped: noted for the Chairman
+       (/signins, firestore.rules — the owner, 4 Nov 2026: "I don't know why
+       the system signs them out automatically"). `before` is who this phone
+       last had signed in: the same person means the phone lost the sign-in,
+       someone else a shared phone, nobody a new phone or a browser of its
+       own. A failure is nothing. */
+    noteSignIn: function (o) {
+      return ready.then(function () {
+        if (!db || !user) return;
+        var app = window.navigator.standalone === true ||
+          !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+        return F.addDoc(F.collection(db, 'signins'), {
+          person: idOf(user), ev: o && o.ev === 'out' ? 'out' : 'in',
+          how: o && (o.how === 'typed' || o.how === 'card') ? o.how : 'tap',
+          before: String((o && o.before) || '').slice(0, 40),
+          wait: Math.max(0, Math.round(Number(o && o.wait) || 0)),
+          app: app, ua: String(navigator.userAgent || '').slice(0, 300), at: F.serverTimestamp()
+        });
+      })['catch'](function () {});
+    },
+
     /* Reports or photos written on this phone that the server has not got
        yet: signing out keeps them in this person's queue on this phone, to go
        only when they sign in here again (the bug hunt, 15 Oct 2026) */

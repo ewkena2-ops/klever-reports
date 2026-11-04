@@ -552,6 +552,27 @@ service cloud.firestore {
                     && request.resource.data.at == request.time;
       allow delete: if isLedger() || (signedIn() && resource.data.person == me());
     }
+    /* A sign-in typed (or by card) and a sign-out tapped, noted by the phone
+       (the owner, 4 Nov 2026: "I don't know why the system signs them out
+       automatically"): who, how, who this phone had signed in before, how
+       long the page had been open, and the phone. Written once by the person
+       it is about; read by the Chairman and the script; never changed. */
+    match /signins/{sid} {
+      allow get, list: if isChairman() || isLedger();
+      allow create: if signedIn() && !isLedger() && !isGate()
+                    && request.resource.data.keys().hasOnly(['person', 'ev', 'how', 'before', 'wait', 'app', 'ua', 'at'])
+                    && request.resource.data.person == me()
+                    && request.resource.data.ev in ['in', 'out']
+                    && request.resource.data.how in ['typed', 'card', 'tap']
+                    && request.resource.data.before is string
+                    && request.resource.data.before.size() <= 40
+                    && request.resource.data.wait is int
+                    && request.resource.data.app is bool
+                    && request.resource.data.ua is string
+                    && request.resource.data.ua.size() <= 300
+                    && request.resource.data.at == request.time;
+      allow update, delete: if false;
+    }
     /* Which instruction went to which person's phones, and how many arrived:
        written by the script, so each is sent once; read on his page. */
     match /pushlog/{id} {

@@ -493,7 +493,11 @@
             return;
           }
           try { localStorage.removeItem('klever.lastUser'); } catch (e) {}
-          AUTH.signOut().then(function () { location.href = 'index.html'; });
+          /* noted first, while the phone is still theirs to write with */
+          var noted = window.FB && window.FB.noteSignIn ? window.FB.noteSignIn({ ev: 'out', how: 'tap' }) : Promise.resolve();
+          Promise.race([noted, new Promise(function (r) { setTimeout(r, 1500); })]).then(function () {
+            return AUTH.signOut();
+          }).then(function () { location.href = 'index.html'; });
         });
       };
       inner.appendChild(out);
@@ -1033,15 +1037,18 @@
       err.hidden = true;
       go.disabled = true;
       go.textContent = t('chatSigningIn');
+      var how = LINK_KEY ? 'card' : 'typed', before = '';
+      try { before = localStorage.getItem('klever.lastUser') || ''; } catch (e) {}
       AUTH.signInByPassword(input.value).then(function () {
         LINK_KEY = null;
         root.classList.remove('signing');
         try { localStorage.setItem('klever.lastUser', AUTH.who() || ''); } catch (e) {}
+        var noted = window.FB && window.FB.noteSignIn ? window.FB.noteSignIn({ ev: 'in', how: how, before: before, wait: (window.performance && performance.now ? performance.now() : 0) / 1000 }) : Promise.resolve();
         rebuildTop();
         watchFilings();
         /* on the Chairman's page the next screen belongs to chairman.js, and
            only a reload hands it over cleanly */
-        if (ownPage()) { location.reload(); return; }
+        if (ownPage()) { Promise.race([noted, new Promise(function (r) { setTimeout(r, 1500); })]).then(function () { location.reload(); }); return; }
         /* signed in from a link to a report: go on to that report */
         if (document.body.dataset.page === 'form') renderForm(root);
         else renderIndex(root);
@@ -1073,6 +1080,25 @@
     if (LINK_KEY) { input.value = LINK_KEY; attempt(); }
   }
 
+
+  /* no line to the server on a phone that is signed in (4 Nov 2026): no
+     password box — the sign-in is still on the phone */
+  function renderNoLine(root) {
+    document.title = t('siteTitle');
+    root.innerHTML = '';
+    root.classList.add('signing');
+    setView(null);
+    root.appendChild(letterhead(null));
+    var card = el('section', 'signin');
+    card.appendChild(el('h1', null, t('noLineHead')));
+    card.appendChild(el('p', 'sub', t('noLineSub')));
+    var again = el('button', 'codego', t('atTryAgain'));
+    again.type = 'button';
+    again.onclick = function () { location.reload(); };
+    card.appendChild(again);
+    root.appendChild(card);
+    root.appendChild(foot());
+  }
 
   /* ---------------- chat, on the home screen ---------------- */
 
@@ -7070,14 +7096,31 @@
        was signed in on this phone before keeps seeing "Connecting…" (with a
        word about the slow line) rather than a sign-in card they don't need;
        anyone else sees the sign-in card after four seconds. */
-    var settled = window.FB ? window.FB.ready : Promise.resolve(null);
+    /* NEVER THE SIGN-IN CARD FOR A SLOW LINE (the owner, 4 Nov 2026: "I
+       don't know why the system signs them out automatically"). After 30
+       seconds this gave up and drew the sign-in card on a phone that was
+       signed in all along; the person typed the password again, and it
+       looked like the site had signed them out. Now a phone with a sign-in
+       on it waits for Firebase as long as it takes, says it is still signed
+       in, and offers Try again; Firebase not loading at all is said as that
+       (renderNoLine), never as a sign-in card. */
+    var settled = window.FB ? window.FB.ready : Promise.resolve(null), SAVED = false;
     var raced = Promise.race([
       settled,
       savedSignIn().then(function (known) {
+        SAVED = known;
         return new Promise(function (resolve) {
           if (known) {
             setTimeout(function () { booting.textContent = t('connectingSlow'); }, 5000);
-            setTimeout(function () { resolve(null); }, 30000);
+            setTimeout(function () {
+              if (!booting.parentNode) return;
+              booting.textContent = t('connectingKept');
+              var again = el('button', 'codego bootagain', t('atTryAgain'));
+              again.type = 'button';
+              again.onclick = function () { location.reload(); };
+              booting.appendChild(el('br'));
+              booting.appendChild(again);
+            }, 20000);
           } else {
             /* nobody has ever signed in on this phone: nothing for Firebase
                to restore, so the sign-in box need not wait for it */
@@ -7146,6 +7189,13 @@
       var id = got[0];
       AUTH._adopt(id);
       settledOnce = true;
+      /* Firebase did not load (no line, a blocked CDN): a phone signed in
+         is told so, not asked for its password — which could not work */
+      if (!id && SAVED && window.FB && !window.FB.live()) {
+        rebuildTop();
+        renderNoLine(root);
+        return;
+      }
       /* the bar was drawn before Firebase answered, so it had no sign-out
          button and no chat link; draw it again now that it knows who */
       rebuildTop();

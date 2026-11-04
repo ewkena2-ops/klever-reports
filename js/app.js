@@ -5803,24 +5803,44 @@
     return out;
   }
   /* the codes still open, oldest named first */
+  /* `wait` (the owner, 4 Nov 2026: "Getachew KK187 — asked yesterday and he
+     said about it, but the question appears again every day"): a job
+     answered but not closed ("part bought") is asked again on the date the
+     answer gives (`wait.col`, "when will it all be bought?") or `wait.days`
+     after it, not the next morning — and named again meanwhile (a request
+     for more of its material) it still waits. A source marked `fresh` (the
+     material-cost question) brings in only a job this list has never had an
+     answer for: KK-67, "on hold" on 27 Oct, came back every other day
+     because the cost question named it again. */
   function carryOpen(f, filings, day) {
-    var c = f.carry, close = c.close || {}, open = [], first = f.cols[0].id;
+    var c = f.carry, close = c.close || {}, open = [], first = f.cols[0].id, wait = c.wait, until = {}, seen = {};
     (filings || []).filter(function (d) {
       return d.report === report.id && ymdOf(addis(d.at)) < day;
     }).sort(function (a, b) { return a.at - b.at; }).forEach(function (d) {
-      var v = d.values || {}, named = [], shut = [];
-      (c.from || []).forEach(function (src) { named = named.concat(carryCodes(v, src, f)); });
+      var v = d.values || {}, named = [], shut = [], on = ymdOf(addis(d.at));
+      var own = Array.isArray(v[f.id]) ? v[f.id] : [];
+      own.forEach(function (r) { if (r) carryKeys(f, r[first]).forEach(function (k) { seen[k] = 1; }); });
+      (c.from || []).forEach(function (src) {
+        var ks = carryCodes(v, src, f);
+        named = named.concat(src.fresh ? ks.filter(function (k) { return !seen[k]; }) : ks);
+      });
       (c.shut || []).forEach(function (src) { shut = shut.concat(carryCodes(v, src, f)); });
       /* its own rows: answered "not yet" keeps a job open, closed shuts it */
-      (Array.isArray(v[f.id]) ? v[f.id] : []).forEach(function (r) {
+      own.forEach(function (r) {
         if (!r) return;
         var ks = carryKeys(f, r[first]);
-        if ((close.in || []).indexOf(r[close.col]) !== -1) shut = shut.concat(ks); else named = named.concat(ks);
+        if ((close.in || []).indexOf(r[close.col]) !== -1) { shut = shut.concat(ks); return; }
+        named = named.concat(ks);
+        if (!wait || !carryAnswered(f, r)) return;
+        var w = String(r[wait.col] || '');
+        w = /^\d{4}-\d\d-\d\d$/.test(w) ? (w > on ? w : addDays(on, 1)) : addDays(on, wait.days || 3);
+        ks.forEach(function (k) { until[k] = w; });
       });
       named.forEach(function (k) { if (open.indexOf(k) === -1) open.push(k); });
       open = open.filter(function (k) { return shut.indexOf(k) === -1; });
+      shut.forEach(function (k) { delete until[k]; });
     });
-    return open;
+    return open.filter(function (k) { return !(until[k] > day); });
   }
   /* the open codes into the list: rows already answered stay; a row only
      carried, whose job is no longer open, goes */
@@ -5863,7 +5883,7 @@
       });
       cs.forEach(function (f) {
         if (f.carry.credit) { mergeCredit(f, creditOpen(cask, list, day)); CREDIT_READY = true; }
-        else mergeCarry(f, f.carry.ask ? askOpen(f, ask, list) : carryOpen(f, list, day));
+        else mergeCarry(f, f.carry.ask ? askOpen(f, ask, list, day) : carryOpen(f, list, day));
         var w = document.getElementById('w_' + f.id);
         if (w && w.redraw) w.redraw();
       });
@@ -6046,22 +6066,38 @@
      less any this person has already answered in a report — the script may
      not have read that one yet */
   var CARRY_INFO = {};
-  function askOpen(f, ask, list) {
+  /* `wait` (the owner, 4 Nov 2026, "not just 187, there are other
+     projects"): a job answered with no figure (his "0" — he does not know
+     yet) is asked again `wait.days` later, not every day — KK-67 was asked
+     eight times, KK-217 four. `held`: nor while his latest word on it in
+     `held.f` is "on hold" (KK-67); named again and answered otherwise
+     there, it is asked again. */
+  function askOpen(f, ask, list, day) {
     if (!ask || ask.kind !== f.carry.ask || !Array.isArray(ask.items)) return [];
-    var first = f.cols[0].id, col = (f.carry.close || {}).col, done = {};
-    (list || []).forEach(function (d) {
-      if (d.report !== report.id) return;
-      (Array.isArray((d.values || {})[f.id]) ? d.values[f.id] : []).forEach(function (r) {
+    var first = f.cols[0].id, col = (f.carry.close || {}).col, done = {}, until = {}, held = {};
+    var wait = f.carry.wait, hd = f.carry.held;
+    day = day || stamp();
+    (list || []).filter(function (d) { return d.report === report.id; }).sort(function (a, b) { return a.at - b.at; }).forEach(function (d) {
+      var v = d.values || {}, on = ymdOf(addis(d.at));
+      (Array.isArray(v[f.id]) ? v[f.id] : []).forEach(function (r) {
+        if (!r) return;
+        var ks = jobCodes(r[first], true);
         /* the script takes a figure of 1,000 Birr or more (JobMoney.js
            JM_MIN_BIRR_) and asks again for less; the form had hidden it for
            30 days (the bug hunt, 15 Oct 2026) */
-        if (r && (!col || (has(r[col]) && !(num(r[col]) < 1000)))) jobCodes(r[first], true).forEach(function (k) { done[k] = 1; });
+        if (!col || (has(r[col]) && !(num(r[col]) < 1000))) ks.forEach(function (k) { done[k] = 1; });
+        else if (wait && on < day) ks.forEach(function (k) { until[k] = addDays(on, wait.days || 3); });
+      });
+      if (hd && on < day) (Array.isArray(v[hd.f]) ? v[hd.f] : []).forEach(function (r) {
+        if (!r || !has(r[hd.col])) return;
+        var h = hd.in.indexOf(r[hd.col]) !== -1;
+        jobCodes(r[hd.code || 'code'], true).forEach(function (k) { held[k] = h; });
       });
     });
     var open = [];
     ask.items.forEach(function (it) {
       var k = jobCodes(it && it.code, true)[0];
-      if (!k || done[k] || open.indexOf(k) !== -1) return;
+      if (!k || done[k] || held[k] || until[k] > day || open.indexOf(k) !== -1) return;
       CARRY_INFO[k] = { cust: it.cust ? String(it.cust).trim() : '', m2: it.m2 ? Math.round(Number(it.m2) * 10) / 10 : null };
       open.push(k);
     });

@@ -1834,8 +1834,12 @@ const REPORTS = [
       /* `askFrom`: not asked at all on Thu 15 Oct 2026 (the user: "for today
          don't ask Getachew — he still cannot send"); back from the 16th */
       {id:'fu_jobs', en:'Have you finished buying for each job you named before?', am:'ከዚህ በፊት ለጠቀሷቸው ሥራዎች ግዥውን ጨርሰዋል?', t:'table', askFrom:'2026-10-16',
-        carry:{from:['pr_list.code', 'ord_list.code', 'sup_delay_list.code', 'del_rej_list.code', 'tomorrow', 'mat_plan.code'],
-               close:{col:'buy', in:['done', 'hold']}, days:30},
+        /* a job answered "part bought", "waiting for Selam" or "ordered"
+           comes back on the date he gives for it all, or three days on —
+           not every morning (the owner, 4 Nov 2026: KK-187); the cost
+           question (mat_plan) brings in a job only the first time */
+        carry:{from:['pr_list.code', 'ord_list.code', 'sup_delay_list.code', 'del_rej_list.code', 'tomorrow', {f:'mat_plan', col:'code', fresh:1}],
+               close:{col:'buy', in:['done', 'hold']}, wait:{col:'when', days:3}, days:30},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           /* `mustFrom` (the owner, 27 Oct 2026, 7 PM: "just for today let him
@@ -1872,7 +1876,9 @@ const REPORTS = [
        bought and he says what it all cost. */
     { en:'Material cost for jobs on the plan', am:'በዕቅዱ ላይ ላሉ ሥራዎች የዕቃ ወጪ', fields:[
       {id:'mat_plan', en:'How much will all the material for each of these jobs cost?', am:'የእያንዳንዱ ሥራ ዕቃ በሙሉ ስንት ብር ያወጣል?', t:'table', askFrom:'2026-10-16',
-        carry:{ask:'material', close:{col:'amount'}},
+        /* a "0" (he does not know yet) is asked again three days on, and a
+           job he has put on hold is not asked (the owner, 4 Nov 2026) */
+        carry:{ask:'material', close:{col:'amount'}, wait:{days:3}, held:{f:'fu_jobs', col:'buy', in:['hold']}},
         cols:[
           {id:'code', en:'Job code', am:'የሥራ ኮድ', t:'text'},
           /* not a `must` either (17 Oct 2026, see `cost` above): an empty

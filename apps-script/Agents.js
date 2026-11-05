@@ -1539,6 +1539,9 @@ function dailyRun() { return ran_('daily', dailyRun_); }
 function dailyRun_() {
   var day = addDays_(todayAddis_(), -1);
   var warn = [];
+  /* a report the Sheet got late last night and the database did not: in
+     before the close counts it (Mirror.js) */
+  try { mirrorWatch_(); } catch (e) { Logger.log('mirror: %s', e.message); }
   /* A day whose close failed (forms.js unreadable, Firestore down, a quota)
      was never closed again: no fines, no rule lines, and no history for next
      week's "twice in a row". Each morning closes any of the last seven days
@@ -2561,6 +2564,9 @@ function watch_(waitMs) {
     answerWaiting_();
     /* and an order of his, for the AI to find who does it (Orders.js) */
     planWaiting_();
+    /* a report the Sheet got and the database did not: filed from the Sheet's
+       copy (Mirror.js) — before anything below reads the day */
+    try { mirrorWatch_(); } catch (e) { Logger.log('mirror: %s', e.message); }
     /* yesterday, if the morning run did not close it — before the team's
        list, which reads it; a look that closed a day does nothing more */
     try { if (closeMissed_()) return; } catch (e) { Logger.log('close missed: %s', e.message); return; }

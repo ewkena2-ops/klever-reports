@@ -139,6 +139,11 @@ function doPost(e) {
   if (row.kind === 'notify') {
     return ContentService.createTextOutput(poster === 'chairman' ? notifyPost_(row.k) : 'refused');
   }
+  /* the Sheet's copies into the database now, and a report's older rows
+     with them (Mirror.js) — his account only */
+  if (row.kind === 'mirror') {
+    return ContentService.createTextOutput(poster === 'chairman' ? mirrorPost_(row) : 'refused');
+  }
   /* "Send me a test", from anyone's own page — to their own phones only */
   if (row.kind === 'pushTest') {
     return ContentService.createTextOutput(pushTestPost_(poster));
@@ -189,6 +194,9 @@ function doPost(e) {
     if (row.k) { try { cache.remove ? cache.remove('row:' + row.k) : cache.put('row:' + row.k, '', 1); } catch (e) {} }
     throw err;
   }
+  /* and noted, so the database gets it even if the phone's own filing never
+     arrives (Mirror.js, 5 Nov 2026) */
+  mirrorNote_(row);
   notify_(row, ss.getUrl());
   /* and the agents read the day again, about a minute from now (Agents.js) */
   readSoon_();

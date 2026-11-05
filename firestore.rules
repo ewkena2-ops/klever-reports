@@ -325,6 +325,37 @@ service cloud.firestore {
                     && (!('to' in request.resource.data)
                         || (request.resource.data.to is list && request.resource.data.to.size() <= 6));
 
+      /* THE SHEET'S COPY (5 Nov 2026: Yonas sent on time three days running;
+         the Sheet's script had each report, his phone's own filing never
+         came, and the ledger charged him as missing). The script files the
+         report it received, for the person it checked the sign-in of — or
+         the Chairman on their behalf — at the time it received it, marked
+         via 'sheet'; only the ledger's account, and at most three days back
+         (apps-script/Mirror.js). Bounded like a filing from a phone. */
+      allow create: if isLedger()
+                    && request.resource.data.via == 'sheet'
+                    && request.resource.data.person is string
+                    && known(request.resource.data.person)
+                    && request.resource.data.person != 'chairman'
+                    && request.resource.data.person != 'ledger'
+                    && request.resource.data.report is string
+                    && request.resource.data.report.matches('^' + request.resource.data.person + '-[a-z0-9-]+$')
+                    && (request.resource.data.by == request.resource.data.person
+                        || request.resource.data.by == 'chairman')
+                    && request.resource.data.at is timestamp
+                    && request.resource.data.at <= request.time
+                    && request.resource.data.at > request.time - duration.value(3, 'd')
+                    && request.resource.data.keys().hasOnly(
+                         ['person','report','by','late','due','values','flags','text','lang','at','to','via'])
+                    && (!('values' in request.resource.data)
+                        || (request.resource.data.values is map && request.resource.data.values.size() <= 600))
+                    && (!('flags' in request.resource.data)
+                        || (request.resource.data.flags is list && request.resource.data.flags.size() <= 200))
+                    && (!('text' in request.resource.data)
+                        || (request.resource.data.text is string && request.resource.data.text.size() <= 60000))
+                    && (!('to' in request.resource.data)
+                        || (request.resource.data.to is list && request.resource.data.to.size() <= 6));
+
       /* A weekly summary made from the person's own daily reports (the
          Chairman, 11 Oct 2026: nobody fills a weekly report any more;
          apps-script/Weekly.js). The script's account files it, marked by

@@ -22,7 +22,7 @@ import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, orderBy, limit,
+  collection, doc, getDoc, getDocs, getDocsFromServer, setDoc, addDoc, updateDoc, query, where, orderBy, limit,
   onSnapshot, serverTimestamp, writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
@@ -4466,23 +4466,51 @@ import {
     }
     return s && s >= HEALTH_FROM ? s : null;
   }
+  /* "Has not run" is the one verdict the page makes up itself, from its own
+     clock against the line it holds — and a page left open overnight holds
+     yesterday's line: js/quiet.js stops it reading once nobody looks, and a
+     phone loses its line. On Sat 7 Nov 2026 the five-minute redraw passed
+     8:00 on such a page and put "Morning close has not run" in red, when the
+     close had run at 06:46. So a job that looks late is asked about once
+     more, from the server and not the page's copy (five small reads, at most
+     every ten minutes), and until that answer is in the row says it is
+     checking and nothing goes red. A failed line is the job's own word and
+     is shown as it is. */
+  var HEALTH_SURE_MS = 10 * 60000;
   function watchHealth(into, alarm) {
-    var docs = {};
+    var docs = {}, sureAt = 0, asking = false;
+    function take(qs) {
+      docs = {};
+      qs.forEach(function (d) { docs[d.id] = d.data(); });
+    }
+    function ask() {
+      if (asking) return;
+      asking = true;
+      getDocsFromServer(collection(db, 'health')).then(function (qs) {
+        asking = false;
+        take(qs);
+        sureAt = Date.now();
+        draw();
+      }, function () { asking = false; });     /* no line: ask again at the next redraw */
+    }
     function draw() {
       into.innerHTML = '';
       alarm.innerHTML = '';
-      var bad = [];
+      var bad = [], unsure = false;
+      var sure = Date.now() - sureAt < HEALTH_SURE_MS;
       JOBS.forEach(function (j) {
         var h = docs[j[0]], name = t(j[1]);
         var at = h && h.at && h.at.toDate ? h.at.toDate() : null;
         var slot = slotOf(j[0]);
         var late = !!slot && (!at || addisYmd(at) < slot);
-        var state = h && h.ok === false ? 'bad' : late ? 'late' : h ? 'ok' : 'none';
+        var state = h && h.ok === false ? 'bad' : late ? (sure ? 'late' : 'wait') : h ? 'ok' : 'none';
+        if (state === 'wait') unsure = true;
         var row = el('div', 'chhrow ' + state);
         var top = el('div', 'chhtop');
         top.appendChild(el('span', 'chhk', name));
         top.appendChild(el('span', 'chhv',
           state === 'bad' ? t('chSysFailed') : state === 'late' ? t('chSysLate')
+            : state === 'wait' ? t('chSysCheck')
             : state === 'ok' ? t('chSysOk') : t('chSysNever')));
         row.appendChild(top);
         if (at) {
@@ -4498,10 +4526,10 @@ import {
       into.appendChild(el('p', 'codenote', t('chSysNote')));
       alarm.hidden = !bad.length;
       bad.forEach(function (b) { alarm.appendChild(el('p', null, b)); });
+      if (unsure) ask();
     }
     onSnapshot(collection(db, 'health'), function (qs) {
-      docs = {};
-      qs.forEach(function (d) { docs[d.id] = d.data(); });
+      take(qs);
       draw();
     }, failInto(into));
     /* a job's hour can pass with the page open */

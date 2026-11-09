@@ -29,11 +29,8 @@
    "try again").                                                            */
 (function () {
   'use strict';
-  /* `first`: how long the quick scan page waits for the place before it sends
-     the scan without one (js/scan.js). `ok`: the office's own limit
-     (apps-script/Attend.js AT_ACC_M_) */
-  var MS = Object.assign({ good: 50, ok: 200, after: 2500, poor: 30000, all: 45000, tick: 5000, first: 2500 }, window.KLEVER_WHERE_MS || {});
-  window.KLEVER_WHERE_FIRST = MS.first;
+  /* `ok`: the office's own limit (apps-script/Attend.js AT_ACC_M_) */
+  var MS = Object.assign({ good: 50, ok: 200, after: 2500, poor: 30000, all: 45000, tick: 5000 }, window.KLEVER_WHERE_MS || {});
 
   window.kleverWhere = function (onWait) {
     return new Promise(function (done) {

@@ -1816,20 +1816,19 @@
        check the location". 24 Oct 2026 the line's address changed again and
        phones with location blocked could not check in; the user: "let them
        use any network, mobile data or anything — just get the location". So
-       the phone is asked where it is at once, beside the WiFi check: on the
-       WiFi the scan is done without it; on any other internet the place
-       decides, already found. Blocked: how to allow it, step by step. */
-    var placeAsked = false, lastLoc = null, waiting = false;
+       the phone is asked where it is at once and the place goes with the
+       scan (on the office line its address decides; on any other internet
+       the place). Blocked: how to allow it, step by step. */
+    var placeErr = '', lastLoc = null, waiting = false;
     /* no fix yet after 10 seconds: say it is still looking (js/where.js) */
     function still(s) {
       var sub = waiting && s >= 10 && box.querySelector('.atsub');
       if (sub) sub.textContent = t('atLocStill');
     }
-    function place(pending) {
-      placeAsked = true;
+    function place() {
       waiting = true;
       show('wait', t('atLocAsk'), t('atLocAskSub'));
-      (pending && pending.then ? pending : atWhere(still)).then(function (loc) {
+      atWhere(still).then(function (loc) {
         waiting = false;
         if (loc.err) return locHelp(loc.err);
         lastLoc = loc;
@@ -1857,7 +1856,8 @@
     }
     function answer(a) {
       var w = a.why || 'unavailable';
-      if (!a.ok && (w === 'not-wifi' || w === 'no-wifi-set') && !placeAsked) return place(early);
+      /* sent without the place because the phone gave none, and the WiFi did not do instead: how to allow it */
+      if (!a.ok && (w === 'not-wifi' || w === 'no-wifi-set') && placeErr) return locHelp(placeErr);
       if (a.chairman) return chairAnswer(a, w);
       /* `queued`: taken by the check-in server while the site's database was
          out (20 Oct 2026) — it reaches the person's page once it is back */
@@ -1895,8 +1895,18 @@
         }, function (e) { show('bad', t('atSetFailed') + ' ' + ((e && e.message) || e)); });
       });
     }
-    var early = atWhere(still);
-    send().then(answer, failed);
+    /* the location asked for on the first screen and sent WITH the one scan
+       (9 Nov 2026, the user: "ask location turned on the first try"; the
+       same as js/scan.js): without it only when the phone gives none */
+    waiting = true;
+    show('wait', t('atLocAsk'), t('atLocAskSub'));
+    atWhere(still).then(function (loc) {
+      waiting = false;
+      show('wait', t('atChecking'));
+      if (loc.err) { placeErr = loc.err; return send().then(answer); }
+      lastLoc = loc;
+      return send(loc).then(answer);
+    }).then(null, failed);
     return box;
   }
   /* "35 m", "1.2 km" */

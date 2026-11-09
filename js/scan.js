@@ -86,9 +86,11 @@
     return (h ? h + ' h' + (r ? ' ' : '') : '') + (r || !h ? r + ' min' : '');
   }
 
-  show('wait', t('atChecking'));
+  /* the location asked for on the first screen (9 Nov 2026, the user: "ask
+     location turned on the first try") */
+  show('wait', t('atLocAsk'), t('atLocAskSub'));
   /* no fix yet after 10 seconds: say it is still looking (js/where.js) */
-  var waiting = false;
+  var waiting = true;
   function still(s) {
     var sub = waiting && s >= 10 && box.querySelector('.atsub');
     if (sub) sub.textContent = t('atLocStill');
@@ -131,12 +133,11 @@
         return r.json()['catch'](function () { return { ok: false, why: 'unavailable' }; });
       });
     }
-    var placeAsked = false;
-    function place(pending) {
-      placeAsked = true;
+    var placeErr = '';
+    function place() {
       waiting = true;
       show('wait', t('atLocAsk'), t('atLocAskSub'));
-      (pending && pending.then ? pending : window.kleverWhere(still)).then(function (loc) {
+      window.kleverWhere(still).then(function (loc) {
         waiting = false;
         if (loc.err) return locHelp(loc.err);
         show('wait', t('atChecking'));
@@ -164,7 +165,8 @@
     }
     function answer(a) {
       var w = a.why || 'unavailable';
-      if (!a.ok && (w === 'not-wifi' || w === 'no-wifi-set') && !placeAsked) return place(early);
+      /* sent without the place because the phone gave none, and the WiFi did not do instead: how to allow it */
+      if (!a.ok && (w === 'not-wifi' || w === 'no-wifi-set') && placeErr) return locHelp(placeErr);
       if (a.chairman) { location.replace(fullUrl()); return; }
       homeLink(t('scanOpen'), homeUrl());
       var saved = a.queued ? t('atSaved') : '';
@@ -183,19 +185,18 @@
       show('bad', t(msg), a.ip ? tf('atAddr', { ip: a.ip }) : '');
       if (msg === 'atFailed') button(t('atTryAgain'), function () { location.reload(); });
     }
-    /* one send, not two: the place goes with the scan when the phone has it
-       within a moment (off the WiFi it decides; on the WiFi it is not
-       needed). No place by then: sent without, and asked for if needed. */
-    var placed = null;
-    early.then(function (loc) { placed = loc; });
-    new Promise(function (go) {
-      if (placed) return go();
-      early.then(go);
-      setTimeout(go, window.KLEVER_WHERE_FIRST || 2500);
-    }).then(function () {
-      var loc = placed && !placed.err ? placed : null;
-      if (loc) placeAsked = true;
-      return send(loc);
-    }).then(answer, failed);
+    /* ONE send, WITH the place (9 Nov 2026). It used to go after 2.5 seconds
+       without one when the phone was slower, for the office WiFi to decide —
+       but the line's address changes most days, so nearly every scan is
+       decided by place, and that first send was refused ("no place") before
+       the place followed. Now the scan waits for the place; only when the
+       phone gives none (blocked, or not found in time) is it sent without,
+       for the WiFi — and if the WiFi does not do, how to allow location. */
+    early.then(function (loc) {
+      waiting = false;
+      show('wait', t('atChecking'));
+      if (loc.err) { placeErr = loc.err; return send(null).then(answer); }
+      return send(loc).then(answer);
+    }).then(null, failed);
   }, failed);
 })();

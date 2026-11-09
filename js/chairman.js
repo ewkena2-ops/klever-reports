@@ -1186,19 +1186,78 @@ import {
     var rows = people.map(function (p, i) {
       return { name: twice[short[i]] > 1 ? L(p) : short[i], cells: shown.map(function (day) { return cell(p, day); }) };
     });
+    /* FIRST IN AND LAST IN (9 Nov 2026, the owner: "on each day show who is
+       earliest and who is latest, 3"): the first three to scan and the last
+       three, by the time they scanned — on a day's own note, and day by day
+       under the grid. A day with six or fewer scans does not name anyone
+       twice. */
+    function hmMin(hm) {
+      var m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(String(hm || '').trim());
+      return m ? (Number(m[1]) % 12) * 60 + Number(m[2]) + (/pm/i.test(m[3]) ? 720 : 0) : null;
+    }
+    function firstLast(day) {
+      var ins = [];
+      people.forEach(function (p, i) {
+        if ((p.from && day < p.from) || (p.left && day > p.left)) return;
+        var raw = (by[day] || {})[p.id], x = kind === 'factory' ? gtEff(raw) : (raw || {});
+        var m = x.scanAt ? hmMin(x.hm) : null;
+        if (m != null) ins.push({ name: rows[i].name, hm: x.hm, m: m, late: !!x.late });
+      });
+      ins.sort(function (a, b) { return a.m - b.m; });
+      return { n: ins.length, first: ins.slice(0, 3), last: ins.slice(Math.max(3, ins.length - 3)).reverse() };
+    }
+    /* "8:05", "5:09 PM" */
+    function flHm(hm) { return String(hm || '').replace(/\s*AM$/i, ''); }
+    function flWords(list) { return list.map(function (x) { return x.name + ' ' + flHm(x.hm); }).join(' · '); }
     var cols = shown.map(function (day) {
       var cs = people.map(function (p) { return cell(p, day); }).filter(Boolean);
       var inN = cs.filter(function (c) { return c.s === 'ok' || c.s === 'late'; }).length;
-      return { top: WD[lang][dow(day)], bottom: String(Number(day.slice(8))), today: day === DAY,
-               tip: [tfill('agDayCount', { n: inN, all: cs.length }), day === DAY ? t('chgToday') + ' · ' + label(day) : label(day)] };
+      var tip = [tfill('agDayCount', { n: inN, all: cs.length }), day === DAY ? t('chgToday') + ' · ' + label(day) : label(day)];
+      var fl = firstLast(day);
+      if (fl.first.length) tip.push(t('agFirst') + ': ' + flWords(fl.first));
+      if (fl.last.length) tip.push(t('agLast') + ': ' + flWords(fl.last));
+      return { top: WD[lang][dow(day)], bottom: String(Number(day.slice(8))), today: day === DAY, tip: tip };
     });
+    /* under the grid: the whole month, the newest day first */
+    function flCell(list) {
+      var td = el('td', 'fl-who');
+      if (!list.length) td.textContent = '—';
+      list.forEach(function (x, k) {
+        if (k) td.appendChild(document.createTextNode(' '));
+        var s = el('span', 'fl-one' + (x.late ? ' fl-late' : ''));
+        s.appendChild(el('b', null, x.name));
+        s.appendChild(document.createTextNode(' '));
+        s.appendChild(el('i', null, flHm(x.hm) + (x.late ? ' !' : '')));
+        td.appendChild(s);
+      });
+      return td;
+    }
+    function flBlock() {
+      var d = el('details', 'cg-table cg-fl');
+      d.open = true;
+      d.appendChild(el('summary', null, t('agFirstLast')));
+      var tb = el('table'), hr = el('tr'), body = el('tbody'), th = el('thead');
+      [t('agDayHead'), t('agFirst'), t('agLast')].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+      th.appendChild(hr); tb.appendChild(th); tb.appendChild(body); d.appendChild(tb);
+      days.slice().reverse().forEach(function (day) {
+        var fl = firstLast(day), tr = el('tr'), off = atOffOn(day);
+        tr.appendChild(el('td', 'fl-day' + (day === DAY ? ' fl-today' : ''), (day === DAY ? t('chgToday') + ' · ' : '') + label(day) + (off ? ' · ' + t('atOffShort') : '')));
+        if (!fl.n) {
+          var none = el('td', 'fl-none', t('agNobodyIn'));
+          none.colSpan = 2;
+          tr.appendChild(none);
+        } else { tr.appendChild(flCell(fl.first)); tr.appendChild(flCell(fl.last)); }
+        body.appendChild(tr);
+      });
+      return d;
+    }
     /* the whole month so far, person by person: the counted days only */
     var tally = people.map(function (p) {
       var n = { ok: 0, late: 0, miss: 0 };
       days.forEach(function (day) { var c = cell(p, day); if (c && n[c.s] != null) n[c.s]++; });
       return [L(p), String(n.ok), String(n.late), String(n.miss)];
     });
-    return C.grid({
+    var g = C.grid({
       title: t(kind === 'factory' ? 'agFactoryTitle' : 'agOfficeTitle'),
       sub: tfill(shown.length < days.length ? 'agSubPhone' : 'agSub',
                  { month: K.ethMonthName ? K.ethMonthName(DAY) : '', day: prettyDay(start) }),
@@ -1206,6 +1265,8 @@ import {
       legend: [['ok', '✓', WORD.ok], ['late', '!', WORD.late], ['miss', '✕', WORD.miss], ['wait', '·', WORD.wait]],
       numbers: { title: t('agNumbers'), head: [t('chgPerson'), '✓ ' + WORD.ok, '! ' + WORD.late, '✕ ' + WORD.miss], rows: tally }
     });
+    g.insertBefore(flBlock(), g.querySelector('.cg-table'));
+    return g;
   }
   /* THE ETHIOPIAN DATE under each day of a grid (the owner, 21 Oct 2026: "we
      have to see also Ethiopian date"): the day of the Ethiopian month on a

@@ -1364,6 +1364,16 @@ g.on .cg-bar,g.on .cg-dot{filter:brightness(1.18)}
 .cg-table td{padding:4px 6px;border-bottom:1px solid var(--line);color:var(--ink-2)}
 .cg-table td.num,.cg-table th+th{text-align:right}
 .cg-table td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+/* first 3 in and last 3 in, day by day, under the check-in grid (9 Nov 2026) */
+.cg-fl table th+th{text-align:left}
+.cg-fl td{vertical-align:top}
+.cg-fl td.fl-day{color:var(--mut);font-size:12px;width:30%}
+.cg-fl td.fl-today{color:var(--ink-2);font-weight:600}
+.cg-fl .fl-one{display:inline-block;white-space:nowrap;margin:0 12px 2px 0}
+.cg-fl .fl-one b{font-weight:600;color:var(--ink-2)}
+.cg-fl .fl-one i{font-style:normal;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--mut)}
+.cg-fl .fl-late i{color:var(--gold)}
+.cg-fl td.fl-none{color:var(--mut)}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}

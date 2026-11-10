@@ -116,6 +116,13 @@ const PEOPLE = [
      (the production worker letter) until the Chairman says otherwise: the
      rulebook's production-worker lines and Amaha's worker pick-lists read it. */
   { id:'etaferaw', en:'Etaferaw Marye', am:'እጣፈራው ማርዬ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', scan:'2026-11-10' },
+  /* Lebonash, a second cleaner (the user, 10 Nov 2026: "add Lebonash as
+     cleaner and make her checked in today"): new, not on the October
+     payroll; no surname given and the Amharic is UNCHECKED. Office door
+     check-in from today (today's put in by hand). No terms letter, so no
+     fines; files no reports. Her role is Cleaner — the rulebook's cleaner
+     group has no role, so no rule reaches her through it. */
+  { id:'lebonash', en:'Lebonash', am:'ለቦናሽ', roleEn:'Cleaner', roleAm:'የጽዳት ሠራተኛ', grp:'production', from:'2026-11-10', noLetter:1, scan:'2026-11-10' },
   { id:'fasika', en:'Fasika Abebe', am:'ፋሲካ አበበ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
   { id:'yared', en:'Yared Belayhneh', am:'ያሬድ በላይነህ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
   { id:'kiflom', en:'Kiflom Hadish', am:'ክፍሎም ሃዲሽ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },

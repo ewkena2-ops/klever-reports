@@ -2066,6 +2066,7 @@
     }
     if (isToday && nowMin <= AT_LATE && !(x && x.why)) {
       box.appendChild(el('div', 'inst', label + ' · ' + atT('atScanHow')));
+      if (atKind === 'at') box.appendChild(atGo());
       /* the WiFi without internet: mobile data, and the place is checked (23 Oct 2026) */
       if (atKind === 'at') box.appendChild(el('div', 'atsub', t('atNoNet')));
       return box;
@@ -2075,10 +2076,25 @@
     if (x && x.why) box.appendChild(el('div', 'atsub', t('atWhyIs') + ' ' + atWhyText(x.why, x.note)));
     else {
       if (isToday) box.appendChild(el('div', 'atsub', atT('atScanOrSay')));
+      if (isToday && atKind === 'at') box.appendChild(atGo());
       if (isToday && atKind === 'at') box.appendChild(el('div', 'atsub', t('atNoNet')));
       box.appendChild(atAsk(day, false, x));
     }
     return box;
+  }
+  /* "Check in now", from the app itself (10 Nov 2026). The door QR is only a
+     link — the place or the WiFi is what counts — and on some phones it opens
+     a browser that keeps nothing, so Yonas typed his password at the door
+     five mornings running. Here they are signed in already: the same quick
+     page (scan.html), the same check, no password. Same origin, so a phone's
+     home-screen app keeps it inside the app. */
+  function atGo() {
+    var w = el('div', 'atgo');
+    var a = el('a', 'pushbtn', t('atCheckIn'));
+    a.href = 'scan.html?scan=office';
+    w.appendChild(a);
+    w.appendChild(el('div', 'atsub', t('atCheckInSub')));
+    return w;
   }
   function atWhyText(why, note) {
     return atT('atWhy_' + why) + (note ? ' — ' + note : '');

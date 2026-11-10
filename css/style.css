@@ -568,6 +568,8 @@ input.mustgap,textarea.mustgap,select.mustgap{
 .atsteps li{margin-top:4px;overflow-wrap:anywhere}
 .atsub{font-size:13.5px;color:var(--ink-2);margin-top:6px;line-height:1.45;overflow-wrap:anywhere}
 .atcard{display:block}
+.atgo{margin-top:8px}
+.atgo a.pushbtn{display:inline-flex;align-items:center;text-decoration:none;margin-top:0}
 .atask{margin-top:10px;display:grid;gap:8px}
 .atq{font-weight:700;font-size:14px;color:var(--ink)}
 .atpicks{display:flex;flex-wrap:wrap;gap:6px}

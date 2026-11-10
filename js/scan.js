@@ -118,7 +118,17 @@
   }
 
   userP.then(function (user) {
-    if (!user) { show('bad', t('atSignIn')); homeLink(t('scanSignInBtn'), fullUrl()); return; }
+    /* Not signed in here. Most often the door QR opened a browser that keeps
+       nothing from one day to the next (an iPhone's Code Scanner, Private
+       browsing): Yonas typed his password at the door five mornings running
+       (10 Nov 2026). The app, where they are signed in, has "Check in now"
+       (js/app.js atGo) — say that first; signing in here stays below. */
+    if (!user) {
+      show('bad', t('scanNotYou'), t('scanUseApp'));
+      box.appendChild(el('div', 'atsub', t('scanOrHere')));
+      homeLink(t('scanSignInBtn'), fullUrl());
+      return;
+    }
     if (/^chairman@/i.test(user.email || '')) { location.replace(fullUrl()); return; }
 
     /* plain text, so the phone sends it straight away: JSON would first ask

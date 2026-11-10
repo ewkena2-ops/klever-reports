@@ -107,7 +107,13 @@ const PEOPLE = [
   { id:'addisu', en:'Addisu Fafa', am:'አዲሱ ፋፋ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
   { id:'cheru-moshe', en:'Cheru Moshe', am:'ጨሩ ሞሼ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
   { id:'tsegaye', en:'Tsegaye Ataklti', am:'ፀጋዬ አታክልቲ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
-  { id:'etaferaw', en:'Etaferaw Marye', am:'እጣፈራው ማርዬ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
+  /* Etaferaw is the cleaner (the user, 10 Nov 2026: "add etafer to scan …
+     she is a cleaner"): she checks in at the office door QR on her own phone,
+     from Wed 11 Nov — added after 8 AM, so counted from the next morning — and
+     is off the factory gate's tablet. Her role stays as on her signed letter
+     (the production worker letter) until the Chairman says otherwise: the
+     rulebook's production-worker lines and Amaha's worker pick-lists read it. */
+  { id:'etaferaw', en:'Etaferaw Marye', am:'እጣፈራው ማርዬ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', scan:'2026-11-11' },
   { id:'fasika', en:'Fasika Abebe', am:'ፋሲካ አበበ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
   { id:'yared', en:'Yared Belayhneh', am:'ያሬድ በላይነህ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },
   { id:'kiflom', en:'Kiflom Hadish', am:'ክፍሎም ሃዲሽ', roleEn:'Production Worker', roleAm:'የምርት ሠራተኛ', grp:'production', gate:1, worker:1 },

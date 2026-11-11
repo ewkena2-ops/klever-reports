@@ -29,8 +29,79 @@
    "try again").                                                            */
 (function () {
   'use strict';
-  /* `ok`: the office's own limit (apps-script/Attend.js AT_ACC_M_) */
-  var MS = Object.assign({ good: 50, ok: 200, after: 2500, poor: 30000, all: 45000, tick: 5000 }, window.KLEVER_WHERE_MS || {});
+  /* `ok`: the office's own limit (apps-script/Attend.js AT_ACC_M_); `near`:
+     how far from the office still counts (AT_NEAR_M_); `back`: how far back
+     a scan may count from (AT_BACK_MS_) */
+  var MS = Object.assign({ good: 50, ok: 200, after: 2500, poor: 30000, all: 45000, tick: 5000, near: 200, back: 600000 }, window.KLEVER_WHERE_MS || {});
+
+  /* WHEN THE SCAN BEGAN (11 Nov 2026, the user: "their scan takes minutes to
+     load, like 5 min, and it registers that time … make their time the time
+     they scan — but you won't confirm it without location"). That morning
+     Abrham scanned at 8:03 and was counted at 8:06, Tsega 8:09 → 8:13,
+     Biruktayet 8:11 → 8:18: the minutes went on the page loading on the
+     office line, on the phone finding where it is, and on "Try again" after
+     a first try that had no place. The office counted the moment the place
+     reached it. Now the page says, with the scan, how long ago it began
+     (`ago`, milliseconds) and the office counts from then — at most `back`
+     (10 minutes), and still only once the place or the WiFi says the phone
+     is there.
+
+     kleverScanClock
+       .begin(at)   a try begins at `at`, by the phone's clock: the page's own
+                    start, or a tap on "Try again". A try begun up to `back`
+                    before it — on this page or another: the QR scanned
+                    again, the page reloaded, the password typed — is the
+                    same arrival, and its start is kept.
+       .who(id)     whose arrival it is: someone else signing in on the same
+                    phone starts their own.
+       .ago()       milliseconds since the arrival began.
+       .away(d, a)  the office said "far" — `d` metres, the phone sure to `a`:
+                    when that is outside the office's reach even allowing for
+                    the phone's doubt, the phone was somewhere else, and the
+                    next try counts from its own time (no tapping "Check in"
+                    on the way and "Try again" at the door).
+       .clear()     the arrival is over: checked in.                        */
+  var CLOCK_KEY = 'klever.scan.began';
+  var began = 0, own = 0, me = '';
+  function kept() {
+    try {
+      var v = JSON.parse(localStorage.getItem(CLOCK_KEY) || 'null');
+      return v && typeof v.t === 'number' && v.t > 0 ? v : null;
+    } catch (e) { return null; }
+  }
+  function keep(v) {
+    try { if (v) localStorage.setItem(CLOCK_KEY, JSON.stringify(v)); else localStorage.removeItem(CLOCK_KEY); } catch (e) {}
+  }
+  window.kleverScanClock = {
+    /* when this page was asked for — before it loaded */
+    pageStart: function () {
+      var p = window.performance, s = 0;
+      try { s = Math.round((p && (p.timeOrigin || (p.timing && p.timing.navigationStart))) || 0); } catch (e) {}
+      return s;
+    },
+    begin: function (at) {
+      var now = Date.now(), had = kept();
+      at = Number(at);
+      /* a start the phone's clock cannot vouch for (it was changed, or the page is old): now */
+      if (!(at > 0) || at > now || now - at > MS.back) at = now;
+      own = at;
+      var same = had && had.t <= at && at - had.t <= MS.back && (!me || !had.who || had.who === me);
+      began = same ? had.t : at;
+      keep({ t: began, who: me || (same ? had.who || '' : '') });
+      return began;
+    },
+    who: function (id) {
+      me = String(id || '');
+      var had = kept();
+      if (had && had.who && me && had.who !== me) began = own || Date.now();
+      if (began) keep({ t: began, who: me });
+    },
+    ago: function () { return began ? Math.max(0, Date.now() - began) : 0; },
+    away: function (dist, acc) {
+      if (Number(dist) - (Number(acc) || 0) > MS.near) this.clear();
+    },
+    clear: function () { began = 0; own = 0; keep(null); }
+  };
 
   window.kleverWhere = function (onWait) {
     return new Promise(function (done) {

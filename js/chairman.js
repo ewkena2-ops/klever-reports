@@ -1033,7 +1033,7 @@ import {
     if (sunday) into.appendChild(el('p', 'codenote', holidayOn(DAY) ? tfill('atHolidayNote', { name: L(holidayOn(DAY)) }) : t('atSundayNote')));
     else {
       if (atOffOn(DAY)) into.appendChild(el('p', 'codenote', tfill('atOffNote', { why: L(atOffOn(DAY)) })));
-      var counts = { on: 0, late: 0, none: 0 }, list = el('div', 'atlist'), byPlace = 0;
+      var counts = { on: 0, late: 0, none: 0 }, list = el('div', 'atlist'), byPlace = 0, waited = 0;
       people.filter(function (p) { return !p.from || p.from <= DAY; }).forEach(function (p) {
         var d = (by[DAY] || {})[p.id] || {};
         var r = el('div', 'chf atrow');
@@ -1043,6 +1043,9 @@ import {
         else if (d.scanAt) { s = tfill('atLateShort', { at: d.hm, m: atDur(d.minsLate) }); cls = 'late'; counts.late++; }
         else { s = t('atNoScanShort'); cls = 'none'; counts.none++; }
         if (d.scanAt && d.how === 'place') { s += ' 📍'; byPlace++; }
+        /* counted from when the scan began; the place came this much later
+           (11 Nov 2026, apps-script/Attend.js waitS) — shown from a minute */
+        if (d.scanAt && d.waitS >= 60) { s += ' ⏱ ' + atDur(Math.round(d.waitS / 60)); waited++; }
         if (d.why) s += ' · ' + atWhyText(d.why, d.note);
         r.appendChild(el('span', 'chfv at ' + cls, s));
         list.appendChild(r);
@@ -1050,6 +1053,7 @@ import {
       into.appendChild(el('p', 'atcounts', tfill('atCounts', { on: counts.on, late: counts.late, none: counts.none })));
       into.appendChild(list);
       if (byPlace) into.appendChild(el('p', 'codenote', t('atPlaceLegend')));
+      if (waited) into.appendChild(el('p', 'codenote', t('atWaitLegend')));
     }
 
     /* this month */

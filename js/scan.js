@@ -86,6 +86,12 @@
     return (h ? h + ' h' + (r ? ' ' : '') : '') + (r || !h ? r + ' min' : '');
   }
 
+  /* the scan began when this page was asked for, not when its answer comes
+     (11 Nov 2026, js/where.js kleverScanClock): the loading, the wait for
+     the place and a "Try again" no longer make anyone late */
+  var clock = window.kleverScanClock || null;
+  if (clock) clock.begin(clock.pageStart());
+
   /* the location asked for on the first screen (9 Nov 2026, the user: "ask
      location turned on the first try") */
   show('wait', t('atLocAsk'), t('atLocAskSub'));
@@ -130,6 +136,7 @@
       return;
     }
     if (/^chairman@/i.test(user.email || '')) { location.replace(fullUrl()); return; }
+    if (clock) clock.who(String(user.email || '').toLowerCase().split('@')[0]);
 
     /* plain text, so the phone sends it straight away: JSON would first ask
        the server "may I?" — one more trip on a slow line */
@@ -138,6 +145,8 @@
       return tokP.then(function (tok) {
         var body = { idToken: tok };
         if (loc) body.loc = loc;
+        /* how long ago the scan began: the office counts from then */
+        if (clock) body.ago = Math.round(clock.ago());
         return fetch(ATTEND_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body) });
       }).then(function (r) {
         return r.json()['catch'](function () { return { ok: false, why: 'unavailable' }; });
@@ -154,7 +163,8 @@
         return send(loc).then(answer);
       }).then(null, failed);
     }
-    function again() { place(); }
+    /* the same arrival when it began in the last 10 minutes, else a new one */
+    function again() { if (clock) clock.begin(Date.now()); place(); }
     function locHelp(err) {
       show('bad', t(err === 'denied' ? 'atLocDenied' : 'atLocSlow'));
       var ua = navigator.userAgent || '';
@@ -175,6 +185,9 @@
     }
     function answer(a) {
       var w = a.why || 'unavailable';
+      /* the arrival is over once in; shown to be somewhere else, the next try counts from its own time */
+      if (clock && a.ok) clock.clear();
+      if (clock && !a.ok && w === 'far') clock.away(a.dist, a.acc);
       /* sent without the place because the phone gave none, and the WiFi did not do instead: how to allow it */
       if (!a.ok && (w === 'not-wifi' || w === 'no-wifi-set') && placeErr) return locHelp(placeErr);
       if (a.chairman) { location.replace(fullUrl()); return; }

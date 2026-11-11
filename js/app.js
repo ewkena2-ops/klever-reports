@@ -1785,6 +1785,11 @@
       history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash);
     } catch (e) {}
     box.appendChild(el('div', 'inst', t('atChecking')));
+    /* the scan began when the page was asked for — or on the quick page
+       before it, the password typed since — not when its answer comes
+       (11 Nov 2026, js/where.js kleverScanClock; the same in js/scan.js) */
+    var clock = window.kleverScanClock || null;
+    if (clock) { clock.begin(clock.pageStart()); clock.who(AUTH.who() || ''); }
     function show(kind, text, sub) {
       box.innerHTML = '';
       box.className = 'ins atscan ' + kind;
@@ -1803,6 +1808,8 @@
         if (!tok) throw { why: 'signin' };
         var body = { idToken: tok };
         if (loc) body.loc = loc;
+        /* how long ago the scan began: the office counts from then */
+        if (clock) body.ago = Math.round(clock.ago());
         /* plain text: sent at once, with no "may I?" trip first (26 Oct 2026) */
         return fetch(ATTEND_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
                                    body: JSON.stringify(body) });
@@ -1836,7 +1843,8 @@
         return send(loc).then(answer);
       }).then(null, failed);
     }
-    function again() { place(); }
+    /* the same arrival when it began in the last 10 minutes, else a new one */
+    function again() { if (clock) clock.begin(Date.now()); place(); }
     function locHelp(err) {
       show('bad', t(err === 'denied' ? 'atLocDenied' : 'atLocSlow'));
       var ua = navigator.userAgent || '';
@@ -1856,6 +1864,9 @@
     }
     function answer(a) {
       var w = a.why || 'unavailable';
+      /* the arrival is over once in; shown to be somewhere else, the next try counts from its own time */
+      if (clock && a.ok) clock.clear();
+      if (clock && !a.ok && w === 'far') clock.away(a.dist, a.acc);
       /* sent without the place because the phone gave none, and the WiFi did not do instead: how to allow it */
       if (!a.ok && (w === 'not-wifi' || w === 'no-wifi-set') && placeErr) return locHelp(placeErr);
       if (a.chairman) return chairAnswer(a, w);

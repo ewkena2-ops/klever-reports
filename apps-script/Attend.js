@@ -173,6 +173,31 @@ function atClock_(mins) {
    a scan already here (the person scanned again once the site was back)
    takes its place. */
 var AT_QUEUE_MAX_MS_ = 3 * 86400000;           /* kept longer by the agent: not taken */
+
+/* WHEN THE SCAN BEGAN (11 Nov 2026, the user: "their scan takes minutes to
+   load, like 5 min, and it registers that time … make their time the time
+   they scan — but you won't confirm it without location"). That morning
+   Abrham scanned at 8:03 and was counted at 8:06, Tsega 8:09 → 8:13,
+   Biruktayet 8:11 → 8:18: the page loading on the office line, the phone
+   finding where it is, "Try again" after a first try with no place. The
+   phone now says how long ago its scan began (js/where.js kleverScanClock),
+   the agent turns that into a time by its own clock — `began`, never more
+   than AT_BACK_MS_ before the scan reached it — and the scan counts from
+   then, still only when the WiFi or the place says the phone is here. A
+   scan the agent kept comes with that time already (`at`) and how long the
+   phone took (`wait`, seconds). `waitS` on the scan says it, for the
+   Chairman's page. Returns the time to count from, or null: now. */
+var AT_BACK_MS_ = 10 * 60000;                   /* app/attend_local.py AGO_MAX_S, js/where.js `back` */
+function atBegan_(v, now) {
+  var b = Number(v), n = now.getTime();
+  if (!isFinite(b) || b <= 0 || b >= n) return null;
+  /* a minute more than the agent allows: the scan's own trip from it to here */
+  b = Math.max(b, n - AT_BACK_MS_ - 60000);
+  var began = new Date(b);
+  /* never onto the day before */
+  if (Utilities.formatDate(began, tz_(), 'yyyy-MM-dd') !== Utilities.formatDate(now, tz_(), 'yyyy-MM-dd')) return null;
+  return began;
+}
 function attendPost_(row, poster, queued) {
   var cfg;
   try { cfg = waConfig_(); } catch (e) { return JSON.stringify({ ok: false, why: 'unavailable' }); }
@@ -187,7 +212,7 @@ function attendPost_(row, poster, queued) {
 }
 function attendTake_(row, poster, queued) {
   var addr = atAddr_(row.ip);
-  var now = new Date();
+  var now = new Date(), waitS = 0;
   if (queued) {
     if (!/^[a-z0-9-]{2,60}$/.test(String(poster || ''))) return JSON.stringify({ ok: false, why: 'unknown' });
     var at = Number(row.at);
@@ -195,6 +220,13 @@ function attendTake_(row, poster, queued) {
       return JSON.stringify({ ok: false, why: 'stale' });
     }
     now = new Date(Math.min(at, now.getTime()));
+    /* `at` is when the scan began; the phone took this long to reach the agent */
+    var wait = Number(row.wait);
+    if (isFinite(wait) && wait >= 1) waitS = Math.round(Math.min(wait, AT_BACK_MS_ / 1000));
+  } else {
+    /* counted from when the scan began (atBegan_) */
+    var began = atBegan_(row.began, now);
+    if (began) { waitS = Math.round((now.getTime() - began.getTime()) / 1000); now = began; }
   }
   var day = Utilities.formatDate(now, tz_(), 'yyyy-MM-dd'), mins = atMinutes_(now);
   var schedule = loadSchedule_();
@@ -246,6 +278,8 @@ function attendTake_(row, poster, queued) {
                minsLate: late ? mins - AT_LATE_AFTER_ : 0, ip: addr };
   /* counted by where the phone was, not the WiFi */
   if (near) { scan.how = 'place'; scan.dist = near.dist; scan.acc = loc.acc; }
+  /* counted from when the scan began: the place came this many seconds later */
+  if (waitS >= 1) scan.waitS = waitS;
   /* taken at the door by the agent, handed over later — or refused at
      first, its address (or the office's place) saved since (attendFailWatch_) */
   if (queued) { scan.queued = true; scan.sentAt = new Date(); }

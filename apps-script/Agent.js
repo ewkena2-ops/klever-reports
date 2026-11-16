@@ -170,7 +170,8 @@ function authorizeAgent() {
                          it, one email. The brief is waiting at 7:00.
      watchForRunRequest  every 10 minutes — the “Analyse now” button, and,
                          after the week closes on Sunday at 9 PM, the week's
-                         weekly reports settled and its summary (weekEnd_)
+                         weekly reports settled (weekEnd_), and in the next
+                         look, alone, its summary (weekPackIfOwed_)
      monthlyPack         the 2nd, 8–9 — the month just ended, with the
                          deductions. The 2nd, because Amaha’s and Wude’s
                          monthly reports are due at 5 PM on the 1st.        */
@@ -1072,14 +1073,20 @@ function weekWaiting_(schedule, day, filings, names, asOf) {
  * ------------------------------------------------------------------ */
 
 /* Sunday 9 PM: the week is over. Its weekly reports are settled (the
-   Sunday's close) and its summary is written and sent. The ten-minute watch
-   does this within ten minutes of 9 PM; the Monday morning close does
-   whatever of it the watch did not, and so does each morning after, so a
-   failure is mended the next day. Returns what it did. Throws if the week
-   could not be closed; a summary that fails is said in `warn` (and ran_ has
-   already mailed it). */
+   Sunday's close) and its summary is owed. The ten-minute watch does this
+   within ten minutes of 9 PM; the Monday morning close does whatever of it
+   the watch did not, and so does each morning after, so a failure is mended
+   the next day. Returns what it did. Throws if the week could not be closed.
+
+   The summary is not written here: it is marked owed (WEEK_PACK_OWED) and
+   the watch writes it in a look of its own (weekPackIfOwed_). Written here,
+   it shared one run with the week's close, or with the Monday morning
+   close, and Google stops a run at six minutes: on Sunday 15 Nov 2026 the
+   9 PM look closed the week and was stopped in the summary, and so was the
+   Monday 06:44 close that tried it again — no summary, no line on
+   /health/daily, both red on his page, no email and no word of why. */
 function weekEnd_(sunday) {
-  var out = { week: sunday, closed: false, dayClosed: false, pack: false, warn: [] };
+  var out = { week: sunday, closed: false, dayClosed: false, pack: false, owed: false, warn: [] };
   if (sunday < WEEK_FROM_) return out;
   var now = new Date().getTime();
   if (now < weekCut_(sunday).getTime()) return out;
@@ -1103,16 +1110,60 @@ function weekEnd_(sunday) {
     out.warn.push('Weekly summary: could not check whether it was sent (' + e.message + ') — not sent again');
     return out;
   }
-  if (!packs.some(function (p) { return p.kind === 'week'; })) {
-    try { ran_('week', function () { return weeklyPack_(sunday); }); out.pack = true; }
-    catch (e) { out.warn.push('Weekly summary: ' + e.message); }
-  }
+  if (packs.some(function (p) { return p.kind === 'week'; })) out.pack = true;
+  else { weekPackOwe_(sunday); out.owed = true; }
   return out;
 }
 
+/* What the morning's line on /health/daily says of a week it closed or
+   mended (dailyRun_, and the watch when that run did not finish). */
+function weekNote_(wk) {
+  return (wk.closed ? 'closed the week' : 'the week was already closed') +
+         (wk.pack ? '; weekly summary already sent' : wk.owed ? '; its weekly summary follows in a run of its own' : '');
+}
+
+/* The week's summary, owed and written by the watch in a look that does
+   nothing else, so it has Google's six minutes to itself. Owed: Script
+   Property WEEK_PACK_OWED = the Sunday. Tries: WEEK_PACK_TRY =
+   day|tries|last try (ms) — at most three a day, fifty minutes apart. A try
+   that throws mails him (ran_) and pays the model; one that Google stops
+   leaves no word at all, so each try is counted before it starts. */
+var WEEK_PACK_TRIES_ = 3;
+var WEEK_PACK_GAP_MS_ = 50 * 60 * 1000;
+function weekPackOwe_(sunday) {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('WEEK_PACK_OWED') !== sunday) props.setProperty('WEEK_PACK_OWED', sunday);
+}
+function weekPackIfOwed_() {
+  var props = PropertiesService.getScriptProperties();
+  var sunday = String(props.getProperty('WEEK_PACK_OWED') || '');
+  if (!isDay_(sunday)) return false;
+  var today = todayAddis_(), now = new Date().getTime();
+  var t = String(props.getProperty('WEEK_PACK_TRY') || '').split('|');
+  var tries = t[0] === today ? Number(t[1]) || 0 : 0;
+  if (tries >= WEEK_PACK_TRIES_) return false;
+  if (now - (Number(t[2]) || 0) < WEEK_PACK_GAP_MS_) return false;
+  /* sent already (a try whose end was never seen, or from the editor): not
+     again. Unreadable: not now — a second email is worse than a late one. */
+  var packs;
+  try { packs = fsQuery_('packs', [['end', 'EQUAL', sunday]], null); }
+  catch (e) { Logger.log('week summary owed for %s, packs unreadable: %s', sunday, e.message); return false; }
+  if (packs.some(function (p) { return p.kind === 'week'; })) {
+    props.deleteProperty('WEEK_PACK_OWED');
+    return false;
+  }
+  props.setProperty('WEEK_PACK_TRY', today + '|' + (tries + 1) + '|' + now);
+  try {
+    ran_('week', function () { return weeklyPack_(sunday); });
+    if (props.getProperty('WEEK_PACK_OWED') === sunday) props.deleteProperty('WEEK_PACK_OWED');
+  } catch (e) { Logger.log('week summary: %s', e.message); }
+  return true;
+}
+
 /* From the watch: once a week, after 9 PM on Sunday. WEEK_TRIED keeps a
-   failure to one try here — each try mails him when it fails and pays the
-   model — and the Monday morning close tries again. */
+   close that fails to one try here, and the Monday morning close tries
+   again. The summary is not in it: the next look writes it, alone
+   (weekPackIfOwed_). */
 function weekEndFromWatch_() {
   var today = todayAddis_();
   if (dow_(today) !== 0 || today < WEEK_FROM_) return;

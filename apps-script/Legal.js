@@ -264,8 +264,14 @@ var LEGAL_ASK_ =
   'Quote the figures as given.';
 
 function legalRead_(facts, P) {
-  if (!brain_().key) return '(No model key set — GEMINI_KEY. The figures are still complete.)';
-  var prompt = [
+  var p = legalPrompt_(facts, P);
+  return p.prompt ? aiAsk_(p.prompt, 1500) : p.text;
+}
+/* What legalRead_ asks the model ({ prompt }), or the fixed words ({ text }) —
+   apart, so the week's readings go to the model at once (16 Nov 2026) */
+function legalPrompt_(facts, P) {
+  if (!brain_().key) return { text: '(No model key set — GEMINI_KEY. The figures are still complete.)' };
+  return { prompt: [
     'You are checking one period at Klever Küche, a kitchen cabinet maker in Addis Ababa, against',
     'Ethiopian labour law as summarised below. Amounts are in Birr; fines come from each person’s',
     'terms letter and are deducted from their pay.',
@@ -279,8 +285,7 @@ function legalRead_(facts, P) {
     '',
     '--- ' + facts.period + ' (' + facts.period_is + ') ---',
     JSON.stringify(facts, null, 1)
-  ].join('\n');
-  return aiAsk_(prompt, 1500);
+  ].join('\n') };
 }
 
 /* What his page and the pack keep of it (Packs.js savePack_). */

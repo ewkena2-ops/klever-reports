@@ -379,13 +379,19 @@ var HR_ASK_ =
   'End with one line naming who was on time all week. Quote the figures as given.';
 
 function hrRead_(facts, P) {
+  var p = hrPrompt_(facts, P);
+  return p.prompt ? aiAsk_(p.prompt, 1500) : p.text;
+}
+/* What hrRead_ asks the model ({ prompt }), or the fixed words ({ text }) —
+   apart, so the week's readings go to the model at once (16 Nov 2026) */
+function hrPrompt_(facts, P) {
   if (!facts.reports_due && !facts.attendance.factory_days_reported) {
     /* nothing to read, so no model is paid to say so */
-    return 'No reports were due from Klever staff this week and Amaha filed no attendance, ' +
-           'so there is nothing to say about the week’s people yet.';
+    return { text: 'No reports were due from Klever staff this week and Amaha filed no attendance, ' +
+                   'so there is nothing to say about the week’s people yet.' };
   }
-  if (!brain_().key) return '(No model key set — GEMINI_KEY. The figures are still complete.)';
-  var prompt = [
+  if (!brain_().key) return { text: '(No model key set — GEMINI_KEY. The figures are still complete.)' };
+  return { prompt: [
     'You are reading one week of the people at Klever Küche, a kitchen cabinet maker in Addis',
     'Ababa. Fines and bonuses are in Birr and come from each person’s terms letter.',
     '',
@@ -398,8 +404,7 @@ function hrRead_(facts, P) {
     '',
     '--- ' + P.start + ' to ' + P.end + ' ---',
     JSON.stringify(facts, null, 1)
-  ].join('\n');
-  return aiAsk_(prompt, 1500);
+  ].join('\n') };
 }
 
 /* What his page and the pack keep of it (Packs.js savePack_). */

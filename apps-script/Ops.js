@@ -366,15 +366,21 @@ var OPS_ASK_ =
   'short, and the job that needs it first. Quote the figures as given.';
 
 function opsRead_(facts, P) {
+  var p = opsPrompt_(facts, P);
+  return p.prompt ? aiAsk_(p.prompt, 1500) : p.text;
+}
+/* What opsRead_ asks the model ({ prompt }), or the fixed words ({ text }) —
+   apart, so the week's readings go to the model at once (16 Nov 2026) */
+function opsPrompt_(facts, P) {
   var d = facts.delivery_and_installation;
   if (!facts.plan_against_made && !facts.job_flow.jobs_in_register && !d.days_reported &&
       facts.production.m2_made === null) {
     /* nothing to read, so no model is paid to say so */
-    return 'No 1-week plan, no daily operations reports, no production figures and no jobs in the register ' +
-           'this week, so there is nothing to say about operations yet.';
+    return { text: 'No 1-week plan, no daily operations reports, no production figures and no jobs in the register ' +
+                   'this week, so there is nothing to say about operations yet.' };
   }
-  if (!brain_().key) return '(No model key set — GEMINI_KEY. The figures are still complete.)';
-  var prompt = [
+  if (!brain_().key) return { text: '(No model key set — GEMINI_KEY. The figures are still complete.)' };
+  return { prompt: [
     'You are reading one week of operations at Klever Küche, a kitchen cabinet maker in Addis Ababa:',
     'from Mahelet’s 1-week production plan through the factory, QC, delivery and installation.',
     'The factory target is 40 m² a working day.',
@@ -387,8 +393,7 @@ function opsRead_(facts, P) {
     '',
     '--- ' + P.start + ' to ' + P.end + ' ---',
     JSON.stringify(facts, null, 1)
-  ].join('\n');
-  return aiAsk_(prompt, 1500);
+  ].join('\n') };
 }
 
 /* What his page and the pack keep of it (Packs.js savePack_). */

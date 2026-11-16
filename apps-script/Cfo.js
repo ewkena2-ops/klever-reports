@@ -224,6 +224,13 @@ var CFO_ASK_ =
   'a past payment not shown paid is for Selam to confirm with the bank. Quote the figures as given.';
 
 function cfoRead_(facts, P) {
+  var p = cfoPrompt_(facts, P);
+  return p.prompt ? aiAsk_(p.prompt, 1500) : p.text;
+}
+/* What cfoRead_ asks the model ({ prompt }), or the fixed words when no
+   model is needed ({ text }). Apart, so the week's summary can ask for all
+   its readings at once (Packs.js weeklyPack_, 16 Nov 2026). */
+function cfoPrompt_(facts, P) {
   /* the weekly finance report is made from Selam's dailies (11 Oct 2026),
      which record only some spending lines: the rest of the week — money in,
      the bank, food, supplier credit, the loans — is still read. The fixed
@@ -235,11 +242,11 @@ function cfoRead_(facts, P) {
     (facts.supplier_credit && facts.supplier_credit.reported) || !!facts.bank_loans;
   if (!known) {
     /* nothing to read, so no model is paid to say so */
-    return 'No money figures were recorded this week — no spending, money in or bank balance — ' +
-           'so there is nothing to read yet.';
+    return { text: 'No money figures were recorded this week — no spending, money in or bank balance — ' +
+                   'so there is nothing to read yet.' };
   }
-  if (!brain_().key) return '(No model key set — GEMINI_KEY. The figures are still complete.)';
-  var prompt = [
+  if (!brain_().key) return { text: '(No model key set — GEMINI_KEY. The figures are still complete.)' };
+  return { prompt: [
     'You are reading one week of Klever Küche, a kitchen cabinet maker in Addis Ababa.',
     'Prices are in Birr; the cash reserve floor is 6,000,000 Birr.',
     '',
@@ -254,8 +261,7 @@ function cfoRead_(facts, P) {
     '',
     '--- ' + P.start + ' to ' + P.end + ' ---',
     JSON.stringify(facts, null, 1)
-  ].join('\n');
-  return aiAsk_(prompt, 1500);
+  ].join('\n') };
 }
 
 /* What his page and the pack keep of it (Packs.js savePack_). */

@@ -69,32 +69,37 @@ function weeklyPack_(endDay) {
   var P = packData_(addDays_(end, -6), end);
   P.week = end;
   var facts = weekFacts_(P);
-  var text = askPack_(WEEK_ASK_, facts, P);
-  /* the CFO's reading of the week's money (Cfo.js) — if it fails, the
-     summary still goes, and says so */
-  var cfo = null, cfoText = '', cfoWarn = [];
-  try {
-    cfo = cfoFacts_(P, facts.operations);
-    cfoText = cfoRead_(cfo, P);
-  } catch (e) {
-    cfo = null;
-    cfoWarn.push('CFO: ' + e.message);
-  }
-  /* and HR's reading of the week's people (Hr.js), the same way */
-  var hr = null, hrText = '';
-  try { hr = hrFacts_(P, facts.reporting); }
-  catch (e) { cfoWarn.push('HR: ' + e.message); }
-  if (hr) hrText = readOrSay_(function () { return hrRead_(hr, P); }, 'HR', cfoWarn);
-  /* and the legal check of the month so far (Legal.js) */
-  var legal = null, legalText = '';
-  try { legal = legalFacts_(P, 'week'); }
-  catch (e) { cfoWarn.push('Legal: ' + e.message); }
-  if (legal) legalText = readOrSay_(function () { return legalRead_(legal, P); }, 'Legal', cfoWarn);
-  /* and operations, from Mahelet's plan to the site (Ops.js) */
-  var ops = null, opsText = '';
-  try { ops = opsFacts_(P, facts.operations); }
-  catch (e) { cfoWarn.push('Operations: ' + e.message); }
-  if (ops) opsText = readOrSay_(function () { return opsRead_(ops, P); }, 'Operations', cfoWarn);
+  var cfoWarn = [];
+  /* The figures first, each in code: the CFO's of the week's money
+     (Cfo.js), HR's of the week's people (Hr.js), the legal check of the
+     month so far (Legal.js), operations from Mahelet's plan to the site
+     (Ops.js). One that cannot be worked out is left out, and said; the
+     summary still goes. */
+  var cfo = null, hr = null, legal = null, ops = null;
+  try { cfo = cfoFacts_(P, facts.operations); } catch (e) { cfoWarn.push('CFO: ' + e.message); }
+  try { hr = hrFacts_(P, facts.reporting); } catch (e) { cfoWarn.push('HR: ' + e.message); }
+  try { legal = legalFacts_(P, 'week'); } catch (e) { cfoWarn.push('Legal: ' + e.message); }
+  try { ops = opsFacts_(P, facts.operations); } catch (e) { cfoWarn.push('Operations: ' + e.message); }
+  /* Then the readings — the summary's own and those four — asked at once.
+     One after the other, a minute or so each, the week took over five
+     minutes, and Google stops a run at six: on Sunday 15 Nov 2026 it was
+     stopped at 9 PM, and again inside the Monday morning close, and neither
+     the summary nor Monday's morning line ever came. */
+  var asks = [
+    brain_().key ? { prompt: packPrompt_(WEEK_ASK_, facts, P) }
+                 : { text: '(No model key set — CLAUDE_KEY or GEMINI_KEY. The figures above are still complete.)' },
+    cfo ? cfoPrompt_(cfo, P) : { text: '' },
+    hr ? hrPrompt_(hr, P) : { text: '' },
+    legal ? legalPrompt_(legal, P) : { text: '' },
+    ops ? opsPrompt_(ops, P) : { text: '' }
+  ];
+  askTogether_(asks, ['Summary', 'CFO', 'HR', 'Legal', 'Operations'], cfoWarn);
+  /* the summary itself is not saved unless it is a reading: asked once more
+     alone, then the pack is not made and the next run asks again */
+  var text = asks[0].text;
+  if (asks[0].prompt && aiFailed_(text)) { Utilities.sleep(8000); text = aiAsk_(asks[0].prompt, 2000); }
+  if (asks[0].prompt && aiFailed_(text)) throw new Error('the model did not answer ' + text);
+  var cfoText = asks[1].text, hrText = asks[2].text, legalText = asks[3].text, opsText = asks[4].text;
   /* and the specialists — audit, risk, forecast and the rest (Readers.js) */
   var rd = { saved: {}, html: '' };
   try { rd = runReaders_('week', P, facts, { cfo: cfo, hr: hr, legal: legal, ops: ops }, cfoWarn); }
@@ -114,6 +119,28 @@ function weeklyPack_(endDay) {
   mailPack_('week', P, facts, text, cfo, cfoText, hr, hrText, legal, legalText, ops, opsText, rd.html);
   return { period: P.start + ' to ' + end, warn: warn,
            note: (facts.reporting.on_time_pct == null ? 'no reports' : facts.reporting.on_time_pct + '% on time') };
+}
+
+/* Each ask that needs the model ({ prompt }) gets its answer in .text, all
+   in one fetchAll; one that has its words already ({ text }) is left as it
+   is. A reply that is not a reading stays as the model's own "(no answer
+   — …)", as aiAsk_ gave it. If the asking itself fails, every reading says
+   it did not come, as readOrSay_ does — the figures still go. */
+function askTogether_(asks, names, warn) {
+  var want = asks.filter(function (a) { return a.prompt; });
+  if (!want.length) return asks;
+  var out;
+  try { out = aiAskAll_(want.map(function (a) { return a.prompt; }), 2000); }
+  catch (e) {
+    asks.forEach(function (a, i) {
+      if (!a.prompt) return;
+      warn.push(names[i] + ' reading: ' + e.message);
+      a.text = '(The written reading did not come — ' + e.message + '. The figures below are complete.)';
+    });
+    return asks;
+  }
+  want.forEach(function (a, i) { a.text = out[i]; });
+  return asks;
 }
 
 /* A reading whose figures are already worked out: if only the model call
@@ -574,7 +601,17 @@ var MONTH_ASK_ =
 
 function askPack_(ask, facts, P) {
   if (!brain_().key) return '(No model key set — CLAUDE_KEY or GEMINI_KEY. The figures above are still complete.)';
-  var prompt = [
+  var prompt = packPrompt_(ask, facts, P);
+  /* asked twice; a reply that still is not a reading is not saved as the
+     week's summary — the pack is not made, and the next run asks again
+     (a saved pack is never made again) */
+  var text = aiAsk_(prompt, 2000);
+  if (aiFailed_(text)) { Utilities.sleep(8000); text = aiAsk_(prompt, 2000); }
+  if (aiFailed_(text)) throw new Error('the model did not answer ' + text);
+  return text;
+}
+function packPrompt_(ask, facts, P) {
+  return [
     'You are reading a period at Klever Küche, a kitchen cabinet manufacturer in Addis',
     'Ababa. Prices are in Birr; the production target is 40 m² a day, waste may not pass',
     '20%, and the cash reserve floor is 6,000,000 Birr.',
@@ -588,13 +625,6 @@ function askPack_(ask, facts, P) {
     '--- ' + P.start + ' to ' + P.end + ' ---',
     JSON.stringify(facts, null, 1)
   ].join('\n');
-  /* asked twice; a reply that still is not a reading is not saved as the
-     week's summary — the pack is not made, and the next run asks again
-     (a saved pack is never made again) */
-  var text = aiAsk_(prompt, 2000);
-  if (aiFailed_(text)) { Utilities.sleep(8000); text = aiAsk_(prompt, 2000); }
-  if (aiFailed_(text)) throw new Error('the model did not answer ' + text);
-  return text;
 }
 
 /* ------------------------------------------------------------------ *

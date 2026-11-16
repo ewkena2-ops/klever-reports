@@ -1580,15 +1580,15 @@ function dailyRun_() {
      before it closed Monday — no ledger, no reading, no email, no error. They are the watch's now, after 7 AM, one a look
      (morningChores_). This run closes the day and reads it, nothing else. */
   /* Yesterday was Sunday: the week. The watch closed it at 9 PM and sent
-     its summary if all went well; whatever it did not do is done now. The
-     week's summary is its reading — the agents read working days. */
+     its summary if all went well; whatever it did not do is done now — the
+     summary itself by the watch, in a look of its own (weekPackIfOwed_).
+     The week's summary is its reading — the agents read working days. */
   if (dow_(day) === 0 && day >= WEEK_FROM_) {
     var wk = weekEnd_(day);
     try { bonusStanding_(day); }
     catch (e) { Logger.log('bonus standing: %s', e.message); warn.push('Bonuses so far: ' + e.message); }
     return { period: day, warn: warn.concat(wk.warn),
-             note: (wk.closed ? 'closed the week' : 'the week was already closed') +
-                   (wk.pack ? '; weekly summary sent' : '') +
+             note: weekNote_(wk) +
                    (caught.length ? '; also closed ' + caught.join(', ') + ', which had been missed' : '') };
   }
   /* a week whose close or summary failed is mended on the mornings after */
@@ -1645,9 +1645,9 @@ function closeMissed_() {
   if (Utilities.formatDate(new Date(), tz_(), 'HH:mm') < MISSED_FROM_) return false;
   var today = todayAddis_();
   var day = addDays_(today, -1);
-  /* a Sunday is the week's, closed at 9 PM; the morning after only mends it,
-     and a later morning's catch-up does that if this one could not */
-  if (dow_(day) === 0) return false;
+  /* a Sunday is the week's, closed at 9 PM: the morning after only mends it
+     (weekMissed_ below, when that morning did not finish) */
+  if (dow_(day) === 0 && day < WEEK_FROM_) return false;
   var start = prop_('LEDGER_START', '');
   if (start && day < start) return false;
   /* looked at once an hour, before anything is read, so a Firestore or
@@ -1658,6 +1658,7 @@ function closeMissed_() {
      effect within the hour it went live) */
   if (props.getProperty('MISSED_LOOK') === hour) return false;
   props.setProperty('MISSED_LOOK', hour);
+  if (dow_(day) === 0) return weekMissed_(today, day, props);
   /* closed — but perhaps never read (readMissed_) */
   var led = fsGet_('ledger/' + day);
   if (led) return readMissed_(today, day, led, props);
@@ -1686,6 +1687,36 @@ function closeMissed_() {
     return closeAndRead_(day, warn, caught, ' — closed by the ten-minute watch at ' +
                          Utilities.formatDate(new Date(), tz_(), 'HH:mm') +
                          (sinceSix ? '; the morning run failed' : '; the morning run did not finish'));
+  });
+  return true;
+}
+
+/* Monday, when the morning run left no line since 6 AM (or one that says
+   it failed): what that run does on a Monday — the week mended (weekEnd_:
+   Sunday's close if it is missing, the summary marked owed) — done here,
+   and its line written. 16 Nov 2026: the 06:44 run was stopped in the
+   week's summary and left nothing; this net stood back because yesterday
+   was a Sunday, and his page said "Morning close has not run" all day. At
+   most three tries a day, as above. */
+function weekMissed_(today, sunday, props) {
+  var h = fsGet_('health/daily');
+  if (!h) return false;
+  var sinceSix = h.at && h.at.getTime() >= dayStart_(today).getTime() + 6 * 3600 * 1000;
+  if (sinceSix) {
+    if (h.ok !== false) return false;
+    var r = String(props.getProperty('MISSED_RETRY') || '').split(':');
+    var tries = r[0] === today ? Number(r[1]) || 0 : 0;
+    if (tries >= MISSED_RETRIES_) return false;
+    props.setProperty('MISSED_RETRY', today + ':' + (tries + 1));
+  }
+  ran_('daily', function () {
+    var wk = weekEnd_(sunday), warn = wk.warn.slice();
+    try { bonusStanding_(sunday); }
+    catch (e) { Logger.log('bonus standing: %s', e.message); warn.push('Bonuses so far: ' + e.message); }
+    return { period: sunday, warn: warn,
+             note: weekNote_(wk) + ' — by the ten-minute watch at ' +
+                   Utilities.formatDate(new Date(), tz_(), 'HH:mm') +
+                   (sinceSix ? '; the morning run failed' : '; the morning run did not finish') };
   });
   return true;
 }
@@ -2570,6 +2601,9 @@ function watch_(waitMs) {
     /* yesterday, if the morning run did not close it — before the team's
        list, which reads it; a look that closed a day does nothing more */
     try { if (closeMissed_()) return; } catch (e) { Logger.log('close missed: %s', e.message); return; }
+    /* the week's summary, owed since the week closed: written in this look
+       and nothing else, so it has the run's six minutes to itself (Agent.js) */
+    try { if (weekPackIfOwed_()) return; } catch (e) { Logger.log('week summary: %s', e.message); return; }
     /* a working morning: the AI's list of what each person should do
        today, drafted for him to check and send (Team.js) */
     var planned = false;

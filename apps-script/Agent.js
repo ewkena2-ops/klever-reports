@@ -1153,11 +1153,37 @@ function weekPackIfOwed_() {
     return false;
   }
   props.setProperty('WEEK_PACK_TRY', today + '|' + (tries + 1) + '|' + now);
+  PACK_TRACE_ = { sunday: sunday, n: tries + 1, t0: now, steps: [], prev: null };
+  try { PACK_TRACE_.prev = fsGet_('health/week'); } catch (e) { Logger.log('trace: %s', e.message); }
+  packTrace_('started');
   try {
     ran_('week', function () { return weeklyPack_(sunday); });
     if (props.getProperty('WEEK_PACK_OWED') === sunday) props.deleteProperty('WEEK_PACK_OWED');
   } catch (e) { Logger.log('week summary: %s', e.message); }
+  finally { PACK_TRACE_ = null; }
   return true;
+}
+
+/* How far a try of the summary got, and when — written on /health/week
+   beside the line already there, which is kept as it was (his page reads
+   only its own fields, so it shows what it showed). A try that ends writes
+   its own line over it; a try Google stops leaves this, the only word of
+   where it stopped (16 Nov 2026: the first try in a look of its own was
+   stopped too, and nothing said where). */
+var PACK_TRACE_ = null;
+function packTrace_(step) {
+  var T = PACK_TRACE_;
+  if (!T) return;
+  try {
+    T.steps.push(step + ' ' + Math.round((new Date().getTime() - T.t0) / 1000) + 's');
+    var doc = {}, was = T.prev || { job: 'week' };
+    /* (not _id: fsDoc_ adds the document's own name; it is not a field) */
+    Object.keys(was).forEach(function (k) { if (k !== '_id' && k !== 'trace') doc[k] = was[k]; });
+    doc.trace = 'week to ' + T.sunday + ', try ' + T.n + ' from ' +
+                Utilities.formatDate(new Date(T.t0), tz_(), 'yyyy-MM-dd HH:mm') + ' — ' + T.steps.join(' · ');
+    fsPut_('health/week', doc);
+    Logger.log('week summary: %s', doc.trace);
+  } catch (e) { Logger.log('trace: %s', e.message); }
 }
 
 /* From the watch: once a week, after 9 PM on Sunday. WEEK_TRIED keeps a

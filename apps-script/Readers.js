@@ -615,6 +615,7 @@ function runReaders_(kind, P, base, ctx, warn) {
     }
   });
   var label = (kind === 'month' ? 'the month ' : 'the week ') + P.start + ' to ' + P.end;
+  if (typeof packTrace_ === 'function') packTrace_('specialists’ figures (' + done.length + ')');
   var texts = {};
   var need = done.filter(function (x) { return !(x.r.empty && x.r.empty(x.f)); });
   done.forEach(function (x) { if (x.r.empty && x.r.empty(x.f)) texts[x.r.id] = x.r.emptyText; });

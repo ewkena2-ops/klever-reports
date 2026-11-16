@@ -68,6 +68,7 @@ function weeklyPack_(endDay) {
   var end = endDay ? sundayOf_(endDay) : lastClosedSunday_();
   var P = packData_(addDays_(end, -6), end);
   P.week = end;
+  packTrace_('data read');
   var facts = weekFacts_(P);
   var cfoWarn = [];
   /* The figures first, each in code: the CFO's of the week's money
@@ -80,6 +81,7 @@ function weeklyPack_(endDay) {
   try { hr = hrFacts_(P, facts.reporting); } catch (e) { cfoWarn.push('HR: ' + e.message); }
   try { legal = legalFacts_(P, 'week'); } catch (e) { cfoWarn.push('Legal: ' + e.message); }
   try { ops = opsFacts_(P, facts.operations); } catch (e) { cfoWarn.push('Operations: ' + e.message); }
+  packTrace_('figures');
   /* Then the readings — the summary's own and those four — asked at once.
      One after the other, a minute or so each, the week took over five
      minutes, and Google stops a run at six: on Sunday 15 Nov 2026 it was
@@ -94,16 +96,18 @@ function weeklyPack_(endDay) {
     ops ? opsPrompt_(ops, P) : { text: '' }
   ];
   askTogether_(asks, ['Summary', 'CFO', 'HR', 'Legal', 'Operations'], cfoWarn);
+  packTrace_('5 readings (' + asks.map(function (a) { return a.prompt ? Math.round(a.prompt.length / 1000) + 'k' : '-'; }).join('/') + ' chars)');
   /* the summary itself is not saved unless it is a reading: asked once more
      alone, then the pack is not made and the next run asks again */
   var text = asks[0].text;
-  if (asks[0].prompt && aiFailed_(text)) { Utilities.sleep(8000); text = aiAsk_(asks[0].prompt, 2000); }
+  if (asks[0].prompt && aiFailed_(text)) { Utilities.sleep(8000); text = aiAsk_(asks[0].prompt, 2000); packTrace_('summary asked again'); }
   if (asks[0].prompt && aiFailed_(text)) throw new Error('the model did not answer ' + text);
   var cfoText = asks[1].text, hrText = asks[2].text, legalText = asks[3].text, opsText = asks[4].text;
   /* and the specialists — audit, risk, forecast and the rest (Readers.js) */
   var rd = { saved: {}, html: '' };
   try { rd = runReaders_('week', P, facts, { cfo: cfo, hr: hr, legal: legal, ops: ops }, cfoWarn); }
   catch (e) { cfoWarn.push('Specialists: ' + e.message); }
+  packTrace_('specialists read');
   /* each owner's copy of their Sunday readings (Owners.js) */
   try {
     var mine = [];
@@ -112,10 +116,12 @@ function weeklyPack_(endDay) {
     ((rd.saved && rd.saved.readers) || []).forEach(function (r) { mine.push({ id: r.id, en: r.en, am: r.am, text: r.text }); });
     deliverReadings_(mine, end, 'week');
   } catch (e) { cfoWarn.push('Readings to owners: ' + e.message); }
+  packTrace_('to owners');
   var extra = cfoSaved_(cfo, cfoText);
   var more = [hrSaved_(hr, hrText), legalSaved_(legal, legalText), opsSaved_(ops, opsText), rd.saved];
   more.forEach(function (m) { Object.keys(m).forEach(function (k) { extra[k] = m[k]; }); });
   var warn = savePack_('week-' + end, 'week', P, facts, text, extra).concat(cfoWarn);
+  packTrace_('saved');
   mailPack_('week', P, facts, text, cfo, cfoText, hr, hrText, legal, legalText, ops, opsText, rd.html);
   return { period: P.start + ' to ' + end, warn: warn,
            note: (facts.reporting.on_time_pct == null ? 'no reports' : facts.reporting.on_time_pct + '% on time') };

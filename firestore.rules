@@ -81,15 +81,20 @@ service cloud.firestore {
        them to, and the instructions given to them — never the ledger, the
        analysis or anything of Klever's. A
        Rovestone person added to js/forms.js is added here too, or her page
-       is refused: it asks for all of them by name. */
+       is refused: it asks for all of them by name. Kalkidan, Rovestone's
+       General Manager, sees the same (16 Nov 2026, the owner: "Kalkidan also
+       give her access as Frewoyni on Rovestone"). */
+    function looksAtRovestone() {
+      return signedIn() && me() in ['frewoyni', 'kalkidan'];
+    }
     function looksAt(pid) {
-      return signedIn() && me() == 'frewoyni' && pid is string
+      return looksAtRovestone() && pid is string
           && pid in ['frewoyni', 'kalkidan', 'marta', 'fana', 'rahel', 'dawit', 'tsigea',
                      'yared-rv', 'sintayehu', 'hana', 'eyosias', 'anbesu', 'yesak', 'beti'];
     }
     /* …and that company's own copy of each closed day (coledger, below) */
     function looksAtCo(co) {
-      return signedIn() && me() == 'frewoyni' && co == 'rovestone';
+      return looksAtRovestone() && co == 'rovestone';
     }
 
     /* The penalty ledger's own account. It reads filed reports; the only

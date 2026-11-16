@@ -116,7 +116,7 @@ const PEOPLE = [
      on the card. Reports counted from Wed 21 Oct. Tsigu, Yesak and Beti sign
      approvals on the card; they wait until their jobs are known. 'yared-rv':
      Klever's factory already has a 'yared'. */
-  { id:'kalkidan',  en:'Kalkidan',  am:'ቃልኪዳን',  roleEn:'Rovestone General Manager', roleAm:'የሮቭስቶን ዋና ሥራ አስኪያጅ', grp:'rovestone', company:'rovestone', from:'2026-10-21' },
+  { id:'kalkidan',  en:'Kalkidan',  am:'ቃልኪዳን',  roleEn:'Rovestone General Manager', roleAm:'የሮቭስቶን ዋና ሥራ አስኪያጅ', grp:'rovestone', company:'rovestone', from:'2026-10-21', looks:'rovestone' },
   { id:'marta',     en:'Marta',     am:'ማርታ',    roleEn:'Rovestone Salesperson',     roleAm:'የሮቭስቶን የሽያጭ ባለሙያ',   grp:'rovestone', company:'rovestone', from:'2026-10-21' },
   { id:'fana',      en:'Fana',      am:'ፋና',     roleEn:'Rovestone Salesperson',     roleAm:'የሮቭስቶን የሽያጭ ባለሙያ',   grp:'rovestone', company:'rovestone', from:'2026-10-21' },
   { id:'rahel',     en:'Rahel',     am:'ራሔል',    roleEn:'Rovestone Payments',        roleAm:'የሮቭስቶን ክፍያ ኃላፊ',      grp:'rovestone', company:'rovestone', from:'2026-10-21' },

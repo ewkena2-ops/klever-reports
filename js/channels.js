@@ -33,6 +33,8 @@ const CHAT_ACCOUNTS = [
   'yohannis', 'yonas', 'abrham-g', 'teklweld', 'abrham-w', 'ermiyas', 'nahome', 'tesfaye',
   /* the cleaners, for the office check-in on their phones (10 Nov 2026) */
   'etaferaw', 'lebonash',
+  /* office staff, for the office check-in on his phone (23 Nov 2026) */
+  'henok',
   /* Rovestone, the sister company (4 Oct 2026); its other people from its
      Job Card (19 Oct 2026) */
   'frewoyni', 'kalkidan', 'marta', 'fana', 'rahel',

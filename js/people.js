@@ -33,6 +33,13 @@ const PEOPLE = [
      `noLetter`: no fines until they are signed. */
   { id:'nahome',     en:'Nahome',               am:'ናሆም',            roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial', from:'2026-10-26', noLetter:1, scan:'2026-10-26' },
   { id:'tesfaye',    en:'Tesfaye',              am:'ተስፋዬ',           roleEn:'Designer',          roleAm:'ዲዛይነር', grp:'commercial', from:'2026-10-26', noLetter:1, scan:'2026-10-26' },
+  /* Henok (the user, Mon 23 Nov 2026: "name henok … add that person as
+     other office person that scan"): new, no surname, role and department
+     not given yet — so "Office Staff", grp 'office' (no team room: All staff
+     and his line with the Chairman only). Office door check-in counted from
+     Tue 24 Nov (added after 8 AM, like Elyas and Ashenafi). No terms letter,
+     so no fines; files no reports; no rulebook group has this role. */
+  { id:'henok',      en:'Henok',                am:'ሄኖክ',            roleEn:'Office Staff',      roleAm:'የቢሮ ሠራተኛ', grp:'office', from:'2026-11-24', noLetter:1, scan:'2026-11-24' },
 
   /* Betelhem's assistant. She has no terms letter of her own — everything
      about her is written inside Betelhem's. She is here because she does the
